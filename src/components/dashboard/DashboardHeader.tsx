@@ -1,6 +1,7 @@
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { LogOut, Upload } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardHeaderProps {
   user: User | null;
@@ -8,6 +9,8 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
+
   return (
     <header className="border-b border-border bg-card/30 backdrop-blur">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -20,9 +23,9 @@ const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload OpenAPI
+            <Button variant="outline" size="sm" onClick={() => navigate("/add-service")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Service
             </Button>
             <Button variant="ghost" size="sm" onClick={onSignOut}>
               <LogOut className="h-4 w-4 mr-2" />

@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      services: {
+        Row: {
+          availability: number | null
+          created_at: string
+          endpoint: string | null
+          id: string
+          name: string
+          openapi_doc_content: string | null
+          openapi_doc_url: string | null
+          response_time: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability?: number | null
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          name: string
+          openapi_doc_content?: string | null
+          openapi_doc_url?: string | null
+          response_time?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability?: number | null
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          name?: string
+          openapi_doc_content?: string | null
+          openapi_doc_url?: string | null
+          response_time?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
