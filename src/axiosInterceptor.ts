@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
-import type { HttpEvent, PrimitiveMap } from './types';
+import type { RawRequest, RawResponse } from './types';
 import { SlaOpsClient } from './SlaOpsClient';
 
 export type InterceptorOptions = {
@@ -11,8 +11,6 @@ export type InterceptorOptions = {
   includeRequestBody?: boolean;
   includeResponseBody?: boolean;
   redactHeaders?: (string | RegExp)[];
-  buildTags?: (cfg: InternalAxiosRequestConfig, res?: AxiosResponse) => string[] | undefined;
-  buildAttrs?: (cfg: InternalAxiosRequestConfig, res?: AxiosResponse) => PrimitiveMap | undefined;
 };
 
 const isInternal = (cfg: InternalAxiosRequestConfig) => cfg.headers?.['x-slaops-internal'] === '1';
