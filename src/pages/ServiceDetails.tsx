@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SwaggerUI from "swagger-ui-react";
 import "swagger-ui-react/swagger-ui.css";
+import yaml from "js-yaml";
 
 interface Service {
   id: string;
@@ -57,10 +58,29 @@ const ServiceDetails = () => {
         // Fetch from URL
         try {
           const response = await fetch(data.openapi_doc_url);
-          const spec = await response.json();
+          const contentType = response.headers.get("content-type") || "";
+          const text = await response.text();
+          
+          // Try to determine if it's YAML or JSON
+          let spec;
+          if (contentType.includes("yaml") || contentType.includes("yml") || 
+              data.openapi_doc_url.endsWith(".yaml") || data.openapi_doc_url.endsWith(".yml") ||
+              text.trim().startsWith("openapi:")) {
+            // Parse as YAML
+            spec = yaml.load(text);
+          } else {
+            // Parse as JSON
+            spec = JSON.parse(text);
+          }
+          
           setOpenapiSpec(spec);
         } catch (e) {
           console.error("Failed to fetch OpenAPI spec from URL:", e);
+          toast({
+            title: "Error loading API documentation",
+            description: "Failed to load the OpenAPI specification. Please check the URL.",
+            variant: "destructive",
+          });
         }
       }
     } catch (error: any) {
