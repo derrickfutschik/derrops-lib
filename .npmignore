@@ -1,0 +1,10 @@
+src/
+test/
+.github/
+.husky/
+*.log
+node_modules/
+tsconfig.json
+.eslintrc.json
+.prettierrc
+.editorconfig
