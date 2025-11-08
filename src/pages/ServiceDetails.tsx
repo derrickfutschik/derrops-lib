@@ -302,9 +302,24 @@ const ServiceDetails = () => {
       <style>{`
         .swagger-ui-wrapper .swagger-ui {
           font-family: inherit;
+          color: hsl(var(--foreground));
         }
         .swagger-ui .topbar {
           display: none;
+        }
+        .swagger-ui .info,
+        .swagger-ui .info *,
+        .swagger-ui .scheme-container,
+        .swagger-ui .scheme-container * {
+          color: hsl(var(--foreground)) !important;
+        }
+        .swagger-ui .info .title,
+        .swagger-ui .info h1,
+        .swagger-ui .info h2,
+        .swagger-ui .info h3,
+        .swagger-ui .info h4,
+        .swagger-ui .info h5 {
+          color: hsl(var(--foreground)) !important;
         }
         .swagger-ui .information-container {
           background: transparent;
@@ -315,14 +330,25 @@ const ServiceDetails = () => {
         }
         .swagger-ui .opblock-tag {
           border-bottom: 1px solid hsl(var(--border));
+          color: hsl(var(--foreground));
+        }
+        .swagger-ui .opblock-tag-section h3,
+        .swagger-ui .opblock-tag-section h4 {
+          color: hsl(var(--foreground)) !important;
         }
         .swagger-ui .opblock {
           border: 1px solid hsl(var(--border));
           background: hsl(var(--card));
           margin-bottom: 1rem;
+          color: hsl(var(--foreground));
         }
         .swagger-ui .opblock .opblock-summary {
           border-color: hsl(var(--border));
+        }
+        .swagger-ui .opblock-summary-method,
+        .swagger-ui .opblock-summary-path,
+        .swagger-ui .opblock-summary-description {
+          color: hsl(var(--foreground)) !important;
         }
         .swagger-ui .opblock.opblock-get .opblock-summary {
           background: hsl(var(--primary) / 0.1);
@@ -340,6 +366,20 @@ const ServiceDetails = () => {
           background: hsl(var(--destructive) / 0.1);
           border-color: hsl(var(--destructive));
         }
+        .swagger-ui .opblock-body,
+        .swagger-ui .opblock-description-wrapper,
+        .swagger-ui .opblock-description,
+        .swagger-ui .parameter__name,
+        .swagger-ui .parameter__type,
+        .swagger-ui .parameter__deprecated,
+        .swagger-ui .parameter__in,
+        .swagger-ui .response-col_description,
+        .swagger-ui .tab li,
+        .swagger-ui label,
+        .swagger-ui .prop-name,
+        .swagger-ui .prop-format {
+          color: hsl(var(--foreground)) !important;
+        }
         .swagger-ui .btn {
           background: hsl(var(--primary));
           color: hsl(var(--primary-foreground));
@@ -350,20 +390,22 @@ const ServiceDetails = () => {
         }
         .swagger-ui textarea,
         .swagger-ui input[type="text"],
-        .swagger-ui input[type="password"] {
+        .swagger-ui input[type="password"],
+        .swagger-ui select {
           background: hsl(var(--background));
-          color: hsl(var(--foreground));
+          color: hsl(var(--foreground)) !important;
           border: 1px solid hsl(var(--border));
         }
         .swagger-ui .response-col_status {
           color: hsl(var(--foreground));
         }
         .swagger-ui .response-col_description {
-          color: hsl(var(--muted-foreground));
+          color: hsl(var(--foreground));
         }
         .swagger-ui table thead tr th,
-        .swagger-ui table thead tr td {
-          color: hsl(var(--foreground));
+        .swagger-ui table thead tr td,
+        .swagger-ui table tbody tr td {
+          color: hsl(var(--foreground)) !important;
           border-color: hsl(var(--border));
         }
         .swagger-ui .model-box {
@@ -375,11 +417,18 @@ const ServiceDetails = () => {
         .swagger-ui .model-toggle::after {
           background: hsl(var(--muted));
         }
-        .swagger-ui .model {
-          color: hsl(var(--foreground));
+        .swagger-ui .model,
+        .swagger-ui .model-title {
+          color: hsl(var(--foreground)) !important;
         }
         .swagger-ui .prop-type {
           color: hsl(var(--primary));
+        }
+        .swagger-ui .markdown p,
+        .swagger-ui .markdown code,
+        .swagger-ui .renderedMarkdown p,
+        .swagger-ui .renderedMarkdown code {
+          color: hsl(var(--foreground)) !important;
         }
       `}</style>
     </div>
