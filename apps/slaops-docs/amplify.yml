@@ -6,21 +6,25 @@ frontend:
         - echo "Using Node 20.x"
         - nvm install 20
         - nvm use 20
-        - npm ci
+        - npm install -g pnpm@8.15.4
+        # Install dependencies from monorepo root
+        - cd ../..
+        - pnpm install --frozen-lockfile
+        # Build shared packages that slaops-docs depends on
+        - pnpm --filter @slaops/core run build
+        - pnpm --filter @slaops/lib run build
+        - cd apps/slaops-docs
     build:
       commands:
-        # If you set BASE_URL via Amplify env vars, read it in docusaurus.config.js
-        - npm run build
+        - pnpm run build
   artifacts:
-    baseDirectory: build
+    baseDirectory: apps/slaops-docs/build
     files:
       - '**/*'
   cache:
     paths:
       - node_modules/**/*
-      - ~/.npm/**/*
+      - ~/.pnpm-store/**/*
 env:
   variables:
     NODE_OPTIONS: "--max_old_space_size=4096"
-    # BASE_URL: "/"             # Optional: consumed by your docusaurus.config.js
-    # CI: "true"
