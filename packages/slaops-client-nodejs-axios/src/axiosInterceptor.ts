@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import axios from 'axios';
-import type { RawRequest, RawResponse } from './types';
+import { redact } from '@slaops/lib';
+import type { SlaOpsEvent } from '@slaops/core';
 import { SlaOpsClient } from './SlaOpsClient';
 
 export type InterceptorOptions = {
@@ -11,21 +11,11 @@ export type InterceptorOptions = {
   includeRequestBody?: boolean;
   includeResponseBody?: boolean;
   redactHeaders?: (string | RegExp)[];
+  buildTags?: (cfg: InternalAxiosRequestConfig, res?: AxiosResponse) => Record<string, string> | undefined;
+  buildAttrs?: (cfg: InternalAxiosRequestConfig, res?: AxiosResponse) => Record<string, any> | undefined;
 };
 
 const isInternal = (cfg: InternalAxiosRequestConfig) => cfg.headers?.['x-slaops-internal'] === '1';
-
-const redact = (headers: any, patterns: (string | RegExp)[] | undefined) => {
-  if (!headers) return {};
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(headers)) {
-    const hit = (patterns ?? []).some((p) =>
-      typeof p === 'string' ? k.toLowerCase() === p.toLowerCase() : (p as RegExp).test(k),
-    );
-    out[k] = hit ? '[REDACTED]' : String(v);
-  }
-  return out;
-};
 
 export function attachSlaOpsInterceptor(instance: AxiosInstance, options: InterceptorOptions) {
   const client = new SlaOpsClient({
@@ -51,7 +41,7 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
       const headers = redact(cfg.headers, options.redactHeaders);
       const url = new URL(cfg.url!, cfg.baseURL || 'http://localhost');
 
-      const evt: HttpEvent = {
+      const evt: SlaOpsEvent = {
         request: {
           method: cfg.method?.toUpperCase() || 'GET',
           url: {
@@ -99,7 +89,7 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
 
       const status = error.response?.status ?? 0;
 
-      const evt: HttpEvent = {
+      const evt: SlaOpsEvent = {
         request: {
           method: cfg.method?.toUpperCase() || 'GET',
           url: {
