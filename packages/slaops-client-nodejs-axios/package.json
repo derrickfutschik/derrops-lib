@@ -2,6 +2,7 @@
   "name": "slaops-client-nodejs-axios",
   "version": "0.1.0",
   "description": "Axios-only client + interceptor for sending SLA Ops HTTP events from Node.js apps.",
+  "private": false,
   "keywords": [
     "slaops",
     "observability",

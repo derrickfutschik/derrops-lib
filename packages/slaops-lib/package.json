@@ -2,6 +2,7 @@
   "name": "@slaops/lib",
   "version": "0.1.0",
   "description": "Shared utilities for SLA Ops",
+  "private": false,
   "keywords": [
     "slaops",
     "observability",

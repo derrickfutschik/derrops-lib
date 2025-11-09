@@ -2,6 +2,7 @@
   "name": "@slaops/client",
   "version": "0.1.0",
   "description": "Base HTTP client for SLA Ops - can be extended for specific HTTP clients",
+  "private": false,
   "keywords": [
     "slaops",
     "observability",

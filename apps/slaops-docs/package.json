@@ -1,5 +1,5 @@
 {
-  "name": "SLAOps-website",
+  "name": "slaops-docs",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -51,9 +51,5 @@
   },
   "author": "SLAOps@SLAOps.com",
   "license": "(ISC OR GPL-3.0)",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/derrickfutschik/SLAOps-website"
-  },
   "packageManager": "yarn@1.22.21+sha1.1959a18351b811cdeedbd484a8f86c3cc3bbaf72"
 }
