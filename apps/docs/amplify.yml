@@ -1,0 +1,26 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Using Node 20.x"
+        - nvm install 20
+        - nvm use 20
+        - npm ci
+    build:
+      commands:
+        # If you set BASE_URL via Amplify env vars, read it in docusaurus.config.js
+        - npm run build
+  artifacts:
+    baseDirectory: build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - ~/.npm/**/*
+env:
+  variables:
+    NODE_OPTIONS: "--max_old_space_size=4096"
+    # BASE_URL: "/"             # Optional: consumed by your docusaurus.config.js
+    # CI: "true"

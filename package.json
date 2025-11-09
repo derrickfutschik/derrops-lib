@@ -5,10 +5,11 @@
   "description": "SLA Ops client libraries - monorepo",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
-    "build": "pnpm -r --filter @slaops/core run build && pnpm -r --filter @slaops/lib run build && pnpm -r --filter @slaops/client run build && pnpm -r --filter slaops-client-nodejs-axios run build",
+    "build": "pnpm -r --filter @slaops/core run build && pnpm -r --filter @slaops/lib run build && pnpm -r --filter @slaops/client run build && pnpm -r --filter slaops-client-nodejs-axios run build && pnpm -r --filter @slaops/website run build",
     "dev": "pnpm -r run dev",
     "test": "pnpm -r run test",
     "test:watch": "pnpm -r run test:watch",
