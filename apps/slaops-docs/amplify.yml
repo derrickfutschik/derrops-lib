@@ -1,30 +1,32 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - echo "Using Node 20.x"
-        - nvm install 20
-        - nvm use 20
-        - npm install -g pnpm@8.15.4
-        # Install dependencies from monorepo root
-        - cd ../..
-        - pnpm install --frozen-lockfile
-        # Build shared packages that slaops-docs depends on
-        - pnpm --filter @slaops/core run build
-        - pnpm --filter @slaops/lib run build
-        - cd apps/slaops-docs
-    build:
-      commands:
-        - pnpm run build
-  artifacts:
-    baseDirectory: apps/slaops-docs/build
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
-      - ~/.pnpm-store/**/*
-env:
-  variables:
-    NODE_OPTIONS: "--max_old_space_size=4096"
+applications:
+  - appRoot: apps/slaops-docs
+    env:
+      variables:
+        NODE_OPTIONS: "--max_old_space_size=4096"
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - echo "Using Node 20.x"
+            - nvm install 20
+            - nvm use 20
+            - npm install -g pnpm@8.15.4
+            # Install dependencies from monorepo root
+            - cd ../..
+            - pnpm install --frozen-lockfile
+            # Build shared packages that slaops-docs depends on
+            - pnpm --filter @slaops/core run build
+            - pnpm --filter @slaops/lib run build
+            - cd apps/slaops-docs
+        build:
+          commands:
+            - pnpm run build
+      artifacts:
+        baseDirectory: build
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - ~/.pnpm-store/**/*
