@@ -1,79 +1,73 @@
-# slaops-client-nodejs-axios
+# Welcome to your Lovable project
 
-An **Axios-only** client for sending SLA Ops events (requests, responses, metrics) from Node.js/TypeScript apps.
-Ships with a tiny client and a one-call **interceptor** to auto-capture Axios requests/responses and forward
-them to your SLA Ops collector.
+## Project info
 
-## Install
+**URL**: https://lovable.dev/projects/957a6ce2-2634-4e8d-a9e2-8b7b8e425798
 
-```bash
-npm i slaops-client-nodejs-axios axios
-# or
-pnpm add slaops-client-nodejs-axios axios
+## How can I edit this code?
+
+There are several ways of editing your application.
+
+**Use Lovable**
+
+Simply visit the [Lovable Project](https://lovable.dev/projects/957a6ce2-2634-4e8d-a9e2-8b7b8e425798) and start prompting.
+
+Changes made via Lovable will be committed automatically to this repo.
+
+**Use your preferred IDE**
+
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+Follow these steps:
+
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-## Two ways to use
+**Edit a file directly in GitHub**
 
-### 1) Register an interceptor (recommended)
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-```ts
-import axios from 'axios';
-import { attachSlaOpsInterceptor } from 'slaops-client-nodejs-axios';
+**Use GitHub Codespaces**
 
-const api = axios.create({ baseURL: 'https://api.example.com' });
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-attachSlaOpsInterceptor(api, {
-  endpoint: process.env.SLAOPS_ENDPOINT!, // e.g. https://collector.example.com/v1/events
-  apiKey: process.env.SLAOPS_API_KEY,
-  projectId: 'my-project',
-  // optional:
-  redactHeaders: [/authorization/i, /cookie/i],
-  includeRequestBody: false, // defaults false
-  includeResponseBody: false, // defaults false
-});
+## What technologies are used for this project?
 
-await api.get('/items?limit=10');
-```
+This project is built with:
 
-The interceptor builds a minimal `HttpEvent` and posts it to your collector. It uses a separate internal Axios instance and adds the header `x-slaops-internal: 1` to avoid recursive interception.
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-### 2) Call the client directly
+## How can I deploy this project?
 
-```ts
-import { SlaOpsClient, type HttpEvent } from 'slaops-client-nodejs-axios';
+Simply open [Lovable](https://lovable.dev/projects/957a6ce2-2634-4e8d-a9e2-8b7b8e425798) and click on Share -> Publish.
 
-const client = new SlaOpsClient({
-  endpoint: process.env.SLAOPS_ENDPOINT!,
-  apiKey: process.env.SLAOPS_API_KEY,
-  projectId: 'my-project',
-});
+## Can I connect a custom domain to my Lovable project?
 
-const evt: HttpEvent = {
-  request: {
-    method: 'GET',
-    url: {
-      href: 'https://api.example.com/items?limit=10',
-      origin: 'https://api.example.com',
-      host: 'api.example.com',
-      pathname: '/items',
-    },
-    headers: { 'user-agent': 'demo' },
-  },
-  response: { status: 200 },
-  info: {
-    bodySize: 0,
-    truncation: 'NONE',
-    bodyHash: '',
-    pathHash: '',
-    queryParamsHash: '',
-    createdAt: Date.now(),
-    id: crypto.randomUUID(),
-  },
-};
+Yes, you can!
 
-await client.sendEvent(evt);
-```
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-## License
-
-MIT
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)

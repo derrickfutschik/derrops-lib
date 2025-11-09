@@ -1,3 +1,0 @@
-
-# Amplify Full Stack Application
-
