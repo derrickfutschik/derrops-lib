@@ -1,0 +1,50 @@
+{
+  "name": "@slaops/client",
+  "version": "0.1.0",
+  "description": "Base HTTP client for SLA Ops - can be extended for specific HTTP clients",
+  "private": false,
+  "keywords": [
+    "slaops",
+    "observability",
+    "logging",
+    "metrics",
+    "client"
+  ],
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/slaops-client-nodejs-axios.git",
+    "directory": "packages/slaops-client"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsc -w",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@slaops/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.8",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
