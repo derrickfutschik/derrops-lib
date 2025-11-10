@@ -3,6 +3,9 @@ set -e
 
 echo "=== Amplify PreBuild Script for slaops-docs ==="
 
+echo "Check NVM exists"
+command -v nvm >/dev/null || { export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; }
+
 echo "Using Node 22.x"
 nvm install 22
 nvm use 22
