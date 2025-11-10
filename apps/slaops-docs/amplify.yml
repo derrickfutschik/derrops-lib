@@ -8,20 +8,12 @@ applications:
       phases:
         preBuild:
           commands:
-            - echo "Using Node 20.x"
-            - nvm install 20
-            - nvm use 20
-            - npm install -g pnpm@8.15.4
-            # Install dependencies from monorepo root
-            - cd ../..
-            - pnpm install --frozen-lockfile
-            # Build shared packages that slaops-docs depends on
-            - pnpm --filter @slaops/core run build
-            - pnpm --filter @slaops/lib run build
-            - cd apps/slaops-docs
+            - chmod +x amplify-prebuild.sh
+            - ./amplify-prebuild.sh
         build:
           commands:
-            - pnpm run build
+            - chmod +x amplify-build.sh
+            - ./amplify-build.sh
       artifacts:
         baseDirectory: build
         files:

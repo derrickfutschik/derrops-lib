@@ -17,7 +17,9 @@
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
+    "@docusaurus/plugin-content-blog": "^3.9.2",
     "@docusaurus/preset-classic": "3.9.2",
+    "@docusaurus/theme-common": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
@@ -47,7 +49,7 @@
     ]
   },
   "engines": {
-    "node": ">=20.0"
+    "node": ">=22.0.0"
   },
   "author": "SLAOps@SLAOps.com",
   "license": "(ISC OR GPL-3.0)"
