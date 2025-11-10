@@ -29,9 +29,15 @@ importers:
       '@docusaurus/core':
         specifier: 3.9.2
         version: 3.9.2(@mdx-js/react@3.1.1)(esbuild@0.25.12)(react-dom@19.2.0)(react@19.2.0)(typescript@5.6.3)
+      '@docusaurus/plugin-content-blog':
+        specifier: ^3.9.2
+        version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2)(@mdx-js/react@3.1.1)(esbuild@0.25.12)(react-dom@19.2.0)(react@19.2.0)(typescript@5.6.3)
       '@docusaurus/preset-classic':
         specifier: 3.9.2
         version: 3.9.2(@algolia/client-search@5.43.0)(@mdx-js/react@3.1.1)(@types/react@18.3.26)(esbuild@0.25.12)(react-dom@19.2.0)(react@19.2.0)(search-insights@2.17.3)(typescript@5.6.3)
+      '@docusaurus/theme-common':
+        specifier: ^3.9.2
+        version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2)(esbuild@0.25.12)(react-dom@19.2.0)(react@19.2.0)
       '@docusaurus/theme-mermaid':
         specifier: ^3.9.2
         version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2)(@mdx-js/react@3.1.1)(esbuild@0.25.12)(react-dom@19.2.0)(react@19.2.0)(typescript@5.6.3)
