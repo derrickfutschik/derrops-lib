@@ -1,20 +1,24 @@
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - npm ci --cache .npm --prefer-offline
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-frontend:
-  phases:
-    build:
-      commands:
-        - npm run build
-  artifacts:
-    baseDirectory: dist
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - .npm/**/*
-      - node_modules/**/*
+applications:
+  - appRoot: apps/slaops-portal
+    env:
+      variables:
+        NODE_OPTIONS: "--max_old_space_size=4096"
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - chmod +x amplify-prebuild.sh
+            - ./amplify-prebuild.sh
+        build:
+          commands:
+            - chmod +x amplify-build.sh
+            - ./amplify-build.sh
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - ~/.pnpm-store/**/*

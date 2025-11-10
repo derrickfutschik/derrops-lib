@@ -15,4 +15,22 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ["swagger-ui-react"],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/swagger-ui-react/, /node_modules/],
+      transformMixedEsModules: true,
+    },
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress certain warnings from swagger-ui-react
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
+          return;
+        }
+        warn(warning);
+      },
+    },
+  },
 }));
