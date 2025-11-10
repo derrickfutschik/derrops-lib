@@ -15,7 +15,7 @@ applications:
             - chmod +x amplify-build.sh
             - ./amplify-build.sh
       artifacts:
-        baseDirectory: build
+        baseDirectory: dist
         files:
           - '**/*'
       cache:
