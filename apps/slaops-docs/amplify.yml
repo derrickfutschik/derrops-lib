@@ -8,6 +8,11 @@ applications:
       phases:
         preBuild:
           commands:
+            - |
+              if ! git diff --name-only HEAD^ HEAD | grep -q "^apps/slaops-docs/"; then
+                echo "No changes in apps/slaops-docs, skipping build."
+                exit 0
+              fi
             - chmod +x amplify-prebuild.sh
             - ./amplify-prebuild.sh
         build:
