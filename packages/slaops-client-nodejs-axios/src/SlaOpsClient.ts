@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
-import { BaseClient, type BaseClientOptions, type SlaOpsEvent } from '@slaops/client';
+import { BaseClient, type BaseClientOptions } from '@slaops/client';
+import type { HarEntry } from '@slaops/lib';
 
 export type SlaOpsClientOptions = BaseClientOptions;
 
@@ -17,13 +18,13 @@ export class SlaOpsClient extends BaseClient {
   }
 
   protected async sendInternal(
-    events: SlaOpsEvent[],
+    events: HarEntry[],
     init?: { path?: string; headers?: Record<string, string> },
   ) {
     const path = init?.path ?? '/v1/events';
     const url = this.endpoint + path;
     const headers = this.buildHeaders(init);
-    const res = await this.http.post(url, { events }, { headers });
+    const res = await this.http.post(url, { entries: events }, { headers });
     return { status: res.status, data: res.data };
   }
 }

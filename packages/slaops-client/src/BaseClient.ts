@@ -1,4 +1,4 @@
-import type { SlaOpsEvent } from '@slaops/core';
+import type { HarEntry } from '@slaops/lib';
 
 export type BaseClientOptions = {
   endpoint: string;
@@ -33,14 +33,14 @@ export abstract class BaseClient {
   }
 
   async sendEvent(
-    event: SlaOpsEvent,
+    event: HarEntry,
     init?: { path?: string; headers?: Record<string, string> },
   ): Promise<SendResult> {
     return this.sendInternal([event], init);
   }
 
   async sendBatch(
-    events: SlaOpsEvent[],
+    events: HarEntry[],
     init?: { path?: string; headers?: Record<string, string> },
   ): Promise<SendResult> {
     if (events.length === 0) return { status: 204, data: undefined };
@@ -58,7 +58,7 @@ export abstract class BaseClient {
   }
 
   protected abstract sendInternal(
-    events: SlaOpsEvent[],
+    events: HarEntry[],
     init?: { path?: string; headers?: Record<string, string> },
   ): Promise<SendResult>;
 }

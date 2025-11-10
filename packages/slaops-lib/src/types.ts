@@ -298,7 +298,7 @@ export type AuthContext = {
 }
 
 /** Main Data Structure for the SLAOps Log */
-export type SlaOps = {
+export type SLAOpsEnrichedLog = {
 
     /** General Information */
     general: SLAOpsGeneral
