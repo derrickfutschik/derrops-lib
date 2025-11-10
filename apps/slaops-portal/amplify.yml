@@ -1,32 +1,24 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - echo "Using Node 20.x"
-        - nvm install 20
-        - nvm use 20
-        - npm install -g pnpm@8.15.4
-        # Install dependencies from monorepo root
-        - cd ../..
-        - pnpm install --frozen-lockfile
-        # Build all dependencies
-        - pnpm --filter @slaops/core run build
-        - pnpm --filter @slaops/lib run build
-        - pnpm --filter @slaops/client run build
-        - pnpm --filter slaops-client-nodejs-axios run build
-        - cd apps/slaops-portal
-    build:
-      commands:
-        - pnpm run build
-  artifacts:
-    baseDirectory: apps/slaops-portal/dist
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
-      - ~/.pnpm-store/**/*
-env:
-  variables:
-    NODE_OPTIONS: "--max_old_space_size=4096"
+applications:
+  - appRoot: apps/slaops-portal
+    env:
+      variables:
+        NODE_OPTIONS: "--max_old_space_size=4096"
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - chmod +x amplify-prebuild.sh
+            - ./amplify-prebuild.sh
+        build:
+          commands:
+            - chmod +x amplify-build.sh
+            - ./amplify-build.sh
+      artifacts:
+        baseDirectory: build
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - ~/.pnpm-store/**/*
