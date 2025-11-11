@@ -1,3 +1,3 @@
 export * from './utils';
-export * from './har';
+export * from './domain/har';
 export * from './types';

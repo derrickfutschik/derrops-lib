@@ -44,16 +44,74 @@ export type RawRequest = {
         pathname: string,
         host: string,
         origin: string,
-    }
+        search?: string,
+    },
+    httpVersion?: string,
+    /** Timestamp when the request started (ISO-8601 string or Date) */
+    startedDateTime?: string | Date,
+    /** Total request time in milliseconds */
+    time?: number,
+    /** Detailed timing information */
+    timings?: {
+        blocked?: number,
+        dns?: number,
+        connect?: number,
+        ssl?: number,
+        send?: number,
+        wait?: number,
+        receive?: number,
+    },
+    /** Cookies sent with the request */
+    cookies?: Array<{
+        name: string,
+        value: string,
+        path?: string,
+        domain?: string,
+        expires?: string | null,
+        httpOnly?: boolean,
+        secure?: boolean,
+        sameSite?: "Strict" | "Lax" | "None" | string,
+    }>,
+    /** Server IP address */
+    serverIPAddress?: string,
+    /** Connection identifier */
+    connection?: string,
 }
 
 
 export type RawResponse = {
     status: number,
+    statusText: string,
     headers?: {
         [k: string]: any
     },
     body?: any,
+    httpVersion?: string,
+
+    size: number;
+    /**
+     * Compression saved (size before - size after). Absent if unknown.
+     */
+    compression?: number;
+    /** MIME type, e.g., text/html; charset=utf-8 */
+    mimeType: string;
+    /** If present, typically "base64" to indicate text is Base64-encoded. */
+    encoding?: string;
+
+    /** Cookies set by the response */
+    cookies?: Array<{
+        name: string,
+        value: string,
+        path?: string,
+        domain?: string,
+        expires?: string | null,
+        httpOnly?: boolean,
+        secure?: boolean,
+        sameSite?: "Strict" | "Lax" | "None" | string,
+    }>,
+    /** Redirect URL from Location header */
+    redirectURL?: string,
+
 }
 
 
@@ -112,7 +170,7 @@ export type RawRequestInfo = HttpInfo & {
 
 
 /** General Information about the Log */
-export type SLAOpsGeneral = {
+export type SLAOpsCommon = {
     /** The version of SLA Ops Used to Index the Log */
     slaOpsVersion: string,
     /** The time the log was indexed */
@@ -122,7 +180,7 @@ export type SLAOpsGeneral = {
 }
 
 /** OpenTelemetry Context */
-export type OpenTelemetryContext = {
+export type OpenTelemetryInfo = {
     /** The trace id */
     traceId: string,
     /** The span id */
@@ -136,7 +194,7 @@ export type OpenTelemetryContext = {
 }
 
 
-export type SLA = {
+export type SLAInfo = {
     /** The SLA of the operation */
     maxLatency: number,
     /** The latency of the request */
@@ -290,46 +348,29 @@ export type JSONStats = {
 }
 
 /** Authentication Context Such as from a JWT */
-export type AuthContext = {
+export type AuthInfo = {
     userId: string,
     username: string,
     iat: string,
     exp: string,
 }
 
-/** Main Data Structure for the SLAOps Log */
-export type SLAOpsEnrichedLog = {
+/** SAAS Information */
+export type SAASInfo = {
 
-    /** General Information */
-    general: SLAOpsGeneral
+    /** The ID of the SAAS company */
+    id: string,
 
-    /** Build Information */
-    buildInfo: BuildInfo,
+    /** The name of the SAAS company */
+    name: string,
 
-    /** Authentication Context */
-    auth: AuthContext,
+    /** Website of the SAAS company */
+    website: string,
+}
 
-    /** Request Information */
-    request: {
-        raw: RawRequest,
-        info: RawRequestInfo,
-        /** The validation of the API  */
-        jsonSchema: JSONSchemaValidationInfo,
-    }
 
-    /** Response Information */
-    response: {
-        raw: RawResponse,
-        info: HttpInfo,
-        /** The validation of the API  */
-        jsonSchema: JSONSchemaValidationInfo,
-    }
-
-    /** OpenTelemetry Context */
-    otel: OpenTelemetryContext,
-
-    /** SLA of the Operation */
-    sla: SLA,
+/** SLAOps Information */
+export type SLAOpsInfo = SLAInfo & {
 
     /** Cache Information */
     cache: CacheInfo,
@@ -348,6 +389,32 @@ export type SLAOpsEnrichedLog = {
 
     /** RFC 7807 Error Information */
     error?: ErrorInfo,
+}
 
+
+/** Main Data Structure for the SLAOps Log */
+export type SLAOpsEnrichedLog = {
+
+    /** General Information */
+    common: SLAOpsCommon
+
+    /** Request Information */
+    request: {
+        raw: RawRequest,
+        info: RawRequestInfo,
+        /** The validation of the API  */
+        jsonSchema: JSONSchemaValidationInfo,
+    }
+
+    /** Response Information */
+    response: {
+        raw: RawResponse,
+        info: HttpInfo,
+        /** The validation of the API  */
+        jsonSchema: JSONSchemaValidationInfo,
+    },
+
+    /** SLAOps Information */
+    slaops: SLAOpsInfo,
 
 }

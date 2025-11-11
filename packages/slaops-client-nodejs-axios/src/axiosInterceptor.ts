@@ -3,6 +3,7 @@ import { redact } from '@slaops/lib';
 import type { HarEntry } from '@slaops/lib';
 import { SlaOpsClient } from './SlaOpsClient';
 
+
 export type InterceptorOptions = {
   endpoint: string;
   apiKey?: string;
@@ -21,6 +22,96 @@ function headersToHar(headers: Record<string, any>): Array<{ name: string; value
     name,
     value: String(value),
   }));
+}
+
+function extractQueryString(cfg: InternalAxiosRequestConfig, url: URL): Array<{ name: string; value: string }> {
+  const entries: Array<{ name: string; value: string }> = [];
+  const append = (name: string, value: unknown) => {
+    if (value === undefined) return;
+    entries.push({ name, value: String(value) });
+  };
+
+  url.searchParams.forEach((value, name) => {
+    append(name, value);
+  });
+
+  if (entries.length) return entries;
+
+  const serializeParams = (): string | undefined => {
+    const serializer = (cfg as InternalAxiosRequestConfig & {
+      paramsSerializer?: InternalAxiosRequestConfig['paramsSerializer'] & {
+        serialize?: (params: unknown, options?: unknown) => string;
+      };
+    }).paramsSerializer;
+
+    if (!serializer || cfg.params === undefined) return undefined;
+
+    try {
+      if (typeof serializer === 'function') {
+        return serializer(cfg.params);
+      }
+      if (typeof serializer.serialize === 'function') {
+        return serializer.serialize(cfg.params, serializer.encode);
+      }
+    } catch {
+      // ignore serializer errors, fall back to best-effort parsing
+    }
+
+    return undefined;
+  };
+
+  const serialized = serializeParams();
+  if (serialized) {
+    new URLSearchParams(serialized).forEach((value, name) => {
+      append(name, value);
+    });
+  }
+
+  if (entries.length) return entries;
+
+  const { params } = cfg;
+  if (!params) return entries;
+
+  if (params instanceof URLSearchParams) {
+    params.forEach((value, name) => append(name, value));
+    return entries;
+  }
+
+  if (typeof params === 'string') {
+    new URLSearchParams(params).forEach((value, name) => append(name, value));
+    return entries;
+  }
+
+  if (Array.isArray(params)) {
+    for (const entry of params) {
+      if (!entry) continue;
+      if (Array.isArray(entry) && entry.length >= 2) {
+        append(String(entry[0]), entry[1]);
+      } else if (typeof entry === 'object' && 'name' in entry && 'value' in entry) {
+        append(String(entry.name), (entry as { value: unknown }).value);
+      }
+    }
+    return entries;
+  }
+
+  if (typeof params === 'object') {
+    Object.entries(params as Record<string, unknown>).forEach(([name, value]) => {
+      if (value === undefined) return;
+      if (value === null) {
+        append(name, '');
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach((v) => append(name, v));
+        return;
+      }
+
+      append(name, value);
+    });
+  }
+
+  return entries;
 }
 
 export function attachSlaOpsInterceptor(instance: AxiosInstance, options: InterceptorOptions) {
@@ -65,7 +156,7 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
           httpVersion: 'HTTP/1.1',
           cookies: [],
           headers: headersToHar(headers),
-          queryString: Array.from(url.searchParams.entries()).map(([name, value]) => ({ name, value })),
+          queryString: extractQueryString(cfg, url),
           headersSize: -1,
           bodySize: requestBody ? Buffer.byteLength(requestBody, 'utf8') : 0,
           ...(requestBody && {
@@ -135,7 +226,7 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
           httpVersion: 'HTTP/1.1',
           cookies: [],
           headers: headersToHar(headers),
-          queryString: Array.from(url.searchParams.entries()).map(([name, value]) => ({ name, value })),
+          queryString: extractQueryString(cfg, url),
           headersSize: -1,
           bodySize: requestBody ? Buffer.byteLength(requestBody, 'utf8') : 0,
           ...(requestBody && {
