@@ -1,0 +1,208 @@
+# SLAOps Documentation Site
+
+This is a Docusaurus documentation site for the SLAOps platform, hosted at https://blog.SLAOps.com.
+
+**Note**: This is part of the SLAOps monorepo. Use `pnpm` for all package management operations for consistency across the monorepo.
+
+## Overview
+
+The SLAOps documentation provides comprehensive guides for the SLAOps platform, a DevOps engineering solution focused on:
+- OpenAPI logging and monitoring
+- API spec validation logging
+- Response logging and analysis
+- Deployment tracking
+- Component documentation
+
+## Project Structure
+
+```
+apps/slaops-docs/
+├── docs/              # Main documentation content
+│   ├── intro.md       # Introduction/landing page
+│   ├── components.md  # Component documentation
+│   ├── deployments.md # Deployment guides
+│   ├── logs.md        # Logging documentation
+│   ├── sdk.md         # SDK documentation
+│   ├── domain/        # Domain-specific docs
+│   └── ...
+├── blog/              # Blog posts
+├── changelog/         # Changelog entries
+├── src/
+│   ├── components/    # Custom React components
+│   ├── css/           # Custom styling
+│   ├── pages/         # Custom pages
+│   └── plugins/       # Custom Docusaurus plugins (e.g., changelog)
+├── static/            # Static assets (images, favicons)
+├── docusaurus.config.ts  # Main configuration
+└── sidebars.ts        # Sidebar navigation structure
+```
+
+## Key Features
+
+- **Docusaurus 3.9.2** with future v4 compatibility enabled
+- **Mermaid diagrams** support via `@docusaurus/theme-mermaid`
+- **Math equations** support via remark-math and rehype-katex
+- **Code imports** via remark-code-import plugin
+- **Custom changelog** plugin for release tracking
+- **Dark/light mode** with system preference detection
+- **RSS/Atom feeds** for blog and changelog
+- **React 19** for modern component support
+
+## Development
+
+### Prerequisites
+- Node.js >= 22.0.0 (specified in .nvmrc and package.json engines)
+- pnpm 8.15.4 or compatible version (monorepo package manager)
+
+### Initial Setup
+
+Since this is part of a monorepo, dependencies must be installed from the monorepo root:
+
+```bash
+# From monorepo root (../../)
+pnpm install --frozen-lockfile
+
+# Build shared dependencies that slaops-docs depends on
+pnpm --filter @slaops/core run build
+pnpm --filter @slaops/lib run build
+```
+
+### Local Development
+
+```bash
+# From apps/slaops-docs directory
+pnpm start
+
+# The site will be available at http://localhost:3000
+```
+
+The `prestart` script automatically clears the cache if blog changes are detected.
+
+### Building
+
+```bash
+# From apps/slaops-docs directory
+pnpm run build
+
+# Serve built site locally
+pnpm run serve
+```
+
+### Other Commands
+
+```bash
+# Clear Docusaurus cache
+pnpm run clear
+
+# Type checking
+pnpm run typecheck
+
+# Generate heading IDs for docs
+pnpm run write-heading-ids
+
+# Extract translation strings
+pnpm run write-translations
+```
+
+## Content Management
+
+### Documentation (docs/)
+
+Documentation files are in Markdown/MDX format. The sidebar structure is defined in `sidebars.ts`.
+
+Key documentation areas:
+- **intro.md** - Platform overview
+- **components.md** - Component architecture
+- **deployments.md** - Deployment guides
+- **logs.md** - Logging system documentation
+- **sdk.md** - SDK usage and integration
+- **openapi.md** - OpenAPI integration
+- **user-stories.md** - Use cases and examples
+
+### Blog (blog/)
+
+Blog posts follow Docusaurus blog conventions with frontmatter:
+- Authors defined in `blog/authors.yml`
+- Tags defined in `blog/tags.yml`
+- Posts organized by date in subdirectories
+
+### Changelog (changelog/)
+
+Custom changelog plugin for release tracking:
+- Located at `src/plugins/changelog/`
+- Available at `/changelog` route
+- Uses same format as blog posts
+- Configured with 5 recent releases in sidebar
+
+## Deployment
+
+### AWS Amplify
+
+The site is configured for AWS Amplify deployment:
+- **amplify.yml** - Build configuration
+- **amplify-prebuild.sh** - Pre-build setup (Node.js version, etc.)
+- **amplify-build.sh** - Build execution script
+
+### GitHub Pages
+
+Alternative deployment via GitHub Pages is configured:
+- Organization: `derrickfutschik`
+- Repository: `SLAOps-website`
+- Branch: `main`
+- Command: `npm run deploy`
+
+## Configuration
+
+### Main Config (docusaurus.config.ts)
+
+Key settings:
+- **Title**: "SLAOps"
+- **Tagline**: "SLAOps the Devops Engineer"
+- **URL**: https://blog.SLAOps.com
+- **Edit URLs**: Point to GitHub repository
+- **Broken links**: Set to throw errors (strict mode)
+
+### Theme
+
+- Prism syntax highlighting (GitHub light, Dracula dark)
+- Custom CSS in `src/css/custom.css`
+- KaTeX stylesheet for math rendering
+- Social card: `img/docusaurus-social-card.jpg`
+
+## Monorepo Context
+
+This documentation site is part of the SLAOps monorepo and has dependencies on shared packages:
+- `@slaops/core` - Core utilities and types
+- `@slaops/lib` - Shared library functions
+
+**Important**: When working in the monorepo:
+- Always use `pnpm` for package management
+- Build shared dependencies before building slaops-docs
+- Install dependencies from the monorepo root
+- Use pnpm workspace filters for targeted operations
+
+## Keeping Documentation Updated
+
+When making changes to the SLAOps platform:
+
+1. **Update relevant documentation** in `docs/` directory
+2. **Add changelog entries** in `changelog/` for releases
+3. **Create blog posts** in `blog/` for major features or updates
+4. **Update examples** to reflect API/SDK changes
+5. **Regenerate heading IDs** if adding new sections: `pnpm run write-heading-ids`
+6. **Test locally** before committing: `pnpm start`
+7. **Build verification**: `pnpm run build` to catch broken links
+
+## License
+
+Dual-licensed under ISC OR GPL-3.0
+
+## Author
+
+SLAOps@SLAOps.com
+
+## Links
+
+- **Live Site**: https://blog.SLAOps.com
+- **GitHub**: https://github.com/derrickfutschik/SLAOps-website
+- **Stack Overflow**: https://stackoverflow.com/users/4033292/SLAOps
