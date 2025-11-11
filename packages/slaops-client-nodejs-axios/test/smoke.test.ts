@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
 import axios from 'axios';
-import { attachSlaOpsInterceptor, SlaOpsClient } from '../src';
+import { attachSlaOpsInterceptor, SlaOpsClient } from '../src/index.js';
 
 describe('basic', () => {
   it('constructs client', () => {
