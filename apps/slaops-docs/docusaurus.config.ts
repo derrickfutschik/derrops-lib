@@ -15,11 +15,12 @@ const config: Config = {
   markdown: {
     mermaid: true,
     hooks: {
-      onBrokenMarkdownImages: (brokenImagePath, sourceFilePath) => {
-        console.warn(
-          `⚠️  Broken image: ${brokenImagePath.pathname} in ${sourceFilePath}`
-        );
-      },
+      // TODO - show stock image if images broken
+      // onBrokenMarkdownImages: (brokenImagePath, sourceFilePath) => {
+      //   console.warn(
+      //     `⚠️  Broken image: ${brokenImagePath.pathname} in ${sourceFilePath}`
+      //   );
+      // },
     },
   },
 
