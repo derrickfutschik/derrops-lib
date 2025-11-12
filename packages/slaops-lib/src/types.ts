@@ -353,6 +353,16 @@ export type AuthInfo = {
     username: string,
     iat: string,
     exp: string,
+    /** The token type */
+    tokenType: string,
+    /** The scope of the token */
+    scope: string,
+    /** The audience of the token */
+    aud: string,
+    /** The issuer of the token */
+    iss: string,
+    /** the tenant id */
+    tenantId: string,
 }
 
 /** SAAS Information */
@@ -389,6 +399,9 @@ export type SLAOpsInfo = SLAInfo & {
 
     /** RFC 7807 Error Information */
     error?: ErrorInfo,
+
+    /** Authentication Information */
+    auth?: AuthInfo
 }
 
 
