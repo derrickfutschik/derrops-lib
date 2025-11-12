@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
-import axios from 'axios';
-import { attachSlaOpsInterceptor, } from '../src/index.js';
+import axios, { AxiosStatic } from 'axios';
+import { attachSlaOpsInterceptor, addInterceptor } from '../src/index.js';
 
 async function testRequest() {
   const { data } = await axios.get("https://api.open-meteo.com/v1/forecast", {
@@ -37,4 +37,13 @@ describe('basic', () => {
     expect(data).toBeTruthy();
   });
 
+  it("attachSlaOpsInterceptor again", async () => {
+
+    addInterceptor(axios);
+    const data = await testRequest();
+    console.log({ data });
+    expect(data).toBeTruthy();
+  });
+
 });
+

@@ -1,7 +1,5 @@
 import { createHarLog, RawRequest, RawResponse } from "@slaops/lib";
-import { AxiosInstance, AxiosRequestConfig, AxiosStatic, InternalAxiosRequestConfig } from "axios";
-
-
+import { AxiosInstance, AxiosStatic, InternalAxiosRequestConfig } from "axios";
 
 
 export function createHttpRequest(config: InternalAxiosRequestConfig, extraHeaders?: { [k: string]: any }): RawRequest {
@@ -18,9 +16,10 @@ export function createHttpRequest(config: InternalAxiosRequestConfig, extraHeade
         ...config,
         httpVersion: config.httpVersion ? config.httpVersion.toString() : undefined,
         url: new URL(config.url!),
-        method: config.method as string,
+        method: (config.method as string).toUpperCase(),
         headers,
         body: config.data && JSON.stringify(JSON.parse(config.data).body, null, 2),
+        queryParams: config.params,
     }
 }
 
@@ -28,8 +27,10 @@ export function createHttpRequest(config: InternalAxiosRequestConfig, extraHeade
 export function addInterceptor(instance: AxiosStatic | AxiosInstance) {
 
     instance.interceptors.request.use((config) => {
-        config.headers['restops-request-startTime'] = new Date().getTime();
-        config.headers['content-type'] = config.headers['content-type'] ?? "application/json"
+
+        config.headers['restops-request-startTime'] = new Date().getTime()
+
+        // config.headers['content-type'] = config.headers['content-type'] ?? "application/json"
         // @ts-ignore
         config.meta = config
         return config
@@ -37,13 +38,14 @@ export function addInterceptor(instance: AxiosStatic | AxiosInstance) {
 
     instance.interceptors.response.use(async (response) => {
 
-        const currentTime = new Date().getTime()
+        const start = new Date()
+        const currentTime = start.getTime()
         const startTime = parseInt(response.config.headers['restops-request-startTime'])
         const duration = currentTime - startTime
 
-        response.headers['restops-duration'] = currentTime - startTime
+        response.headers['restops-duration'] = duration.toString()
 
-        console.log({ duration })
+        // console.log({ duration })
 
         // @ts-ignore
         const originalRequest = response.config.meta
@@ -54,15 +56,18 @@ export function addInterceptor(instance: AxiosStatic | AxiosInstance) {
             time: duration,
         }
         const httpResponse: RawResponse = {
-            ...createHttpRequest(response.config!, { ...response.config.headers, ...response.headers }),
+            ...createHttpRequest(response.config!, response.headers),
             status: response.status,
             statusText: response.statusText ?? '',
             size: response.data?.length ?? 0,
             mimeType: response.headers['content-type']
         }
 
-        const harLog = createHarLog(httpRequest, httpResponse)
-        console.log(JSON.stringify(harLog))
+        const harLog = {
+            ...createHarLog(httpRequest, httpResponse),
+            startedDateTime: start.toISOString(),
+        }
+        console.log(JSON.stringify(harLog, null, 2))
 
 
         return response
