@@ -40,7 +40,8 @@
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "dependencies": {
-    "@slaops/core": "*"
+    "@slaops/core": "*",
+    "@slaops/lib": "*"
   },
   "devDependencies": {
     "@jest/globals": "*",

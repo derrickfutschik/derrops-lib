@@ -304,6 +304,9 @@ importers:
       '@slaops/core':
         specifier: '*'
         version: link:../slaops-core
+      '@slaops/lib':
+        specifier: '*'
+        version: link:../slaops-lib
     devDependencies:
       '@jest/globals':
         specifier: '*'

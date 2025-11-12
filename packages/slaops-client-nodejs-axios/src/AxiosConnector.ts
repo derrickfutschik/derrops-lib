@@ -2,9 +2,12 @@ import { createHarLog, RawRequest, RawResponse } from "@slaops/lib";
 import { AxiosInstance, AxiosStatic, InternalAxiosRequestConfig } from "axios";
 
 
-export function createHttpRequest(config: InternalAxiosRequestConfig, extraHeaders?: { [k: string]: any }): RawRequest {
+export function createHttpRequest(config: InternalAxiosRequestConfig | undefined, extraHeaders?: { [k: string]: any }): RawRequest {
+    if (!config) {
+        throw new Error('config is required');
+    }
 
-    const headers = Object.entries((extraHeaders !== undefined ? { ...extraHeaders, ...config.headers } : config.headers))
+    const headers = Object.entries((extraHeaders !== undefined ? { ...extraHeaders, ...(config.headers ?? {}) } : config.headers ?? {}))
         .filter(([key, value]) =>
             !(value instanceof Function) && !Array.isArray(value)
         )
@@ -23,49 +26,55 @@ export function createHttpRequest(config: InternalAxiosRequestConfig, extraHeade
     }
 }
 
+function normalizeHeaders(headers: Record<string, any>): Record<string, any> {
+    return Object.entries(headers)
+        .filter(([key, value]) =>
+            !(value instanceof Function) && !Array.isArray(value)
+        )
+        .map(([key, value]) => ({ [key]: value }))
+        .reduce((b, a) => ({ ...b, ...a }), {});
+}
+
 
 export function addInterceptor(instance: AxiosStatic | AxiosInstance) {
 
     instance.interceptors.request.use((config) => {
+        (config as any).start = { start: new Date() };
+        (config as any).har = { startTime: performance.now() };
 
-        config.headers['restops-request-startTime'] = new Date().getTime()
-
-        // config.headers['content-type'] = config.headers['content-type'] ?? "application/json"
-        // @ts-ignore
-        config.meta = config
         return config
     })
 
     instance.interceptors.response.use(async (response) => {
 
-        const start = new Date()
-        const currentTime = start.getTime()
-        const startTime = parseInt(response.config.headers['restops-request-startTime'])
-        const duration = currentTime - startTime
+        const start = (response.config as any).start;
+        const harData = (response.config as any).har;
+        const endTime = performance.now();
+        const startTime = harData.startTime
+        const total = endTime - harData.startTime;
 
-        response.headers['restops-duration'] = duration.toString()
 
         // console.log({ duration })
 
         // @ts-ignore
-        const originalRequest = response.config.meta
+        const originalRequest = response.config.meta || response.config
 
         const httpRequest: RawRequest = {
             ...createHttpRequest(originalRequest),
             startedDateTime: new Date(startTime).toISOString(),
-            time: duration,
+            time: total,
         }
         const httpResponse: RawResponse = {
-            ...createHttpRequest(response.config!, response.headers),
             status: response.status,
             statusText: response.statusText ?? '',
+            headers: normalizeHeaders(response.headers),
             size: response.data?.length ?? 0,
             mimeType: response.headers['content-type']
         }
 
         const harLog = {
             ...createHarLog(httpRequest, httpResponse),
-            startedDateTime: start.toISOString(),
+            startedDateTime: start.start.toISOString(),
         }
         console.log(JSON.stringify(harLog, null, 2))
 
