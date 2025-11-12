@@ -50,6 +50,14 @@ const exampleServices = [
     availability: "99.96",
     response_time: "110",
   },
+  {
+    name: "Open-Meteo API",
+    openapi_doc_url: "https://open-meteo.com/docs/openapi.yml",
+    openapi_doc_content: "",
+    endpoint: "https://api.open-meteo.com/v1",
+    availability: "99.95",
+    response_time: "150",
+  },
 ];
 
 const AddService = () => {
