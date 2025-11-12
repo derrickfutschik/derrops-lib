@@ -38,11 +38,11 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
-    title: 'More Features',
+    title: 'OpenAPIAI',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <ul>
-          <li>TODO</li>
+          <li>Automatically generate an OpenAPI specification based on API calls</li>
         </ul>
     ),
   },

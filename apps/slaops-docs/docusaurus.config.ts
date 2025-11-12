@@ -39,7 +39,7 @@ const config: Config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'derrickfutschik', // Usually your GitHub org/user name.
-  projectName: 'SLAOps-website', // Usually your repo name.
+  projectName: 'slaops-platform', // Usually your repo name.
   deploymentBranch: 'main',
 
   onBrokenLinks: 'throw',
@@ -61,7 +61,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/derrickfutschik/SLAOps-website/tree/main/',
+            'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
           remarkPlugins: [remarkMath, remarkCodeImport],
           rehypePlugins: [rehypeKatex],
         },
@@ -74,7 +74,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/derrickfutschik/SLAOps-website/tree/main/',
+            'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -142,7 +142,7 @@ const config: Config = {
         { to: '/blog', label: 'Blog', position: 'left' },
         { to: '/changelog', label: 'Changelog', position: 'left' },
         {
-          href: 'https://github.com/derrickfutschik/SLAOps-website',
+          href: 'https://github.com/derrickfutschik/slaops-platform',
           label: 'GitHub',
           position: 'right',
         },
@@ -178,7 +178,7 @@ const config: Config = {
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/derrickfutschik/SLAOps-website',
+              href: 'https://github.com/derrickfutschik/slaops-platform',
             },
           ],
         },

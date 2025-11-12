@@ -7,6 +7,7 @@ This is a Docusaurus documentation site for the SLAOps platform, hosted at https
 ## Overview
 
 The SLAOps documentation provides comprehensive guides for the SLAOps platform, a DevOps engineering solution focused on:
+
 - OpenAPI logging and monitoring
 - API spec validation logging
 - Response logging and analysis
@@ -51,6 +52,7 @@ apps/slaops-docs/
 ## Development
 
 ### Prerequisites
+
 - Node.js >= 22.0.0 (specified in .nvmrc and package.json engines)
 - pnpm 8.15.4 or compatible version (monorepo package manager)
 
@@ -111,6 +113,7 @@ pnpm run write-translations
 Documentation files are in Markdown/MDX format. The sidebar structure is defined in `sidebars.ts`.
 
 Key documentation areas:
+
 - **intro.md** - Platform overview
 - **components.md** - Component architecture
 - **deployments.md** - Deployment guides
@@ -122,6 +125,7 @@ Key documentation areas:
 ### Blog (blog/)
 
 Blog posts follow Docusaurus blog conventions with frontmatter:
+
 - Authors defined in `blog/authors.yml`
 - Tags defined in `blog/tags.yml`
 - Posts organized by date in subdirectories
@@ -129,6 +133,7 @@ Blog posts follow Docusaurus blog conventions with frontmatter:
 ### Changelog (changelog/)
 
 Custom changelog plugin for release tracking:
+
 - Located at `src/plugins/changelog/`
 - Available at `/changelog` route
 - Uses same format as blog posts
@@ -139,6 +144,7 @@ Custom changelog plugin for release tracking:
 ### AWS Amplify
 
 The site is configured for AWS Amplify deployment:
+
 - **amplify.yml** - Build configuration
 - **amplify-prebuild.sh** - Pre-build setup (Node.js version, etc.)
 - **amplify-build.sh** - Build execution script
@@ -146,8 +152,9 @@ The site is configured for AWS Amplify deployment:
 ### GitHub Pages
 
 Alternative deployment via GitHub Pages is configured:
+
 - Organization: `derrickfutschik`
-- Repository: `SLAOps-website`
+- Repository: `slaops-platform`
 - Branch: `main`
 - Command: `npm run deploy`
 
@@ -156,6 +163,7 @@ Alternative deployment via GitHub Pages is configured:
 ### Main Config (docusaurus.config.ts)
 
 Key settings:
+
 - **Title**: "SLAOps"
 - **Tagline**: "SLAOps the Devops Engineer"
 - **URL**: https://blog.SLAOps.com
@@ -172,10 +180,12 @@ Key settings:
 ## Monorepo Context
 
 This documentation site is part of the SLAOps monorepo and has dependencies on shared packages:
+
 - `@slaops/core` - Core utilities and types
 - `@slaops/lib` - Shared library functions
 
 **Important**: When working in the monorepo:
+
 - Always use `pnpm` for package management
 - Build shared dependencies before building slaops-docs
 - Install dependencies from the monorepo root
@@ -204,5 +214,5 @@ SLAOps@SLAOps.com
 ## Links
 
 - **Live Site**: https://blog.SLAOps.com
-- **GitHub**: https://github.com/derrickfutschik/SLAOps-website
+- **GitHub**: https://github.com/derrickfutschik/slaops-platform
 - **Stack Overflow**: https://stackoverflow.com/users/4033292/SLAOps
