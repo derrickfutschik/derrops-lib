@@ -143,20 +143,13 @@ Custom changelog plugin for release tracking:
 
 ### AWS Amplify
 
-The site is configured for AWS Amplify deployment:
+The site is deployed using AWS Amplify:
 
 - **amplify.yml** - Build configuration
 - **amplify-prebuild.sh** - Pre-build setup (Node.js version, etc.)
 - **amplify-build.sh** - Build execution script
 
-### GitHub Pages
-
-Alternative deployment via GitHub Pages is configured:
-
-- Organization: `derrickfutschik`
-- Repository: `slaops-platform`
-- Branch: `main`
-- Command: `npm run deploy`
+AWS Amplify automatically builds and deploys the site when changes are pushed to the repository.
 
 ## Configuration
 

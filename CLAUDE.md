@@ -551,10 +551,13 @@ pnpm --filter @slaops/core update <dependency>
 - Aim for high coverage on core packages
 
 ### Documentation
+- **IMPORTANT**: When completing tasks, add or update documentation in [apps/slaops-docs/](apps/slaops-docs/)
+- Before starting a task, review existing documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/) for context
 - Update CLAUDE.md files when making significant changes
 - Keep README.md files up to date
-- Document public APIs thoroughly
-- Include usage examples
+- Document public APIs thoroughly in the docs site
+- Include usage examples and code snippets
+- Update relevant documentation in the same commit as code changes
 
 ### Git
 - Commit messages should be clear and descriptive
