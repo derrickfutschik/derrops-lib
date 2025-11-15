@@ -59,10 +59,21 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
+
+
+          // For Github
+          // editUrl: 'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
+
+          editUrl: ({ docPath }) => {
+            const cleanPath = docPath.replace(/^\//, '');
+            const pathToFile = `${process.cwd()}/docs/${cleanPath}`
+            console.log(pathToFile);
+            // return `cursor://${pathToFile}`;
+            return `cursor://file${pathToFile}`;
+          },
+
+
+
           remarkPlugins: [remarkMath, remarkCodeImport],
           rehypePlugins: [rehypeKatex],
         },
@@ -72,11 +83,15 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
-          // Useful options to enforce blogging best practices
+
+          // For Github
+          // editUrl: 'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
+
+          // For Cursor
+          editUrl: `cursor://open?folder=/docs`,
+
+
+
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
