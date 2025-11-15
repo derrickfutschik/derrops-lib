@@ -31,6 +31,7 @@ Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
 ```json
 {
   "api_id": "aws-cloudtrail",
+  "api_version": "1.0.0",
 
   // server
   "server_id": "aws-cloudtrail-https-1", // id of the server, this is the id of the server in the API specification if exists otherwise we generate it
@@ -114,6 +115,64 @@ And there were the following base paths from given APIs:
 
 Then the **Customer API** would be returned, as it is the longest base path that is a substring of the request path.
 
+# Operation Matching
+
+OpenAPI definitions can be too large to retrieve in one go. To minimize the size of the operations, the following format represents enough information to match the operation. So instead an `Operation` will become compacted to be stored into DynamoDB.
+
+```json
+{
+  "operation_id": "logout",
+  "variable_path": "{integer}/logout",
+  "method": "POST",
+  "model_indices": [0, 1, 3]
+}
+```
+
+Now we need to represent the path more concisely:
+`P => POST`
+`{integer} => {i}`
+
+Becomes:
+
+```
+P:{i}/logout
+```
+
+```json
+{
+  "p_k": "P:{i}/logout",
+  "m_i": [0, 1, 3]
+}
+```
+
+`p_k` is enough to match the operation. Then the model references stored at `m_i` can be used to lookup the models from the OpenAPI specification, hence only one more hop is needed to find the openapi definition.
+
+| Shorthand | Full Name       | Description                                                                                                                          |
+| --------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `o_i`     | `operation_id`  | The operation id from the OpenAPI specification.                                                                                     |
+| `v_p`     | `variable_path` | The variable path from the OpenAPI specification.                                                                                    |
+| `m`       | `method`        | The method from the OpenAPI specification (first character only).                                                                    |
+| `m_i`     | `model_indices` | The indices of the models from the OpenAPI specification used by the method either in the body or elsewhere (0 = first in the spec). |
+| `p_k`     | `partition_key` | The partition key for the operation. This is both sortable and is enough information to do the method matching.                      |
+
+````
+
+
+TODO need to create the schemas.
+
+```mermaid
+erDiagram
+    Operation {
+      STRING tenantId  "PK"
+      STRING orderId   "SK"
+      STRING status
+      STRING createdAt
+      NUMBER amount
+      ARRAY  items
+      NUMBER expiresAt
+    }
+````
+
 ## Enrichment
 
 At a high level, the matching process is as follows to find an OpenAPI operation for a given request:
@@ -123,67 +182,8 @@ At a high level, the matching process is as follows to find an OpenAPI operation
 3. Lookup all the API for the given domain & path
 4. Find all operations for the given API
 5. Match the request with the operation
-
-## API Specifications are stored in S3
-
-// GET ->
-
-```
-START
-
-READ API SPECIFICATION FROM S3
-
-FOR EACH OPERATION IN THE API SPECIFICATION
-    FOR EACH PATH IN THE OPERATION
-        FOR EACH METHOD IN THE PATH
-            INSERT INTO DYNAMODB THE PATH, METHOD, DOMAIN, OPERATION DETAILS, ENTITY REFS
-        END
-    END
-END
-
-FINISH
-```
-
-```mermaid flowchart
-flowchart TD
-    API[OpenAPI Specification]
-    DynamoDB[DynamoDB]
-    S3[S3 Bucket]
-```
-
-```mermaid flowchart
----
-title: Node with text
----
-flowchart TD
-    A([Start]) --> B[Read username]
-    B --> C[Read password]
-    C --> D{Is username or password empty?}
-
-    D -->|Yes| E["Print: Username or password missing"]
-    E --> F([End])
-
-    D -->|No| G["Call validateUser with username and password"]
-    G --> H{Is valid?}
-
-    H -->|Yes| I["Print: Login successful"]
-    H -->|No| J["Print: Login failed"]
-
-    I --> F
-    J --> F
-
-
-
-```
-
-For a given operation, need to lookup the paths based off of:
-
-- domain
-- version
-- base path
-- controllerpath
-
-# OpenAPI Specification
+6. Populate the Request into an `SLAOpsEnrichedLog`.
+7. Index the `SLAOpsEnrichedLog` into Opensearch.
 
 ```mermaid flowchart
 
@@ -199,6 +199,8 @@ flowchart LR
 ## Cron Updater
 
 ## Agentic Agent Updater
+
+Proposal:
 
 1. Called if API has not been updated for a long time.
 2. Called if there has been issues with the API.
