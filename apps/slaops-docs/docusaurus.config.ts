@@ -67,8 +67,6 @@ const config: Config = {
           editUrl: ({ docPath }) => {
             const cleanPath = docPath.replace(/^\//, '');
             const pathToFile = `${process.cwd()}/docs/${cleanPath}`
-            console.log(pathToFile);
-            // return `cursor://${pathToFile}`;
             return `cursor://file${pathToFile}`;
           },
 
