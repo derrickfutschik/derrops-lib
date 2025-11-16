@@ -73,26 +73,19 @@ $EDITOR "$TEMP_MSG"
 # Extract the commit message (remove comments and leading/trailing empty lines)
 FINAL_MSG=$(grep -v '^#' "$TEMP_MSG" | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;ba' -e '}')
 
-# Check if message is empty
+# Check if message is empty (user quit without saving or deleted all content)
 if [ -z "$FINAL_MSG" ]; then
     echo -e "${RED}Commit aborted: empty commit message${NC}"
     exit 1
 fi
 
-# Show final message and confirm
+# Show final message
 echo ""
-echo -e "${GREEN}Final commit message:${NC}"
+echo -e "${GREEN}Committing with message:${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo "$FINAL_MSG"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "${YELLOW}Proceed with commit? (y/n)${NC}"
-read -r CONFIRM
-
-if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
-    echo -e "${RED}Commit aborted by user${NC}"
-    exit 1
-fi
 
 # Create the commit using git commit (which will allow hooks to run)
 echo "$FINAL_MSG" | git commit -F -
