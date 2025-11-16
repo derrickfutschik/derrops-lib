@@ -26,8 +26,7 @@ if git diff --cached --quiet; then
     if git diff --quiet && git ls-files --others --exclude-standard | grep -q .; then
         # Only untracked files
         echo -e "${YELLOW}Found untracked files.${NC}"
-        read -p "$(echo -e ${YELLOW}Would you like to stage all files? [y/N] ${NC})" -n 1 -r
-        echo ""
+        read -p "$(echo -e ${YELLOW}Would you like to stage all files? [y/N] ${NC})" -r
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git add -A
             echo -e "${GREEN}✓ All files staged${NC}"
@@ -38,8 +37,7 @@ if git diff --cached --quiet; then
     elif ! git diff --quiet; then
         # Unstaged changes exist
         echo -e "${YELLOW}Found unstaged changes.${NC}"
-        read -p "$(echo -e ${YELLOW}Would you like to stage all files? [y/N] ${NC})" -n 1 -r
-        echo ""
+        read -p "$(echo -e ${YELLOW}Would you like to stage all files? [y/N] ${NC})" -r
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git add -A
             echo -e "${GREEN}✓ All files staged${NC}"
@@ -56,8 +54,7 @@ else
     # We have staged changes, but check if there are also unstaged changes
     if ! git diff --quiet || git ls-files --others --exclude-standard | grep -q .; then
         echo -e "${YELLOW}Some changes are staged, but there are also unstaged/untracked changes.${NC}"
-        read -p "$(echo -e ${YELLOW}Would you like to stage all remaining changes? [y/N] ${NC})" -n 1 -r
-        echo ""
+        read -p "$(echo -e ${YELLOW}Would you like to stage all remaining changes? [y/N] ${NC})" -r
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git add -A
             echo -e "${GREEN}✓ All files staged${NC}"
