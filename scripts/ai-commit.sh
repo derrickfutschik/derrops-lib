@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # Script to generate git commit messages using Claude
-# Usage: ./git-commit-ai.sh
+# Usage: ./git-commit-ai.sh [optional context message]
+# Example: ./git-commit-ai.sh "Fixed debug configuration so that now debug is working"
 
 set -e
+
+# Capture optional user context
+USER_CONTEXT="$1"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -73,8 +77,27 @@ fi
 
 echo -e "${BLUE}Analyzing staged changes...${NC}"
 
+# Show user context if provided
+if [ -n "$USER_CONTEXT" ]; then
+    echo -e "${BLUE}Using provided context: ${YELLOW}$USER_CONTEXT${NC}"
+fi
+
 # Get the diff of staged changes
 DIFF=$(git diff --cached)
+
+# Build the user context section if provided
+USER_CONTEXT_SECTION=""
+if [ -n "$USER_CONTEXT" ]; then
+    USER_CONTEXT_SECTION="
+
+**User's description of what they worked on:**
+$USER_CONTEXT
+
+Please incorporate this context into the commit message where appropriate.
+
+---
+"
+fi
 
 # Create the full prompt
 PROMPT="You are helping me write git commit messages for this repository. Please follow these guidelines:
@@ -110,10 +133,10 @@ PROMPT="You are helping me write git commit messages for this repository. Please
 - \`⚡ perf(search): add caching layer for frequent queries\`
 
 ---
+$USER_CONTEXT_SECTION
+Based on the following git diff of staged changes, generate an appropriate commit message following the guidelines above.
 
-Based on the following git diff of staged changes, generate an appropriate commit message following the guidelines above. 
-
-**IMPORTANT:** 
+**IMPORTANT:**
 - Output ONLY the commit message itself
 - Do NOT include any explanations, meta-commentary, or markdown formatting
 - Do NOT wrap the message in code blocks or quotes

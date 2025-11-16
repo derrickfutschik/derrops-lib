@@ -1,6 +1,5 @@
 import { test, expect, describe } from '@jest/globals';
 import { zipOperations } from "../../src/openapi/spec-zipper";
-import type { OpenAPIV3_1 } from "openapi-types";
 import * as fixture from './spec-zipper.fixture';
 
 describe("zipOperations", () => {

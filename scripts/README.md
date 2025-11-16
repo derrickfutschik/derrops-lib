@@ -9,7 +9,8 @@ An AI-powered git commit helper that generates meaningful commit messages based 
 ### Features
 
 - Analyzes git diff and changed files
-- Generates contextual commit messages using heuristics
+- Generates contextual commit messages using Claude AI
+- Optional user context to guide message generation
 - References recent commit style for consistency
 - Interactive editor for message review and editing
 - Confirms before committing
@@ -26,23 +27,47 @@ pnpm commit:ai
 
 # Direct execution
 ./scripts/ai-commit.sh
+
+# With optional context about your changes
+./scripts/ai-commit.sh "Fixed debug configuration so that now debug is working"
+
+# Or with pnpm (note: you need to use -- to pass arguments)
+pnpm commit -- "Added new authentication flow"
 ```
 
 ### Workflow
 
 1. **Change Detection**: The script checks for staged or unstaged changes
 2. **Staging Prompt**: If no files are staged, asks if you want to stage all changes
-3. **Message Generation**: Analyzes changes and generates a commit message
-4. **Preview**: Shows a preview of the generated message
-5. **Editor**: Opens your default editor to review and edit the message
-6. **Confirmation**: Shows the final message and asks for confirmation
-7. **Commit**: Creates the commit using `git commit -F -`
+3. **Context Integration**: If you provided an optional context message, it will be shown and included in the prompt
+4. **Message Generation**: Analyzes changes and generates a commit message using Claude AI
+5. **Preview**: Shows a preview of the generated message
+6. **Editor**: Opens your default editor to review and edit the message
+7. **Commit**: Creates the commit with the final message
+
+### Optional Context
+
+You can provide an optional context message to help Claude generate a more accurate commit message:
+
+```bash
+./scripts/ai-commit.sh "Fixed the authentication bug where tokens were expiring too early"
+```
+
+This context will be:
+- Displayed before generating the message
+- Included in the prompt sent to Claude
+- Used to create a more targeted commit message
+
+The context is most helpful when:
+- The changes involve complex logic that isn't obvious from the diff
+- You want to emphasize the purpose or motivation behind the changes
+- The diff is large and you want to highlight the main focus
 
 ### Editor Configuration
 
 The script uses your git editor preference in this order:
-1. `GIT_EDITOR` environment variable
-2. `VISUAL` environment variable
+1. `vim` (if available)
+2. `git config core.editor`
 3. `EDITOR` environment variable
 4. Falls back to `vi`
 
@@ -53,8 +78,7 @@ To change your editor:
 git config --global core.editor "code --wait"
 
 # Or set environment variable
-export GIT_EDITOR="nano"
-export VISUAL="code --wait"
+export EDITOR="nano"
 ```
 
 ### Message Format
@@ -101,21 +125,19 @@ Fix typos in getting started guide
 
 ### Behind the Scenes
 
-The script uses two components:
+The script uses Claude AI to analyze your git diff and generate meaningful commit messages.
 
-1. **[ai-commit.sh](ai-commit.sh)**: Main shell script that handles the workflow
-2. **[generate-commit-message.cjs](generate-commit-message.cjs)**: Node.js module that analyzes changes
-
-The Node.js module examines:
-- Changed file types (tests, docs, config, source)
-- Types of changes (added, modified, deleted, renamed)
-- Code patterns in the diff
-- Recent commit messages for style consistency
+The script:
+- Captures the git diff of staged changes
+- Sends the diff to Claude along with formatting guidelines and optional user context
+- Receives a generated commit message
+- Opens your editor for review and editing
+- Commits with the final message
 
 ### Requirements
 
 - Git repository
-- Node.js >= 22.0.0 (for the message generator)
+- Claude Code CLI installed and available in PATH
 - Bash shell
 
 ### Troubleshooting
@@ -134,23 +156,10 @@ The Node.js module examines:
 - Verify your git configuration is set up correctly
 
 **Generated message isn't accurate**
+- Provide optional context when running the script to guide the generation
 - Edit the message in the editor to better describe your changes
 - The AI is a starting point - human review is important
 
-### Contributing
-
-To improve the message generation:
-1. Edit [generate-commit-message.cjs](generate-commit-message.cjs)
-2. Add new heuristics or patterns
-3. Test with various types of changes
-4. Submit a PR with examples
-
-### Future Enhancements
-
-Potential improvements:
-- Integration with Claude API for more intelligent message generation
-- Conventional commit format support
-- Custom templates per repository
-- Issue/ticket number extraction
-- Co-author support
-- Multi-language commit message support
+**Claude not found**
+- Make sure Claude Code CLI is installed: see [Claude Code documentation](https://docs.claude.com/claude-code)
+- Verify `claude` is in your PATH: `which claude`
