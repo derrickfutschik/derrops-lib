@@ -52,6 +52,19 @@ if git diff --cached --quiet; then
         echo -e "${RED}No changes to commit${NC}"
         exit 1
     fi
+else
+    # We have staged changes, but check if there are also unstaged changes
+    if ! git diff --quiet || git ls-files --others --exclude-standard | grep -q .; then
+        echo -e "${YELLOW}Some changes are staged, but there are also unstaged/untracked changes.${NC}"
+        read -p "$(echo -e ${YELLOW}Would you like to stage all remaining changes? [y/N] ${NC})" -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git add -A
+            echo -e "${GREEN}✓ All files staged${NC}"
+        else
+            echo -e "${BLUE}Proceeding with currently staged changes only${NC}"
+        fi
+    fi
 fi
 
 # Check if claude is available
@@ -155,6 +168,20 @@ echo "#" >> "$TEMP_MSG"
 echo "# Changes to be committed:" >> "$TEMP_MSG"
 git diff --cached --name-status | sed 's/^/# /' >> "$TEMP_MSG"
 
+# If there are unstaged changes, show them too
+if ! git diff --quiet; then
+    echo "#" >> "$TEMP_MSG"
+    echo "# Changes not staged for commit:" >> "$TEMP_MSG"
+    git diff --name-status | sed 's/^/# /' >> "$TEMP_MSG"
+fi
+
+# If there are untracked files, show them too
+if git ls-files --others --exclude-standard | grep -q .; then
+    echo "#" >> "$TEMP_MSG"
+    echo "# Untracked files:" >> "$TEMP_MSG"
+    git ls-files --others --exclude-standard | sed 's/^/# /' >> "$TEMP_MSG"
+fi
+
 # Store the original content to detect if user made changes
 ORIGINAL_CONTENT=$(cat "$TEMP_MSG")
 
@@ -178,6 +205,7 @@ if [ -z "$EDITED_MSG" ]; then
     rm -f "$TEMP_MSG"
     exit 1
 fi
+
 
 # Commit with the edited message
 git commit -F "$TEMP_MSG"
