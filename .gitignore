@@ -8,7 +8,7 @@ dist/
 # Testing
 coverage/
 .nyc_output/
-test-resources/
+test-resources/*/*
 
 # Environment variables
 .env
