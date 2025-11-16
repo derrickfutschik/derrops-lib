@@ -5,6 +5,7 @@ A comprehensive monorepo for the SLAOps platform - a DevOps engineering solution
 ## Overview
 
 SLAOps (Service Level Agreement Operations) provides tools and libraries for:
+
 - HTTP request/response monitoring and logging
 - OpenAPI specification validation and analysis
 - API performance tracking and metrics
@@ -42,15 +43,18 @@ slaops-platform/
 ## Technology Stack
 
 ### Package Manager
+
 - **pnpm 8.15.4+** - Fast, disk space efficient package manager for monorepos
 
 ### Core Technologies
+
 - **TypeScript 5.6.3+** - Type-safe JavaScript
 - **Node.js >= 22.0.0** - Runtime environment
 - **tsup** - TypeScript bundler for packages
 - **Vitest** - Unit testing framework
 
 ### Build System
+
 - **pnpm workspaces** - Monorepo workspace management
 - **Dependency graph**: core → lib → client → client-nodejs-axios
 
@@ -59,6 +63,7 @@ slaops-platform/
 ### Prerequisites
 
 1. **Node.js >= 22.0.0**
+
    ```bash
    # Install using nvm (recommended)
    nvm use
@@ -183,6 +188,7 @@ pnpm run clean
 - **Dependencies**: None (base package)
 
 Key exports:
+
 - Core TypeScript types and interfaces
 - Shared constants and enums
 - Base utility functions
@@ -204,6 +210,7 @@ pnpm run dev        # Watch mode
 - **Dependencies**: @slaops/core
 
 Key exports:
+
 - HTTP request/response utilities
 - Data transformation helpers
 - Validation functions
@@ -226,6 +233,7 @@ pnpm run dev        # Watch mode
 - **Dependencies**: @slaops/core
 
 Key exports:
+
 - `SlaOpsClient` base class
 - Client configuration types
 - Event sending logic
@@ -248,6 +256,7 @@ pnpm run dev        # Watch mode
 - **Dependencies**: @slaops/core, @slaops/client
 
 Key features:
+
 - Automatic request/response capture via Axios interceptors
 - Configurable header redaction
 - Optional request/response body capture
@@ -255,6 +264,7 @@ Key features:
 - Minimal overhead
 
 Example usage:
+
 ```typescript
 import axios from 'axios';
 import { attachSlaOpsInterceptor } from 'slaops-client-nodejs-axios';
@@ -288,6 +298,7 @@ pnpm run dev        # Watch mode
 - **Port**: 3000 (development)
 
 Key features:
+
 - Comprehensive guides and tutorials
 - API reference documentation
 - Blog with release notes
@@ -313,6 +324,7 @@ pnpm run serve      # Preview production build
 - **Port**: 8080 (development)
 
 Key features:
+
 - Real-time service monitoring
 - API performance metrics
 - Cost analysis and tracking
@@ -344,6 +356,7 @@ slaops-client-nodejs-axios (depends on core, client)
 ```
 
 The root `pnpm run build` script handles this order automatically:
+
 ```bash
 pnpm -r --filter @slaops/core run build &&
 pnpm -r --filter @slaops/lib run build &&
@@ -414,10 +427,12 @@ pnpm update --filter @slaops/core
 ## Git Workflow
 
 ### Branches
+
 - `main` - Primary development branch
 - Feature branches - For new features and bug fixes
 
 ### Git Status (Current)
+
 ```
 Current branch: main
 Untracked files:
@@ -426,6 +441,7 @@ Untracked files:
 ```
 
 ### Recent Commits
+
 - `128abad` - CI: Only run slaops-docs if apps/slaops-docs/ changes
 - `cb4a190` - CI: Do not run slaops-portal if no changes in that dir
 - `76d57e9` - Fix build with new types
@@ -434,13 +450,17 @@ Untracked files:
 ## CI/CD
 
 ### GitHub Actions
+
 Located in `.github/workflows/`:
+
 - Conditional builds based on changed paths
 - Separate workflows for docs and portal
 - Build verification on pull requests
 
 ### AWS Amplify
+
 Both apps are configured for AWS Amplify deployment:
+
 - `amplify.yml` - Build specification
 - `amplify-prebuild.sh` - Environment setup
 - `amplify-build.sh` - Build execution
@@ -466,6 +486,7 @@ pnpm run commit:ai    # Alias for commit
 An AI-powered git commit helper that generates meaningful commit messages based on your changes.
 
 **Features:**
+
 - Analyzes git diff and changed files
 - Generates contextual commit messages
 - References recent commits for style consistency
@@ -473,6 +494,7 @@ An AI-powered git commit helper that generates meaningful commit messages based 
 - Confirms before committing
 
 **Usage:**
+
 ```bash
 # Using pnpm script (recommended)
 pnpm commit
@@ -482,6 +504,7 @@ pnpm commit
 ```
 
 **Workflow:**
+
 1. Detects staged or unstaged changes
 2. Prompts to stage files if needed
 3. Generates an AI commit message
@@ -493,6 +516,7 @@ See [scripts/README.md](scripts/README.md) for detailed documentation.
 ### Package Level Scripts
 
 Each package typically has:
+
 ```bash
 pnpm run build        # Build with tsup
 pnpm run dev          # TypeScript watch mode
@@ -503,6 +527,7 @@ pnpm run test:watch   # Run vitest in watch mode
 ### App Level Scripts
 
 **slaops-docs**:
+
 ```bash
 pnpm start            # Development server
 pnpm run build        # Production build
@@ -512,6 +537,7 @@ pnpm run typecheck    # Type checking
 ```
 
 **slaops-portal**:
+
 ```bash
 pnpm run dev          # Development server
 pnpm run build        # Production build
@@ -523,13 +549,16 @@ pnpm run lint         # ESLint
 ## Environment Configuration
 
 ### Root Level
+
 - `.nvmrc` - Node.js version (22)
 - `.prettierrc` - Code formatting rules
 - `.editorconfig` - Editor configuration
 - `tsconfig.base.json` - Base TypeScript config
 
 ### Package Level
+
 Each package/app may have:
+
 - `tsconfig.json` - Package-specific TypeScript config
 - `.env` files - Environment variables (not committed)
 - Build configuration files
@@ -584,21 +613,25 @@ pnpm --filter @slaops/core update <dependency>
 ## Troubleshooting
 
 ### "Module not found" errors
+
 - Ensure packages are built in correct order
 - Run `pnpm run build` from root
 - Check `package.json` dependencies are correct
 
 ### pnpm install fails
+
 - Verify pnpm version: `pnpm --version`
 - Try: `pnpm install --no-frozen-lockfile`
 - Check Node.js version matches `.nvmrc`
 
 ### TypeScript errors across packages
+
 - Rebuild core packages first
 - Ensure `tsconfig.base.json` is properly referenced
 - Check package exports in `package.json`
 
 ### Port conflicts (apps)
+
 - slaops-docs uses port 3000
 - slaops-portal uses port 8080
 - Change ports in respective configs if needed
@@ -606,23 +639,27 @@ pnpm --filter @slaops/core update <dependency>
 ## Best Practices
 
 ### Code Organization
+
 - Keep shared code in `@slaops/core` and `@slaops/lib`
 - Specific implementations go in their own packages
 - Apps should depend on packages, not vice versa
 
 ### TypeScript
+
 - Use strict mode
 - Define types in core packages
 - Export only necessary types
 - Use consistent module resolution
 
 ### Testing
+
 - Write unit tests for all packages
 - Keep tests close to source code
 - Use Vitest for consistency
 - Aim for high coverage on core packages
 
 ### Documentation
+
 - **IMPORTANT**: When completing tasks, add or update documentation in [apps/slaops-docs/](apps/slaops-docs/)
 - Before starting a task, review existing documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/) for context
 - Update CLAUDE.md files when making significant changes
@@ -632,6 +669,7 @@ pnpm --filter @slaops/core update <dependency>
 - Update relevant documentation in the same commit as code changes
 
 ### Git
+
 - Commit messages should be clear and descriptive
 - Keep commits focused and atomic
 - Update relevant documentation in the same commit
@@ -640,24 +678,28 @@ pnpm --filter @slaops/core update <dependency>
 ## Architecture Decisions
 
 ### Why pnpm?
+
 - Efficient disk space usage via hard links
 - Strict dependency resolution prevents phantom dependencies
 - Fast installation and better monorepo support
 - Native workspace support
 
 ### Why TypeScript?
+
 - Type safety across the entire codebase
 - Better IDE support and autocomplete
 - Easier refactoring
 - Self-documenting code
 
 ### Why tsup?
+
 - Fast TypeScript bundler
 - Zero-config for most use cases
 - Supports ESM + CJS output
 - Good DX with watch mode
 
 ### Monorepo Strategy
+
 - Shared code in packages for reusability
 - Apps consume packages as dependencies
 - Build order enforced by dependency graph
@@ -666,20 +708,27 @@ pnpm --filter @slaops/core update <dependency>
 ## Resources
 
 ### Documentation
+
 - Main docs: https://blog.SLAOps.com
 - Package READMEs in each package directory
 - Individual CLAUDE.md files in apps/
 
 ### External Links
+
 - [pnpm documentation](https://pnpm.io/)
 - [TypeScript handbook](https://www.typescriptlang.org/docs/)
 - [Vitest documentation](https://vitest.dev/)
 - [tsup documentation](https://tsup.egoist.dev/)
 
 ### Repository
+
 - Issues: Create issues in the GitHub repository
 - Pull Requests: Follow the standard PR process
 - Discussions: Use GitHub Discussions for questions
+
+### Commit Messages
+
+For commit messages look at @scripts/ai-commit.sh for the prompt and the format.
 
 ## License
 
@@ -702,6 +751,7 @@ SLAOps@SLAOps.com
 **Last Updated**: November 2024
 
 This file provides guidance for working with the SLAOps monorepo. For app-specific details, see:
+
 - [apps/slaops-docs/CLAUDE.md](apps/slaops-docs/CLAUDE.md) - Documentation site
 - [apps/slaops-portal/CLAUDE.md](apps/slaops-portal/CLAUDE.md) - Web portal
 
