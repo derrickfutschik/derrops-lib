@@ -13,7 +13,9 @@
     "dev": "pnpm -r run dev",
     "test": "pnpm -r run test",
     "test:watch": "pnpm -r run test:watch",
-    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules"
+    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules",
+    "commit": "bash scripts/ai-commit.sh",
+    "commit:ai": "bash scripts/ai-commit.sh"
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",

@@ -1,45 +1,18 @@
 import { test, expect, describe } from '@jest/globals';
 import { zipOperations } from "../../src/openapi/spec-zipper";
 import type { OpenAPIV3_1 } from "openapi-types";
+import * as fixture from './spec-zipper.fixture.test';
 
 describe("zipOperations", () => {
     test("should return empty array for spec with no paths", () => {
-        const spec: OpenAPIV3_1.Document = {
-            openapi: "3.1.0",
-            info: { title: "Empty API", version: "1.0.0" },
-            components: {},
-        };
+        const spec = fixture.EMPTY_OPERATION_SPEC;
 
         const result = zipOperations(spec);
         expect(result).toEqual([]);
     });
 
     test("should zip a simple operation", () => {
-        const spec: OpenAPIV3_1.Document = {
-            openapi: "3.1.0",
-            info: { title: "Test API", version: "1.0.0" },
-            paths: {
-                "/users/{userId}": {
-                    get: {
-                        operationId: "getUser",
-                        parameters: [
-                            {
-                                name: "userId",
-                                in: "path",
-                                required: true,
-                                schema: { type: "integer" },
-                            },
-                        ],
-                        responses: {
-                            "200": {
-                                description: "Success",
-                            },
-                        },
-                    },
-                },
-            },
-        };
-
+        const spec = fixture.SINGLE_OPERATION_SPEC_GET_USER
         const result = zipOperations(spec);
 
         expect(result).toHaveLength(1);
@@ -53,22 +26,7 @@ describe("zipOperations", () => {
     });
 
     test("should handle multiple HTTP methods on same path", () => {
-        const spec: OpenAPIV3_1.Document = {
-            openapi: "3.1.0",
-            info: { title: "Test API", version: "1.0.0" },
-            paths: {
-                "/users": {
-                    get: {
-                        operationId: "listUsers",
-                        responses: { "200": { description: "Success" } },
-                    },
-                    post: {
-                        operationId: "createUser",
-                        responses: { "201": { description: "Created" } },
-                    },
-                },
-            },
-        };
+        const spec = fixture.LIST_USERS_OPERATION_SPEC
 
         const result = zipOperations(spec);
 
@@ -80,19 +38,7 @@ describe("zipOperations", () => {
     });
 
     test("should skip operations without operationId", () => {
-        const spec: OpenAPIV3_1.Document = {
-            openapi: "3.1.0",
-            info: { title: "Test API", version: "1.0.0" },
-            paths: {
-                "/health": {
-                    get: {
-                        // No operationId
-                        responses: { "200": { description: "Healthy" } },
-                    },
-                },
-            },
-        };
-
+        const spec = fixture.HEALTH_CHECK_OPERATION_SPEC
         const result = zipOperations(spec);
         expect(result).toHaveLength(0);
     })

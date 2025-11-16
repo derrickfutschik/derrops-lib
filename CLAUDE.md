@@ -28,6 +28,11 @@ slaops-platform/
 │   ├── slaops-docs/            # Docusaurus documentation site
 │   └── slaops-portal/          # React web portal for monitoring
 │
+├── scripts/                     # Utility scripts
+│   ├── ai-commit.sh            # AI-powered git commit helper
+│   ├── generate-commit-message.cjs  # Commit message generator
+│   └── README.md               # Scripts documentation
+│
 ├── pnpm-workspace.yaml         # pnpm workspace configuration
 ├── package.json                # Root package configuration
 ├── tsconfig.base.json          # Shared TypeScript configuration
@@ -450,7 +455,40 @@ pnpm run dev          # Run all packages in development mode
 pnpm run test         # Run all tests
 pnpm run test:watch   # Run all tests in watch mode
 pnpm run clean        # Remove all build artifacts and node_modules
+pnpm run commit       # AI-powered git commit with generated message
+pnpm run commit:ai    # Alias for commit
 ```
+
+### Utility Scripts
+
+#### AI Commit (`scripts/ai-commit.sh`)
+
+An AI-powered git commit helper that generates meaningful commit messages based on your changes.
+
+**Features:**
+- Analyzes git diff and changed files
+- Generates contextual commit messages
+- References recent commits for style consistency
+- Interactive editor for review and editing
+- Confirms before committing
+
+**Usage:**
+```bash
+# Using pnpm script (recommended)
+pnpm commit
+
+# Direct execution
+./scripts/ai-commit.sh
+```
+
+**Workflow:**
+1. Detects staged or unstaged changes
+2. Prompts to stage files if needed
+3. Generates an AI commit message
+4. Opens editor for review
+5. Confirms and commits
+
+See [scripts/README.md](scripts/README.md) for detailed documentation.
 
 ### Package Level Scripts
 
