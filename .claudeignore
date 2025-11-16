@@ -1,0 +1,2 @@
+# Exclude test resources from Claude indexing to save context budget
+test-resources/**

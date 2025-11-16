@@ -125,6 +125,40 @@ pnpm run test:watch
 pnpm --filter @slaops/core run test
 ```
 
+### Test Resources
+
+The monorepo uses external test resources (primarily OpenAPI specifications from the [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory)) for comprehensive testing. These resources are:
+
+- **Automatically set up** during `pnpm install` via postinstall script
+- **Not included in source control** (gitignored)
+- **Excluded from IDE indexing** (via .cursorignore and .claudeignore)
+
+```bash
+# Manual setup/refresh of test resources
+pnpm run setup:test-resources --force
+
+# Verify test resources are available
+ls test-resources/openapi-directory/APIs
+```
+
+**Using test resources in tests:**
+
+```typescript
+import {
+  loadOpenApiSpec,
+  listAvailableSpecs,
+  findSpecs,
+} from '@slaops/core/src/test-utils/openapi-loader';
+
+// Load a specific OpenAPI spec
+const spec = await loadOpenApiSpec('github.com', 'api.github.com', '1.1.4');
+
+// Find all GitHub specs
+const githubSpecs = await findSpecs('github');
+```
+
+See [test-resources/README.md](test-resources/README.md) for complete documentation on available test resources and utilities.
+
 ### Cleaning
 
 ```bash
