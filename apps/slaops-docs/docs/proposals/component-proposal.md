@@ -5,7 +5,7 @@ title: Component Proposals
 
 # Component Proposals
 
-This directory contains component proposals for the SLAOps platform. Each proposal follows the [Component Proposal Standard](../component-proposal-standard.md) and uses the [Component Proposal Template](/COMPONENT_PROPOSAL_TEMPLATE.md).
+This directory contains component proposals for the SLAOps platform. Each proposal follows the [Component Proposal Standard](./component-proposal-standard.md) and uses the [Component Proposal Template](https://github.com/derrickfutschik/slaops-platform/blob/main/COMPONENT_PROPOSAL_TEMPLATE.md).
 
 ## Purpose
 
@@ -33,7 +33,7 @@ Component proposals serve to:
 
 3. Fill in all sections of the template
 
-4. Review the [Example Component Proposal](../example-component-proposal.md) for guidance
+4. Review the [Example Component Proposal](./example-component-proposal.md) for guidance
 
 5. Submit for review
 
@@ -55,10 +55,10 @@ Check the sidebar navigation to see all proposals in this directory.
 
 ## Resources
 
-- [Component Proposal Standard](../component-proposal-standard.md) - How to write proposals
-- [Example Component Proposal](../example-component-proposal.md) - Complete example
-- [COMPONENT_PROPOSAL_TEMPLATE.md](/COMPONENT_PROPOSAL_TEMPLATE.md) - Blank template
+- [Component Proposal Standard](./component-proposal-standard.md) - How to write proposals
+- [Example Component Proposal](./example-component-proposal.md) - Complete example
+- [COMPONENT_PROPOSAL_TEMPLATE.md](https://github.com/derrickfutschik/slaops-platform/blob/main/COMPONENT_PROPOSAL_TEMPLATE.md) - Blank template
 
 ---
 
-For questions about the proposal process, see the [Component Proposal Standard guide](../component-proposal-standard.md#getting-help).
+For questions about the proposal process, see the [Component Proposal Standard guide](./component-proposal-standard.md#getting-help).

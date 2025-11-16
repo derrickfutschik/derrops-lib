@@ -38,10 +38,12 @@ You might skip the full template for:
 
 ## Template Location
 
-The template is located at:
+The template is located in the repository root:
 ```
 /COMPONENT_PROPOSAL_TEMPLATE.md
 ```
+
+View the template: [COMPONENT_PROPOSAL_TEMPLATE.md](https://github.com/derrickfutschik/slaops-platform/blob/main/COMPONENT_PROPOSAL_TEMPLATE.md)
 
 Copy this file to start your proposal:
 ```bash
@@ -568,10 +570,9 @@ By following this standard, you'll create better components and make the review 
 ---
 
 **Related Documentation:**
-- [COMPONENT_PROPOSAL_TEMPLATE.md](/COMPONENT_PROPOSAL_TEMPLATE.md) - The blank template file
+- [COMPONENT_PROPOSAL_TEMPLATE.md](https://github.com/derrickfutschik/slaops-platform/blob/main/COMPONENT_PROPOSAL_TEMPLATE.md) - The blank template file
 - [Example Component Proposal](./example-component-proposal.md) - Fully completed example (Metrics Aggregator)
-- [Monorepo Structure](/) - CLAUDE.md root documentation
-- [Contributing Guidelines](/docs/contributing) - General contribution guide
+- [Monorepo Structure](https://github.com/derrickfutschik/slaops-platform/blob/main/CLAUDE.md) - CLAUDE.md root documentation
 
 **Template Version**: 1.0
 **Last Updated**: November 2024

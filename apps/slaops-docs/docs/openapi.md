@@ -37,9 +37,11 @@ Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
   "server_id": "aws-cloudtrail-https-1", // id of the server, this is the id of the server in the API specification if exists otherwise we generate it
   "server_scheme": "https", // schema/protocol
   "server_index": 0, // index of the server in the API specification
+  "server_path": undefined, // path of the server, undefined if not specified
 
   //raw URL
   "raw_url": "https://cloudtrail.{region}.amazonaws.com",
+  "raw_domain": "https://cloudtrail.{region}.amazonaws.com",
 
   // public suffix + one label
   "dns_suffix": "amazonaws.com",
