@@ -206,9 +206,12 @@ if [ -z "$EDITED_MSG" ]; then
     exit 1
 fi
 
+# Create a clean message file without comments for git commit
+CLEAN_MSG=$(mktemp)
+echo "$EDITED_MSG" > "$CLEAN_MSG"
 
-# Commit with the edited message
-git commit -F "$TEMP_MSG"
-rm -f "$TEMP_MSG"
+# Commit with the cleaned message
+git commit -F "$CLEAN_MSG"
+rm -f "$TEMP_MSG" "$CLEAN_MSG"
 
 echo -e "${GREEN}✓ Committed successfully${NC}"
