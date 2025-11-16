@@ -1,0 +1,14 @@
+{
+  "name": "@slaops/test-resources",
+  "version": "0.0.0",
+  "description": "Test resources and utilities for SLAOps platform tests",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./loader.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.7.8"
+  }
+}

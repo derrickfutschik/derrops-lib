@@ -145,7 +145,7 @@ The monorepo uses external test resources (primarily OpenAPI specifications from
 
 ```bash
 # Manual setup/refresh of test resources
-pnpm run setup:test-resources --force
+pnpm run setup:test-resources
 
 # Verify test resources are available
 ls test-resources/openapi-directory/APIs

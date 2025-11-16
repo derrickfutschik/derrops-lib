@@ -1,5 +1,6 @@
 import { OpenAPIV3_1 } from "openapi-types"
 
+
 export type ZippedOperation = {
     o_i?: string; // operation_id
     v_p: string; // variable_path
@@ -9,8 +10,8 @@ export type ZippedOperation = {
 };
 
 /**
- * Abbreviates parameter types for compact representation
- * e.g., {integer} => {i}, {string} => {s}
+ Abbreviates parameter types for compact representation
+ e.g., {integer} => {i}, {string} => {s}
  */
 function abbreviateParameterType(type: string): string {
     const typeMap: Record<string, string> = {

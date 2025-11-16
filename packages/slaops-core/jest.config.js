@@ -25,4 +25,6 @@ export default {
     '!src/**/*.spec.ts',
   ],
   passWithNoTests: true,
+  // Ensure NODE_OPTIONS is set for ESM support
+  setupFiles: ['<rootDir>/jest.setup.js'],
 };
