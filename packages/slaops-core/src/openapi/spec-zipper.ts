@@ -100,9 +100,10 @@ function extractModelIndices(
     operation: OpenAPIV3_1.OperationObject,
     spec: OpenAPIV3_1.Document
 ): number[] {
-    const modelIndices: number[] = [];
+    const modelIndices = new Set<number>();
     const schemas = spec.components?.schemas || {};
     const schemaKeys = Object.keys(schemas);
+    const visitedRefs = new Set<string>();
 
     // Helper to resolve $ref to schema name
     const resolveSchemaName = (ref: string): string | null => {
@@ -112,28 +113,104 @@ function extractModelIndices(
         return null;
     };
 
+    // Helper to add a schema index if valid
+    const addSchemaIndex = (schemaName: string): void => {
+        const index = schemaKeys.indexOf(schemaName);
+        if (index !== -1) {
+            modelIndices.add(index);
+        }
+    };
+
+    // Recursive function to extract all schema references from a schema object
+    const extractFromSchema = (schema: OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject): void => {
+        // Handle $ref
+        if ("$ref" in schema) {
+            const ref = schema.$ref;
+
+            // Avoid infinite recursion
+            if (visitedRefs.has(ref)) {
+                return;
+            }
+            visitedRefs.add(ref);
+
+            const schemaName = resolveSchemaName(ref);
+            if (schemaName) {
+                addSchemaIndex(schemaName);
+
+                // Recursively extract from the referenced schema
+                const referencedSchema = schemas[schemaName];
+                if (referencedSchema) {
+                    extractFromSchema(referencedSchema);
+                }
+            }
+            return;
+        }
+
+        // Handle SchemaObject properties
+        const schemaObj = schema as OpenAPIV3_1.SchemaObject;
+
+        // Handle allOf, oneOf, anyOf
+        if (schemaObj.allOf) {
+            for (const subSchema of schemaObj.allOf) {
+                extractFromSchema(subSchema);
+            }
+        }
+        if (schemaObj.oneOf) {
+            for (const subSchema of schemaObj.oneOf) {
+                extractFromSchema(subSchema);
+            }
+        }
+        if (schemaObj.anyOf) {
+            for (const subSchema of schemaObj.anyOf) {
+                extractFromSchema(subSchema);
+            }
+        }
+
+        // Handle not
+        if (schemaObj.not) {
+            extractFromSchema(schemaObj.not);
+        }
+
+        // Handle array items
+        if ("items" in schemaObj && schemaObj.items) {
+            extractFromSchema(schemaObj.items);
+        }
+
+        // Handle object properties
+        if (schemaObj.properties) {
+            for (const propSchema of Object.values(schemaObj.properties)) {
+                extractFromSchema(propSchema);
+            }
+        }
+
+        // Handle additionalProperties
+        if (schemaObj.additionalProperties && typeof schemaObj.additionalProperties === "object") {
+            extractFromSchema(schemaObj.additionalProperties);
+        }
+    };
+
+    // Extract from parameters
+    if (operation.parameters) {
+        for (const param of operation.parameters) {
+            if ("$ref" in param) {
+                // Could resolve parameter $ref, but typically parameters don't reference schemas directly
+                continue;
+            }
+            if (param.schema) {
+                extractFromSchema(param.schema);
+            }
+        }
+    }
+
     // Extract from requestBody
     if (operation.requestBody) {
         if ("$ref" in operation.requestBody) {
-            const schemaName = resolveSchemaName(operation.requestBody.$ref);
-            if (schemaName) {
-                const index = schemaKeys.indexOf(schemaName);
-                if (index !== -1 && !modelIndices.includes(index)) {
-                    modelIndices.push(index);
-                }
-            }
+            // requestBody $ref would need to be resolved from components.requestBodies
+            // For now, skip as it's less common
         } else if (operation.requestBody.content) {
             for (const content of Object.values(operation.requestBody.content)) {
                 if (content.schema) {
-                    if ("$ref" in content.schema) {
-                        const schemaName = resolveSchemaName(content.schema.$ref);
-                        if (schemaName) {
-                            const index = schemaKeys.indexOf(schemaName);
-                            if (index !== -1 && !modelIndices.includes(index)) {
-                                modelIndices.push(index);
-                            }
-                        }
-                    }
+                    extractFromSchema(content.schema);
                 }
             }
         }
@@ -143,29 +220,22 @@ function extractModelIndices(
     if (operation.responses) {
         for (const response of Object.values(operation.responses)) {
             if ("$ref" in response) {
-                // Skip $ref responses - would need to resolve
+                // response $ref would need to be resolved from components.responses
+                // For now, skip as it's less common
                 continue;
             }
 
             if (response.content) {
                 for (const content of Object.values(response.content)) {
                     if (content.schema) {
-                        if ("$ref" in content.schema) {
-                            const schemaName = resolveSchemaName(content.schema.$ref);
-                            if (schemaName) {
-                                const index = schemaKeys.indexOf(schemaName);
-                                if (index !== -1 && !modelIndices.includes(index)) {
-                                    modelIndices.push(index);
-                                }
-                            }
-                        }
+                        extractFromSchema(content.schema);
                     }
                 }
             }
         }
     }
 
-    return modelIndices.sort((a, b) => a - b);
+    return Array.from(modelIndices).sort((a, b) => a - b);
 }
 
 /**

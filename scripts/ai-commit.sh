@@ -2,12 +2,21 @@
 
 # Script to generate git commit messages using Claude
 # Usage: ./git-commit-ai.sh [optional context message]
+#        ./git-commit-ai.sh --context
 # Example: ./git-commit-ai.sh "Fixed debug configuration so that now debug is working"
+#          ./git-commit-ai.sh --context  # Opens vim for entering context
 
 set -e
 
-# Capture optional user context
-USER_CONTEXT="$1"
+# Parse arguments
+USE_EDITOR_FOR_CONTEXT=false
+USER_CONTEXT=""
+
+if [ "$1" = "--context" ]; then
+    USE_EDITOR_FOR_CONTEXT=true
+else
+    USER_CONTEXT="$1"
+fi
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -15,6 +24,44 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# If --context flag was used, open editor to capture context
+if [ "$USE_EDITOR_FOR_CONTEXT" = true ]; then
+    echo -e "${BLUE}Opening editor for context input...${NC}"
+    echo -e "${YELLOW}Enter your context message and save. Leave empty to cancel.${NC}"
+
+    CONTEXT_FILE=$(mktemp)
+    echo "# Enter your commit context below." > "$CONTEXT_FILE"
+    echo "# Lines starting with '#' will be ignored." >> "$CONTEXT_FILE"
+    echo "# Save and exit to continue, or delete all content to cancel." >> "$CONTEXT_FILE"
+    echo "" >> "$CONTEXT_FILE"
+
+    # Open in user's editor (same priority as commit message editing)
+    if command -v vim &> /dev/null; then
+        vim "$CONTEXT_FILE"
+    elif [ -n "$(git config core.editor)" ]; then
+        $(git config core.editor) "$CONTEXT_FILE"
+    elif [ -n "$EDITOR" ]; then
+        $EDITOR "$CONTEXT_FILE"
+    else
+        vi "$CONTEXT_FILE"
+    fi
+
+    # Extract the context (remove comment lines and empty lines)
+    USER_CONTEXT=$(grep -v '^#' "$CONTEXT_FILE" | sed '/^$/d' | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+
+    # Clean up temp file
+    rm -f "$CONTEXT_FILE"
+
+    # Check if context is empty
+    if [ -z "$USER_CONTEXT" ]; then
+        echo -e "${YELLOW}No context provided. Exiting.${NC}"
+        exit 0
+    fi
+
+    echo -e "${GREEN}Context captured:${NC} $USER_CONTEXT"
+    echo ""
+fi
 
 # Check if we're in a git repository
 if ! git rev-parse --git-dir > /dev/null 2>&1; then

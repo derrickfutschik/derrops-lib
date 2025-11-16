@@ -41,4 +41,71 @@ describe("zipOperations", () => {
         const result = zipOperations(spec);
         expect(result).toHaveLength(0);
     })
+
+    test("should extract model indices from direct $ref in request/response", () => {
+        const spec = fixture.OPERATION_WITH_DIRECT_REF;
+        const result = zipOperations(spec);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]!.o_i).toBe("createUser");
+        // Schema order: User (index 0), CreateUserRequest (index 1)
+        // Both should be in m_i
+        expect(result[0]!.m_i).toEqual([0, 1]);
+    });
+
+    test("should extract model indices from nested $ref (allOf)", () => {
+        const spec = fixture.OPERATION_WITH_NESTED_REF;
+        const result = zipOperations(spec);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]!.o_i).toBe("getAdminUser");
+        // Schema order: BaseEntity (0), User (1), AdminUser (2)
+        // AdminUser references User which references BaseEntity
+        // All three should be in m_i
+        expect(result[0]!.m_i).toEqual([0, 1, 2]);
+    });
+
+    test("should extract model indices from array items with $ref", () => {
+        const spec = fixture.OPERATION_WITH_ARRAY_REF;
+        const result = zipOperations(spec);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]!.o_i).toBe("listUsers");
+        // Schema order: User (0), UserList (1)
+        // UserList contains array of User
+        expect(result[0]!.m_i).toEqual([0, 1]);
+    });
+
+    test("should extract model indices from properties with $ref", () => {
+        const spec = fixture.OPERATION_WITH_PROPERTY_REF;
+        const result = zipOperations(spec);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]!.o_i).toBe("getUser");
+        // Schema order: Address (0), User (1)
+        // User has address property that references Address
+        expect(result[0]!.m_i).toEqual([0, 1]);
+    });
+
+    test("should handle circular references without infinite recursion", () => {
+        const spec = fixture.OPERATION_WITH_CIRCULAR_REF;
+        const result = zipOperations(spec);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]!.o_i).toBe("getTree");
+        // Schema order: Node (0)
+        // Node references itself in children array
+        expect(result[0]!.m_i).toEqual([0]);
+    });
+
+    test("should extract model indices from parameter schemas with $ref", () => {
+        const spec = fixture.OPERATION_WITH_PARAM_REF;
+        const result = zipOperations(spec);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]!.o_i).toBe("getUser");
+        // Schema order: UserId (0)
+        // Parameter schema references UserId
+        expect(result[0]!.m_i).toEqual([0]);
+    });
 })

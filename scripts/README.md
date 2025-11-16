@@ -28,11 +28,14 @@ pnpm commit:ai
 # Direct execution
 ./scripts/ai-commit.sh
 
-# With optional context about your changes
+# With optional inline context about your changes
 ./scripts/ai-commit.sh "Fixed debug configuration so that now debug is working"
 
 # Or with pnpm (note: you need to use -- to pass arguments)
 pnpm commit -- "Added new authentication flow"
+
+# Open editor to write context (useful for longer, multi-line context)
+./scripts/ai-commit.sh --context
 ```
 
 ### Workflow
@@ -47,10 +50,19 @@ pnpm commit -- "Added new authentication flow"
 
 ### Optional Context
 
-You can provide an optional context message to help Claude generate a more accurate commit message:
+You can provide an optional context message to help Claude generate a more accurate commit message in two ways:
 
+**1. Inline context (for short messages):**
 ```bash
 ./scripts/ai-commit.sh "Fixed the authentication bug where tokens were expiring too early"
+```
+
+**2. Editor context (for longer, detailed context):**
+```bash
+./scripts/ai-commit.sh --context
+# This opens your editor where you can write a multi-line context
+# Lines starting with '#' are ignored
+# Save the file to continue, or leave it empty to cancel
 ```
 
 This context will be:
@@ -62,6 +74,7 @@ The context is most helpful when:
 - The changes involve complex logic that isn't obvious from the diff
 - You want to emphasize the purpose or motivation behind the changes
 - The diff is large and you want to highlight the main focus
+- You need to provide detailed background information (use `--context` flag for multi-line input)
 
 ### Editor Configuration
 
@@ -93,7 +106,8 @@ Generated messages follow best practices:
 
 You can abort at several points:
 - When asked to stage files: answer 'n'
-- In the editor: delete all non-comment lines and save
+- When using `--context`: leave the context file empty (or delete all content) and save
+- In the commit message editor: delete all non-comment lines and save
 - At confirmation prompt: answer 'n'
 
 ### Examples
