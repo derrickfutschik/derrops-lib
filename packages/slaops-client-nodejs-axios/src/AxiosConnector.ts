@@ -72,11 +72,11 @@ export function addInterceptor(instance: AxiosStatic | AxiosInstance) {
             mimeType: response.headers['content-type']
         }
 
-        const harLog = {
-            ...createHarLog(httpRequest, httpResponse),
-            startedDateTime: start.start.toISOString(),
-        }
-        console.log(JSON.stringify(harLog, null, 2))
+        // const harLog = {
+        //     ...createHarLog(httpRequest, httpResponse),
+        //     startedDateTime: start.start.toISOString(),
+        // }
+        // console.log(JSON.stringify(harLog, null, 2))
 
 
         return response

@@ -33,7 +33,7 @@ describe('basic', () => {
     })
 
     const data = await testRequest()
-    console.log({ data });
+    // console.log({ data });
     expect(data).toBeTruthy();
   });
 
@@ -41,7 +41,7 @@ describe('basic', () => {
 
     addInterceptor(axios);
     const data = await testRequest();
-    console.log({ data });
+    // console.log({ data });
     expect(data).toBeTruthy();
   });
 

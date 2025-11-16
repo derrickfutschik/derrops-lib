@@ -327,3 +327,73 @@ export const OPERATION_WITH_PARAM_REF: OpenAPIV3_1.Document = {
         },
     },
 }
+
+
+export const OPERATION_WITH_NO_ID: OpenAPIV3_1.Document = {
+    openapi: "3.1.0",
+    info: { title: "Test API", version: "1.0.0" },
+    components: {
+        schemas: {
+            User: {
+                type: "object",
+                properties: {
+                    id: { type: "integer" },
+                    name: { type: "string" },
+                },
+            },
+            CreateUserRequest: {
+                type: "object",
+                properties: {
+                    name: { type: "string" },
+                    email: { type: "string" },
+                },
+            },
+        },
+    },
+    paths: {
+        "/users": {
+            post: {
+                requestBody: {
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/CreateUserRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Success",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/User" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/users/{userId}": {
+            get: {
+                parameters: [
+                    {
+                        name: "userId",
+                        in: "path",
+                        required: true,
+                        schema: { type: "integer" },
+                    },
+                ],
+                responses: {
+                    "200": {
+                        description: "Success",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/User" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+
+    },
+}

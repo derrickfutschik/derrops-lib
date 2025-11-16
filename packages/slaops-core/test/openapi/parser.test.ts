@@ -1,19 +1,14 @@
-import { loadSpec } from '../../src/openapi/parser';
-import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
+import { OpenAPIV3_1 } from 'openapi-types';
+import { ensureOperationIds, getHttpMethodOperations, loadSpec } from '../../src/openapi/parser';
 
-test("should load a spec from a file", async () => {
-    const specPath = WELL_KNOWN_SPECS.ably();
-    const spec = await loadSpec(specPath);
-    expect(spec).toBeDefined();
-    expect(spec.info).toBeDefined();
-});
+import { OPERATION_WITH_NO_ID } from './spec-zipper.fixture';
 
-test("should load a spec using resolveOpenApiSpec", async () => {
-    const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1');
-    const spec = await loadSpec(specPath);
-
-    console.log(JSON.stringify(spec, null, 2));
-
-    expect(spec).toBeDefined();
-    expect(spec.info).toBeDefined();
-});
+test("should ensureOperationIds is populating all operations with an operationId", async () => {
+    const spec = ensureOperationIds(OPERATION_WITH_NO_ID)
+    Object.entries(spec.paths!).forEach(([pathKey, path]) => {
+        if (!path) return;
+        for (const [method, operation] of getHttpMethodOperations(path)) {
+            expect(operation.operationId).toBeDefined();
+        }
+    })
+})

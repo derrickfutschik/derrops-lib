@@ -14,6 +14,34 @@ function toCamelCase(input: string): string {
 }
 
 /**
+ * Returns only the HTTP method operations from a PathItemObject,
+ * excluding non-operation properties like `parameters`, `servers`, or `$ref`.
+ */
+export function getHttpMethodOperations(
+    pathItem: OpenAPIV3_1.PathItemObject
+): Array<[OpenAPIV3_1.HttpMethods, OpenAPIV3_1.OperationObject]> {
+    const httpMethods: OpenAPIV3_1.HttpMethods[] = [
+        "get" as OpenAPIV3_1.HttpMethods,
+        "post" as OpenAPIV3_1.HttpMethods,
+        "put" as OpenAPIV3_1.HttpMethods,
+        "delete" as OpenAPIV3_1.HttpMethods,
+        "patch" as OpenAPIV3_1.HttpMethods,
+        "head" as OpenAPIV3_1.HttpMethods,
+        "options" as OpenAPIV3_1.HttpMethods,
+        "trace" as OpenAPIV3_1.HttpMethods,
+    ]
+
+    const operations: Array<[OpenAPIV3_1.HttpMethods, OpenAPIV3_1.OperationObject]> = []
+    for (const method of httpMethods) {
+        const maybeOperation = pathItem[method]
+        if (maybeOperation && !("$ref" in maybeOperation)) {
+            operations.push([method, maybeOperation])
+        }
+    }
+    return operations
+}
+
+/**
  * Ensures all operations in the spec have an operationId.
  * Generates one based on method and path if missing.
  */
