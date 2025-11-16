@@ -60,13 +60,14 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
 
-
-          // For Github
-          // editUrl: 'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
-
           editUrl: ({ docPath }) => {
+            const awsBranch = process.env.AWS_BRANCH;
+            if (awsBranch) {
+              const cleanPath = docPath.replace(/^\//, '');
+              return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/docs/${cleanPath}`;
+            }
             const cleanPath = docPath.replace(/^\//, '');
-            const pathToFile = `${process.cwd()}/docs/${cleanPath}`
+            const pathToFile = `${process.cwd()}/docs/${cleanPath}`;
             return `cursor://file${pathToFile}`;
           },
 
@@ -82,11 +83,10 @@ const config: Config = {
             xslt: true,
           },
 
-          // For Github
-          // editUrl: 'https://github.com/derrickfutschik/slaops-platform/tree/main/apps/slaops-docs',
-
-          // For Cursor
-          editUrl: `cursor://open?folder=/docs`,
+          editUrl:
+            process.env.AWS_BRANCH
+              ? `https://github.com/derrickfutschik/slaops-platform/tree/${process.env.AWS_BRANCH}/apps/slaops-docs/blog`
+              : `cursor://open?folder=/docs`,
 
 
 
