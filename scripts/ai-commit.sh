@@ -1,102 +1,178 @@
 #!/bin/bash
 
-# AI-powered git commit script
-# Generates a commit message using AI analysis and allows user to edit before committing
+# Script to generate git commit messages using Claude
+# Usage: ./git-commit-ai.sh
 
 set -e
 
 # Colors for output
-RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Get the script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Check if there are staged changes
-if ! git diff --cached --quiet 2>/dev/null; then
-    HAS_STAGED=true
-elif ! git diff --quiet 2>/dev/null || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-    HAS_STAGED=false
-else
-    echo -e "${RED}Error: No changes to commit${NC}"
+# Check if we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo -e "${RED}Error: Not a git repository${NC}"
     exit 1
 fi
 
-# Create a temporary file for the commit message
-TEMP_MSG=$(mktemp)
-trap "rm -f $TEMP_MSG" EXIT
-
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}🤖 AI Commit Message Generator${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-
-# Stage files if needed and user agrees
-if [ "$HAS_STAGED" = false ]; then
-    echo -e "${YELLOW}No files are staged. Would you like to stage all changes? (y/n)${NC}"
-    read -r STAGE_ALL
-    if [ "$STAGE_ALL" = "y" ] || [ "$STAGE_ALL" = "Y" ]; then
-        echo -e "${YELLOW}Staging all changes...${NC}"
-        git add -A
-        HAS_STAGED=true
+# Check if there are staged changes
+if git diff --cached --quiet; then
+    echo -e "${YELLOW}No staged changes found.${NC}"
+    
+    # Check if there are any unstaged changes
+    if git diff --quiet && git ls-files --others --exclude-standard | grep -q .; then
+        # Only untracked files
+        echo -e "${YELLOW}Found untracked files.${NC}"
+        read -p "$(echo -e ${YELLOW}Would you like to stage all files? [y/N] ${NC})" -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git add -A
+            echo -e "${GREEN}✓ All files staged${NC}"
+        else
+            echo -e "${RED}Aborted: No changes staged${NC}"
+            exit 1
+        fi
+    elif ! git diff --quiet; then
+        # Unstaged changes exist
+        echo -e "${YELLOW}Found unstaged changes.${NC}"
+        read -p "$(echo -e ${YELLOW}Would you like to stage all files? [y/N] ${NC})" -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git add -A
+            echo -e "${GREEN}✓ All files staged${NC}"
+        else
+            echo -e "${RED}Aborted: No changes staged${NC}"
+            exit 1
+        fi
     else
-        echo -e "${RED}Aborted: No files staged for commit${NC}"
+        # No changes at all
+        echo -e "${RED}No changes to commit${NC}"
         exit 1
     fi
 fi
 
-echo -e "${YELLOW}Analyzing changes and generating commit message...${NC}"
-echo ""
+# Check if claude is available
+if ! command -v claude &> /dev/null; then
+    echo -e "${RED}Error: claude not found${NC}"
+    echo -e "${YELLOW}Please install Claude Code first${NC}"
+    exit 1
+fi
 
-# Generate the commit message using the Node.js script
-if ! node "$SCRIPT_DIR/generate-commit-message.cjs" > "$TEMP_MSG" 2>/dev/null; then
+echo -e "${BLUE}Analyzing staged changes...${NC}"
+
+# Get the diff of staged changes
+DIFF=$(git diff --cached)
+
+# Create a temporary file for the prompt
+TEMP_PROMPT=$(mktemp)
+TEMP_RESPONSE=$(mktemp)
+
+# Write the prompt to the temporary file
+cat > "$TEMP_PROMPT" << 'EOF'
+You are helping me write git commit messages for this repository. Please follow these guidelines:
+
+**Format:**
+- Use conventional commit format: `type(scope): description`
+- Types: feat, fix, docs, style, refactor, test, chore, perf
+- Keep the first line under 72 characters
+- Add a brief body paragraph if the change needs more context (optional)
+
+**Style:**
+- Use emojis to make messages more visual and scannable:
+  - 🐛 for bug fixes
+  - ✨ for new features
+  - 📝 for documentation
+  - ♻️ for refactoring
+  - 🎨 for code style/formatting
+  - ⚡ for performance improvements
+  - ✅ for tests
+  - 🔧 for configuration changes
+  - 🚀 for deployments
+  - 🔥 for removing code/files
+  - 💥 for breaking changes
+- Be descriptive but concise - aim for the "sweet spot" between too vague and overly detailed
+- Use imperative mood ("add feature" not "added feature")
+- Don't end the subject line with a period
+
+**Examples:**
+- `✨ feat(auth): add OAuth2 login flow`
+- `🐛 fix(api): handle null response in user endpoint`
+- `📝 docs: update installation instructions for Docker setup`
+- `♻️ refactor(database): simplify query builder logic`
+- `⚡ perf(search): add caching layer for frequent queries`
+
+---
+
+Based on the following git diff of staged changes, generate an appropriate commit message following the guidelines above. 
+
+**IMPORTANT:** 
+- Output ONLY the commit message itself
+- Do NOT include any explanations, meta-commentary, or markdown formatting
+- Do NOT wrap the message in code blocks or quotes
+- Just output the raw commit message text
+
+Here is the diff:
+
+EOF
+
+# Append the diff to the prompt
+echo "$DIFF" >> "$TEMP_PROMPT"
+
+# Call claude with the prompt
+echo -e "${BLUE}Generating commit message with Claude...${NC}"
+claude --prompt-file "$TEMP_PROMPT" > "$TEMP_RESPONSE" 2>&1 || {
+    echo -e "${RED}Error: Failed to generate commit message${NC}"
+    rm -f "$TEMP_PROMPT" "$TEMP_RESPONSE"
+    exit 1
+}
+
+# Extract the commit message (remove any potential markdown formatting)
+COMMIT_MSG=$(cat "$TEMP_RESPONSE" | sed 's/^```.*$//' | sed '/^$/d' | grep -v '^#' | head -20)
+
+# Clean up temp files
+rm -f "$TEMP_PROMPT" "$TEMP_RESPONSE"
+
+# Check if we got a message
+if [ -z "$COMMIT_MSG" ]; then
     echo -e "${RED}Error: Failed to generate commit message${NC}"
     exit 1
 fi
 
-# Show preview of generated message
-echo -e "${GREEN}Generated commit message preview:${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-grep -v '^#' "$TEMP_MSG" | head -5
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "${YELLOW}Opening editor for review and editing...${NC}"
+echo -e "${GREEN}Generated commit message:${NC}"
+echo "---"
+echo "$COMMIT_MSG"
+echo "---"
 echo ""
 
-# Open the editor
-EDITOR=${GIT_EDITOR:-${VISUAL:-${EDITOR:-vi}}}
-$EDITOR "$TEMP_MSG"
-
-# Extract the commit message (remove comments and leading/trailing empty lines)
-FINAL_MSG=$(grep -v '^#' "$TEMP_MSG" | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;ba' -e '}')
-
-# Check if message is empty (user quit without saving or deleted all content)
-if [ -z "$FINAL_MSG" ]; then
-    echo -e "${RED}Commit aborted: empty commit message${NC}"
-    exit 1
-fi
-
-# Show final message
-echo ""
-echo -e "${GREEN}Committing with message:${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo "$FINAL_MSG"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+# Ask user for confirmation
+read -p "$(echo -e ${YELLOW}Do you want to [e]dit, [c]ommit as-is, or [a]bort? ${NC})" -n 1 -r
 echo ""
 
-# Create the commit using git commit (which will allow hooks to run)
-echo "$FINAL_MSG" | git commit -F -
-
-if [ $? -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}✓ Commit successful!${NC}"
-    echo ""
-    # Show the commit
-    git log -1 --oneline
-else
-    echo -e "${RED}✗ Commit failed${NC}"
-    exit 1
-fi
+case $REPLY in
+    e|E)
+        # Create a temporary file with the message
+        TEMP_MSG=$(mktemp)
+        echo "$COMMIT_MSG" > "$TEMP_MSG"
+        
+        # Open in user's editor
+        ${EDITOR:-nano} "$TEMP_MSG"
+        
+        # Commit with the edited message
+        git commit -F "$TEMP_MSG"
+        rm -f "$TEMP_MSG"
+        
+        echo -e "${GREEN}✓ Committed with edited message${NC}"
+        ;;
+    c|C)
+        # Commit with the generated message
+        echo "$COMMIT_MSG" | git commit -F -
+        echo -e "${GREEN}✓ Committed successfully${NC}"
+        ;;
+    *)
+        echo -e "${YELLOW}Commit aborted${NC}"
+        exit 0
+        ;;
+esac
