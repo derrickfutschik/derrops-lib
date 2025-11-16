@@ -66,16 +66,11 @@ echo -e "${BLUE}Analyzing staged changes...${NC}"
 # Get the diff of staged changes
 DIFF=$(git diff --cached)
 
-# Create a temporary file for the prompt
-TEMP_PROMPT=$(mktemp)
-TEMP_RESPONSE=$(mktemp)
-
-# Write the prompt to the temporary file
-cat > "$TEMP_PROMPT" << 'EOF'
-You are helping me write git commit messages for this repository. Please follow these guidelines:
+# Create the full prompt
+PROMPT="You are helping me write git commit messages for this repository. Please follow these guidelines:
 
 **Format:**
-- Use conventional commit format: `type(scope): description`
+- Use conventional commit format: \`type(scope): description\`
 - Types: feat, fix, docs, style, refactor, test, chore, perf
 - Keep the first line under 72 characters
 - Add a brief body paragraph if the change needs more context (optional)
@@ -93,16 +88,16 @@ You are helping me write git commit messages for this repository. Please follow 
   - 🚀 for deployments
   - 🔥 for removing code/files
   - 💥 for breaking changes
-- Be descriptive but concise - aim for the "sweet spot" between too vague and overly detailed
-- Use imperative mood ("add feature" not "added feature")
+- Be descriptive but concise - aim for the \"sweet spot\" between too vague and overly detailed
+- Use imperative mood (\"add feature\" not \"added feature\")
 - Don't end the subject line with a period
 
 **Examples:**
-- `✨ feat(auth): add OAuth2 login flow`
-- `🐛 fix(api): handle null response in user endpoint`
-- `📝 docs: update installation instructions for Docker setup`
-- `♻️ refactor(database): simplify query builder logic`
-- `⚡ perf(search): add caching layer for frequent queries`
+- \`✨ feat(auth): add OAuth2 login flow\`
+- \`🐛 fix(api): handle null response in user endpoint\`
+- \`📝 docs: update installation instructions for Docker setup\`
+- \`♻️ refactor(database): simplify query builder logic\`
+- \`⚡ perf(search): add caching layer for frequent queries\`
 
 ---
 
@@ -116,24 +111,25 @@ Based on the following git diff of staged changes, generate an appropriate commi
 
 Here is the diff:
 
-EOF
-
-# Append the diff to the prompt
-echo "$DIFF" >> "$TEMP_PROMPT"
+$DIFF"
 
 # Call claude with the prompt
 echo -e "${BLUE}Generating commit message with Claude...${NC}"
-claude --prompt-file "$TEMP_PROMPT" > "$TEMP_RESPONSE" 2>&1 || {
+TEMP_RESPONSE=$(mktemp)
+
+echo "$PROMPT" | claude > "$TEMP_RESPONSE" 2>&1 || {
     echo -e "${RED}Error: Failed to generate commit message${NC}"
-    rm -f "$TEMP_PROMPT" "$TEMP_RESPONSE"
+    echo -e "${YELLOW}Claude output:${NC}"
+    cat "$TEMP_RESPONSE"
+    rm -f "$TEMP_RESPONSE"
     exit 1
 }
 
 # Extract the commit message (remove any potential markdown formatting)
-COMMIT_MSG=$(cat "$TEMP_RESPONSE" | sed 's/^```.*$//' | sed '/^$/d' | grep -v '^#' | head -20)
+COMMIT_MSG=$(cat "$TEMP_RESPONSE" | sed 's/^```.*$//' | sed '/^$/d' | grep -v '^#')
 
 # Clean up temp files
-rm -f "$TEMP_PROMPT" "$TEMP_RESPONSE"
+rm -f "$TEMP_RESPONSE"
 
 # Check if we got a message
 if [ -z "$COMMIT_MSG" ]; then
@@ -147,32 +143,44 @@ echo "$COMMIT_MSG"
 echo "---"
 echo ""
 
-# Ask user for confirmation
-read -p "$(echo -e ${YELLOW}Do you want to [e]dit, [c]ommit as-is, or [a]bort? ${NC})" -n 1 -r
-echo ""
+# Create a temporary file with the generated message
+TEMP_MSG=$(mktemp)
+echo "$COMMIT_MSG" > "$TEMP_MSG"
 
-case $REPLY in
-    e|E)
-        # Create a temporary file with the message
-        TEMP_MSG=$(mktemp)
-        echo "$COMMIT_MSG" > "$TEMP_MSG"
-        
-        # Open in user's editor
-        ${EDITOR:-nano} "$TEMP_MSG"
-        
-        # Commit with the edited message
-        git commit -F "$TEMP_MSG"
-        rm -f "$TEMP_MSG"
-        
-        echo -e "${GREEN}✓ Committed with edited message${NC}"
-        ;;
-    c|C)
-        # Commit with the generated message
-        echo "$COMMIT_MSG" | git commit -F -
-        echo -e "${GREEN}✓ Committed successfully${NC}"
-        ;;
-    *)
-        echo -e "${YELLOW}Commit aborted${NC}"
-        exit 0
-        ;;
-esac
+# Add git-style comment lines
+echo "" >> "$TEMP_MSG"
+echo "# Please enter the commit message for your changes. Lines starting" >> "$TEMP_MSG"
+echo "# with '#' will be ignored, and an empty message aborts the commit." >> "$TEMP_MSG"
+echo "#" >> "$TEMP_MSG"
+echo "# Changes to be committed:" >> "$TEMP_MSG"
+git diff --cached --name-status | sed 's/^/# /' >> "$TEMP_MSG"
+
+# Store the original content to detect if user made changes
+ORIGINAL_CONTENT=$(cat "$TEMP_MSG")
+
+# Open in user's editor (prioritize vim, then fall back to git's core.editor, then EDITOR, then vi)
+if command -v vim &> /dev/null; then
+    vim "$TEMP_MSG"
+elif [ -n "$(git config core.editor)" ]; then
+    $(git config core.editor) "$TEMP_MSG"
+elif [ -n "$EDITOR" ]; then
+    $EDITOR "$TEMP_MSG"
+else
+    vi "$TEMP_MSG"
+fi
+
+# Read the edited content, removing comment lines and empty lines
+EDITED_MSG=$(grep -v '^#' "$TEMP_MSG" | sed '/^$/d')
+
+# Check if the message is empty (user exited without saving a meaningful message)
+if [ -z "$EDITED_MSG" ]; then
+    echo -e "${YELLOW}Commit aborted: empty commit message${NC}"
+    rm -f "$TEMP_MSG"
+    exit 1
+fi
+
+# Commit with the edited message
+git commit -F "$TEMP_MSG"
+rm -f "$TEMP_MSG"
+
+echo -e "${GREEN}✓ Committed successfully${NC}"
