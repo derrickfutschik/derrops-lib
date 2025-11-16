@@ -1,6 +1,8 @@
 # Test Resources
 
 This directory contains test resources used across the SLAOps monorepo, including OpenAPI specifications from the [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory).
+They are not part of the SLAOps platform and are not used in the production environment.
+They are used for testing the SLAOps platform and are not part of the SLAOps platform.
 
 ## Directory Structure
 
@@ -51,7 +53,14 @@ import {
 
 ```typescript
 // Resolve any file in test-resources/
-const path = resolveTestResource('openapi-directory', 'APIs', 'github.com', 'api.github.com', '1.1.4', 'openapi.yaml');
+const path = resolveTestResource(
+  'openapi-directory',
+  'APIs',
+  'github.com',
+  'api.github.com',
+  '1.1.4',
+  'openapi.yaml',
+);
 
 // Resolve OpenAPI spec by domain, subdomain, and version
 const specPath = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4');
@@ -99,18 +108,18 @@ import { test, expect } from '@jest/globals';
 import { loadSpec } from '../../src/openapi/parser';
 import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
 
-test("should load a spec from a file", async () => {
-    const specPath = WELL_KNOWN_SPECS.ably();
-    const spec = await loadSpec(specPath);
-    expect(spec).toBeDefined();
-    expect(spec.info).toBeDefined();
+test('should load a spec from a file', async () => {
+  const specPath = WELL_KNOWN_SPECS.ably();
+  const spec = await loadSpec(specPath);
+  expect(spec).toBeDefined();
+  expect(spec.info).toBeDefined();
 });
 
-test("should load a spec using resolveOpenApiSpec", async () => {
-    const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1');
-    const spec = await loadSpec(specPath);
-    expect(spec).toBeDefined();
-    expect(spec.info).toBeDefined();
+test('should load a spec using resolveOpenApiSpec', async () => {
+  const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1');
+  const spec = await loadSpec(specPath);
+  expect(spec).toBeDefined();
+  expect(spec.info).toBeDefined();
 });
 ```
 
@@ -123,11 +132,13 @@ test("should load a spec using resolveOpenApiSpec", async () => {
 Resolve a path relative to the test-resources directory.
 
 **Parameters:**
+
 - `relativePath` - Path segments relative to test-resources/
 
 **Returns:** Absolute path to the resource
 
 **Example:**
+
 ```typescript
 const path = resolveTestResource('openapi-directory', 'APIs', 'github.com');
 ```
@@ -139,6 +150,7 @@ const path = resolveTestResource('openapi-directory', 'APIs', 'github.com');
 Resolve a path to an OpenAPI spec in the openapi-directory.
 
 **Parameters:**
+
 - `domain` - The domain (e.g., 'github.com')
 - `subdomain` - The subdomain or service name (e.g., 'api.github.com')
 - `version` - The version (e.g., '1.1.4')
@@ -147,6 +159,7 @@ Resolve a path to an OpenAPI spec in the openapi-directory.
 **Returns:** Absolute path to the OpenAPI spec
 
 **Example:**
+
 ```typescript
 const path = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4');
 // Returns: /path/to/test-resources/openapi-directory/APIs/github.com/api.github.com/1.1.4/openapi.yaml
@@ -159,11 +172,13 @@ const path = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4');
 Find all OpenAPI specs matching a pattern.
 
 **Parameters:**
+
 - `pattern` - Optional string to match against domain names (case-insensitive)
 
 **Returns:** Promise resolving to array of spec metadata
 
 **Type:**
+
 ```typescript
 interface SpecMetadata {
   domain: string;
@@ -174,6 +189,7 @@ interface SpecMetadata {
 ```
 
 **Example:**
+
 ```typescript
 const githubSpecs = await findOpenApiSpecs('github');
 console.log(githubSpecs);
@@ -196,6 +212,7 @@ List all available domains in the openapi-directory.
 **Returns:** Promise resolving to array of domain names (sorted)
 
 **Example:**
+
 ```typescript
 const domains = await listOpenApiDomains();
 console.log(domains); // ['ably.net', 'github.com', ...]
@@ -210,6 +227,7 @@ Get a random OpenAPI spec for testing.
 **Returns:** Promise resolving to random spec metadata or null if none found
 
 **Example:**
+
 ```typescript
 const randomSpec = await getRandomOpenApiSpec();
 if (randomSpec) {
@@ -245,6 +263,7 @@ const WELL_KNOWN_SPECS = {
 ```
 
 **Usage:**
+
 ```typescript
 const ablyPath = WELL_KNOWN_SPECS.ably();
 const githubPath = WELL_KNOWN_SPECS.github();
@@ -255,6 +274,7 @@ const githubPath = WELL_KNOWN_SPECS.github();
 To add a commonly used spec to `WELL_KNOWN_SPECS`:
 
 1. Verify the spec exists in openapi-directory:
+
    ```bash
    ls test-resources/openapi-directory/APIs/example.com/api/v1/
    ```
@@ -280,6 +300,7 @@ To add a commonly used spec to `WELL_KNOWN_SPECS`:
 ### "openapi-directory not found" error
 
 Run the setup script:
+
 ```bash
 pnpm run setup:test-resources --force
 ```
@@ -287,6 +308,7 @@ pnpm run setup:test-resources --force
 ### "Module not found" when importing loader
 
 Ensure you're using the correct relative path from your test file:
+
 ```typescript
 // From packages/slaops-core/test/
 import { ... } from '../../../../test-resources/loader';
@@ -295,6 +317,7 @@ import { ... } from '../../../../test-resources/loader';
 ### TypeScript errors
 
 Make sure test-resources is included in your pnpm workspace:
+
 ```yaml
 # pnpm-workspace.yaml
 packages:

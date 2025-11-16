@@ -6,7 +6,8 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "test-resources"
   ],
   "scripts": {
     "build": "pnpm -r --filter @slaops/core run build && pnpm -r --filter @slaops/lib run build && pnpm -r --filter @slaops/client run build && pnpm -r --filter slaops-client-nodejs-axios run build && pnpm -r --filter slaops-docs run build && pnpm -r --filter vite_react_shadcn_ts run build",

@@ -1,7 +1,64 @@
 import { OpenAPIV3_1 } from "openapi-types"
 import SwaggerParser from "@apidevtools/swagger-parser"
 
+function toCamelCase(input: string): string {
+    return input
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((segment, index) => {
+            const lower = segment.toLowerCase()
+            if (index === 0) return lower
+            return lower.charAt(0).toUpperCase() + lower.slice(1)
+        })
+        .join("")
+}
+
+/**
+ * Ensures all operations in the spec have an operationId.
+ * Generates one based on method and path if missing.
+ */
+export function ensureOperationIds(spec: OpenAPIV3_1.Document): OpenAPIV3_1.Document {
+    if (!spec.paths) {
+        return spec;
+    }
+
+    const httpMethods: OpenAPIV3_1.HttpMethods[] = [
+        "get" as OpenAPIV3_1.HttpMethods,
+        "post" as OpenAPIV3_1.HttpMethods,
+        "put" as OpenAPIV3_1.HttpMethods,
+        "delete" as OpenAPIV3_1.HttpMethods,
+        "patch" as OpenAPIV3_1.HttpMethods,
+        "head" as OpenAPIV3_1.HttpMethods,
+        "options" as OpenAPIV3_1.HttpMethods,
+        "trace" as OpenAPIV3_1.HttpMethods,
+    ];
+
+    for (const [path, pathItem] of Object.entries(spec.paths)) {
+        if (!pathItem || "$ref" in pathItem) continue;
+
+        for (const method of httpMethods) {
+            const operation = pathItem[method];
+            if (!operation || "$ref" in operation) continue;
+
+            // Generate operationId if missing
+            if (!operation.operationId) {
+                // Convert path like "/users/{id}/posts" to "users_id_posts"
+                const pathSegment = path
+                    .replace(/^\//, '') // remove leading slash
+                    .replace(/[{}]/g, '') // remove braces
+                    .replace(/\//g, '_') // replace slashes with underscores
+                    .replace(/[^a-zA-Z0-9_]/g, '_'); // replace non-alphanumeric with underscores
+
+                operation.operationId = toCamelCase(`${method}_${pathSegment}`);
+            }
+        }
+    }
+
+    return spec;
+}
+
 export async function loadSpec(path: string): Promise<OpenAPIV3_1.Document> {
     const api = await SwaggerParser.bundle(path);
-    return api as OpenAPIV3_1.Document
+    const spec = api as OpenAPIV3_1.Document;
+    return ensureOperationIds(spec);
 }
