@@ -13,6 +13,19 @@ function toCamelCase(input: string): string {
         .join("")
 }
 
+
+const httpMethods: OpenAPIV3_1.HttpMethods[] = [
+    "get" as OpenAPIV3_1.HttpMethods,
+    "post" as OpenAPIV3_1.HttpMethods,
+    "put" as OpenAPIV3_1.HttpMethods,
+    "delete" as OpenAPIV3_1.HttpMethods,
+    "patch" as OpenAPIV3_1.HttpMethods,
+    "head" as OpenAPIV3_1.HttpMethods,
+    "options" as OpenAPIV3_1.HttpMethods,
+    "trace" as OpenAPIV3_1.HttpMethods,
+];
+
+
 /**
  * Returns only the HTTP method operations from a PathItemObject,
  * excluding non-operation properties like `parameters`, `servers`, or `$ref`.
@@ -20,16 +33,6 @@ function toCamelCase(input: string): string {
 export function getHttpMethodOperations(
     pathItem: OpenAPIV3_1.PathItemObject
 ): Array<[OpenAPIV3_1.HttpMethods, OpenAPIV3_1.OperationObject]> {
-    const httpMethods: OpenAPIV3_1.HttpMethods[] = [
-        "get" as OpenAPIV3_1.HttpMethods,
-        "post" as OpenAPIV3_1.HttpMethods,
-        "put" as OpenAPIV3_1.HttpMethods,
-        "delete" as OpenAPIV3_1.HttpMethods,
-        "patch" as OpenAPIV3_1.HttpMethods,
-        "head" as OpenAPIV3_1.HttpMethods,
-        "options" as OpenAPIV3_1.HttpMethods,
-        "trace" as OpenAPIV3_1.HttpMethods,
-    ]
 
     const operations: Array<[OpenAPIV3_1.HttpMethods, OpenAPIV3_1.OperationObject]> = []
     for (const method of httpMethods) {
@@ -49,17 +52,6 @@ export function ensureOperationIds(spec: OpenAPIV3_1.Document): OpenAPIV3_1.Docu
     if (!spec.paths) {
         return spec;
     }
-
-    const httpMethods: OpenAPIV3_1.HttpMethods[] = [
-        "get" as OpenAPIV3_1.HttpMethods,
-        "post" as OpenAPIV3_1.HttpMethods,
-        "put" as OpenAPIV3_1.HttpMethods,
-        "delete" as OpenAPIV3_1.HttpMethods,
-        "patch" as OpenAPIV3_1.HttpMethods,
-        "head" as OpenAPIV3_1.HttpMethods,
-        "options" as OpenAPIV3_1.HttpMethods,
-        "trace" as OpenAPIV3_1.HttpMethods,
-    ];
 
     for (const [path, pathItem] of Object.entries(spec.paths)) {
         if (!pathItem || "$ref" in pathItem) continue;
