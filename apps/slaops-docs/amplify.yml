@@ -25,7 +25,6 @@ applications:
           - '**/*'
       cache:
         paths:
-          - node_modules/**/*
           - ~/.pnpm-store/**/*
-          - .turbo/**/*
-          - node_modules/.cache/turbo/**/*
+          - ../../.turbo/**/*
+          - .docusaurus/**/*
