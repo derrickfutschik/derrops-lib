@@ -4,7 +4,7 @@ Searching the OpenAPI emphasizes the importance of completeness over speed. This
 
 **Pseudocode**
 
-````
+```
 Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
 
 - `[0]` cloudtrail
@@ -46,7 +46,7 @@ Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
   // base path of the API
   "base_path": "/v1/cloudtrail"
 }
-````
+```
 
 When matching: `https://cloudtrail.ap-southeast-9.amazonaws.com/v1/cloudtrail/something/this/than`
 
@@ -147,9 +147,6 @@ P:{i}/logout
 | `m_i`     | `model_indices` | The indices of the models from the OpenAPI specification used by the method either in the body or elsewhere (0 = first in the spec). |
 | `p_k`     | `partition_key` | The partition key for the operation. This is both sortable and is enough information to do the method matching.                      |
 
-````
-
-
 TODO need to create the schemas.
 
 ```mermaid
@@ -163,7 +160,7 @@ erDiagram
       ARRAY  items
       NUMBER expiresAt
     }
-````
+```
 
 ## Enrichment
 

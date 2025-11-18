@@ -55,8 +55,11 @@ slaops-platform/
 
 ### Build System
 
+- **Turborepo 2.6.1** - High-performance build system with caching
 - **pnpm workspaces** - Monorepo workspace management
 - **Dependency graph**: core → lib → client → client-nodejs-axios
+
+See [TURBO.md](TURBO.md) for detailed Turborepo documentation.
 
 ## Getting Started
 

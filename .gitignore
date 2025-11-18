@@ -51,3 +51,6 @@ Thumbs.db
 .cache/
 
 .claude/
+
+.turbo/cookies/*
+.turbo/cache/*
