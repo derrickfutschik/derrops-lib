@@ -117,6 +117,12 @@ And there were the following base paths from given APIs:
 
 Then the **Customer API** would be returned, as it is the longest base path that is a substring of the request path.
 
+This will mean that in the end, we need to find the server which matches the request host and path, then we can tie this back to the API. Also the base path of the server may also be needed as multiple base paths are on the same server, such as Adyen as an example.
+
+This will mean we will have to index each server to help tie it back to the API, with the following url:
+
+`{server_host_shape}/{server_base_path}` -> match the request.
+
 # Operation Matching
 
 OpenAPI definitions can be too large to retrieve in one go. To minimize the size of the operations, the following format represents enough information to match the operation. So instead an `Operation` will become compacted to be stored into DynamoDB.
