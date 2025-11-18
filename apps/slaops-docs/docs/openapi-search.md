@@ -1,26 +1,10 @@
-# OpenAPI
+# OpenAPI Searching
+
+Searching the OpenAPI emphasizes the importance of completeness over speed. This method facilitates browsing and searching for API specifications by many different attributes, making it fast and quick to find APIs by any means necessary.
 
 **Pseudocode**
 
-```
-match(API) = host_shape(request.host)
-          AND request.path starts with API.base_path
-
-choose the API with the longest base_path
-
-```
-
-## Indexing Strategy
-
-###
-
-Only the `host_shape` and the `base_path` are indexed.
-
-| Field        | Key Type      | Description                                    | Example                      |
-| ------------ | ------------- | ---------------------------------------------- | ---------------------------- |
-| `base_path`  | Partition Key | The base path from the OpenAPI specification   | `/v1/cloudtrail`             |
-| `host_shape` | Sort Key      | The shape of the domain (replace vars with \*) | `cloudtrail.*.amazonaws.com` |
-
+````
 Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
 
 - `[0]` cloudtrail
@@ -62,7 +46,7 @@ Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
   // base path of the API
   "base_path": "/v1/cloudtrail"
 }
-```
+````
 
 When matching: `https://cloudtrail.ap-southeast-9.amazonaws.com/v1/cloudtrail/something/this/than`
 
