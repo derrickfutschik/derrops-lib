@@ -1,4 +1,4 @@
-exoprt type OpenAPIIndexDoc = {
+export type OpenAPIIndexDoc = {
     "api_id": string,
     "api_version": string,
 
