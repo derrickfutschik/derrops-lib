@@ -255,6 +255,45 @@ function buildPartitionKey(
 }
 
 /**
+ * Creates a zipped operation from the provided operation details.
+ * Returns null if the operation should be skipped (no operation, $ref, or missing operationId).
+ */
+function zipOperation(
+    path: string,
+    pathItem: OpenAPIV3_1.PathItemObject,
+    operation: OpenAPIV3_1.OperationObject | undefined,
+    method: string,
+    spec: OpenAPIV3_1.Document
+): ZippedOperation | null {
+    // Skip if operation doesn't exist
+    if (!operation) return null;
+
+    // Skip $ref operations
+    if ("$ref" in operation) return null;
+
+    // Skip operations without operationId (optional but useful)
+    if (!operation.operationId) return null;
+
+    // Build variable path
+    const variablePath = buildVariablePath(path, pathItem, operation);
+
+    // Extract model indices
+    const modelIndices = extractModelIndices(operation, spec);
+
+    // Build partition key
+    const partitionKey = buildPartitionKey(method, variablePath);
+
+    // Create zipped operation
+    return {
+        o_i: operation.operationId,
+        v_p: variablePath,
+        m: getMethodShorthand(method),
+        m_i: modelIndices,
+        p_k: partitionKey,
+    };
+}
+
+/**
  * Zips operations from an OpenAPI specification into a compact format
  * for efficient storage and matching in DynamoDB.
  * 
@@ -293,31 +332,11 @@ export function zipOperations(
         // Iterate through all HTTP methods
         for (const method of httpMethods) {
             const operation = pathItem[method];
-            if (!operation) continue;
+            const zippedOperation = zipOperation(path, pathItem, operation, method, spec);
 
-            // Skip $ref operations
-            if ("$ref" in operation) continue;
-
-            // Skip operations without operationId (optional but useful)
-            if (!operation.operationId) continue;
-
-            // Build variable path
-            const variablePath = buildVariablePath(path, pathItem, operation);
-
-            // Extract model indices
-            const modelIndices = extractModelIndices(operation, spec);
-
-            // Build partition key
-            const partitionKey = buildPartitionKey(method, variablePath);
-
-            // Create zipped operation
-            zipped.push({
-                o_i: operation.operationId,
-                v_p: variablePath,
-                m: getMethodShorthand(method),
-                m_i: modelIndices,
-                p_k: partitionKey,
-            });
+            if (zippedOperation) {
+                zipped.push(zippedOperation);
+            }
         }
     }
 
