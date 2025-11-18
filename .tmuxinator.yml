@@ -8,7 +8,20 @@ root: <%= ENV["PWD"] || Dir.pwd %>
 # Set startup window
 startup_window: slaops-docs
 
+# Pre-window commands to ensure correct Node.js version
+pre_window: |
+  if [ -f "$HOME/.nvm/nvm.sh" ]; then
+    source "$HOME/.nvm/nvm.sh"
+    nvm use 22 2>/dev/null || nvm install 22
+  fi
+
 windows:
+
+  - slaops-opensearch:
+      root: .
+      panes:
+        - docker-compose up
+
   - slaops-docs:
       root: apps/slaops-docs
       panes:
