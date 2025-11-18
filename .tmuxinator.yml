@@ -1,0 +1,25 @@
+# SLAOps Platform - tmuxinator configuration
+# Start with: tmuxinator start -p .tmuxinator.yml
+# Or: tmuxinator start slaops-apps (if installed to ~/.config/tmuxinator/)
+
+name: slaops-apps
+root: <%= ENV["PWD"] || Dir.pwd %>
+
+# Set startup window
+startup_window: slaops-docs
+
+windows:
+  - slaops-docs:
+      root: apps/slaops-docs
+      panes:
+        - echo "Starting slaops-docs on port 3000..." && pnpm start
+
+  - slaops-portal:
+      root: apps/slaops-portal
+      panes:
+        - echo "Starting slaops-portal on port 8080..." && pnpm run dev
+
+  - root:
+      root: .
+      panes:
+        - echo "Root directory - use this for git, builds, etc."
