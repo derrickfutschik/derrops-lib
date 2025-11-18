@@ -13,17 +13,8 @@ nvm use 22
 echo "Installing pnpm globally..."
 npm install -g pnpm@8.15.4
 
-echo "Building shared packages that slaops-portal depends on..."
+echo "Building slaops-portal with Turbo (with caching)..."
 cd ../..
-pnpm --filter @slaops/core run build
-pnpm --filter @slaops/lib run build
-
-echo "Returning to slaops-portal directory..."
-cd apps/slaops-portal
-
-echo "=== PreBuild completed successfully ==="
-
-echo "Building slaops-portal..."
-pnpm run build
+pnpm exec turbo run build --filter=vite_react_shadcn_ts
 
 echo "=== Build completed successfully ==="

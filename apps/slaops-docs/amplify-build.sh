@@ -13,17 +13,8 @@ nvm use 22
 echo "Installing pnpm globally..."
 npm install -g pnpm@8.15.4
 
-echo "Building shared packages that slaops-docs depends on..."
+echo "Building slaops-docs with Turbo (with caching)..."
 cd ../..
-pnpm --filter @slaops/core run build
-pnpm --filter @slaops/lib run build
-
-echo "Returning to slaops-docs directory..."
-cd apps/slaops-docs
-
-echo "=== PreBuild completed successfully ==="
-
-echo "Building slaops-docs..."
-pnpm run build
+pnpm exec turbo run build --filter=slaops-docs
 
 echo "=== Build completed successfully ==="

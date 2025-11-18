@@ -17,9 +17,11 @@ echo "Installing dependencies from monorepo root..."
 cd ../..
 pnpm install --frozen-lockfile
 
-echo "Building shared packages that slaops-portal depends on..."
-pnpm --filter @slaops/core run build
-pnpm --filter @slaops/lib run build
+echo "Installing Turbo globally for caching benefits..."
+npm install -g turbo@2.6.1
+
+echo "Building shared packages with Turbo (with caching)..."
+pnpm exec turbo run build --filter=@slaops/core --filter=@slaops/lib
 
 echo "Returning to slaops-portal directory..."
 cd apps/slaops-portal
