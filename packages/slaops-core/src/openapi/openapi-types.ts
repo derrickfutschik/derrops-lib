@@ -1,3 +1,14 @@
+import { OpenAPIV3_1 } from "openapi-types";
+
+/**
+ * Type for the operation item with the path and method from the OpenAPI specification
+ */
+export type OpenAPIOperationWithPathAndMethod = {
+    method: OpenAPIV3_1.HttpMethods,
+    path: string,
+    operation: OpenAPIV3_1.OperationObject
+}
+
 export type OpenAPIIndexDoc = {
     "api_id": string,
     "api_version": string,
