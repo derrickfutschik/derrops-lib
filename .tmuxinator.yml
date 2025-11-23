@@ -28,15 +28,21 @@ windows:
 
   - slaops-docs:
       root: apps/slaops-docs
+      layout: even-vertical
       panes:
         - echo "Starting slaops-docs on port 3000..." && pnpm start
+        - claude
 
   - slaops-portal:
       root: apps/slaops-portal
+      layout: even-vertical
       panes:
         - echo "Starting slaops-portal on port 8080..." && pnpm run dev
+        - claude
 
   - root:
       root: .
+      layout: even-vertical
       panes:
         - echo "Root directory - use this for git, builds, etc."
+        - claude
