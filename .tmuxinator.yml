@@ -19,8 +19,11 @@ windows:
 
   - slaops-opensearch:
       root: .
+      layout: tiled
       panes:
         - docker-compose up
+        - echo "Waiting for containers to start..." && sleep 5 && docker logs -f opensearch
+        - echo "Waiting for containers to start..." && sleep 5 && docker logs -f opensearch-dashboards
 
   - slaops-docs:
       root: apps/slaops-docs
