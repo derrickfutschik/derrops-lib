@@ -1,5 +1,17 @@
 import { OpenAPIV3_1 } from "openapi-types";
 
+
+
+/**
+ * 
+ */
+export type ServerIndexed = {
+    server_id: string,
+    server_scheme: string,
+    server_index: number,
+    server_path: string,
+}
+
 /**
  * Type for the operation item with the path and method from the OpenAPI specification
  */
@@ -9,9 +21,35 @@ export type OpenAPIOperationWithPathAndMethod = {
     operation: OpenAPIV3_1.OperationObject
 }
 
+
+
+// labels are fixed
+// variables are dynamic
+
+type PathComponent = "string" | "number" | "integer" | "boolean";
+
+export type PathPart = {
+
+    /** Fixed part of a controller path i.e. `user_id` in:  `users/{user_id}` */
+    labels: string[],
+
+    /** Fixed part of a controller path i.e. `user` in:  `users/{user_id}` */
+    variables: string[],
+
+    /** Assuming user_id is an integer then: [label,integer] */
+    component: string,
+
+
+
+}
+
+
+
 export type OpenAPIIndexDoc = {
+
     "api_id": string,
     "api_version": string,
+    "api_version_id": string,
 
     // server
     "server_id": string, // id of the server, this is the id of the server in the API specification if exists otherwise we generate it

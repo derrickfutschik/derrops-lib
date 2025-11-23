@@ -54,3 +54,6 @@ Thumbs.db
 
 .turbo/cookies/*
 .turbo/cache/*
+.turbo/daemon/*
+.turbo/preferences/*
+.turbo/preferences/tui.json

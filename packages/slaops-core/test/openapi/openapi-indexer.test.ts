@@ -1,4 +1,4 @@
-import { hostShape, indexServer } from '../../src/openapi/openapi-indexer';
+import { hostShape, buildServerDoc } from '../../src/openapi/openapi-indexer';
 import { OpenAPIV3_1 } from 'openapi-types';
 
 describe('openapi-indexer', () => {
@@ -71,7 +71,7 @@ describe('openapi-indexer', () => {
         });
     });
 
-    describe('indexServer', () => {
+    describe('buildServerDoc', () => {
         describe('AWS S3 - Legacy path-style', () => {
             const cases: Array<{
                 name: string;
@@ -86,7 +86,7 @@ describe('openapi-indexer', () => {
                 ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -105,7 +105,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -119,7 +119,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -138,7 +138,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -157,7 +157,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -171,7 +171,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -185,7 +185,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -204,7 +204,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -218,7 +218,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -237,7 +237,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -251,7 +251,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -280,7 +280,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -309,7 +309,7 @@ describe('openapi-indexer', () => {
             ];
 
             test.each(cases)('$name', ({ server, expected }) => {
-                expect(indexServer(server)).toEqual(expected);
+                expect(buildServerDoc(server)).toEqual(expected);
             });
         });
 
@@ -347,7 +347,7 @@ describe('openapi-indexer', () => {
 
             test.each(cases)('$name', (testCase) => {
                 if ('server' in testCase) {
-                    const result = indexServer(testCase.server);
+                    const result = buildServerDoc(testCase.server);
                     expect(result.host_shape).toBe(testCase.expectedHostShape);
 
                     if (testCase.actualHost) {
@@ -356,7 +356,7 @@ describe('openapi-indexer', () => {
                         expect(regex.test(testCase.actualHost)).toBe(true);
                     }
                 } else {
-                    const results = testCase.servers.map(({ url }) => indexServer({ url }));
+                    const results = testCase.servers.map(({ url }) => buildServerDoc({ url }));
 
                     results.forEach((result) => {
                         expect(result.host_shape).toBe(testCase.expectedHostShape);
