@@ -6,7 +6,7 @@ name: slaops-apps
 root: <%= ENV["PWD"] || Dir.pwd %>
 
 # Set startup window
-startup_window: slaops-docs
+startup_window: root
 
 # Pre-window commands to ensure correct Node.js version
 pre_window: |
@@ -25,6 +25,12 @@ windows:
   #       - docker-compose up
   #       - echo "Waiting for containers to start..." && sleep 5 && docker logs -f opensearch
   #       - echo "Waiting for containers to start..." && sleep 5 && docker logs -f opensearch-dashboards
+
+  - derrops-server:
+      root: .
+      layout: even-vertical
+      panes:
+        - ssh derrick@192.168.7.224
 
   - slaops-docs:
       root: apps/slaops-docs
