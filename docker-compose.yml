@@ -41,6 +41,22 @@ services:
     networks:
       - opensearch-net
 
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"            # main edge port for all services
+    environment:
+      - SERVICES=dynamodb      # only run DynamoDB (add others comma-separated if needed)
+      - DEFAULT_REGION=ap-southeast-2
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_SESSION_TOKEN=test
+      - DEBUG=1
+      - DEFAULT_REGION=ap-southeast-2
+    volumes:
+      - "./localstack-data:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
 
 
 volumes:
