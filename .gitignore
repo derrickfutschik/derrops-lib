@@ -52,8 +52,12 @@ Thumbs.db
 
 .claude/
 
+.turbo/*
 .turbo/cookies/*
 .turbo/cache/*
 .turbo/daemon/*
 .turbo/preferences/*
 .turbo/preferences/tui.json
+
+
+.stfolder/

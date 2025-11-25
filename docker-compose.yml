@@ -54,9 +54,14 @@ services:
       - AWS_SESSION_TOKEN=test
       - DEBUG=1
       - DEFAULT_REGION=ap-southeast-2
+      - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
-      - "./localstack-data:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      # LocalStack internal state (optional)
+      - ./localstack-data:/var/lib/localstack
+      # Init scripts
+      - ./init:/etc/localstack/init/ready.d
+      # Docker socket (required for some LocalStack features)
+      - /var/run/docker.sock:/var/run/docker.sock
 
 
 volumes:
