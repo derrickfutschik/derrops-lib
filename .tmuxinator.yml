@@ -54,12 +54,6 @@ windows:
         # - echo "Running tests in watch mode..." && pnpm run test:watch
         - pnpm run test:watch:notify
 
-  - syncthing:
-      root: .
-      layout: even-vertical
-      panes:
-        - syncthing
-
   - root:
       root: .
       layout: even-vertical
