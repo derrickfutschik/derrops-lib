@@ -46,6 +46,12 @@ windows:
         - echo "Starting slaops-portal on port 8080..." && pnpm run dev
         - claude
 
+  - slaops-tests:
+      root: .
+      layout: even-vertical
+      panes:
+        - echo "Running tests in watch mode..." && pnpm run test:watch
+
   - root:
       root: .
       layout: even-vertical

@@ -4,7 +4,6 @@ Searching the OpenAPI emphasizes the importance of completeness over speed. This
 
 **Pseudocode**
 
-```
 Take the example: `cloudtrail.ap-southeast-9.amazonaws.com`
 
 - `[0]` cloudtrail
