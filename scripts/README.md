@@ -2,6 +2,148 @@
 
 Utility scripts for the SLAOps platform monorepo.
 
+## Test Notifications (`test-notify.sh`)
+
+Run tests with desktop notifications when the test suite completes.
+
+### Features
+
+- Runs the full test suite via Turborepo
+- Captures test results and timing information
+- Parses test output to extract pass/fail counts
+- Displays a color-coded summary in the terminal
+- Sends desktop notifications (macOS/Linux) with:
+  - ✅ Success notification with "Glass" sound for passing tests
+  - ❌ Failure notification with "Basso" sound for failing tests
+  - Test counts and duration
+
+### Usage
+
+```bash
+# Using pnpm/npm script (recommended)
+pnpm run test:notify
+
+# Run tests for a specific package with notifications
+pnpm run test:notify --filter @slaops/core
+pnpm run test:notify --filter @slaops/lib
+
+# Direct execution
+./scripts/test-notify.sh
+```
+
+### Terminal Output
+
+When tests complete, you'll see a formatted summary:
+
+**Passing tests:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ TEST SUITE PASSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Passed: 56
+  Total:  56
+  Duration: 3s
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Failing tests:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ TEST SUITE FAILED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Failed: 2
+  Passed: 54
+  Total:  56
+  Duration: 3s
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Desktop Notifications
+
+The script automatically sends desktop notifications:
+
+- **macOS**: Uses built-in `osascript` with system sounds
+- **Linux**: Uses `notify-send` if available
+- **Fallback**: Gracefully continues without notifications if not available
+
+### Platform Support
+
+- ✅ macOS (native support via osascript)
+- ✅ Linux (requires notify-send)
+- ✅ Terminal-only mode (if notifications unavailable)
+
+## Test Watch with Notifications (`test-watch-notify.sh`)
+
+Run tests in watch mode with desktop notifications after each test run.
+
+### Features
+
+- Runs tests in continuous watch mode via Turborepo
+- Automatically detects when tests complete
+- Sends notifications after each test run
+- Color-coded terminal summaries
+- Watches for file changes and re-runs tests
+- Press Ctrl+C to exit
+
+### Usage
+
+```bash
+# Using pnpm/npm script (recommended)
+pnpm run test:watch:notify
+
+# Watch tests for a specific package with notifications
+pnpm run test:watch:notify --filter @slaops/core
+
+# Direct execution
+./scripts/test-watch-notify.sh
+```
+
+### Workflow
+
+1. Starts tests in watch mode
+2. Displays initial test run results with notification
+3. Watches for file changes
+4. Automatically re-runs tests when files change
+5. Sends a notification after each test run
+6. Press Ctrl+C to exit watch mode
+
+### Terminal Output
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 Starting test watch mode with notifications
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Notifications will appear after each test run
+Press Ctrl+C to exit watch mode
+
+[test output...]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ TEST RUN PASSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Passed: 56
+  Total:  56
+  Duration: 2s
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Watching for changes...
+```
+
+### Use Cases
+
+- **Development workflow**: Get notified when tests pass/fail while working on code
+- **Background testing**: Keep tests running in a terminal while focusing on your editor
+- **Quick feedback**: Know immediately when your changes break or fix tests
+
+### Requirements
+
+- Bash shell
+- Turborepo (already included in monorepo)
+- Desktop notification system:
+  - macOS: Built-in (osascript)
+  - Linux: notify-send (usually pre-installed)
+
 ## AI Commit (`ai-commit.sh`)
 
 An AI-powered git commit helper that generates meaningful commit messages based on your changes.

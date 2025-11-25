@@ -30,7 +30,8 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        - ssh derrick@192.168.7.224
+        - ssh derrick@192.168.7.224 && cd /home/derrick/slaops/slaops-platform && docker compose up
+        - ssh derrick@192.168.7.224 && cd /home/derrick/slaops/slaops-platform
 
   - slaops-docs:
       root: apps/slaops-docs
@@ -50,7 +51,8 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        - echo "Running tests in watch mode..." && pnpm run test:watch
+        # - echo "Running tests in watch mode..." && pnpm run test:watch
+        - pnpm run test:watch:notify
 
   - root:
       root: .
