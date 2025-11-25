@@ -1,0 +1,49 @@
+# Syncthing ignore file for SLAOps platform
+# Patterns use glob syntax with some extensions
+# See: https://docs.syncthing.net/users/ignoring.html
+
+# Dependencies - ignore all node_modules directories at any level
+**/node_modules
+**/node_modules/**
+
+# Build outputs - ignore at any level
+**/dist
+**/dist/**
+**/build
+**/build/**
+**/.turbo
+**/.turbo/**
+*.tsbuildinfo
+
+# Test resources (downloaded via setup script)
+test-resources/openapi-directory/
+test-resources/openapi-directory/**
+
+# Cache and temporary files
+**/.cache
+**/.cache/**
+*.log
+*.tmp
+.DS_Store
+**/.vscode
+**/.vscode/**
+**/.idea
+**/.idea/**
+
+# Environment files (may contain secrets)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Coverage reports
+**/coverage
+**/coverage/**
+**/.nyc_output
+**/.nyc_output/**
+
+# Syncthing metadata
+.stfolder/
+.stfolder/**
+
+.git/

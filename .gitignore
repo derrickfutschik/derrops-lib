@@ -57,3 +57,5 @@ Thumbs.db
 .turbo/daemon/*
 .turbo/preferences/*
 .turbo/preferences/tui.json
+
+.stfolder/
