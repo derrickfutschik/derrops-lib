@@ -2,6 +2,27 @@ import { OpenAPIV3_1 } from "openapi-types";
 import { hash } from "../util";
 import { getHttpMethodOperations } from "./parser";
 import { IndexedOperationDoc, IndexedServerDoc } from "./openapi-types";
+import { Repository } from "./repo/repo";
+
+
+export async function buildAPIIndex(specs: OpenAPIV3_1.Document, serverRepo: Repository<IndexedServerDoc>) {
+
+    const apiId = buildApiId(specs)
+
+    const serverDocsAll = buildAllServerDocsToBeIndexed(specs, apiId)
+
+    const serverDocs = serverDocsAll.filter((server, index, self) =>
+        index === self.findIndex((t) => t.host_template === server.host_template && t.base_path === server.base_path)
+    )
+
+    console.log({ serverDocs })
+
+    const createdServers = await serverRepo.createMany(serverDocs)
+
+    return createdServers
+
+
+}
 
 
 /**
@@ -11,8 +32,8 @@ import { IndexedOperationDoc, IndexedServerDoc } from "./openapi-types";
  */
 export function buildAllServerDocsToBeIndexed(spec: OpenAPIV3_1.Document, apiId: string): IndexedServerDoc[] {
     return (spec.servers ?? [])
-        .map(buildServerDoc)
-        .map(server => ({ ...server, api_id: apiId }))
+        .flatMap(buildServerDoc) // TODO handle the http://s3{dash-or-dot}{region}.amazonaws.com, where by this should produce multiple server patterns, this will change the server_index somehow
+        .map((server, index) => ({ ...server, api_id: apiId, server_index: index }))
 }
 
 
@@ -107,6 +128,10 @@ export function hostTemplate(hostname: string) {
 
 
 /**
+ * 
+ * TODO need to handle the http://s3{dash-or-dot}{region}.amazonaws.com, where by this should produce multiple server patterns
+ * Will need to have the concept of a server variant
+ * 
  * Used to index the server object from the OpenAPI specification for quick retrieval of which openapi specification meets a given request
  * @param server - The server object from the OpenAPI specification
  * @returns The host_template and base path of the server
@@ -118,6 +143,7 @@ export const buildServerDoc = (server: OpenAPIV3_1.ServerObject) => {
     return {
         host_template: hostTemplate(url.hostname),
         base_path: url.pathname,
+        server_url: server.url,
     }
 
 }
@@ -128,7 +154,7 @@ export const buildServerDoc = (server: OpenAPIV3_1.ServerObject) => {
  * @returns An array of server documents
  */
 export const buildAllServerDocs = (spec: OpenAPIV3_1.Document) => {
-    return spec.servers?.map(buildServerDoc) ?? [];
+    return spec.servers?.flatMap(buildServerDoc) ?? [];
 }
 
 

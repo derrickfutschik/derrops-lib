@@ -59,4 +59,16 @@ export const WELL_KNOWN_SPECS = {
    * Get a GitHub API spec (if available)
    */
   github: () => resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4'),
-} as const;
+
+  /**
+   * Get an AWS S3 API spec
+   */
+  awsS3: () => resolveOpenApiSpec('amazonaws.com', 's3', '2006-03-01'),
+
+  /**
+   * Get an AWS CloudTrail API spec
+   */
+  awsCloudTrail: () => resolveOpenApiSpec('amazonaws.com', 'cloudtrail', '2013-11-01'),
+
+
+}

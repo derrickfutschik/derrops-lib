@@ -8,6 +8,7 @@ export type IndexedServerDoc = {
     api_id: string;
     host_template: string;
     base_path: string;
+    server_index: number;
 }
 
 
