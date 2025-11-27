@@ -1,6 +1,29 @@
 import { OpenAPIV3_1 } from "openapi-types";
 
 
+/**
+ * Type for the server doc to be indexed into KeyValueStore.
+ */
+export type IndexedServerDoc = {
+    api_id: string;
+    host_template: string;
+    base_path: string;
+}
+
+
+/**
+ * Type for the operation doc to be indexed into KeyValueStore.
+ */
+export type IndexedOperationDoc = {
+    api_id: string;
+    operation_id: string;
+    operation_path: string;
+    method: OpenAPIV3_1.HttpMethods;
+    total_components: number;
+    // fixed_components: number;
+    // var_components: number;
+}
+
 
 /**
  * 

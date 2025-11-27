@@ -1,4 +1,4 @@
-import { hostShape, buildServerDoc } from '../../src/openapi/openapi-indexer';
+import { hostTemplate, buildServerDoc } from '../../src/openapi/openapi-indexer';
 import { OpenAPIV3_1 } from 'openapi-types';
 
 describe('openapi-indexer', () => {
@@ -67,7 +67,7 @@ describe('openapi-indexer', () => {
         ];
 
         test.each(cases)('$name', ({ host, expected }) => {
-            expect(hostShape(host)).toBe(expected);
+            expect(hostTemplate(host)).toBe(expected);
         });
     });
 
@@ -76,12 +76,12 @@ describe('openapi-indexer', () => {
             const cases: Array<{
                 name: string;
                 server: OpenAPIV3_1.ServerObject;
-                expected: { host_shape: string; base_path: string };
+                expected: { host_template: string; base_path: string };
             }> = [
                     {
                         name: 'should index S3 regional endpoint',
                         server: { url: 'https://s3.{region}.amazonaws.com' },
-                        expected: { host_shape: 's3.*.amazonaws.com', base_path: '/' },
+                        expected: { host_template: 's3.*.amazonaws.com', base_path: '/' },
                     },
                 ];
 
@@ -95,12 +95,12 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index S3 virtual host style endpoint',
                     server: { url: 'https://{bucket}.s3.{region}.amazonaws.com' },
-                    expected: { host_shape: '*.s3.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: '*.s3.*.amazonaws.com', base_path: '/' },
                 },
                 {
                     name: 'should handle S3 with base path',
                     server: { url: 'https://{bucket}.s3.{region}.amazonaws.com/v1/files' },
-                    expected: { host_shape: '*.s3.*.amazonaws.com', base_path: '/v1/files' },
+                    expected: { host_template: '*.s3.*.amazonaws.com', base_path: '/v1/files' },
                 },
             ];
 
@@ -114,7 +114,7 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index S3 dualstack endpoint',
                     server: { url: 'https://s3.dualstack.{region}.amazonaws.com' },
-                    expected: { host_shape: 's3.dualstack.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 's3.dualstack.*.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -128,12 +128,12 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index REST API endpoint',
                     server: { url: 'https://{restapi-id}.execute-api.{region}.amazonaws.com' },
-                    expected: { host_shape: '*.execute-api.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: '*.execute-api.*.amazonaws.com', base_path: '/' },
                 },
                 {
                     name: 'should index REST API with stage',
                     server: { url: 'https://{restapi-id}.execute-api.{region}.amazonaws.com/prod' },
-                    expected: { host_shape: '*.execute-api.*.amazonaws.com', base_path: '/prod' },
+                    expected: { host_template: '*.execute-api.*.amazonaws.com', base_path: '/prod' },
                 },
             ];
 
@@ -147,12 +147,12 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index global STS endpoint',
                     server: { url: 'https://sts.amazonaws.com' },
-                    expected: { host_shape: 'sts.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'sts.amazonaws.com', base_path: '/' },
                 },
                 {
                     name: 'should index regional STS endpoint',
                     server: { url: 'https://sts.{region}.amazonaws.com' },
-                    expected: { host_shape: 'sts.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'sts.*.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -166,7 +166,7 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index OpenSearch endpoint',
                     server: { url: 'https://search-{domain}.{region}.es.amazonaws.com' },
-                    expected: { host_shape: 'search-*.*.es.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'search-*.*.es.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -180,7 +180,7 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index EventBridge Pipes endpoint',
                     server: { url: 'https://pipes.{region}.amazonaws.com' },
-                    expected: { host_shape: 'pipes.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'pipes.*.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -194,12 +194,12 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index Bedrock Runtime endpoint',
                     server: { url: 'https://bedrock-runtime.{region}.amazonaws.com' },
-                    expected: { host_shape: 'bedrock-runtime.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'bedrock-runtime.*.amazonaws.com', base_path: '/' },
                 },
                 {
                     name: 'should index Bedrock Agents Runtime endpoint',
                     server: { url: 'https://bedrock-agents-runtime.{region}.amazonaws.com' },
-                    expected: { host_shape: 'bedrock-agents-runtime.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'bedrock-agents-runtime.*.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -213,7 +213,7 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index global CloudFront endpoint',
                     server: { url: 'https://cloudfront.amazonaws.com' },
-                    expected: { host_shape: 'cloudfront.amazonaws.com', base_path: '/' },
+                    expected: { host_template: 'cloudfront.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -227,12 +227,12 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index ECR Docker Registry endpoint',
                     server: { url: 'https://{aws_account}.dkr.ecr.{region}.amazonaws.com' },
-                    expected: { host_shape: '*.dkr.ecr.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: '*.dkr.ecr.*.amazonaws.com', base_path: '/' },
                 },
                 {
                     name: 'should index ECR Registries API endpoint',
                     server: { url: 'https://{account}.dkr.ecr.{region}.amazonaws.com' },
-                    expected: { host_shape: '*.dkr.ecr.*.amazonaws.com', base_path: '/' },
+                    expected: { host_template: '*.dkr.ecr.*.amazonaws.com', base_path: '/' },
                 },
             ];
 
@@ -246,7 +246,7 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should index Lambda Invoke URL endpoint',
                     server: { url: 'https://{api-id}.lambda-url.{region}.on.aws' },
-                    expected: { host_shape: '*.lambda-url.*.on.aws', base_path: '/' },
+                    expected: { host_template: '*.lambda-url.*.on.aws', base_path: '/' },
                 },
             ];
 
@@ -260,22 +260,22 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should extract base path from URL',
                     server: { url: 'https://api.example.com/v1/customers' },
-                    expected: { host_shape: 'api.example.com', base_path: '/v1/customers' },
+                    expected: { host_template: 'api.example.com', base_path: '/v1/customers' },
                 },
                 {
                     name: 'should handle nested base paths',
                     server: { url: 'https://api.example.com/v1/shipping/customers' },
-                    expected: { host_shape: 'api.example.com', base_path: '/v1/shipping/customers' },
+                    expected: { host_template: 'api.example.com', base_path: '/v1/shipping/customers' },
                 },
                 {
                     name: 'should default to / when no base path',
                     server: { url: 'https://api.example.com' },
-                    expected: { host_shape: 'api.example.com', base_path: '/' },
+                    expected: { host_template: 'api.example.com', base_path: '/' },
                 },
                 {
                     name: 'should handle trailing slash in base path',
                     server: { url: 'https://api.example.com/v1/' },
-                    expected: { host_shape: 'api.example.com', base_path: '/v1/' },
+                    expected: { host_template: 'api.example.com', base_path: '/v1/' },
                 },
             ];
 
@@ -289,22 +289,22 @@ describe('openapi-indexer', () => {
                 {
                     name: 'should handle HTTP (non-HTTPS) URLs',
                     server: { url: 'http://api.example.com/v1' },
-                    expected: { host_shape: 'api.example.com', base_path: '/v1' },
+                    expected: { host_template: 'api.example.com', base_path: '/v1' },
                 },
                 {
                     name: 'should handle port numbers',
                     server: { url: 'https://api.example.com:8080/v1' },
-                    expected: { host_shape: 'api.example.com', base_path: '/v1' },
+                    expected: { host_template: 'api.example.com', base_path: '/v1' },
                 },
                 {
                     name: 'should handle complex variable names',
                     server: { url: 'https://{service_name}.{environment}.{region}.example.com/api' },
-                    expected: { host_shape: '*.*.*.example.com', base_path: '/api' },
+                    expected: { host_template: '*.*.*.example.com', base_path: '/api' },
                 },
                 {
                     name: 'should handle variables with underscores and hyphens',
                     server: { url: 'https://{tenant_id}.{region-code}.example.com' },
-                    expected: { host_shape: '*.*.example.com', base_path: '/' },
+                    expected: { host_template: '*.*.example.com', base_path: '/' },
                 },
             ];
 
@@ -335,7 +335,7 @@ describe('openapi-indexer', () => {
                     actualHost: 'cloudtrail.ap-southeast-9.amazonaws.com',
                 },
                 {
-                    name: 'should generate correct host_shape for multi-API domains',
+                    name: 'should generate correct host_template for multi-API domains',
                     servers: [
                         { url: 'https://api.example.com/v1/shipping/customers', expectedBasePath: '/v1/shipping/customers' },
                         { url: 'https://api.example.com/v1/shipping/orders', expectedBasePath: '/v1/shipping/orders' },
@@ -348,10 +348,10 @@ describe('openapi-indexer', () => {
             test.each(cases)('$name', (testCase) => {
                 if ('server' in testCase) {
                     const result = buildServerDoc(testCase.server);
-                    expect(result.host_shape).toBe(testCase.expectedHostShape);
+                    expect(result.host_template).toBe(testCase.expectedHostShape);
 
                     if (testCase.actualHost) {
-                        const hostPattern = result.host_shape.replace(/\*/g, '[^.]+');
+                        const hostPattern = result.host_template.replace(/\*/g, '[^.]+');
                         const regex = new RegExp(`^${hostPattern}$`);
                         expect(regex.test(testCase.actualHost)).toBe(true);
                     }
@@ -359,7 +359,7 @@ describe('openapi-indexer', () => {
                     const results = testCase.servers.map(({ url }) => buildServerDoc({ url }));
 
                     results.forEach((result) => {
-                        expect(result.host_shape).toBe(testCase.expectedHostShape);
+                        expect(result.host_template).toBe(testCase.expectedHostShape);
                     });
 
                     results.forEach((result, index) => {
