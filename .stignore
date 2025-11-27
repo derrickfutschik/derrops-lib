@@ -47,3 +47,4 @@ test-resources/openapi-directory/**
 .stfolder/**
 
 .git/
+.localstack-data/

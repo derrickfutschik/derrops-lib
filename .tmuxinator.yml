@@ -30,8 +30,9 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        - ssh derrick@192.168.7.224 && cd /home/derrick/slaops/slaops-platform && docker compose up
-        - ssh derrick@192.168.7.224 && cd /home/derrick/slaops/slaops-platform
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose up -d && sleep 5 && docker compose logs -f opensearch"
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f opensearch-dashboards"
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f localstack"
 
   - slaops-docs:
       root: apps/slaops-docs
@@ -51,8 +52,8 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        # - echo "Running tests in watch mode..." && pnpm run test:watch
-        - pnpm run test:watch:notify
+        #- pnpm run test:watch:notify
+        - ssh -t derrick@192.168.7.224 "source ~/.nvm/nvm.sh && cd /home/derrick/slaops/slaops-platform && pnpm run test:watch:notify"
 
   - root:
       root: .
