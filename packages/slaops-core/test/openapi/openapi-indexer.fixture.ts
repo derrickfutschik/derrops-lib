@@ -72,14 +72,14 @@ export const HOST_SHAPE_CASES: HostShapeCase[] = [
 export type BuildServerDocCase = {
     name: string;
     server: OpenAPIV3_1.ServerObject;
-    expected: { host_template: string; base_path: string };
+    expected: { host_template: string; base_path: string; server_url: string };
 };
 
 export const AWS_S3_LEGACY_CASES: BuildServerDocCase[] = [
     {
         name: 'should index S3 regional endpoint',
         server: { url: 'https://s3.{region}.amazonaws.com' },
-        expected: { host_template: 's3.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: 's3.*.amazonaws.com', base_path: '/', server_url: 'https://s3.{region}.amazonaws.com' },
     },
 ];
 
@@ -87,12 +87,12 @@ export const AWS_S3_VIRTUAL_HOST_CASES: BuildServerDocCase[] = [
     {
         name: 'should index S3 virtual host style endpoint',
         server: { url: 'https://{bucket}.s3.{region}.amazonaws.com' },
-        expected: { host_template: '*.s3.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: '*.s3.*.amazonaws.com', base_path: '/', server_url: 'https://{bucket}.s3.{region}.amazonaws.com' },
     },
     {
         name: 'should handle S3 with base path',
         server: { url: 'https://{bucket}.s3.{region}.amazonaws.com/v1/files' },
-        expected: { host_template: '*.s3.*.amazonaws.com', base_path: '/v1/files' },
+        expected: { host_template: '*.s3.*.amazonaws.com', base_path: '/v1/files', server_url: 'https://{bucket}.s3.{region}.amazonaws.com/v1/files' },
     },
 ];
 
@@ -100,7 +100,7 @@ export const AWS_S3_DUALSTACK_CASES: BuildServerDocCase[] = [
     {
         name: 'should index S3 dualstack endpoint',
         server: { url: 'https://s3.dualstack.{region}.amazonaws.com' },
-        expected: { host_template: 's3.dualstack.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: 's3.dualstack.*.amazonaws.com', base_path: '/', server_url: 'https://s3.dualstack.{region}.amazonaws.com' },
     },
 ];
 
@@ -108,12 +108,12 @@ export const AWS_API_GATEWAY_REST_CASES: BuildServerDocCase[] = [
     {
         name: 'should index REST API endpoint',
         server: { url: 'https://{restapi-id}.execute-api.{region}.amazonaws.com' },
-        expected: { host_template: '*.execute-api.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: '*.execute-api.*.amazonaws.com', base_path: '/', server_url: 'https://{restapi-id}.execute-api.{region}.amazonaws.com' },
     },
     {
         name: 'should index REST API with stage',
         server: { url: 'https://{restapi-id}.execute-api.{region}.amazonaws.com/prod' },
-        expected: { host_template: '*.execute-api.*.amazonaws.com', base_path: '/prod' },
+        expected: { host_template: '*.execute-api.*.amazonaws.com', base_path: '/prod', server_url: 'https://{restapi-id}.execute-api.{region}.amazonaws.com/prod' },
     },
 ];
 
@@ -121,12 +121,12 @@ export const AWS_STS_CASES: BuildServerDocCase[] = [
     {
         name: 'should index global STS endpoint',
         server: { url: 'https://sts.amazonaws.com' },
-        expected: { host_template: 'sts.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'sts.amazonaws.com', base_path: '/', server_url: 'https://sts.amazonaws.com' },
     },
     {
         name: 'should index regional STS endpoint',
         server: { url: 'https://sts.{region}.amazonaws.com' },
-        expected: { host_template: 'sts.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'sts.*.amazonaws.com', base_path: '/', server_url: 'https://sts.{region}.amazonaws.com' },
     },
 ];
 
@@ -134,7 +134,7 @@ export const AWS_OPENSEARCH_CASES: BuildServerDocCase[] = [
     {
         name: 'should index OpenSearch endpoint',
         server: { url: 'https://search-{domain}.{region}.es.amazonaws.com' },
-        expected: { host_template: 'search-*.*.es.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'search-*.*.es.amazonaws.com', base_path: '/', server_url: 'https://search-{domain}.{region}.es.amazonaws.com' },
     },
 ];
 
@@ -142,7 +142,7 @@ export const AWS_EVENTBRIDGE_PIPES_CASES: BuildServerDocCase[] = [
     {
         name: 'should index EventBridge Pipes endpoint',
         server: { url: 'https://pipes.{region}.amazonaws.com' },
-        expected: { host_template: 'pipes.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'pipes.*.amazonaws.com', base_path: '/', server_url: 'https://pipes.{region}.amazonaws.com' },
     },
 ];
 
@@ -150,12 +150,12 @@ export const AWS_BEDROCK_CASES: BuildServerDocCase[] = [
     {
         name: 'should index Bedrock Runtime endpoint',
         server: { url: 'https://bedrock-runtime.{region}.amazonaws.com' },
-        expected: { host_template: 'bedrock-runtime.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'bedrock-runtime.*.amazonaws.com', base_path: '/', server_url: 'https://bedrock-runtime.{region}.amazonaws.com' },
     },
     {
         name: 'should index Bedrock Agents Runtime endpoint',
         server: { url: 'https://bedrock-agents-runtime.{region}.amazonaws.com' },
-        expected: { host_template: 'bedrock-agents-runtime.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'bedrock-agents-runtime.*.amazonaws.com', base_path: '/', server_url: 'https://bedrock-agents-runtime.{region}.amazonaws.com' },
     },
 ];
 
@@ -163,7 +163,7 @@ export const AWS_CLOUDFRONT_CASES: BuildServerDocCase[] = [
     {
         name: 'should index global CloudFront endpoint',
         server: { url: 'https://cloudfront.amazonaws.com' },
-        expected: { host_template: 'cloudfront.amazonaws.com', base_path: '/' },
+        expected: { host_template: 'cloudfront.amazonaws.com', base_path: '/', server_url: 'https://cloudfront.amazonaws.com' },
     },
 ];
 
@@ -171,12 +171,12 @@ export const AWS_ECR_CASES: BuildServerDocCase[] = [
     {
         name: 'should index ECR Docker Registry endpoint',
         server: { url: 'https://{aws_account}.dkr.ecr.{region}.amazonaws.com' },
-        expected: { host_template: '*.dkr.ecr.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: '*.dkr.ecr.*.amazonaws.com', base_path: '/', server_url: 'https://{aws_account}.dkr.ecr.{region}.amazonaws.com' },
     },
     {
         name: 'should index ECR Registries API endpoint',
         server: { url: 'https://{account}.dkr.ecr.{region}.amazonaws.com' },
-        expected: { host_template: '*.dkr.ecr.*.amazonaws.com', base_path: '/' },
+        expected: { host_template: '*.dkr.ecr.*.amazonaws.com', base_path: '/', server_url: 'https://{account}.dkr.ecr.{region}.amazonaws.com' },
     },
 ];
 
@@ -184,7 +184,7 @@ export const AWS_LAMBDA_CASES: BuildServerDocCase[] = [
     {
         name: 'should index Lambda Invoke URL endpoint',
         server: { url: 'https://{api-id}.lambda-url.{region}.on.aws' },
-        expected: { host_template: '*.lambda-url.*.on.aws', base_path: '/' },
+        expected: { host_template: '*.lambda-url.*.on.aws', base_path: '/', server_url: 'https://{api-id}.lambda-url.{region}.on.aws' },
     },
 ];
 
@@ -192,22 +192,22 @@ export const BASE_PATH_CASES: BuildServerDocCase[] = [
     {
         name: 'should extract base path from URL',
         server: { url: 'https://api.example.com/v1/customers' },
-        expected: { host_template: 'api.example.com', base_path: '/v1/customers' },
+        expected: { host_template: 'api.example.com', base_path: '/v1/customers', server_url: 'https://api.example.com/v1/customers' },
     },
     {
         name: 'should handle nested base paths',
         server: { url: 'https://api.example.com/v1/shipping/customers' },
-        expected: { host_template: 'api.example.com', base_path: '/v1/shipping/customers' },
+        expected: { host_template: 'api.example.com', base_path: '/v1/shipping/customers', server_url: 'https://api.example.com/v1/shipping/customers' },
     },
     {
         name: 'should default to / when no base path',
         server: { url: 'https://api.example.com' },
-        expected: { host_template: 'api.example.com', base_path: '/' },
+        expected: { host_template: 'api.example.com', base_path: '/', server_url: 'https://api.example.com' },
     },
     {
         name: 'should handle trailing slash in base path',
         server: { url: 'https://api.example.com/v1/' },
-        expected: { host_template: 'api.example.com', base_path: '/v1/' },
+        expected: { host_template: 'api.example.com', base_path: '/v1/', server_url: 'https://api.example.com/v1/' },
     },
 ];
 
@@ -215,22 +215,22 @@ export const EDGE_CASES: BuildServerDocCase[] = [
     {
         name: 'should handle HTTP (non-HTTPS) URLs',
         server: { url: 'http://api.example.com/v1' },
-        expected: { host_template: 'api.example.com', base_path: '/v1' },
+        expected: { host_template: 'api.example.com', base_path: '/v1', server_url: 'http://api.example.com/v1' },
     },
     {
         name: 'should handle port numbers',
         server: { url: 'https://api.example.com:8080/v1' },
-        expected: { host_template: 'api.example.com', base_path: '/v1' },
+        expected: { host_template: 'api.example.com', base_path: '/v1', server_url: 'https://api.example.com:8080/v1' },
     },
     {
         name: 'should handle complex variable names',
         server: { url: 'https://{service_name}.{environment}.{region}.example.com/api' },
-        expected: { host_template: '*.*.*.example.com', base_path: '/api' },
+        expected: { host_template: '*.*.*.example.com', base_path: '/api', server_url: 'https://{service_name}.{environment}.{region}.example.com/api' },
     },
     {
         name: 'should handle variables with underscores and hyphens',
         server: { url: 'https://{tenant_id}.{region-code}.example.com' },
-        expected: { host_template: '*.*.example.com', base_path: '/' },
+        expected: { host_template: '*.*.example.com', base_path: '/', server_url: 'https://{tenant_id}.{region-code}.example.com' },
     },
 ];
 

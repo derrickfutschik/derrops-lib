@@ -21,6 +21,16 @@ export async function buildAPIIndex(specs: OpenAPIV3_1.Document, serverRepo: Rep
 
 }
 
+export async function buildOperationIndex(specs: OpenAPIV3_1.Document, operationRepo: Repository<IndexedOperationDoc>) {
+
+    const apiId = buildApiId(specs)
+
+    const operationDocs = buildAllOperationDocsToBeIndexed(specs, apiId)
+
+    const createdOperations = await operationRepo.createMany(operationDocs)
+
+    return createdOperations
+}
 
 /**
  * Used to build all the server docs to be indexed into KeyValueStore. The Partition key will be the 
@@ -76,10 +86,10 @@ export function buildOperationDocToBeIndexed(operation: {
  * @param apiId - The API ID
  * @returns An array of operation docs to be indexed
  */
-export function buildAllOperationDocsToBeIndexed(spec: OpenAPIV3_1.Document, apiId: string) {
+export function buildAllOperationDocsToBeIndexed(spec: OpenAPIV3_1.Document, apiId: string): IndexedOperationDoc[] {
     return Object.entries(spec.paths!).flatMap(([path, pathObj]) => {
         const operations = [];
-        if (!pathObj) return;
+        if (!pathObj) return [];
         for (const [method, operation] of getHttpMethodOperations(pathObj)) {
             if (operation) {
                 operations.push(

@@ -1,13 +1,13 @@
 import { CreateTableCommand, DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBRepo } from "../../src/openapi/repo/dynamodb-repo";
-import { IndexedServerDoc } from "../../src/openapi/openapi-types";
+import { IndexedOperationDoc, IndexedServerDoc } from "../../src/openapi/openapi-types";
 import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
 import { loadSpec } from "../../src/openapi/openapi-parser";
-import { buildAPIIndex } from "../../src/openapi/openapi-indexer";
+import { buildAPIIndex, buildOperationIndex } from "../../src/openapi/openapi-indexer";
 
 
 
-describe("DynamoDBRepo", () => {
+describe("API Indexer", () => {
 
     const client = new DynamoDBClient({
         endpoint: "http://192.168.7.224:4566",
@@ -17,14 +17,16 @@ describe("DynamoDBRepo", () => {
     const tableName = 'server-index'
     const partitionKeyName = 'host_template'
 
-    const serverRepo = new DynamoDBRepo<IndexedServerDoc>({
+    const repo = new DynamoDBRepo<IndexedServerDoc>({
         client,
         tableName,
         partitionKeyName,
     })
 
     beforeEach(async () => {
-        return serverRepo.createTableIfNotExists
+        if (!await repo.tableExists()) {
+            return repo.createTable()
+        }
     })
 
     test("list tables", async () => {
@@ -37,11 +39,12 @@ describe("DynamoDBRepo", () => {
         const specPaths = Object.values(WELL_KNOWN_SPECS).map(path => path())
         const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
             const spec = await loadSpec(specPath)
-            const createdServers = await buildAPIIndex(spec, serverRepo)
+            const createdServers = await buildAPIIndex(spec, repo)
             return createdServers
         }))
         console.log(totalPaths);
     }
     )
+
 })
 

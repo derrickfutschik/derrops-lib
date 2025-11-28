@@ -25,26 +25,40 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
         this.sortKeyName = config.sortKeyName;
     }
 
-    async createTableIfNotExists() {
+    async tableExists(): Promise<boolean> {
+
+        try {
+            const command = new dynamodb.DescribeTableCommand({
+                TableName: this.tableName,
+            });
+            const response = await this.client.send(command)
+            return response.Table !== undefined;
+        } catch (error) {
+            return false
+        }
+
+    }
+
+    async createTable() {
         const table = await this.client.send(new dynamodb.CreateTableCommand({
-            TableName: 'server-index',
+            TableName: this.tableName,
             AttributeDefinitions: [
                 {
-                    AttributeName: 'host_template',
+                    AttributeName: this.partitionKeyName,
                     AttributeType: 'S',
                 },
                 {
-                    AttributeName: 'base_path',
+                    AttributeName: this.sortKeyName,
                     AttributeType: 'S',
                 },
             ],
             KeySchema: [
                 {
-                    AttributeName: 'host_template',
+                    AttributeName: this.partitionKeyName,
                     KeyType: 'HASH',
                 },
                 {
-                    AttributeName: 'base_path',
+                    AttributeName: this.sortKeyName,
                     KeyType: 'RANGE',
                 },
             ],

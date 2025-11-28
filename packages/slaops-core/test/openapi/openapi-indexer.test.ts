@@ -15,7 +15,7 @@ import {
     BASE_PATH_CASES,
     EDGE_CASES,
     DOC_EXAMPLE_CASES,
-} from './openapi-indexer.fixtures';
+} from './openapi-indexer.fixture';
 
 describe('openapi-indexer', () => {
     describe('hostShape', () => {

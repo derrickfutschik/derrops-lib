@@ -11,4 +11,6 @@ export interface Repository<T, ID = string> {
     delete(id: ID): Promise<void>;
 
     exists(id: ID): Promise<boolean>;
+
+    tableExists(): Promise<boolean>;
 }
