@@ -15,12 +15,9 @@ export async function buildAPIIndex(specs: OpenAPIV3_1.Document, serverRepo: Rep
         index === self.findIndex((t) => t.host_template === server.host_template && t.base_path === server.base_path)
     )
 
-    console.log({ serverDocs })
-
     const createdServers = await serverRepo.createMany(serverDocs)
 
     return createdServers
-
 
 }
 

@@ -1,26 +1,19 @@
-import {
-    DynamoDBClient,
-    GetItemCommand,
-    PutItemCommand,
-    UpdateItemCommand,
-    DeleteItemCommand,
-    QueryCommand,
-} from "@aws-sdk/client-dynamodb";
-
 import * as dynamodb from "@aws-sdk/client-dynamodb";
+
 
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Repository } from "./repo";
 
 export interface DynamoDBRepoConfig {
-    client: DynamoDBClient;
+    client: dynamodb.DynamoDBClient;
     tableName: string;
     partitionKeyName: string;
     sortKeyName?: string;
 }
 
 export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements Repository<T, ID> {
-    private client: DynamoDBClient;
+
+    private client: dynamodb.DynamoDBClient;
     private tableName: string;
     private partitionKeyName: string;
     private sortKeyName?: string;
@@ -31,6 +24,36 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
         this.partitionKeyName = config.partitionKeyName;
         this.sortKeyName = config.sortKeyName;
     }
+
+    async createTableIfNotExists() {
+        const table = await this.client.send(new dynamodb.CreateTableCommand({
+            TableName: 'server-index',
+            AttributeDefinitions: [
+                {
+                    AttributeName: 'host_template',
+                    AttributeType: 'S',
+                },
+                {
+                    AttributeName: 'base_path',
+                    AttributeType: 'S',
+                },
+            ],
+            KeySchema: [
+                {
+                    AttributeName: 'host_template',
+                    KeyType: 'HASH',
+                },
+                {
+                    AttributeName: 'base_path',
+                    KeyType: 'RANGE',
+                },
+            ],
+            BillingMode: 'PAY_PER_REQUEST',
+        }));
+
+        return table
+    }
+
     async createMany(entities: T[]): Promise<number> {
 
         const command = new dynamodb.BatchWriteItemCommand({
@@ -53,7 +76,7 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
     async findById(id: ID): Promise<T | null> {
         const key = this.buildKey(id);
 
-        const command = new GetItemCommand({
+        const command = new dynamodb.GetItemCommand({
             TableName: this.tableName,
             Key: marshall(key),
         });
@@ -68,7 +91,7 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
     }
 
     async create(entity: T): Promise<T> {
-        const command = new PutItemCommand({
+        const command = new dynamodb.PutItemCommand({
             TableName: this.tableName,
             Item: marshall(entity, { removeUndefinedValues: true }),
         });
@@ -88,7 +111,7 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
         const updated = { ...existing, ...updates };
 
         // Put the updated entity
-        const command = new PutItemCommand({
+        const command = new dynamodb.PutItemCommand({
             TableName: this.tableName,
             Item: marshall(updated, { removeUndefinedValues: true }),
         });
@@ -100,7 +123,7 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
     async delete(id: ID): Promise<void> {
         const key = this.buildKey(id);
 
-        const command = new DeleteItemCommand({
+        const command = new dynamodb.DeleteItemCommand({
             TableName: this.tableName,
             Key: marshall(key),
         });

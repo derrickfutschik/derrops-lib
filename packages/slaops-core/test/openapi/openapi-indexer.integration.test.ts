@@ -7,68 +7,41 @@ import { buildAPIIndex } from "../../src/openapi/openapi-indexer";
 
 
 
-test("list tables", async () => {
+describe("DynamoDBRepo", () => {
+
     const client = new DynamoDBClient({
         endpoint: "http://192.168.7.224:4566",
         region: 'us-east-1',
-    });
-    const tables = await client.send(new ListTablesCommand({}));
-    console.log(tables);
-})
-
-test("create table", async () => {
-    const client = new DynamoDBClient({
-        endpoint: "http://192.168.7.224:4566",
-        region: 'us-east-1',
-    });
-    const tables = await client.send(new CreateTableCommand({
-        TableName: 'server-index',
-        AttributeDefinitions: [
-            {
-                AttributeName: 'host_template',
-                AttributeType: 'S',
-            },
-            {
-                AttributeName: 'base_path',
-                AttributeType: 'S',
-            },
-        ],
-        KeySchema: [
-            {
-                AttributeName: 'host_template',
-                KeyType: 'HASH',
-            },
-            {
-                AttributeName: 'base_path',
-                KeyType: 'RANGE',
-            },
-        ],
-        BillingMode: 'PAY_PER_REQUEST',
-    }));
-})
-
-
-test('buildAPIIndex', async () => {
-
-    const serverRepo = new DynamoDBRepo<IndexedServerDoc>({
-        client: new DynamoDBClient({
-            endpoint: "http://192.168.7.224:4566",
-            region: 'us-east-1',
-        }),
-        tableName: 'server-index',
-        partitionKeyName: 'host_template',
     })
 
-    const specPaths = Object.values(WELL_KNOWN_SPECS).map(path => path())
+    const tableName = 'server-index'
+    const partitionKeyName = 'host_template'
 
-    const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
-        const spec = await loadSpec(specPath)
-        const createdServers = await buildAPIIndex(spec, serverRepo)
-        return createdServers
-    }))
+    const serverRepo = new DynamoDBRepo<IndexedServerDoc>({
+        client,
+        tableName,
+        partitionKeyName,
+    })
 
-    console.log(totalPaths);
+    beforeEach(async () => {
+        return serverRepo.createTableIfNotExists
+    })
 
-}
+    test("list tables", async () => {
+        const tables = await client.send(new ListTablesCommand({}));
+        console.log({ tables });
+    })
 
-)
+
+    test('buildAPIIndex', async () => {
+        const specPaths = Object.values(WELL_KNOWN_SPECS).map(path => path())
+        const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
+            const spec = await loadSpec(specPath)
+            const createdServers = await buildAPIIndex(spec, serverRepo)
+            return createdServers
+        }))
+        console.log(totalPaths);
+    }
+    )
+})
+
