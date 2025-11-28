@@ -40,51 +40,76 @@ export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements
     }
 
     async createTable() {
+        const attributeDefinitions: dynamodb.AttributeDefinition[] = [
+            {
+                AttributeName: this.partitionKeyName,
+                AttributeType: 'S',
+            },
+        ];
+
+        const keySchema: dynamodb.KeySchemaElement[] = [
+            {
+                AttributeName: this.partitionKeyName,
+                KeyType: 'HASH',
+            },
+        ];
+
+        // Only add sort key if it's defined
+        if (this.sortKeyName) {
+            attributeDefinitions.push({
+                AttributeName: this.sortKeyName,
+                AttributeType: 'S',
+            });
+            keySchema.push({
+                AttributeName: this.sortKeyName,
+                KeyType: 'RANGE',
+            });
+        }
+
         const table = await this.client.send(new dynamodb.CreateTableCommand({
             TableName: this.tableName,
-            AttributeDefinitions: [
-                {
-                    AttributeName: this.partitionKeyName,
-                    AttributeType: 'S',
-                },
-                {
-                    AttributeName: this.sortKeyName,
-                    AttributeType: 'S',
-                },
-            ],
-            KeySchema: [
-                {
-                    AttributeName: this.partitionKeyName,
-                    KeyType: 'HASH',
-                },
-                {
-                    AttributeName: this.sortKeyName,
-                    KeyType: 'RANGE',
-                },
-            ],
+            AttributeDefinitions: attributeDefinitions,
+            KeySchema: keySchema,
             BillingMode: 'PAY_PER_REQUEST',
         }));
 
-        return table
+        return table;
     }
 
     async createMany(entities: T[]): Promise<number> {
+        if (entities.length === 0) {
+            return 0;
+        }
 
-        const command = new dynamodb.BatchWriteItemCommand({
-            RequestItems: {
-                [this.tableName]: entities.map(entity => ({
-                    PutRequest: {
-                        Item: marshall(entity),
-                    },
-                })),
-            },
-        })
+        const BATCH_SIZE = 25; // DynamoDB BatchWriteItem limit
+        let totalCreated = 0;
 
-        const response = await this.client.send(command)
+        // Process entities in batches of 25
+        for (let i = 0; i < entities.length; i += BATCH_SIZE) {
+            const batch = entities.slice(i, i + BATCH_SIZE);
 
-        return entities.length - (response.UnprocessedItems?.[this.tableName]?.length ?? 0)
+            const command = new dynamodb.BatchWriteItemCommand({
+                RequestItems: {
+                    [this.tableName]: batch.map(entity => ({
+                        PutRequest: {
+                            Item: marshall(entity, { removeUndefinedValues: true }),
+                        },
+                    })),
+                },
+            });
 
+            const response = await this.client.send(command);
 
+            const unprocessedCount = response.UnprocessedItems?.[this.tableName]?.length ?? 0;
+            totalCreated += (batch.length - unprocessedCount);
+
+            // TODO: Handle unprocessed items with exponential backoff retry
+            if (unprocessedCount > 0) {
+                console.warn(`${unprocessedCount} items were not processed in batch starting at index ${i}`);
+            }
+        }
+
+        return totalCreated;
     }
 
     async findById(id: ID): Promise<T | null> {

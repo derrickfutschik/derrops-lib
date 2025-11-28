@@ -26,6 +26,11 @@ describe("Operation Indexer", () => {
         }
     })
 
+    afterAll(async () => {
+        // Clean up the DynamoDB client to prevent open handles
+        client.destroy()
+    })
+
     test('buildOperationIndex', async () => {
         const specPaths = Object.values(WELL_KNOWN_SPECS).map(path => path())
         const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
@@ -34,6 +39,10 @@ describe("Operation Indexer", () => {
             return createdOperations
         }))
         console.log({ totalPaths })
-    })
+
+        // Verify that operations were created
+        expect(totalPaths.length).toBeGreaterThan(0)
+        expect(totalPaths.every(count => count > 0)).toBe(true)
+    }, 30000) // 30 second timeout for integration test with DynamoDB
 })
 
