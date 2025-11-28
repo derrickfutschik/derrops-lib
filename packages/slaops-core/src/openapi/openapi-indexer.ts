@@ -1,6 +1,6 @@
 import { OpenAPIV3_1 } from "openapi-types";
 import { hash } from "../util";
-import { getHttpMethodOperations } from "./parser";
+import { getHttpMethodOperations } from "./openapi-parser";
 import { IndexedOperationDoc, IndexedServerDoc } from "./openapi-types";
 import { Repository } from "./repo/repo";
 

@@ -1,4 +1,4 @@
-import { getHttpMethodOperations, loadSpec } from '../../src/openapi/parser';
+import { getHttpMethodOperations, loadSpec } from '../../src/openapi/openapi-parser';
 import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
 import { OpenAPIV3_1 } from 'openapi-types';
 

@@ -2,7 +2,7 @@ import { CreateTableCommand, DynamoDBClient, ListTablesCommand } from "@aws-sdk/
 import { DynamoDBRepo } from "../../src/openapi/repo/dynamodb-repo";
 import { IndexedServerDoc } from "../../src/openapi/openapi-types";
 import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
-import { loadSpec } from "../../src/openapi/parser";
+import { loadSpec } from "../../src/openapi/openapi-parser";
 import { buildAPIIndex } from "../../src/openapi/openapi-indexer";
 
 

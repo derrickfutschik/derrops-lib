@@ -1,5 +1,5 @@
-import { loadSpec } from '../../src/openapi/parser';
-import { zipOperations } from '../../src/openapi/spec-zipper';
+import { loadSpec } from '../../src/openapi/openapi-parser';
+import { zipOperations } from '../../src/openapi/openapi-spec-zipper';
 
 import { WELL_KNOWN_SPECS } from '../../../../test-resources/loader';
 

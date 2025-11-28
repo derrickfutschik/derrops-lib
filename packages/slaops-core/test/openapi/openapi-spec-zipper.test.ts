@@ -1,6 +1,6 @@
 import { test, expect, describe } from '@jest/globals';
-import { zipOperations } from "../../src/openapi/spec-zipper";
-import * as fixture from './spec-zipper.fixture';
+import { zipOperations } from "../../src/openapi/openapi-spec-zipper";
+import * as fixture from './openapi-spec-zipper.fixture';
 
 describe("zipOperations", () => {
     test("should return empty array for spec with no paths", () => {
