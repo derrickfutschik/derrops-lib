@@ -22,4 +22,5 @@ export default {
     '!src/**/*.spec.ts',
   ],
   passWithNoTests: true,
+  maxWorkers: 1, // Run tests serially to avoid circular reference serialization issues
 };

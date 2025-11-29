@@ -1,4 +1,4 @@
-import { CreateTableCommand, DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
+import * as dynamodb from "@aws-sdk/client-dynamodb";
 import { DynamoDBRepo } from "../../src/openapi/repo/dynamodb-repo";
 import { IndexedOperationDoc, IndexedServerDoc } from "../../src/openapi/openapi-types";
 import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
@@ -9,7 +9,7 @@ import { buildAPIIndex, buildOperationIndex } from "../../src/openapi/openapi-in
 
 describe("API Indexer", () => {
 
-    const client = new DynamoDBClient({
+    const client = new dynamodb.DynamoDBClient({
         endpoint: "http://192.168.7.224:4566",
         region: 'us-east-1',
     })
@@ -30,7 +30,7 @@ describe("API Indexer", () => {
     })
 
     test("list tables", async () => {
-        const tables = await client.send(new ListTablesCommand({}));
+        const tables = await client.send(new dynamodb.ListTablesCommand({}));
         console.log({ tables });
     })
 
