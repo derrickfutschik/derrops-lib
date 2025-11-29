@@ -1,5 +1,5 @@
 {
-  "name": "slaops-client-nodejs-axios",
+  "name": "@slaops/client-nodejs-axios",
   "version": "0.1.0",
   "description": "Axios-only client + interceptor for sending SLA Ops HTTP events from Node.js apps.",
   "private": false,
@@ -45,8 +45,8 @@
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "dependencies": {
-    "@slaops/client": "*",
-    "@slaops/public": "*"
+    "@slaops/client": "workspace:*",
+    "@slaops/public": "workspace:*"
   },
   "peerDependencies": {
     "axios": ">=1.6.0"
