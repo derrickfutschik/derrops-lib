@@ -453,6 +453,9 @@ importers:
 
   packages/slaops-test:
     devDependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: ^3.940.0
+        version: 3.940.0
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0

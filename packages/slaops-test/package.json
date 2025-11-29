@@ -26,6 +26,7 @@
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.940.0",
     "@jest/globals": "^29.7.0",
     "@slaops/client": "workspace:*",
     "@slaops/client-nodejs-axios": "workspace:*",
