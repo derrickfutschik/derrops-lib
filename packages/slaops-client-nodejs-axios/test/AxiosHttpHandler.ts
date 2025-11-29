@@ -1,15 +1,15 @@
-import axios, { AxiosRequestConfig, AxiosStatic } from "axios";
+import { AxiosInstance, AxiosRequestConfig } from "axios";
 import {
     HttpHandler,
     HttpRequest,
     HttpResponse,
 } from "@aws-sdk/protocol-http";
 import { HttpHandlerOptions } from "@aws-sdk/types";
-import { attachSlaOpsInterceptor } from "../src/axiosInterceptor";
 
 export class AxiosHttpHandler implements HttpHandler {
+
     // You can pass in a pre-configured Axios instance
-    constructor(private readonly axiosConfig?: AxiosRequestConfig) { }
+    constructor(private readonly axiosInstance: AxiosInstance, private readonly axiosConfig?: AxiosRequestConfig) { }
 
     destroy(): void {
         // no-op, unless you want to tear down keep-alive agents etc.
@@ -40,13 +40,7 @@ export class AxiosHttpHandler implements HttpHandler {
             // You can merge/override things from axiosConfig here as needed
         };
 
-        attachSlaOpsInterceptor(axios, {
-            endpoint: 'http://localhost:3000',
-            apiKey: 'test',
-            projectId: 'test',
-        })
-
-        const res = await axios(axiosRequest);
+        const res = await this.axiosInstance(axiosRequest);
 
         const awsResponse = new HttpResponse({
             statusCode: res.status,
