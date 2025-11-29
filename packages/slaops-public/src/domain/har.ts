@@ -11,6 +11,11 @@
 
 import { RawRequest, RawResponse } from "../types";
 
+
+/** Listener for a HAR log */
+export type HarLogListener = (logs: HarEntry[]) => Promise<void>
+
+
 /** Allows vendor/user-defined extension members beginning with an underscore. */
 export type HarExtensions = Record<`_${string}`, unknown>;
 

@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { redact } from '../../slaops-public/dist';
-import type { HarEntry } from '../../slaops-public/dist';
+import type { HarEntry, HarLog, HarLogListener } from '../../slaops-public/dist';
 import { SlaOpsClient } from './SlaOpsClient';
 
 
@@ -13,6 +13,7 @@ export type InterceptorOptions = {
   includeResponseBody?: boolean;
   redactHeaders?: (string | RegExp)[];
   buildExtensions?: (cfg: InternalAxiosRequestConfig, res?: AxiosResponse) => Record<`_${string}`, unknown> | undefined;
+  listeners?: HarLogListener[]
 };
 
 const isInternal = (cfg: InternalAxiosRequestConfig) => cfg.headers?.['x-slaops-internal'] === '1';
@@ -119,6 +120,7 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
     endpoint: options.endpoint,
     apiKey: options.apiKey,
     projectId: options.projectId,
+    listeners: options.listeners ?? [],
   });
 
   const started = new WeakMap<InternalAxiosRequestConfig, number>();
@@ -188,6 +190,15 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
           receive: 0,
         },
         ...(options.buildExtensions?.(cfg, res) ?? {}),
+      };
+
+      const harLog: HarLog = {
+        version: '1.2',
+        creator: {
+          name: 'slaops-client-nodejs-axios',
+          version: '1.0.0',
+        },
+        entries: [entry],
       };
 
       try {

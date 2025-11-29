@@ -17,18 +17,5 @@ export class SlaOpsClient extends BaseClient {
         });
     }
 
-    protected async sendInternal(
-        events: HarEntry[],
-        init?: { path?: string; headers?: Record<string, string> },
-    ) {
-        const path = init?.path ?? '/v1/events';
-        const url = this.endpoint + path;
-        const headers = this.buildHeaders(init);
 
-        events.forEach(event => console.log(JSON.stringify(event, null, 2)));
-
-        // const res = await this.http.post(url, { entries: events }, { headers });
-        // return { status: res.status, data: res.data };
-        return { status: 200, data: undefined };
-    }
 }

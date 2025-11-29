@@ -1,4 +1,4 @@
-import type { HarEntry } from '@slaops/public';
+import type { HarEntry, HarLogListener } from '@slaops/public';
 
 export type BaseClientOptions = {
   endpoint: string;
@@ -6,6 +6,7 @@ export type BaseClientOptions = {
   projectId?: string;
   timeoutMs?: number;
   defaultHeaders?: Record<string, string>;
+  listeners: HarLogListener[];
 };
 
 export type SendResult = {
@@ -19,6 +20,7 @@ export abstract class BaseClient {
   protected readonly projectId?: string;
   protected readonly timeoutMs: number;
   protected readonly defaultHeaders: Record<string, string>;
+  protected readonly listeners: HarLogListener[];
 
   constructor(opts: BaseClientOptions) {
     if (!opts?.endpoint) throw new Error('endpoint is required');
@@ -30,6 +32,7 @@ export abstract class BaseClient {
       'content-type': 'application/json',
       ...(opts.defaultHeaders ?? {}),
     };
+    this.listeners = opts.listeners ?? [];
   }
 
   async sendEvent(
@@ -57,8 +60,13 @@ export abstract class BaseClient {
     };
   }
 
-  protected abstract sendInternal(
+  protected async sendInternal(
     events: HarEntry[],
     init?: { path?: string; headers?: Record<string, string> },
-  ): Promise<SendResult>;
+  ): Promise<SendResult> {
+
+    const response = await Promise.all(this.listeners.map(listener => listener(events)));
+    return response[0] ?? { status: 200, data: undefined };
+
+  }
 }

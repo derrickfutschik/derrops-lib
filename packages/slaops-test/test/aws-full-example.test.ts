@@ -17,6 +17,7 @@ import { AxiosHttpHandler } from "../../slaops-client-nodejs-axios/test/AxiosHtt
 describe('AWS Full Example E2E', () => {
 
     const axiosInstance = axios.create();
+
     attachSlaOpsInterceptor(axiosInstance, {
         endpoint: 'http://localhost:3000',
         apiKey: 'test',
