@@ -9,6 +9,7 @@ graph TD
     private["@slaops/private<br/>(core types & utilities)<br/>Private package"]
     client["@slaops/client<br/>(base HTTP client)"]
     axios["@slaops/client-nodejs-axios<br/>(Axios client)"]
+    test["@slaops/test<br/>(integration tests)<br/>Dev deps on all packages"]
 
     %% Apps
     docs["slaops-docs<br/>(Docusaurus)"]
@@ -19,17 +20,23 @@ graph TD
     client --> public
     axios --> client
     axios --> public
+    test -.-> public
+    test -.-> private
+    test -.-> client
+    test -.-> axios
 
     %% Styling
     classDef baseStyle fill:#90EE90,stroke:#228B22,stroke-width:3px
     classDef packageStyle fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
     classDef appStyle fill:#fff4e1,stroke:#cc6600,stroke-width:2px
     classDef privateStyle fill:#ffe1e1,stroke:#cc0000,stroke-width:2px
+    classDef testStyle fill:#f0e1ff,stroke:#6600cc,stroke-width:2px
 
     class public baseStyle
     class client,axios packageStyle
     class docs,portal appStyle
     class private privateStyle
+    class test testStyle
 
 ```
 
@@ -39,9 +46,9 @@ Clean Dependency Structure:
 2. @slaops/private → depends on @slaops/public
 3. @slaops/client → depends on @slaops/public
 4. @slaops/client-nodejs-axios → depends on @slaops/client + @slaops/public
-5. Apps (docs, portal) - No workspace dependencies, standalone
+5. @slaops/test → dev dependencies on all packages (built last)
+6. Apps (docs, portal) - No workspace dependencies, standalone
 
 Build Order:
 
-Build Order:
-`@slaops/public` → `@slaops/private` → `@slaops/client` → `@slaops/client-nodejs-axios`
+`@slaops/public` → `@slaops/private` → `@slaops/client` → `@slaops/client-nodejs-axios` → `@slaops/test`

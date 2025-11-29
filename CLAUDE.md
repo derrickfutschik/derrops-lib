@@ -23,7 +23,8 @@ slaops-platform/
 │   ├── slaops-private/            # @slaops/private - Core types and utilities (private)
 │   ├── slaops-public/             # @slaops/public - Shared utilities
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
-│   └── slaops-client-nodejs-axios/  # Axios-specific client implementation
+│   ├── slaops-client-nodejs-axios/  # Axios-specific client implementation
+│   └── slaops-test/            # @slaops/test - Integration tests (dev dependencies on all packages)
 │
 ├── apps/                        # Platform applications
 │   ├── slaops-docs/            # Docusaurus documentation site
@@ -291,6 +292,35 @@ pnpm run test       # Run tests
 pnpm run dev        # Watch mode
 ```
 
+### @slaops/test (packages/slaops-test/)
+
+**Integration test package with dependencies on all SLAOps packages**
+
+- **Status**: Private (not published to npm)
+- **Purpose**: Convenient location for writing integration tests that require multiple packages
+- **Output**: ESM + CJS with TypeScript declarations
+- **Dependencies**: All other @slaops packages (as dev dependencies)
+
+Key features:
+
+- Has dev dependencies on all SLAOps packages (@slaops/private, @slaops/public, @slaops/client, @slaops/client-nodejs-axios)
+- Provides a convenient testing environment for cross-package integration tests
+- No need to manually wire up package dependencies for multi-package tests
+- Includes example integration tests
+
+Usage:
+
+- Write integration tests in `src/__tests__/` or use `.test.ts` suffix
+- Import from any SLAOps package without additional setup
+- Run tests that verify how packages work together
+
+```bash
+cd packages/slaops-test
+pnpm run build      # Build with tsup
+pnpm run test       # Run tests
+pnpm run dev        # Watch mode
+```
+
 ### slaops-docs (apps/slaops-docs/)
 
 **Docusaurus documentation site**
@@ -351,11 +381,13 @@ The packages have a specific dependency hierarchy that must be respected when bu
 ```
 @slaops/private (no dependencies)
     ↓
-@slaops/public (depends on core)
+@slaops/public (depends on private)
     ↓
-@slaops/client (depends on core)
+@slaops/client (depends on public)
     ↓
-slaops-client-nodejs-axios (depends on core, client)
+@slaops/client-nodejs-axios (depends on public, client)
+    ↓
+@slaops/test (dev dependencies on all packages - built last)
 ```
 
 The root `pnpm run build` script handles this order automatically:
@@ -364,7 +396,8 @@ The root `pnpm run build` script handles this order automatically:
 pnpm -r --filter @slaops/private run build &&
 pnpm -r --filter @slaops/public run build &&
 pnpm -r --filter @slaops/client run build &&
-pnpm -r --filter slaops-client-nodejs-axios run build &&
+pnpm -r --filter @slaops/client-nodejs-axios run build &&
+pnpm -r --filter @slaops/test run build &&
 pnpm -r --filter slaops-docs run build &&
 pnpm -r --filter vite_react_shadcn_ts run build
 ```

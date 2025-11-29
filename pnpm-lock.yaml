@@ -395,12 +395,6 @@ importers:
       '@aws-sdk/util-dynamodb':
         specifier: ^3.940.0
         version: 3.940.0(@aws-sdk/client-dynamodb@3.940.0)
-      '@slaops/client':
-        specifier: workspace:*
-        version: link:../slaops-client
-      '@slaops/client-nodejs-axios':
-        specifier: workspace:*
-        version: link:../slaops-client-nodejs-axios
       '@slaops/public':
         specifier: workspace:*
         version: link:../slaops-public
@@ -450,6 +444,45 @@ importers:
       ts-jest:
         specifier: '*'
         version: 29.4.5(@babel/core@7.28.5)(esbuild@0.25.12)(jest@30.2.0)(typescript@5.9.3)
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.0(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/slaops-test:
+    devDependencies:
+      '@jest/globals':
+        specifier: ^29.7.0
+        version: 29.7.0
+      '@slaops/client':
+        specifier: workspace:*
+        version: link:../slaops-client
+      '@slaops/client-nodejs-axios':
+        specifier: workspace:*
+        version: link:../slaops-client-nodejs-axios
+      '@slaops/private':
+        specifier: workspace:*
+        version: link:../slaops-private
+      '@slaops/public':
+        specifier: workspace:*
+        version: link:../slaops-public
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.7.8
+        version: 22.19.0
+      axios:
+        specifier: ^1.7.7
+        version: 1.13.2
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.19.0)(node-notifier@10.0.1)
+      ts-jest:
+        specifier: ^29.2.5
+        version: 29.4.5(@babel/core@7.28.5)(esbuild@0.25.12)(jest@29.7.0)(typescript@5.9.3)
       tsup:
         specifier: ^8.3.0
         version: 8.5.0(typescript@5.9.3)
@@ -9975,7 +10008,7 @@ packages:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
     engines: {node: '>= 0.6'}
     dependencies:
-      mime-db: 1.52.0
+      mime-db: 1.54.0
     dev: false
 
   /compression@1.8.1:
@@ -11684,7 +11717,7 @@ packages:
     dependencies:
       magic-string: 0.30.21
       mlly: 1.8.0
-      rollup: 4.53.1
+      rollup: 4.53.2
     dev: true
 
   /flat-cache@4.0.1:
