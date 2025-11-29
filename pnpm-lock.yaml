@@ -312,12 +312,9 @@ importers:
 
   packages/slaops-client:
     dependencies:
-      '@slaops/core':
+      '@slaops/public':
         specifier: '*'
-        version: link:../slaops-core
-      '@slaops/lib':
-        specifier: '*'
-        version: link:../slaops-lib
+        version: link:../slaops-public
     devDependencies:
       '@jest/globals':
         specifier: '*'
@@ -346,9 +343,9 @@ importers:
       '@slaops/client':
         specifier: '*'
         version: link:../slaops-client
-      '@slaops/lib':
+      '@slaops/public':
         specifier: '*'
-        version: link:../slaops-lib
+        version: link:../slaops-public
     devDependencies:
       '@aws-sdk/client-dynamodb':
         specifier: ^3.940.0
@@ -387,7 +384,7 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
-  packages/slaops-core:
+  packages/slaops-private:
     dependencies:
       '@apidevtools/swagger-parser':
         specifier: ^10.1.0
@@ -427,11 +424,7 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
-  packages/slaops-lib:
-    dependencies:
-      '@slaops/core':
-        specifier: '*'
-        version: link:../slaops-core
+  packages/slaops-public:
     devDependencies:
       '@jest/globals':
         specifier: '*'

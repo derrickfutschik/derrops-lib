@@ -1,4 +1,4 @@
-import type { HarEntry } from '@slaops/lib';
+import type { HarEntry } from '@slaops/public';
 
 export type BaseClientOptions = {
   endpoint: string;

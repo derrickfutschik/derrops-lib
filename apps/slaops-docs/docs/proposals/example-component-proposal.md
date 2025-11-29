@@ -13,22 +13,28 @@ title: Example Component Proposal
 ## Overview
 
 ### Purpose
+
 A real-time metrics aggregation engine that processes SLAOps log events and computes rolling statistics (latency percentiles, error rates, throughput) for API endpoints.
 
 ### Problem Statement
+
 Currently, the SLAOps platform stores raw HTTP request/response logs, but users must manually query and aggregate these logs to understand API performance trends. This is inefficient for:
+
 - Real-time dashboards that need instant metrics
 - Alert systems that monitor SLA thresholds
 - Cost analysis that requires aggregated usage patterns
 
 Without automatic aggregation, users experience:
+
 - High latency when computing metrics (querying millions of raw logs)
 - Increased database load from repeated aggregation queries
 - Delayed detection of SLA violations
 - Inability to show real-time dashboards
 
 ### Scope
+
 **In Scope:**
+
 - Real-time aggregation of HTTP logs as they arrive
 - Computation of p50, p95, p99 latency percentiles
 - Error rate calculation (4xx, 5xx responses)
@@ -38,12 +44,14 @@ Without automatic aggregation, users experience:
 - Cost accumulation per endpoint
 
 **Out of Scope:**
+
 - Historical backfill of existing logs (future enhancement)
 - Custom metrics beyond HTTP performance
 - Real-time alerting (separate component)
 - Long-term metric storage optimization (use existing DB)
 
 ### Relationship to Existing Components
+
 This component sits between the log ingestion pipeline and the dashboard/API layer, consuming events from `@slaops/client` connectors and providing aggregated data to the portal.
 
 ```mermaid
@@ -69,86 +77,86 @@ graph TD
  */
 export type AggregatorConfig = {
   /** Database connection for reading logs */
-  logDatabaseUrl: string;
+  logDatabaseUrl: string
 
   /** Database connection for writing metrics */
-  metricsDatabaseUrl: string;
+  metricsDatabaseUrl: string
 
   /** Time windows to aggregate over */
-  timeWindows: TimeWindow[];
+  timeWindows: TimeWindow[]
 
   /** Batch size for processing logs */
-  batchSize?: number;
+  batchSize?: number
 
   /** Processing interval in milliseconds */
-  processingInterval?: number;
+  processingInterval?: number
 }
 
 /**
  * Time window for metric aggregation
  */
-export type TimeWindow = '1min' | '5min' | '15min' | '1hour' | '1day';
+export type TimeWindow = '1min' | '5min' | '15min' | '1hour' | '1day'
 
 /**
  * Aggregated metrics for a specific endpoint and time window
  */
 export interface EndpointMetrics {
   /** Endpoint identifier */
-  endpoint: string;
+  endpoint: string
 
   /** HTTP method */
-  method: string;
+  method: string
 
   /** Time window bucket */
-  timeWindow: TimeWindow;
+  timeWindow: TimeWindow
 
   /** Bucket start timestamp */
-  timestamp: string;
+  timestamp: string
 
   /** Request statistics */
   requests: {
     /** Total request count */
-    total: number;
+    total: number
 
     /** Successful requests (2xx) */
-    success: number;
+    success: number
 
     /** Client errors (4xx) */
-    clientErrors: number;
+    clientErrors: number
 
     /** Server errors (5xx) */
-    serverErrors: number;
-  };
+    serverErrors: number
+  }
 
   /** Latency statistics in milliseconds */
   latency: {
     /** 50th percentile */
-    p50: number;
+    p50: number
 
     /** 95th percentile */
-    p95: number;
+    p95: number
 
     /** 99th percentile */
-    p99: number;
+    p99: number
 
     /** Minimum latency */
-    min: number;
+    min: number
 
     /** Maximum latency */
-    max: number;
+    max: number
 
     /** Average latency */
-    avg: number;
-  };
+    avg: number
+  }
 
   /** Throughput in requests per minute */
-  throughput: number;
+  throughput: number
 
   /** Error rate percentage (0-100) */
-  errorRate: number;
+  errorRate: number
 
   /** Total cost accumulated for this window */
-  totalCost?: number;
+  totalCost?: number
 }
 
 /**
@@ -156,28 +164,28 @@ export interface EndpointMetrics {
  */
 export type LogEvent = {
   /** Unique log ID */
-  id: string;
+  id: string
 
   /** Timestamp of the request */
-  timestamp: string;
+  timestamp: string
 
   /** HTTP method */
-  method: string;
+  method: string
 
   /** Request URL/endpoint */
-  url: string;
+  url: string
 
   /** Response status code */
-  statusCode: number;
+  statusCode: number
 
   /** Request duration in milliseconds */
-  duration: number;
+  duration: number
 
   /** Optional cost associated with request */
-  cost?: number;
+  cost?: number
 
   /** Project ID */
-  projectId: string;
+  projectId: string
 }
 
 /**
@@ -185,30 +193,30 @@ export type LogEvent = {
  */
 export type AggregationResult = {
   /** Number of logs processed */
-  processedCount: number;
+  processedCount: number
 
   /** Number of metric records created/updated */
-  metricsWritten: number;
+  metricsWritten: number
 
   /** Processing duration in milliseconds */
-  duration: number;
+  duration: number
 
   /** Timestamp of latest processed log */
-  latestTimestamp: string;
+  latestTimestamp: string
 
   /** Any errors encountered */
-  errors?: string[];
+  errors?: string[]
 }
 ```
 
 ### Input/Output Types
 
-| Type | Purpose | Required | Default |
-|------|---------|----------|---------|
-| `AggregatorConfig` | Configuration for the engine | Yes | N/A |
-| `LogEvent` | Raw log input from database | N/A (input) | N/A |
-| `EndpointMetrics` | Computed metrics output | N/A (output) | N/A |
-| `AggregationResult` | Processing result summary | N/A (return type) | N/A |
+| Type                | Purpose                      | Required          | Default |
+| ------------------- | ---------------------------- | ----------------- | ------- |
+| `AggregatorConfig`  | Configuration for the engine | Yes               | N/A     |
+| `LogEvent`          | Raw log input from database  | N/A (input)       | N/A     |
+| `EndpointMetrics`   | Computed metrics output      | N/A (output)      | N/A     |
+| `AggregationResult` | Processing result summary    | N/A (return type) | N/A     |
 
 ## Architecture
 
@@ -266,13 +274,13 @@ sequenceDiagram
 
 ### Integration Points
 
-| Integration Point | Component | Direction | Protocol |
-|-------------------|-----------|-----------|----------|
-| Log Input | Supabase (raw_logs table) | Inbound | PostgreSQL query |
-| Metrics Output | Supabase (metrics table) | Outbound | PostgreSQL upsert |
-| Cache | In-memory (Node.js Map) | Internal | Direct access |
-| Monitoring | OpenTelemetry | Outbound | OTLP |
-| Configuration | Environment variables | Inbound | Process env |
+| Integration Point | Component                 | Direction | Protocol          |
+| ----------------- | ------------------------- | --------- | ----------------- |
+| Log Input         | Supabase (raw_logs table) | Inbound   | PostgreSQL query  |
+| Metrics Output    | Supabase (metrics table)  | Outbound  | PostgreSQL upsert |
+| Cache             | In-memory (Node.js Map)   | Internal  | Direct access     |
+| Monitoring        | OpenTelemetry             | Outbound  | OTLP              |
+| Configuration     | Environment variables     | Inbound   | Process env       |
 
 ## API Specification
 
@@ -283,34 +291,34 @@ sequenceDiagram
  * Main metrics aggregation engine
  */
 export class MetricsAggregator {
-  constructor(config: AggregatorConfig);
+  constructor(config: AggregatorConfig)
 
   /**
    * Start the aggregation engine
    * Begins polling and processing logs at configured interval
    * @returns Promise that resolves when engine is running
    */
-  start(): Promise<void>;
+  start(): Promise<void>
 
   /**
    * Stop the aggregation engine
    * Waits for current processing to complete
    * @returns Promise that resolves when engine is stopped
    */
-  stop(): Promise<void>;
+  stop(): Promise<void>
 
   /**
    * Process a single batch manually (for testing)
    * @param fromTimestamp - Start timestamp for log fetch
    * @returns Aggregation result
    */
-  processBatch(fromTimestamp: string): Promise<AggregationResult>;
+  processBatch(fromTimestamp: string): Promise<AggregationResult>
 
   /**
    * Get current engine status
    * @returns Engine status information
    */
-  getStatus(): EngineStatus;
+  getStatus(): EngineStatus
 }
 
 /**
@@ -318,19 +326,19 @@ export class MetricsAggregator {
  */
 export type EngineStatus = {
   /** Is the engine currently running */
-  running: boolean;
+  running: boolean
 
   /** Timestamp of last successful processing */
-  lastProcessedAt?: string;
+  lastProcessedAt?: string
 
   /** Total logs processed since start */
-  totalLogsProcessed: number;
+  totalLogsProcessed: number
 
   /** Total metrics written since start */
-  totalMetricsWritten: number;
+  totalMetricsWritten: number
 
   /** Current processing lag (now - latest log timestamp) */
-  processingLag?: number;
+  processingLag?: number
 }
 ```
 
@@ -346,8 +354,8 @@ export type EngineStatus = {
  */
 export function computeMetrics(
   events: LogEvent[],
-  timeWindow: TimeWindow
-): Map<string, EndpointMetrics>;
+  timeWindow: TimeWindow,
+): Map<string, EndpointMetrics>
 
 /**
  * Calculate percentile from sorted array of values
@@ -355,10 +363,7 @@ export function computeMetrics(
  * @param percentile - Percentile to calculate (0-100)
  * @returns Percentile value
  */
-export function calculatePercentile(
-  values: number[],
-  percentile: number
-): number;
+export function calculatePercentile(values: number[], percentile: number): number
 
 /**
  * Bucket timestamp into time window
@@ -366,10 +371,7 @@ export function calculatePercentile(
  * @param timeWindow - Window size
  * @returns Bucket start timestamp
  */
-export function bucketTimestamp(
-  timestamp: string,
-  timeWindow: TimeWindow
-): string;
+export function bucketTimestamp(timestamp: string, timeWindow: TimeWindow): string
 ```
 
 ### Usage Examples
@@ -377,7 +379,7 @@ export function bucketTimestamp(
 #### Basic Usage
 
 ```typescript
-import { MetricsAggregator } from '@slaops/metrics-aggregator';
+import { MetricsAggregator } from '@slaops/metrics-aggregator'
 
 // Create and start aggregator
 const aggregator = new MetricsAggregator({
@@ -386,56 +388,56 @@ const aggregator = new MetricsAggregator({
   timeWindows: ['1min', '5min', '1hour'],
   batchSize: 1000,
   processingInterval: 60000, // 1 minute
-});
+})
 
-await aggregator.start();
-console.log('Metrics aggregator started');
+await aggregator.start()
+console.log('Metrics aggregator started')
 
 // Later: stop gracefully
 process.on('SIGTERM', async () => {
-  await aggregator.stop();
-  console.log('Metrics aggregator stopped');
-});
+  await aggregator.stop()
+  console.log('Metrics aggregator stopped')
+})
 ```
 
 #### Advanced Usage with Manual Processing
 
 ```typescript
-import { MetricsAggregator } from '@slaops/metrics-aggregator';
+import { MetricsAggregator } from '@slaops/metrics-aggregator'
 
-const aggregator = new MetricsAggregator(config);
+const aggregator = new MetricsAggregator(config)
 
 // Process a specific time range manually
-const result = await aggregator.processBatch('2024-11-16T10:00:00Z');
+const result = await aggregator.processBatch('2024-11-16T10:00:00Z')
 
-console.log(`Processed ${result.processedCount} logs`);
-console.log(`Wrote ${result.metricsWritten} metric records`);
-console.log(`Processing took ${result.duration}ms`);
+console.log(`Processed ${result.processedCount} logs`)
+console.log(`Wrote ${result.metricsWritten} metric records`)
+console.log(`Processing took ${result.duration}ms`)
 
 // Check engine status
-const status = aggregator.getStatus();
+const status = aggregator.getStatus()
 if (status.processingLag && status.processingLag > 300000) {
-  console.warn('Processing lag exceeds 5 minutes!');
+  console.warn('Processing lag exceeds 5 minutes!')
 }
 ```
 
 #### Using Compute Function Directly
 
 ```typescript
-import { computeMetrics, calculatePercentile } from '@slaops/metrics-aggregator';
+import { computeMetrics, calculatePercentile } from '@slaops/metrics-aggregator'
 
 // Process logs in custom way
-const logs: LogEvent[] = await fetchLogsFromCustomSource();
-const metrics = computeMetrics(logs, '5min');
+const logs: LogEvent[] = await fetchLogsFromCustomSource()
+const metrics = computeMetrics(logs, '5min')
 
 for (const [endpoint, metric] of metrics) {
-  console.log(`${endpoint}: p95=${metric.latency.p95}ms, errors=${metric.errorRate}%`);
+  console.log(`${endpoint}: p95=${metric.latency.p95}ms, errors=${metric.errorRate}%`)
 }
 
 // Calculate custom percentiles
-const latencies = logs.map(l => l.duration).sort((a, b) => a - b);
-const p99 = calculatePercentile(latencies, 99);
-console.log(`P99 latency: ${p99}ms`);
+const latencies = logs.map((l) => l.duration).sort((a, b) => a - b)
+const p99 = calculatePercentile(latencies, 99)
+console.log(`P99 latency: ${p99}ms`)
 ```
 
 ## Data Structures
@@ -499,51 +501,51 @@ console.log(`P99 latency: ${p99}ms`);
 
 #### AggregatorConfig Fields
 
-| Field | Type | Required | Description | Validation |
-|-------|------|----------|-------------|------------|
-| `logDatabaseUrl` | string | Yes | PostgreSQL connection URL for logs | Valid URL, postgres:// protocol |
-| `metricsDatabaseUrl` | string | Yes | PostgreSQL connection URL for metrics | Valid URL, postgres:// protocol |
-| `timeWindows` | TimeWindow[] | Yes | Time windows to compute | Non-empty array |
-| `batchSize` | number | No | Logs per processing batch | &gt; 0, &lt;= 10000, default: 1000 |
-| `processingInterval` | number | No | Milliseconds between runs | &gt;= 10000, default: 60000 |
+| Field                | Type         | Required | Description                           | Validation                         |
+| -------------------- | ------------ | -------- | ------------------------------------- | ---------------------------------- |
+| `logDatabaseUrl`     | string       | Yes      | PostgreSQL connection URL for logs    | Valid URL, postgres:// protocol    |
+| `metricsDatabaseUrl` | string       | Yes      | PostgreSQL connection URL for metrics | Valid URL, postgres:// protocol    |
+| `timeWindows`        | TimeWindow[] | Yes      | Time windows to compute               | Non-empty array                    |
+| `batchSize`          | number       | No       | Logs per processing batch             | &gt; 0, &lt;= 10000, default: 1000 |
+| `processingInterval` | number       | No       | Milliseconds between runs             | &gt;= 10000, default: 60000        |
 
 #### EndpointMetrics Fields
 
-| Field | Type | Required | Description | Validation |
-|-------|------|----------|-------------|------------|
-| `endpoint` | string | Yes | Normalized endpoint path | Non-empty |
-| `method` | string | Yes | HTTP method | GET, POST, PUT, DELETE, PATCH |
-| `timeWindow` | TimeWindow | Yes | Aggregation window | Valid TimeWindow enum |
-| `timestamp` | string | Yes | Bucket start time | ISO 8601 timestamp |
-| `requests.total` | number | Yes | Total request count | &gt;= 0 |
-| `latency.p95` | number | Yes | 95th percentile latency | &gt;= 0 |
-| `throughput` | number | Yes | Requests per minute | &gt;= 0 |
-| `errorRate` | number | Yes | Error percentage | 0-100 |
+| Field            | Type       | Required | Description              | Validation                    |
+| ---------------- | ---------- | -------- | ------------------------ | ----------------------------- |
+| `endpoint`       | string     | Yes      | Normalized endpoint path | Non-empty                     |
+| `method`         | string     | Yes      | HTTP method              | GET, POST, PUT, DELETE, PATCH |
+| `timeWindow`     | TimeWindow | Yes      | Aggregation window       | Valid TimeWindow enum         |
+| `timestamp`      | string     | Yes      | Bucket start time        | ISO 8601 timestamp            |
+| `requests.total` | number     | Yes      | Total request count      | &gt;= 0                       |
+| `latency.p95`    | number     | Yes      | 95th percentile latency  | &gt;= 0                       |
+| `throughput`     | number     | Yes      | Requests per minute      | &gt;= 0                       |
+| `errorRate`      | number     | Yes      | Error percentage         | 0-100                         |
 
 ## Dependencies
 
 ### Internal Dependencies
 
-| Package | Version | Purpose | Required |
-|---------|---------|---------|----------|
-| `@slaops/core` | `*` | Core types | Yes |
-| `@slaops/lib` | `*` | Shared utilities | Yes |
+| Package           | Version | Purpose          | Required |
+| ----------------- | ------- | ---------------- | -------- |
+| `@slaops/private` | `*`     | Core types       | Yes      |
+| `@slaops/public`  | `*`     | Shared utilities | Yes      |
 
 ### External Dependencies
 
-| Package | Version | Purpose | License |
-|---------|---------|---------|---------|
-| `@supabase/supabase-js` | `^2.38.0` | Database client | MIT |
-| `date-fns` | `^3.0.0` | Date manipulation | MIT |
-| `p-limit` | `^5.0.0` | Concurrency control | MIT |
-| `opentelemetry` | `^1.17.0` | Observability | Apache 2.0 |
+| Package                 | Version   | Purpose             | License    |
+| ----------------------- | --------- | ------------------- | ---------- |
+| `@supabase/supabase-js` | `^2.38.0` | Database client     | MIT        |
+| `date-fns`              | `^3.0.0`  | Date manipulation   | MIT        |
+| `p-limit`               | `^5.0.0`  | Concurrency control | MIT        |
+| `opentelemetry`         | `^1.17.0` | Observability       | Apache 2.0 |
 
 ### Dependency Graph
 
 ```mermaid
 graph TD
-    Core[@slaops/core] --> Aggregator[@slaops/metrics-aggregator]
-    Lib[@slaops/lib] --> Aggregator
+    Core[@slaops/private] --> Aggregator[@slaops/metrics-aggregator]
+    Lib[@slaops/public] --> Aggregator
 
     Supabase[supabase-js] --> Aggregator
     DateFns[date-fns] --> Aggregator
@@ -642,17 +644,17 @@ FUNCTION calculatePercentile(sortedValues: number[], percentile: number):
 
 ### Edge Cases
 
-| Case | Condition | Handling | Expected Outcome |
-|------|-----------|----------|------------------|
-| No logs in window | `events.length === 0` | Skip processing | No metrics written |
-| Single log | `events.length === 1` | All percentiles = duration | Valid metrics with p50=p95=p99 |
-| All requests fail | All status codes >= 400 | Compute normally | `errorRate = 100` |
-| Database unavailable | Connection error | Retry with exponential backoff | Log error, continue on recovery |
-| Processing lag | Current time >> latest log | Log warning, continue | Warning in logs |
-| Duplicate processing | Logs already processed | Upsert (overwrite) | Idempotent operation |
-| Missing cost data | `cost === undefined` | Use 0 | `totalCost = 0` |
-| Invalid timestamp | Cannot parse timestamp | Skip log, log error | Continue with valid logs |
-| Extreme latency | duration > 60000ms | Include in p99, flag | Metrics show spike |
+| Case                 | Condition                  | Handling                       | Expected Outcome                |
+| -------------------- | -------------------------- | ------------------------------ | ------------------------------- |
+| No logs in window    | `events.length === 0`      | Skip processing                | No metrics written              |
+| Single log           | `events.length === 1`      | All percentiles = duration     | Valid metrics with p50=p95=p99  |
+| All requests fail    | All status codes >= 400    | Compute normally               | `errorRate = 100`               |
+| Database unavailable | Connection error           | Retry with exponential backoff | Log error, continue on recovery |
+| Processing lag       | Current time >> latest log | Log warning, continue          | Warning in logs                 |
+| Duplicate processing | Logs already processed     | Upsert (overwrite)             | Idempotent operation            |
+| Missing cost data    | `cost === undefined`       | Use 0                          | `totalCost = 0`                 |
+| Invalid timestamp    | Cannot parse timestamp     | Skip log, log error            | Continue with valid logs        |
+| Extreme latency      | duration > 60000ms         | Include in p99, flag           | Metrics show spike              |
 
 ### Error Handling
 
@@ -664,10 +666,10 @@ export class AggregatorError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: unknown
+    public details?: unknown,
   ) {
-    super(message);
-    this.name = 'AggregatorError';
+    super(message)
+    this.name = 'AggregatorError'
   }
 }
 
@@ -678,23 +680,23 @@ export const ErrorCodes = {
   COMPUTATION_FAILED: 'COMPUTATION_FAILED',
   WRITE_FAILED: 'WRITE_FAILED',
   INVALID_CONFIG: 'INVALID_CONFIG',
-} as const;
+} as const
 
 // Error handling in main loop
 try {
-  const result = await processBatch();
+  const result = await processBatch()
 } catch (error) {
   if (error instanceof AggregatorError) {
     if (error.code === ErrorCodes.DATABASE_CONNECTION) {
       // Retry with backoff
-      await retryWithBackoff(() => processBatch());
+      await retryWithBackoff(() => processBatch())
     } else {
       // Log and continue
-      logger.error('Processing failed', { error });
+      logger.error('Processing failed', { error })
     }
   } else {
     // Unexpected error
-    logger.error('Unexpected error', { error });
+    logger.error('Unexpected error', { error })
   }
 }
 ```
@@ -738,32 +740,33 @@ pnpm add @slaops/metrics-aggregator
 
 ### Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `logDatabaseUrl` | string | (required) | PostgreSQL connection URL for raw logs |
-| `metricsDatabaseUrl` | string | (required) | PostgreSQL connection URL for metrics |
-| `timeWindows` | TimeWindow[] | `['1min', '5min', '1hour']` | Time windows to compute |
-| `batchSize` | number | `1000` | Number of logs to process per batch |
-| `processingInterval` | number | `60000` | Milliseconds between processing runs |
-| `maxRetries` | number | `3` | Max retry attempts for failed operations |
-| `retryBackoff` | number | `1000` | Initial backoff for retries (ms) |
+| Option               | Type         | Default                     | Description                              |
+| -------------------- | ------------ | --------------------------- | ---------------------------------------- |
+| `logDatabaseUrl`     | string       | (required)                  | PostgreSQL connection URL for raw logs   |
+| `metricsDatabaseUrl` | string       | (required)                  | PostgreSQL connection URL for metrics    |
+| `timeWindows`        | TimeWindow[] | `['1min', '5min', '1hour']` | Time windows to compute                  |
+| `batchSize`          | number       | `1000`                      | Number of logs to process per batch      |
+| `processingInterval` | number       | `60000`                     | Milliseconds between processing runs     |
+| `maxRetries`         | number       | `3`                         | Max retry attempts for failed operations |
+| `retryBackoff`       | number       | `1000`                      | Initial backoff for retries (ms)         |
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `METRICS_LOG_DB_URL` | Yes | N/A | Log database connection URL |
-| `METRICS_METRICS_DB_URL` | Yes | N/A | Metrics database connection URL |
-| `METRICS_TIME_WINDOWS` | No | `'1min,5min,1hour'` | Comma-separated time windows |
-| `METRICS_BATCH_SIZE` | No | `1000` | Batch size for processing |
-| `METRICS_INTERVAL` | No | `60000` | Processing interval in ms |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | N/A | OpenTelemetry endpoint |
+| Variable                      | Required | Default             | Description                     |
+| ----------------------------- | -------- | ------------------- | ------------------------------- |
+| `METRICS_LOG_DB_URL`          | Yes      | N/A                 | Log database connection URL     |
+| `METRICS_METRICS_DB_URL`      | Yes      | N/A                 | Metrics database connection URL |
+| `METRICS_TIME_WINDOWS`        | No       | `'1min,5min,1hour'` | Comma-separated time windows    |
+| `METRICS_BATCH_SIZE`          | No       | `1000`              | Batch size for processing       |
+| `METRICS_INTERVAL`            | No       | `60000`             | Processing interval in ms       |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No       | N/A                 | OpenTelemetry endpoint          |
 
 ### Database Schema Setup
 
 #### Required Tables
 
 **metrics table**:
+
 ```sql
 CREATE TABLE metrics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -790,6 +793,7 @@ CREATE INDEX idx_metrics_lookup ON metrics(endpoint, method, time_window, timest
 ```
 
 **Requires access to existing raw_logs table**:
+
 ```sql
 -- Ensure index exists for efficient querying
 CREATE INDEX IF NOT EXISTS idx_raw_logs_timestamp
@@ -802,32 +806,31 @@ CREATE INDEX IF NOT EXISTS idx_raw_logs_timestamp
 
 ```typescript
 // server.ts
-import { MetricsAggregator } from '@slaops/metrics-aggregator';
+import { MetricsAggregator } from '@slaops/metrics-aggregator'
 
 const aggregator = new MetricsAggregator({
   logDatabaseUrl: process.env.METRICS_LOG_DB_URL!,
   metricsDatabaseUrl: process.env.METRICS_METRICS_DB_URL!,
-  timeWindows: (process.env.METRICS_TIME_WINDOWS || '1min,5min,1hour')
-    .split(',') as TimeWindow[],
+  timeWindows: (process.env.METRICS_TIME_WINDOWS || '1min,5min,1hour').split(',') as TimeWindow[],
   batchSize: parseInt(process.env.METRICS_BATCH_SIZE || '1000'),
   processingInterval: parseInt(process.env.METRICS_INTERVAL || '60000'),
-});
+})
 
 async function main() {
-  console.log('Starting metrics aggregator...');
-  await aggregator.start();
-  console.log('Metrics aggregator running');
+  console.log('Starting metrics aggregator...')
+  await aggregator.start()
+  console.log('Metrics aggregator running')
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
-    console.log('Stopping metrics aggregator...');
-    await aggregator.stop();
-    console.log('Stopped');
-    process.exit(0);
-  });
+    console.log('Stopping metrics aggregator...')
+    await aggregator.stop()
+    console.log('Stopped')
+    process.exit(0)
+  })
 }
 
-main().catch(console.error);
+main().catch(console.error)
 ```
 
 #### Docker Deployment
@@ -850,18 +853,18 @@ CMD ["node", "dist/server.js"]
 
 ### Unit Tests
 
-| Test Case | Input | Expected Output | Priority |
-|-----------|-------|-----------------|----------|
-| Compute metrics for single endpoint | 100 logs, same endpoint | 1 metric with correct stats | High |
-| Calculate p95 percentile | [10, 20, 30, ... 100] | 95 | High |
-| Bucket timestamp to 5min | '2024-11-16T10:32:45Z' | '2024-11-16T10:30:00Z' | High |
-| Handle empty log array | [] | Empty metrics map | High |
-| Handle single log | [1 log] | Metric with p50=p95=p99=duration | High |
-| Normalize endpoints | '/api/users/123' | '/api/users/:id' | Medium |
-| Group by method | GET and POST to same URL | 2 separate metrics | Medium |
-| Compute error rate | 80 success, 20 errors | errorRate = 20 | High |
-| Sum costs | Logs with cost values | Total cost sum | Medium |
-| Handle missing cost | Logs without cost field | totalCost = 0 | Low |
+| Test Case                           | Input                    | Expected Output                  | Priority |
+| ----------------------------------- | ------------------------ | -------------------------------- | -------- |
+| Compute metrics for single endpoint | 100 logs, same endpoint  | 1 metric with correct stats      | High     |
+| Calculate p95 percentile            | [10, 20, 30, ... 100]    | 95                               | High     |
+| Bucket timestamp to 5min            | '2024-11-16T10:32:45Z'   | '2024-11-16T10:30:00Z'           | High     |
+| Handle empty log array              | []                       | Empty metrics map                | High     |
+| Handle single log                   | [1 log]                  | Metric with p50=p95=p99=duration | High     |
+| Normalize endpoints                 | '/api/users/123'         | '/api/users/:id'                 | Medium   |
+| Group by method                     | GET and POST to same URL | 2 separate metrics               | Medium   |
+| Compute error rate                  | 80 success, 20 errors    | errorRate = 20                   | High     |
+| Sum costs                           | Logs with cost values    | Total cost sum                   | Medium   |
+| Handle missing cost                 | Logs without cost field  | totalCost = 0                    | Low      |
 
 ### Integration Tests
 
@@ -925,8 +928,8 @@ CMD ["node", "dist/server.js"]
     "test:watch": "vitest --watch"
   },
   "dependencies": {
-    "@slaops/core": "*",
-    "@slaops/lib": "*",
+    "@slaops/private": "*",
+    "@slaops/public": "*",
     "@supabase/supabase-js": "^2.38.0",
     "date-fns": "^3.0.0",
     "p-limit": "^5.0.0"
@@ -953,14 +956,15 @@ This package depends on core and lib, so build order is:
 
 ```mermaid
 graph LR
-    A[@slaops/core] --> C[@slaops/metrics-aggregator]
-    B[@slaops/lib] --> C
+    A[@slaops/private] --> C[@slaops/metrics-aggregator]
+    B[@slaops/public] --> C
 ```
 
 Build command:
+
 ```bash
-pnpm --filter @slaops/core run build &&
-pnpm --filter @slaops/lib run build &&
+pnpm --filter @slaops/private run build &&
+pnpm --filter @slaops/public run build &&
 pnpm --filter @slaops/metrics-aggregator run build
 ```
 
@@ -986,6 +990,7 @@ pnpm --filter @slaops/metrics-aggregator run build
 ## Rollout Plan
 
 ### Phase 1: Development (Week 1-2)
+
 - [x] Design proposal (this document)
 - [ ] Implement core computation logic
 - [ ] Write unit tests for algorithms
@@ -993,12 +998,14 @@ pnpm --filter @slaops/metrics-aggregator run build
 - [ ] Internal code review
 
 ### Phase 2: Testing (Week 3)
+
 - [ ] Integration tests with real database
 - [ ] Performance benchmarking
 - [ ] End-to-end testing with sample data
 - [ ] Documentation review
 
 ### Phase 3: Beta (Week 4)
+
 - [ ] Deploy to staging environment
 - [ ] Process staging logs
 - [ ] Validate metrics accuracy
@@ -1006,6 +1013,7 @@ pnpm --filter @slaops/metrics-aggregator run build
 - [ ] Gather feedback from team
 
 ### Phase 4: Production (Week 5)
+
 - [ ] Production deployment
 - [ ] Start with 1min and 5min windows only
 - [ ] Monitor for 1 week
@@ -1013,6 +1021,7 @@ pnpm --filter @slaops/metrics-aggregator run build
 - [ ] Update portal to consume metrics
 
 ### Phase 5: Optimization (Week 6+)
+
 - [ ] Historical backfill capability
 - [ ] Custom metric definitions
 - [ ] Advanced aggregations (cost by user, etc.)
@@ -1021,20 +1030,20 @@ pnpm --filter @slaops/metrics-aggregator run build
 ## Open Questions
 
 - [x] **Q1: Should we support custom time windows?**
-  **Decision**: Start with fixed windows, add custom in v2 if needed
+      **Decision**: Start with fixed windows, add custom in v2 if needed
 
 - [ ] **Q2: How should we handle endpoint normalization?**
-  **Options**:
+      **Options**:
   - Use OpenAPI spec to determine path params
   - Pattern matching (e.g., numeric IDs)
   - User-defined rules
 
 - [ ] **Q3: Should metrics be computed in real-time or batch?**
-  **Current**: Batch every 1 minute
-  **Alternative**: Stream processing for real-time metrics
+      **Current**: Batch every 1 minute
+      **Alternative**: Stream processing for real-time metrics
 
 - [ ] **Q4: How long should we retain aggregated metrics?**
-  **Proposal**:
+      **Proposal**:
   - 1min windows: 7 days
   - 5min windows: 30 days
   - 1hour windows: 90 days
@@ -1043,12 +1052,15 @@ pnpm --filter @slaops/metrics-aggregator run build
 ## Alternatives Considered
 
 ### Alternative 1: Stream Processing with Kafka
+
 **Pros:**
+
 - Real-time metrics (sub-second latency)
 - Better scalability for high volume
 - Event replay capability
 
 **Cons:**
+
 - Increased infrastructure complexity
 - Higher operational costs
 - Requires Kafka cluster management
@@ -1057,12 +1069,15 @@ pnpm --filter @slaops/metrics-aggregator run build
 **Why not chosen**: Current batch approach is simpler and sufficient for current scale. Can migrate to streaming later if needed.
 
 ### Alternative 2: Pre-aggregated Metrics in Client
+
 **Pros:**
+
 - No server-side processing needed
 - Lower backend load
 - Instant availability
 
 **Cons:**
+
 - Clients must implement aggregation logic
 - Inconsistent metric computation across clients
 - Can't retroactively change aggregation logic
@@ -1071,12 +1086,15 @@ pnpm --filter @slaops/metrics-aggregator run build
 **Why not chosen**: Centralized aggregation ensures consistency and allows us to change logic without client updates.
 
 ### Alternative 3: Time-series Database (TimescaleDB/InfluxDB)
+
 **Pros:**
+
 - Optimized for time-series data
 - Built-in downsampling and retention policies
 - Better query performance for time-range queries
 
 **Cons:**
+
 - Additional database to manage
 - Need to migrate existing data
 - Team learning curve
@@ -1093,10 +1111,10 @@ pnpm --filter @slaops/metrics-aggregator run build
 
 ## Approval
 
-- [ ] Technical Lead: _______________
-- [ ] Architect: _______________
-- [ ] Product Owner: _______________
-- [ ] Date Approved: _______________
+- [ ] Technical Lead: **\*\***\_\_\_**\*\***
+- [ ] Architect: **\*\***\_\_\_**\*\***
+- [ ] Product Owner: **\*\***\_\_\_**\*\***
+- [ ] Date Approved: **\*\***\_\_\_**\*\***
 
 ---
 

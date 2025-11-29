@@ -65,8 +65,8 @@ Since this is part of a monorepo, dependencies must be installed from the monore
 pnpm install --frozen-lockfile
 
 # Build shared dependencies that slaops-docs depends on
-pnpm --filter @slaops/core run build
-pnpm --filter @slaops/lib run build
+pnpm --filter @slaops/private run build
+pnpm --filter @slaops/public run build
 ```
 
 ### Local Development
@@ -174,8 +174,8 @@ Key settings:
 
 This documentation site is part of the SLAOps monorepo and has dependencies on shared packages:
 
-- `@slaops/core` - Core utilities and types
-- `@slaops/lib` - Shared library functions
+- `@slaops/private` - Core utilities and types
+- `@slaops/public` - Shared library functions
 
 **Important**: When working in the monorepo:
 

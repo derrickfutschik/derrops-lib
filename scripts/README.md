@@ -24,8 +24,8 @@ Run tests with desktop notifications when the test suite completes.
 pnpm run test:notify
 
 # Run tests for a specific package with notifications
-pnpm run test:notify --filter @slaops/core
-pnpm run test:notify --filter @slaops/lib
+pnpm run test:notify --filter @slaops/private
+pnpm run test:notify --filter @slaops/public
 
 # Direct execution
 ./scripts/test-notify.sh
@@ -36,6 +36,7 @@ pnpm run test:notify --filter @slaops/lib
 When tests complete, you'll see a formatted summary:
 
 **Passing tests:**
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ TEST SUITE PASSED
@@ -47,6 +48,7 @@ When tests complete, you'll see a formatted summary:
 ```
 
 **Failing tests:**
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ❌ TEST SUITE FAILED
@@ -92,7 +94,7 @@ Run tests in watch mode with desktop notifications after each test run.
 pnpm run test:watch:notify
 
 # Watch tests for a specific package with notifications
-pnpm run test:watch:notify --filter @slaops/core
+pnpm run test:watch:notify --filter @slaops/private
 
 # Direct execution
 ./scripts/test-watch-notify.sh
@@ -195,11 +197,13 @@ pnpm commit -- "Added new authentication flow"
 You can provide an optional context message to help Claude generate a more accurate commit message in two ways:
 
 **1. Inline context (for short messages):**
+
 ```bash
 ./scripts/ai-commit.sh "Fixed the authentication bug where tokens were expiring too early"
 ```
 
 **2. Editor context (for longer, detailed context):**
+
 ```bash
 ./scripts/ai-commit.sh --context
 # This opens your editor where you can write a multi-line context
@@ -208,11 +212,13 @@ You can provide an optional context message to help Claude generate a more accur
 ```
 
 This context will be:
+
 - Displayed before generating the message
 - Included in the prompt sent to Claude
 - Used to create a more targeted commit message
 
 The context is most helpful when:
+
 - The changes involve complex logic that isn't obvious from the diff
 - You want to emphasize the purpose or motivation behind the changes
 - The diff is large and you want to highlight the main focus
@@ -221,6 +227,7 @@ The context is most helpful when:
 ### Editor Configuration
 
 The script uses your git editor preference in this order:
+
 1. `vim` (if available)
 2. `git config core.editor`
 3. `EDITOR` environment variable
@@ -239,6 +246,7 @@ export EDITOR="nano"
 ### Message Format
 
 Generated messages follow best practices:
+
 - Concise summary line (50-72 characters)
 - Optional detailed description
 - Focus on WHY, not just WHAT changed
@@ -247,6 +255,7 @@ Generated messages follow best practices:
 ### Aborting a Commit
 
 You can abort at several points:
+
 - When asked to stage files: answer 'n'
 - When using `--context`: leave the context file empty (or delete all content) and save
 - In the commit message editor: delete all non-comment lines and save
@@ -255,6 +264,7 @@ You can abort at several points:
 ### Examples
 
 #### Simple refactoring:
+
 ```
 Refactor tests to use shared fixtures
 
@@ -263,6 +273,7 @@ Update test files to import from centralized fixtures
 ```
 
 #### Adding features:
+
 ```
 Add user authentication endpoints
 
@@ -272,6 +283,7 @@ Include rate limiting and security headers
 ```
 
 #### Documentation updates:
+
 ```
 Update documentation
 
@@ -284,6 +296,7 @@ Fix typos in getting started guide
 The script uses Claude AI to analyze your git diff and generate meaningful commit messages.
 
 The script:
+
 - Captures the git diff of staged changes
 - Sends the diff to Claude along with formatting guidelines and optional user context
 - Receives a generated commit message
@@ -299,23 +312,28 @@ The script:
 ### Troubleshooting
 
 **Script says "No changes to commit"**
+
 - Make sure you have modified, added, or deleted files
 - Check `git status` to see your changes
 
 **Editor doesn't open**
+
 - Set your `GIT_EDITOR` or `EDITOR` environment variable
 - Ensure the editor command is in your PATH
 
 **Commit fails**
+
 - Check if git hooks are preventing the commit
 - Ensure you have permission to commit to the repository
 - Verify your git configuration is set up correctly
 
 **Generated message isn't accurate**
+
 - Provide optional context when running the script to guide the generation
 - Edit the message in the editor to better describe your changes
 - The AI is a starting point - human review is important
 
 **Claude not found**
+
 - Make sure Claude Code CLI is installed: see [Claude Code documentation](https://docs.claude.com/claude-code)
 - Verify `claude` is in your PATH: `which claude`

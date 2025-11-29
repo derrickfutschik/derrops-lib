@@ -1,4 +1,4 @@
-import { createHarLog, RawRequest, RawResponse } from "@slaops/lib";
+import { createHarLog, RawRequest, RawResponse } from "../../slaops-public/dist";
 import { AxiosInstance, AxiosStatic, InternalAxiosRequestConfig } from "axios";
 
 

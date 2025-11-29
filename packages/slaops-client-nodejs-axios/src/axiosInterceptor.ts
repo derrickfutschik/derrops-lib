@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { redact } from '@slaops/lib';
-import type { HarEntry } from '@slaops/lib';
+import { redact } from '../../slaops-public/dist';
+import type { HarEntry } from '../../slaops-public/dist';
 import { SlaOpsClient } from './SlaOpsClient';
 
 

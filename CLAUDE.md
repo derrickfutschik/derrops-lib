@@ -20,8 +20,8 @@ This monorepo contains both the core client libraries for instrumenting applicat
 ```
 slaops-platform/
 ├── packages/                    # Shared libraries and utilities
-│   ├── slaops-core/            # @slaops/core - Core types and utilities (private)
-│   ├── slaops-lib/             # @slaops/lib - Shared utilities
+│   ├── slaops-private/            # @slaops/private - Core types and utilities (private)
+│   ├── slaops-public/             # @slaops/public - Shared utilities
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
 │   └── slaops-client-nodejs-axios/  # Axios-specific client implementation
 │
@@ -103,8 +103,8 @@ pnpm run build
 pnpm run build
 
 # Build specific package
-pnpm --filter @slaops/core run build
-pnpm --filter @slaops/lib run build
+pnpm --filter @slaops/private run build
+pnpm --filter @slaops/public run build
 pnpm --filter @slaops/client run build
 pnpm --filter slaops-client-nodejs-axios run build
 
@@ -120,7 +120,7 @@ pnpm --filter vite_react_shadcn_ts run build
 pnpm run dev
 
 # Run specific package
-pnpm --filter @slaops/core run dev
+pnpm --filter @slaops/private run dev
 pnpm --filter slaops-docs start
 pnpm --filter vite_react_shadcn_ts run dev
 ```
@@ -135,7 +135,7 @@ pnpm run test
 pnpm run test:watch
 
 # Test specific package
-pnpm --filter @slaops/core run test
+pnpm --filter @slaops/private run test
 ```
 
 ### Test Resources
@@ -161,13 +161,13 @@ import {
   loadOpenApiSpec,
   listAvailableSpecs,
   findSpecs,
-} from '@slaops/core/src/test-utils/openapi-loader';
+} from '@slaops/private/src/test-utils/openapi-loader'
 
 // Load a specific OpenAPI spec
-const spec = await loadOpenApiSpec('github.com', 'api.github.com', '1.1.4');
+const spec = await loadOpenApiSpec('github.com', 'api.github.com', '1.1.4')
 
 // Find all GitHub specs
-const githubSpecs = await findSpecs('github');
+const githubSpecs = await findSpecs('github')
 ```
 
 See [test-resources/README.md](test-resources/README.md) for complete documentation on available test resources and utilities.
@@ -181,7 +181,7 @@ pnpm run clean
 
 ## Package Details
 
-### @slaops/core (packages/slaops-core/)
+### @slaops/private (packages/slaops-private/)
 
 **Core types and utilities for SLA Ops**
 
@@ -197,20 +197,20 @@ Key exports:
 - Base utility functions
 
 ```bash
-cd packages/slaops-core
+cd packages/slaops-private
 pnpm run build      # Build with tsup
 pnpm run test       # Run tests
 pnpm run dev        # Watch mode
 ```
 
-### @slaops/lib (packages/slaops-lib/)
+### @slaops/public (packages/slaops-public/)
 
 **Shared utilities for SLA Ops**
 
 - **Status**: Public (published to npm)
 - **Purpose**: Reusable utility functions and helpers
 - **Output**: ESM + CJS with TypeScript declarations
-- **Dependencies**: @slaops/core
+- **Dependencies**: @slaops/private
 
 Key exports:
 
@@ -220,7 +220,7 @@ Key exports:
 - Common utilities
 
 ```bash
-cd packages/slaops-lib
+cd packages/slaops-public
 pnpm run build      # Build with tsup
 pnpm run test       # Run tests
 pnpm run dev        # Watch mode
@@ -233,7 +233,7 @@ pnpm run dev        # Watch mode
 - **Status**: Public (published to npm)
 - **Purpose**: Base client implementation that can be extended for specific HTTP clients
 - **Output**: ESM + CJS with TypeScript declarations
-- **Dependencies**: @slaops/core
+- **Dependencies**: @slaops/private
 
 Key exports:
 
@@ -256,7 +256,7 @@ pnpm run dev        # Watch mode
 - **Status**: Public (published to npm)
 - **Purpose**: Production-ready Axios client with interceptor support
 - **Output**: ESM + CJS with TypeScript declarations
-- **Dependencies**: @slaops/core, @slaops/client
+- **Dependencies**: @slaops/private, @slaops/client
 
 Key features:
 
@@ -269,10 +269,10 @@ Key features:
 Example usage:
 
 ```typescript
-import axios from 'axios';
-import { attachSlaOpsInterceptor } from 'slaops-client-nodejs-axios';
+import axios from 'axios'
+import { attachSlaOpsInterceptor } from 'slaops-client-nodejs-axios'
 
-const api = axios.create({ baseURL: 'https://api.example.com' });
+const api = axios.create({ baseURL: 'https://api.example.com' })
 
 attachSlaOpsInterceptor(api, {
   endpoint: process.env.SLAOPS_ENDPOINT!,
@@ -281,7 +281,7 @@ attachSlaOpsInterceptor(api, {
   redactHeaders: [/authorization/i, /cookie/i],
   includeRequestBody: false,
   includeResponseBody: false,
-});
+})
 ```
 
 ```bash
@@ -349,9 +349,9 @@ pnpm run build:dev  # Build for development
 The packages have a specific dependency hierarchy that must be respected when building:
 
 ```
-@slaops/core (no dependencies)
+@slaops/private (no dependencies)
     ↓
-@slaops/lib (depends on core)
+@slaops/public (depends on core)
     ↓
 @slaops/client (depends on core)
     ↓
@@ -361,8 +361,8 @@ slaops-client-nodejs-axios (depends on core, client)
 The root `pnpm run build` script handles this order automatically:
 
 ```bash
-pnpm -r --filter @slaops/core run build &&
-pnpm -r --filter @slaops/lib run build &&
+pnpm -r --filter @slaops/private run build &&
+pnpm -r --filter @slaops/public run build &&
 pnpm -r --filter @slaops/client run build &&
 pnpm -r --filter slaops-client-nodejs-axios run build &&
 pnpm -r --filter slaops-docs run build &&
@@ -378,12 +378,12 @@ pnpm -r --filter vite_react_shadcn_ts run build
 pnpm add -D -w <package>
 
 # Add to specific workspace
-pnpm --filter @slaops/core add <package>
+pnpm --filter @slaops/private add <package>
 pnpm --filter slaops-docs add <package>
 
 # Add workspace dependency
-cd packages/slaops-lib
-# Edit package.json to add "@slaops/core": "*"
+cd packages/slaops-public
+# Edit package.json to add "@slaops/private": "*"
 pnpm install
 ```
 
@@ -424,7 +424,7 @@ pnpm --filter @slaops/* run build
 
 # Update dependencies
 pnpm update -r
-pnpm update --filter @slaops/core
+pnpm update --filter @slaops/private
 ```
 
 ## Git Workflow
@@ -610,7 +610,7 @@ pnpm outdated -r
 pnpm update -r
 
 # Update specific package
-pnpm --filter @slaops/core update <dependency>
+pnpm --filter @slaops/private update <dependency>
 ```
 
 ## Troubleshooting
@@ -643,7 +643,7 @@ pnpm --filter @slaops/core update <dependency>
 
 ### Code Organization
 
-- Keep shared code in `@slaops/core` and `@slaops/lib`
+- Keep shared code in `@slaops/private` and `@slaops/public`
 - Specific implementations go in their own packages
 - Apps should depend on packages, not vice versa
 

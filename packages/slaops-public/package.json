@@ -1,5 +1,5 @@
 {
-  "name": "@slaops/lib",
+  "name": "@slaops/public",
   "version": "0.1.0",
   "description": "Shared utilities for SLA Ops",
   "private": false,
@@ -13,7 +13,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/your-org/slaops-client-nodejs-axios.git",
-    "directory": "packages/slaops-lib"
+    "directory": "packages/slaops-public"
   },
   "type": "module",
   "main": "./dist/index.cjs",
@@ -38,7 +38,6 @@
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "dependencies": {
-    "@slaops/core": "*"
   },
   "devDependencies": {
     "@jest/globals": "*",

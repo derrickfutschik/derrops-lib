@@ -46,7 +46,7 @@ import {
   listOpenApiDomains,
   getRandomOpenApiSpec,
   WELL_KNOWN_SPECS,
-} from '../../../../test-resources/loader';
+} from '../../../../test-resources/loader'
 ```
 
 ### Basic path resolution
@@ -60,67 +60,67 @@ const path = resolveTestResource(
   'api.github.com',
   '1.1.4',
   'openapi.yaml',
-);
+)
 
 // Resolve OpenAPI spec by domain, subdomain, and version
-const specPath = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4');
+const specPath = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4')
 // Returns: /absolute/path/to/test-resources/openapi-directory/APIs/github.com/api.github.com/1.1.4/openapi.yaml
 ```
 
 ### Using well-known specs
 
 ```typescript
-import { WELL_KNOWN_SPECS } from '../../../../test-resources/loader';
+import { WELL_KNOWN_SPECS } from '../../../../test-resources/loader'
 
 // Get the Ably.net control API spec
-const ablyPath = WELL_KNOWN_SPECS.ably();
+const ablyPath = WELL_KNOWN_SPECS.ably()
 
 // Use with your spec loader
-import { loadSpec } from '../../src/openapi/parser';
-const spec = await loadSpec(ablyPath);
+import { loadSpec } from '../../src/openapi/parser'
+const spec = await loadSpec(ablyPath)
 ```
 
 ### Finding specs dynamically
 
 ```typescript
 // Find all specs matching a pattern
-const githubSpecs = await findOpenApiSpecs('github');
+const githubSpecs = await findOpenApiSpecs('github')
 // Returns: Array<{ domain, subdomain, version, path }>
 
 // List all available domains
-const domains = await listOpenApiDomains();
+const domains = await listOpenApiDomains()
 // Returns: ['ably.net', 'github.com', 'google.com', ...]
 
 // Get a random spec for testing
-const randomSpec = await getRandomOpenApiSpec();
+const randomSpec = await getRandomOpenApiSpec()
 if (randomSpec) {
-  console.log(`Testing with ${randomSpec.domain}/${randomSpec.subdomain}@${randomSpec.version}`);
-  const spec = await loadSpec(randomSpec.path);
+  console.log(`Testing with ${randomSpec.domain}/${randomSpec.subdomain}@${randomSpec.version}`)
+  const spec = await loadSpec(randomSpec.path)
 }
 ```
 
 ## Example Test
 
-Here's a complete example from [packages/slaops-core/test/openapi/parser.test.ts](../packages/slaops-core/test/openapi/parser.test.ts):
+Here's a complete example from [packages/slaops-private/test/openapi/parser.test.ts](../packages/slaops-private/test/openapi/parser.test.ts):
 
 ```typescript
-import { test, expect } from '@jest/globals';
-import { loadSpec } from '../../src/openapi/parser';
-import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
+import { test, expect } from '@jest/globals'
+import { loadSpec } from '../../src/openapi/parser'
+import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader'
 
 test('should load a spec from a file', async () => {
-  const specPath = WELL_KNOWN_SPECS.ably();
-  const spec = await loadSpec(specPath);
-  expect(spec).toBeDefined();
-  expect(spec.info).toBeDefined();
-});
+  const specPath = WELL_KNOWN_SPECS.ably()
+  const spec = await loadSpec(specPath)
+  expect(spec).toBeDefined()
+  expect(spec.info).toBeDefined()
+})
 
 test('should load a spec using resolveOpenApiSpec', async () => {
-  const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1');
-  const spec = await loadSpec(specPath);
-  expect(spec).toBeDefined();
-  expect(spec.info).toBeDefined();
-});
+  const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1')
+  const spec = await loadSpec(specPath)
+  expect(spec).toBeDefined()
+  expect(spec.info).toBeDefined()
+})
 ```
 
 ## API Reference
@@ -140,7 +140,7 @@ Resolve a path relative to the test-resources directory.
 **Example:**
 
 ```typescript
-const path = resolveTestResource('openapi-directory', 'APIs', 'github.com');
+const path = resolveTestResource('openapi-directory', 'APIs', 'github.com')
 ```
 
 ---
@@ -161,7 +161,7 @@ Resolve a path to an OpenAPI spec in the openapi-directory.
 **Example:**
 
 ```typescript
-const path = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4');
+const path = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4')
 // Returns: /path/to/test-resources/openapi-directory/APIs/github.com/api.github.com/1.1.4/openapi.yaml
 ```
 
@@ -181,18 +181,18 @@ Find all OpenAPI specs matching a pattern.
 
 ```typescript
 interface SpecMetadata {
-  domain: string;
-  subdomain: string;
-  version: string;
-  path: string;
+  domain: string
+  subdomain: string
+  version: string
+  path: string
 }
 ```
 
 **Example:**
 
 ```typescript
-const githubSpecs = await findOpenApiSpecs('github');
-console.log(githubSpecs);
+const githubSpecs = await findOpenApiSpecs('github')
+console.log(githubSpecs)
 // [
 //   {
 //     domain: 'github.com',
@@ -214,8 +214,8 @@ List all available domains in the openapi-directory.
 **Example:**
 
 ```typescript
-const domains = await listOpenApiDomains();
-console.log(domains); // ['ably.net', 'github.com', ...]
+const domains = await listOpenApiDomains()
+console.log(domains) // ['ably.net', 'github.com', ...]
 ```
 
 ---
@@ -229,9 +229,9 @@ Get a random OpenAPI spec for testing.
 **Example:**
 
 ```typescript
-const randomSpec = await getRandomOpenApiSpec();
+const randomSpec = await getRandomOpenApiSpec()
 if (randomSpec) {
-  console.log(`Testing with ${randomSpec.domain}`);
+  console.log(`Testing with ${randomSpec.domain}`)
 }
 ```
 
@@ -259,14 +259,14 @@ Common well-known specs for easy access:
 const WELL_KNOWN_SPECS = {
   ably: () => resolveOpenApiSpec('ably.net', 'control', 'v1'),
   github: () => resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4'),
-};
+}
 ```
 
 **Usage:**
 
 ```typescript
-const ablyPath = WELL_KNOWN_SPECS.ably();
-const githubPath = WELL_KNOWN_SPECS.github();
+const ablyPath = WELL_KNOWN_SPECS.ably()
+const githubPath = WELL_KNOWN_SPECS.github()
 ```
 
 ## Adding New Well-Known Specs
@@ -284,7 +284,7 @@ To add a commonly used spec to `WELL_KNOWN_SPECS`:
    export const WELL_KNOWN_SPECS = {
      // ... existing specs
      myApi: () => resolveOpenApiSpec('example.com', 'api', 'v1'),
-   } as const;
+   } as const
    ```
 
 ## Notes
@@ -310,7 +310,7 @@ pnpm run setup:test-resources --force
 Ensure you're using the correct relative path from your test file:
 
 ```typescript
-// From packages/slaops-core/test/
+// From packages/slaops-private/test/
 import { ... } from '../../../../test-resources/loader';
 ```
 

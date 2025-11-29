@@ -66,6 +66,7 @@ This monorepo contains both the core client libraries for instrumenting applicat
 Before getting started, ensure you have:
 
 1. **Node.js >= 22.0.0** ([Download](https://nodejs.org/))
+
    ```bash
    # Using nvm (recommended)
    nvm install 22
@@ -73,6 +74,7 @@ Before getting started, ensure you have:
    ```
 
 2. **pnpm 8.15.4+** (fast, disk-efficient package manager)
+
    ```bash
    npm install -g pnpm@8.15.4
    # or using corepack
@@ -80,6 +82,7 @@ Before getting started, ensure you have:
    ```
 
 3. **Tmux and Tmuxinator** (optional, for quick development setup)
+
    ```bash
    # macOS
    brew install tmux tmuxinator
@@ -112,12 +115,14 @@ tmuxinator start -p .tmuxinator.yml
 ```
 
 This will automatically:
+
 - Start OpenSearch (Docker) on window `slaops-opensearch`
 - Start documentation site on port 3000 in window `slaops-docs`
 - Start web portal on port 8080 in window `slaops-portal`
 - Create a root window for git commands and builds
 
 **Tmux Navigation:**
+
 - `Ctrl+b` then `w` - List and switch between windows
 - `Ctrl+b` then `n` - Next window
 - `Ctrl+b` then `p` - Previous window
@@ -126,13 +131,13 @@ This will automatically:
 
 **Access the applications:**
 
-| Service | Port | URL | Location | Description |
-|---------|------|-----|----------|-------------|
-| **Documentation Site** | 3000 | [http://localhost:3000](http://localhost:3000) | `apps/slaops-docs/` | Docusaurus documentation site |
-| **Web Portal** | 8080 | [http://localhost:8080](http://localhost:8080) | `apps/slaops-portal/` | React monitoring dashboard |
-| **OpenSearch** | 9200 | [http://localhost:9200](http://localhost:9200) | Docker container | OpenSearch database (REST API) |
-| **OpenSearch** (Performance) | 9600 | http://localhost:9600 | Docker container | OpenSearch performance analyzer |
-| **OpenSearch Dashboard** | 5601 | [http://localhost:5601](http://localhost:5601) | Docker container | OpenSearch UI/Kibana |
+| Service                      | Port | URL                                            | Location              | Description                     |
+| ---------------------------- | ---- | ---------------------------------------------- | --------------------- | ------------------------------- |
+| **Documentation Site**       | 3000 | [http://localhost:3000](http://localhost:3000) | `apps/slaops-docs/`   | Docusaurus documentation site   |
+| **Web Portal**               | 8080 | [http://localhost:8080](http://localhost:8080) | `apps/slaops-portal/` | React monitoring dashboard      |
+| **OpenSearch**               | 9200 | [http://localhost:9200](http://localhost:9200) | Docker container      | OpenSearch database (REST API)  |
+| **OpenSearch** (Performance) | 9600 | http://localhost:9600                          | Docker container      | OpenSearch performance analyzer |
+| **OpenSearch Dashboard**     | 5601 | [http://localhost:5601](http://localhost:5601) | Docker container      | OpenSearch UI/Kibana            |
 
 ### Manual Start (Alternative)
 
@@ -156,8 +161,8 @@ docker-compose up
 ```
 slaops-platform/
 ├── packages/                    # Shared libraries and utilities
-│   ├── slaops-core/            # @slaops/core - Core types and utilities
-│   ├── slaops-lib/             # @slaops/lib - Shared utilities
+│   ├── slaops-private/            # @slaops/private - Core types and utilities
+│   ├── slaops-public/             # @slaops/public - Shared utilities
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
 │   └── slaops-client-nodejs-axios/  # Axios client implementation
 │
@@ -184,7 +189,7 @@ slaops-platform/
 pnpm run build
 
 # Build specific package
-pnpm --filter @slaops/core run build
+pnpm --filter @slaops/private run build
 pnpm --filter @slaops/client run build
 ```
 
@@ -212,35 +217,41 @@ pnpm run commit       # AI-powered git commit helper
 
 ## Packages
 
-### [@slaops/core](packages/slaops-core/)
+### [@slaops/private](packages/slaops-private/)
+
 Core types, interfaces, and utilities shared across all packages. Private package not published to npm.
 
-### [@slaops/lib](packages/slaops-lib/)
+### [@slaops/public](packages/slaops-public/)
+
 Shared utility functions and helpers. Published to npm.
 
 **Key exports:**
+
 - HTTP request/response utilities
 - Data transformation helpers
 - Validation functions
 
 ### [@slaops/client](packages/slaops-client/)
+
 Base HTTP client implementation that can be extended for specific HTTP clients. Published to npm.
 
 **Key exports:**
+
 - `SlaOpsClient` base class
 - Client configuration types
 - Event sending logic
 
 ### [slaops-client-nodejs-axios](packages/slaops-client-nodejs-axios/)
+
 Production-ready Axios client with automatic interceptor support. Published to npm.
 
 **Quick Example:**
 
 ```typescript
-import axios from 'axios';
-import { attachSlaOpsInterceptor } from 'slaops-client-nodejs-axios';
+import axios from 'axios'
+import { attachSlaOpsInterceptor } from 'slaops-client-nodejs-axios'
 
-const api = axios.create({ baseURL: 'https://api.example.com' });
+const api = axios.create({ baseURL: 'https://api.example.com' })
 
 attachSlaOpsInterceptor(api, {
   endpoint: process.env.SLAOPS_ENDPOINT!,
@@ -249,10 +260,10 @@ attachSlaOpsInterceptor(api, {
   redactHeaders: [/authorization/i, /cookie/i],
   includeRequestBody: false,
   includeResponseBody: false,
-});
+})
 
 // Now all requests are automatically monitored
-await api.get('/users');
+await api.get('/users')
 ```
 
 ## Applications
@@ -295,7 +306,7 @@ pnpm run test
 pnpm run test:watch
 
 # Test specific package
-pnpm --filter @slaops/core run test
+pnpm --filter @slaops/private run test
 pnpm --filter slaops-client-nodejs-axios run test
 ```
 
@@ -316,9 +327,9 @@ ls test-resources/openapi-directory/APIs
 Packages must be built in dependency order:
 
 ```
-@slaops/core (base, no dependencies)
+@slaops/private (base, no dependencies)
     ↓
-@slaops/lib + @slaops/client (depend on core)
+@slaops/public + @slaops/client (depend on core)
     ↓
 slaops-client-nodejs-axios (depends on core + client)
 ```
@@ -334,7 +345,7 @@ The root `pnpm run build` script handles this automatically.
 pnpm add -D -w <package>
 
 # Add to specific workspace
-pnpm --filter @slaops/core add <package>
+pnpm --filter @slaops/private add <package>
 pnpm --filter slaops-docs add <package>
 ```
 
@@ -372,6 +383,7 @@ pnpm run commit "Fixed debug configuration"
 ```
 
 **Features:**
+
 - Analyzes git diff and generates contextual commit messages
 - Follows conventional commit format with emojis
 - Opens editor for review and editing
@@ -407,24 +419,27 @@ pnpm run build
 
 ```bash
 # Rebuild core packages first
-pnpm --filter @slaops/core run build
-pnpm --filter @slaops/lib run build
+pnpm --filter @slaops/private run build
+pnpm --filter @slaops/public run build
 pnpm run build
 ```
 
 ## Architecture & Technology
 
 ### Why pnpm?
+
 - Efficient disk space usage via hard links
 - Strict dependency resolution prevents phantom dependencies
 - Fast installation and excellent monorepo support
 
 ### Why TypeScript?
+
 - Type safety across the entire codebase
 - Better IDE support and autocomplete
 - Easier refactoring and self-documenting code
 
 ### Why tsup?
+
 - Fast TypeScript bundler with zero-config
 - Supports dual ESM + CJS output
 - Great developer experience with watch mode

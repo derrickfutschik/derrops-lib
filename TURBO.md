@@ -77,22 +77,27 @@ The main configuration file at the root defines task pipelines:
 #### Key Configuration Concepts
 
 **dependsOn**: Defines task ordering
+
 - `"^build"` means "run the `build` task in dependencies first"
 - Ensures packages build in the correct order (core → lib → client → axios-client)
 
 **outputs**: Files/directories to cache
+
 - Turbo caches these outputs to skip rebuilding when nothing changed
 - Glob patterns supported (e.g., `dist/**`, `!.next/cache/**`)
 
 **cache**: Whether to cache task results
+
 - `false` for long-running dev servers and watch tasks
 - `true` (default) for builds, tests, and other deterministic tasks
 
 **persistent**: Marks long-running tasks
+
 - Set to `true` for dev servers, watch modes
 - Tells Turbo not to exit when this task is running
 
 **env**: Environment variables that affect the task
+
 - Changes to these variables invalidate the cache
 - Ensures rebuilds when environment changes
 
@@ -130,11 +135,11 @@ pnpm run clean
 Run tasks for specific packages using `--filter`:
 
 ```bash
-# Build only @slaops/core
-pnpm exec turbo run build --filter=@slaops/core
+# Build only @slaops/private
+pnpm exec turbo run build --filter=@slaops/private
 
 # Build multiple packages
-pnpm exec turbo run build --filter=@slaops/core --filter=@slaops/lib
+pnpm exec turbo run build --filter=@slaops/private --filter=@slaops/public
 
 # Build everything in packages/ directory
 pnpm exec turbo run build --filter=./packages/*
@@ -150,7 +155,7 @@ pnpm exec turbo run build --filter=./apps/*
 pnpm exec turbo run build --filter=...@slaops/client
 
 # Build a package and its dependents
-pnpm exec turbo run build --filter=@slaops/core...
+pnpm exec turbo run build --filter=@slaops/private...
 
 # Build changed packages since last commit
 pnpm exec turbo run build --filter=[HEAD^1]
@@ -189,9 +194,9 @@ rm -rf .turbo
 Turbo respects the dependency graph:
 
 ```
-@slaops/core (no dependencies)
+@slaops/private (no dependencies)
     ↓
-@slaops/lib (depends on core)
+@slaops/public (depends on core)
     ↓
 @slaops/client (depends on core)
     ↓
@@ -199,9 +204,10 @@ slaops-client-nodejs-axios (depends on core, client, lib)
 ```
 
 When you run `pnpm run build`, Turbo:
+
 1. Analyzes `package.json` dependencies
-2. Builds `@slaops/core` first
-3. Builds `@slaops/lib` and `@slaops/client` in parallel (both only depend on core)
+2. Builds `@slaops/private` first
+3. Builds `@slaops/public` and `@slaops/client` in parallel (both only depend on core)
 4. Builds `slaops-client-nodejs-axios` last (depends on all others)
 5. Builds apps (`slaops-docs`, `slaops-portal`) after packages
 
@@ -210,6 +216,7 @@ When you run `pnpm run build`, Turbo:
 ### Cache Keys
 
 Turbo creates cache keys based on:
+
 - **Task inputs**: Source files, dependencies, configuration files
 - **Environment variables**: Specified in `env` array
 - **Task dependencies**: Hash of dependency task outputs
@@ -218,6 +225,7 @@ Turbo creates cache keys based on:
 ### Cache Outputs
 
 When a task completes, Turbo caches:
+
 - Files in `outputs` directories
 - Terminal output (logs)
 - Exit code
@@ -225,6 +233,7 @@ When a task completes, Turbo caches:
 ### Cache Hits
 
 On subsequent runs, if the cache key matches:
+
 - Turbo restores cached files
 - Replays terminal output
 - Skips actual execution
@@ -235,20 +244,20 @@ On subsequent runs, if the cache key matches:
 ```bash
 # First run - builds everything
 $ pnpm exec turbo run build
-@slaops/core:build: cache miss, executing...
-@slaops/lib:build: cache miss, executing...
+@slaops/private:build: cache miss, executing...
+@slaops/public:build: cache miss, executing...
 # ... builds run
 
 # Second run - uses cache
 $ pnpm exec turbo run build
-@slaops/core:build: cache hit, replaying logs...
-@slaops/lib:build: cache hit, replaying logs...
+@slaops/private:build: cache hit, replaying logs...
+@slaops/public:build: cache hit, replaying logs...
 # ... instant results
 
 # After changing core/src/index.ts
 $ pnpm exec turbo run build
-@slaops/core:build: cache miss, executing...      # Rebuilds (changed)
-@slaops/lib:build: cache miss, executing...       # Rebuilds (dependency changed)
+@slaops/private:build: cache miss, executing...      # Rebuilds (changed)
+@slaops/public:build: cache miss, executing...       # Rebuilds (dependency changed)
 @slaops/client:build: cache miss, executing...    # Rebuilds (dependency changed)
 # ... only affected packages rebuild
 ```
@@ -264,6 +273,7 @@ pnpm exec turbo link
 ```
 
 This shares cache across:
+
 - Team members
 - CI/CD pipelines
 - Different machines
@@ -292,21 +302,25 @@ Not all packages need all scripts. Turbo will skip packages that don't have a ma
 ## Performance Tips
 
 1. **Define outputs precisely**: Only cache what's necessary
+
    ```json
    "outputs": ["dist/**", "!dist/**/*.map"]
    ```
 
 2. **Use persistent for dev tasks**: Prevents Turbo from killing long-running processes
+
    ```json
    "dev": { "persistent": true, "cache": false }
    ```
 
 3. **Leverage filtering**: Don't run tasks for unchanged packages
+
    ```bash
    pnpm exec turbo run test --filter=[HEAD^1]
    ```
 
 4. **Parallelize when possible**: Remove unnecessary `dependsOn` constraints
+
    ```json
    "lint": { "outputs": [] }  // No dependsOn needed
    ```
@@ -334,7 +348,7 @@ Ensure dependencies are declared in `package.json`:
 ```json
 {
   "dependencies": {
-    "@slaops/core": "*"
+    "@slaops/private": "*"
   }
 }
 ```
@@ -376,7 +390,7 @@ Before Turbo, the root `package.json` had:
 ```json
 {
   "scripts": {
-    "build": "pnpm -r --filter @slaops/core run build && pnpm -r --filter @slaops/lib run build && ..."
+    "build": "pnpm -r --filter @slaops/private run build && pnpm -r --filter @slaops/public run build && ..."
   }
 }
 ```
@@ -392,6 +406,7 @@ After Turbo:
 ```
 
 Benefits:
+
 - No manual dependency ordering
 - Automatic parallelization
 - Built-in caching

@@ -3,7 +3,7 @@
 # Script to run tests in watch mode with desktop notifications
 # Usage: ./scripts/test-watch-notify.sh [turbo test:watch args...]
 # Example: ./scripts/test-watch-notify.sh
-#          ./scripts/test-watch-notify.sh --filter @slaops/core
+#          ./scripts/test-watch-notify.sh --filter @slaops/private
 
 # Colors for terminal output
 GREEN='\033[0;32m'

@@ -8,22 +8,28 @@
 ## Overview
 
 ### Purpose
+
 [1-2 sentence description of what this component does and why it's needed]
 
 ### Problem Statement
+
 [Describe the specific problem this component solves. What pain points does it address?]
 
 ### Scope
+
 **In Scope:**
+
 - [Feature/capability 1]
 - [Feature/capability 2]
 - [Feature/capability 3]
 
 **Out of Scope:**
+
 - [What this component will NOT do]
 - [Future considerations]
 
 ### Relationship to Existing Components
+
 [Describe how this component fits into the existing architecture]
 
 ```mermaid
@@ -43,13 +49,13 @@ graph TD
  */
 export type ComponentConfig = {
   /** Unique identifier for the component instance */
-  id: string;
+  id: string
 
   /** Component-specific settings */
-  settings: ComponentSettings;
+  settings: ComponentSettings
 
   /** Optional callback handlers */
-  handlers?: ComponentHandlers;
+  handlers?: ComponentHandlers
 }
 
 /**
@@ -57,22 +63,22 @@ export type ComponentConfig = {
  */
 export interface ComponentSettings {
   /** Enable/disable feature X */
-  enableFeatureX: boolean;
+  enableFeatureX: boolean
 
   /** Timeout in milliseconds */
-  timeout?: number;
+  timeout?: number
 
   /** Additional options */
-  options?: Record<string, unknown>;
+  options?: Record<string, unknown>
 }
 
 /**
  * Event handlers for component lifecycle
  */
 export type ComponentHandlers = {
-  onSuccess?: (result: ComponentResult) => void;
-  onError?: (error: Error) => void;
-  onComplete?: () => void;
+  onSuccess?: (result: ComponentResult) => void
+  onError?: (error: Error) => void
+  onComplete?: () => void
 }
 
 /**
@@ -80,27 +86,27 @@ export type ComponentHandlers = {
  */
 export type ComponentResult = {
   /** Indicates success or failure */
-  success: boolean;
+  success: boolean
 
   /** Result data payload */
-  data: unknown;
+  data: unknown
 
   /** Metadata about the operation */
   metadata: {
-    duration: number;
-    timestamp: string;
-  };
+    duration: number
+    timestamp: string
+  }
 }
 ```
 
 ### Input/Output Types
 
-| Type | Purpose | Required | Default |
-|------|---------|----------|---------|
-| `ComponentConfig` | Primary configuration | Yes | N/A |
-| `ComponentSettings` | Behavioral settings | Yes | N/A |
-| `ComponentHandlers` | Event callbacks | No | `undefined` |
-| `ComponentResult` | Operation result | N/A (return type) | N/A |
+| Type                | Purpose               | Required          | Default     |
+| ------------------- | --------------------- | ----------------- | ----------- |
+| `ComponentConfig`   | Primary configuration | Yes               | N/A         |
+| `ComponentSettings` | Behavioral settings   | Yes               | N/A         |
+| `ComponentHandlers` | Event callbacks       | No                | `undefined` |
+| `ComponentResult`   | Operation result      | N/A (return type) | N/A         |
 
 ## Architecture
 
@@ -143,12 +149,12 @@ sequenceDiagram
 
 ### Integration Points
 
-| Integration Point | Component | Direction | Protocol |
-|-------------------|-----------|-----------|----------|
-| Input | `@slaops/client` | Inbound | Function call |
-| Output | `@slaops/lib` | Outbound | Event emission |
-| Storage | External DB | Bidirectional | HTTP/REST |
-| Logging | `@slaops/core` | Outbound | Internal API |
+| Integration Point | Component         | Direction     | Protocol       |
+| ----------------- | ----------------- | ------------- | -------------- |
+| Input             | `@slaops/client`  | Inbound       | Function call  |
+| Output            | `@slaops/public`  | Outbound      | Event emission |
+| Storage           | External DB       | Bidirectional | HTTP/REST      |
+| Logging           | `@slaops/private` | Outbound      | Internal API   |
 
 ## API Specification
 
@@ -159,26 +165,26 @@ sequenceDiagram
  * Main component class
  */
 export class ComponentName {
-  constructor(config: ComponentConfig);
+  constructor(config: ComponentConfig)
 
   /**
    * Initialize the component with configuration
    * @param config - Component configuration
    * @returns Promise that resolves when initialization is complete
    */
-  initialize(config: ComponentConfig): Promise<void>;
+  initialize(config: ComponentConfig): Promise<void>
 
   /**
    * Process data through the component
    * @param data - Input data to process
    * @returns Promise resolving to ComponentResult
    */
-  process(data: unknown): Promise<ComponentResult>;
+  process(data: unknown): Promise<ComponentResult>
 
   /**
    * Clean up resources and shut down
    */
-  shutdown(): Promise<void>;
+  shutdown(): Promise<void>
 }
 ```
 
@@ -188,24 +194,17 @@ export class ComponentName {
 /**
  * Factory function to create component instance
  */
-export function createComponent(
-  config: ComponentConfig
-): ComponentName;
+export function createComponent(config: ComponentConfig): ComponentName
 
 /**
  * Utility function for validation
  */
-export function validateInput(
-  data: unknown
-): data is ValidInputType;
+export function validateInput(data: unknown): data is ValidInputType
 
 /**
  * Helper function for common operations
  */
-export function transformData(
-  input: InputType,
-  options?: TransformOptions
-): OutputType;
+export function transformData(input: InputType, options?: TransformOptions): OutputType
 ```
 
 ### Usage Examples
@@ -213,7 +212,7 @@ export function transformData(
 #### Basic Usage
 
 ```typescript
-import { createComponent } from '@slaops/new-component';
+import { createComponent } from '@slaops/new-component'
 
 // Create and initialize
 const component = createComponent({
@@ -222,22 +221,22 @@ const component = createComponent({
     enableFeatureX: true,
     timeout: 5000,
   },
-});
+})
 
-await component.initialize();
+await component.initialize()
 
 // Process data
 const result = await component.process({
   /* input data */
-});
+})
 
-console.log(result.success); // true
+console.log(result.success) // true
 ```
 
 #### Advanced Usage with Handlers
 
 ```typescript
-import { ComponentName } from '@slaops/new-component';
+import { ComponentName } from '@slaops/new-component'
 
 const component = new ComponentName({
   id: 'advanced-component',
@@ -246,17 +245,17 @@ const component = new ComponentName({
   },
   handlers: {
     onSuccess: (result) => {
-      console.log('Processing succeeded:', result);
+      console.log('Processing succeeded:', result)
     },
     onError: (error) => {
-      console.error('Processing failed:', error);
+      console.error('Processing failed:', error)
     },
   },
-});
+})
 
-await component.initialize();
-await component.process(data);
-await component.shutdown();
+await component.initialize()
+await component.process(data)
+await component.shutdown()
 ```
 
 ## Data Structures
@@ -302,39 +301,39 @@ await component.shutdown();
 
 ### Field Specifications
 
-| Field | Type | Required | Description | Validation |
-|-------|------|----------|-------------|------------|
-| `id` | string | Yes | Unique identifier | Non-empty, alphanumeric |
-| `settings.enableFeatureX` | boolean | Yes | Toggle for feature X | true/false |
-| `settings.timeout` | number | No | Timeout in ms | &gt; 0, &lt; 30000 |
-| `settings.options` | object | No | Additional options | Valid JSON object |
-| `handlers.onSuccess` | function | No | Success callback | Valid function |
-| `handlers.onError` | function | No | Error callback | Valid function |
+| Field                     | Type     | Required | Description          | Validation              |
+| ------------------------- | -------- | -------- | -------------------- | ----------------------- |
+| `id`                      | string   | Yes      | Unique identifier    | Non-empty, alphanumeric |
+| `settings.enableFeatureX` | boolean  | Yes      | Toggle for feature X | true/false              |
+| `settings.timeout`        | number   | No       | Timeout in ms        | &gt; 0, &lt; 30000      |
+| `settings.options`        | object   | No       | Additional options   | Valid JSON object       |
+| `handlers.onSuccess`      | function | No       | Success callback     | Valid function          |
+| `handlers.onError`        | function | No       | Error callback       | Valid function          |
 
 ## Dependencies
 
 ### Internal Dependencies
 
-| Package | Version | Purpose | Required |
-|---------|---------|---------|----------|
-| `@slaops/core` | `*` | Core types and utilities | Yes |
-| `@slaops/lib` | `*` | Shared utilities | Yes |
-| `@slaops/client` | `*` | Client integration | No |
+| Package           | Version | Purpose                  | Required |
+| ----------------- | ------- | ------------------------ | -------- |
+| `@slaops/private` | `*`     | Core types and utilities | Yes      |
+| `@slaops/public`  | `*`     | Shared utilities         | Yes      |
+| `@slaops/client`  | `*`     | Client integration       | No       |
 
 ### External Dependencies
 
-| Package | Version | Purpose | License |
-|---------|---------|---------|---------|
-| `axios` | `^1.6.0` | HTTP client | MIT |
-| `zod` | `^3.22.0` | Schema validation | MIT |
-| `fast-json-stable-stringify` | `^2.1.0` | JSON serialization | MIT |
+| Package                      | Version   | Purpose            | License |
+| ---------------------------- | --------- | ------------------ | ------- |
+| `axios`                      | `^1.6.0`  | HTTP client        | MIT     |
+| `zod`                        | `^3.22.0` | Schema validation  | MIT     |
+| `fast-json-stable-stringify` | `^2.1.0`  | JSON serialization | MIT     |
 
 ### Dependency Graph
 
 ```mermaid
 graph TD
-    Core[@slaops/core] --> NewComponent[@slaops/new-component]
-    Lib[@slaops/lib] --> NewComponent
+    Core[@slaops/private] --> NewComponent[@slaops/new-component]
+    Lib[@slaops/public] --> NewComponent
     Client[@slaops/client] -.optional.-> NewComponent
 
     Axios[axios] --> NewComponent
@@ -383,13 +382,13 @@ FUNCTION process(data):
 
 ### Edge Cases
 
-| Case | Condition | Handling | Expected Outcome |
-|------|-----------|----------|------------------|
-| Null input | `data === null` | Throw `ValidationError` | Error with message |
+| Case             | Condition                     | Handling                 | Expected Outcome         |
+| ---------------- | ----------------------------- | ------------------------ | ------------------------ |
+| Null input       | `data === null`               | Throw `ValidationError`  | Error with message       |
 | Timeout exceeded | `duration > settings.timeout` | Abort and return partial | Partial result + warning |
-| Cache miss | No cached entry | Process normally | Fresh result |
-| Invalid config | Missing required fields | Throw at initialization | Initialization fails |
-| Network error | External service down | Retry with backoff | Success or final error |
+| Cache miss       | No cached entry               | Process normally         | Fresh result             |
+| Invalid config   | Missing required fields       | Throw at initialization  | Initialization fails     |
+| Network error    | External service down         | Retry with backoff       | Success or final error   |
 
 ### Error Handling
 
@@ -398,10 +397,10 @@ export class ComponentError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: unknown
+    public details?: unknown,
   ) {
-    super(message);
-    this.name = 'ComponentError';
+    super(message)
+    this.name = 'ComponentError'
   }
 }
 
@@ -411,7 +410,7 @@ export const ErrorCodes = {
   PROCESSING_FAILED: 'PROCESSING_FAILED',
   TIMEOUT: 'TIMEOUT',
   NETWORK_ERROR: 'NETWORK_ERROR',
-} as const;
+} as const
 ```
 
 ### Performance Considerations
@@ -438,22 +437,22 @@ yarn add @slaops/new-component
 
 ### Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `id` | string | (required) | Unique component identifier |
-| `enableFeatureX` | boolean | `false` | Enable experimental feature X |
-| `timeout` | number | `10000` | Request timeout in milliseconds |
-| `maxRetries` | number | `3` | Maximum retry attempts |
-| `cacheSize` | number | `1000` | Maximum cache entries |
-| `logLevel` | string | `'info'` | Logging verbosity |
+| Option           | Type    | Default    | Description                     |
+| ---------------- | ------- | ---------- | ------------------------------- |
+| `id`             | string  | (required) | Unique component identifier     |
+| `enableFeatureX` | boolean | `false`    | Enable experimental feature X   |
+| `timeout`        | number  | `10000`    | Request timeout in milliseconds |
+| `maxRetries`     | number  | `3`        | Maximum retry attempts          |
+| `cacheSize`      | number  | `1000`     | Maximum cache entries           |
+| `logLevel`       | string  | `'info'`   | Logging verbosity               |
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `COMPONENT_ENDPOINT` | No | `'http://localhost:3000'` | API endpoint URL |
-| `COMPONENT_API_KEY` | Yes | N/A | Authentication key |
-| `COMPONENT_TIMEOUT` | No | `10000` | Global timeout override |
+| Variable             | Required | Default                   | Description             |
+| -------------------- | -------- | ------------------------- | ----------------------- |
+| `COMPONENT_ENDPOINT` | No       | `'http://localhost:3000'` | API endpoint URL        |
+| `COMPONENT_API_KEY`  | Yes      | N/A                       | Authentication key      |
+| `COMPONENT_TIMEOUT`  | No       | `10000`                   | Global timeout override |
 
 ### Migration Guide
 
@@ -461,34 +460,34 @@ If replacing an existing component:
 
 ```typescript
 // OLD APPROACH
-import { OldComponent } from '@slaops/old';
-const old = new OldComponent(config);
+import { OldComponent } from '@slaops/old'
+const old = new OldComponent(config)
 
 // NEW APPROACH
-import { createComponent } from '@slaops/new-component';
+import { createComponent } from '@slaops/new-component'
 const component = createComponent({
   id: config.id,
   settings: {
     enableFeatureX: config.featureX,
     timeout: config.timeout,
   },
-});
+})
 ```
 
 ## Testing Strategy
 
 ### Unit Tests
 
-| Test Case | Input | Expected Output | Priority |
-|-----------|-------|-----------------|----------|
-| Valid configuration | Complete config object | Component initialized | High |
-| Missing required field | Config without `id` | Throw error | High |
-| Successful processing | Valid data | `{ success: true, ... }` | High |
-| Invalid input | `null` data | Throw `ValidationError` | High |
-| Timeout handling | Long-running operation | Abort with timeout error | Medium |
-| Cache hit | Previously processed data | Cached result | Medium |
-| Cache miss | New data | Fresh result | Medium |
-| Handler invocation | Valid result | Handlers called correctly | Low |
+| Test Case              | Input                     | Expected Output           | Priority |
+| ---------------------- | ------------------------- | ------------------------- | -------- |
+| Valid configuration    | Complete config object    | Component initialized     | High     |
+| Missing required field | Config without `id`       | Throw error               | High     |
+| Successful processing  | Valid data                | `{ success: true, ... }`  | High     |
+| Invalid input          | `null` data               | Throw `ValidationError`   | High     |
+| Timeout handling       | Long-running operation    | Abort with timeout error  | Medium   |
+| Cache hit              | Previously processed data | Cached result             | Medium   |
+| Cache miss             | New data                  | Fresh result              | Medium   |
+| Handler invocation     | Valid result              | Handlers called correctly | Low      |
 
 ### Integration Tests
 
@@ -545,7 +544,7 @@ If this component depends on other workspace packages:
 
 ```mermaid
 graph LR
-    A[@slaops/core] --> B[@slaops/lib]
+    A[@slaops/private] --> B[@slaops/public]
     B --> C[@slaops/new-component]
 ```
 
@@ -571,21 +570,25 @@ Build order: `core` → `lib` → `new-component`
 ## Rollout Plan
 
 ### Phase 1: Development (Week 1-2)
+
 - [ ] Implement core functionality
 - [ ] Write unit tests
 - [ ] Internal code review
 
 ### Phase 2: Testing (Week 3)
+
 - [ ] Integration testing
 - [ ] Performance testing
 - [ ] Documentation review
 
 ### Phase 3: Beta (Week 4)
+
 - [ ] Deploy to staging
 - [ ] Limited beta testing
 - [ ] Gather feedback
 
 ### Phase 4: Release (Week 5)
+
 - [ ] Production deployment
 - [ ] Documentation publish
 - [ ] Announcement
@@ -599,21 +602,27 @@ Build order: `core` → `lib` → `new-component`
 ## Alternatives Considered
 
 ### Alternative 1: [Name]
+
 **Pros:**
+
 - [Advantage 1]
 - [Advantage 2]
 
 **Cons:**
+
 - [Disadvantage 1]
 - [Disadvantage 2]
 
 **Why not chosen:** [Reason]
 
 ### Alternative 2: [Name]
+
 **Pros:**
+
 - [Advantage 1]
 
 **Cons:**
+
 - [Disadvantage 1]
 
 **Why not chosen:** [Reason]
@@ -627,10 +636,10 @@ Build order: `core` → `lib` → `new-component`
 
 ## Approval
 
-- [ ] Technical Lead: _______________
-- [ ] Architect: _______________
-- [ ] Product Owner: _______________
-- [ ] Date Approved: _______________
+- [ ] Technical Lead: **\*\***\_\_\_**\*\***
+- [ ] Architect: **\*\***\_\_\_**\*\***
+- [ ] Product Owner: **\*\***\_\_\_**\*\***
+- [ ] Date Approved: **\*\***\_\_\_**\*\***
 
 ---
 

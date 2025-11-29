@@ -1,5 +1,5 @@
 {
-  "name": "@slaops/core",
+  "name": "@slaops/private",
   "version": "0.1.0",
   "description": "Core types and utilities for SLA Ops (private)",
   "private": true,

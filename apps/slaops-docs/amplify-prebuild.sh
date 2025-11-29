@@ -21,7 +21,7 @@ echo "Installing Turbo globally for caching benefits..."
 npm install -g turbo@2.6.1
 
 echo "Building shared packages with Turbo (with caching)..."
-pnpm exec turbo run build --filter=@slaops/core --filter=@slaops/lib
+pnpm exec turbo run build --filter=@slaops/private --filter=@slaops/public
 
 echo "Returning to slaops-docs directory..."
 cd apps/slaops-docs
