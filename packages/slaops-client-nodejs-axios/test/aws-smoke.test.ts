@@ -11,15 +11,21 @@ describe('aws smoke test', () => {
         endpoint: 'http://localhost:3000',
         apiKey: 'test',
         projectId: 'test',
+        listeners: [(events) => {
+            console.log({ events });
+            return Promise.resolve();
+        }]
     })
 
+    const client = new dynamodb.DynamoDBClient({
+        endpoint: "http://192.168.7.224:4566",
+        region: 'us-east-1',
+        requestHandler: new AxiosHttpHandler(axiosInstance, {
+        })
+    });
+
     test("list tables", async () => {
-        const client = new dynamodb.DynamoDBClient({
-            endpoint: "http://192.168.7.224:4566",
-            region: 'us-east-1',
-            requestHandler: new AxiosHttpHandler(axiosInstance, {
-            })
-        });
+
 
         const tables = await client.send(new dynamodb.ListTablesCommand({}));
         console.log({ tables });

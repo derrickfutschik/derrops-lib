@@ -47,7 +47,7 @@ services:
     ports:
       - "0.0.0.0:4566:4566"            # main edge port for all services
     environment:
-      - SERVICES=dynamodb      # only run DynamoDB (add others comma-separated if needed)
+      - SERVICES=dynamodb,s3      # only run DynamoDB (add others comma-separated if needed)
       - DEFAULT_REGION=ap-southeast-2
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test

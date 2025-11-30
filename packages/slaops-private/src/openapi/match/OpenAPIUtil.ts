@@ -1,11 +1,11 @@
 import * as t from "./types"
 
-var _ = require('lodash');
+import * as _ from 'lodash';
 
 import { OpenAPIV3, OpenAPIV3_1, } from "openapi-types";
 // var Url = require('url-parse');
 
-var OpenAPIRequestValidator = require('openapi-request-validator').default;
+import OpenAPIRequestValidator from 'openapi-request-validator';
 
 
 
@@ -75,7 +75,15 @@ export function validateRequest<T extends {} = {}>(request: HttpRequest, operati
         // TODO - populate path parameters based off API spec and url if params not specified
         params: request.params
     }
-    const validatorInput = { ...operation, schemas: doc.components?.schemas! }
+    // Destructure requestBody separately to handle potential ReferenceObject
+    const { requestBody, ...operationWithoutBody } = operation;
+    const validatorInput = {
+        ...operationWithoutBody,
+        schemas: doc.components?.schemas!,
+        // Only include requestBody if it's not a ReferenceObject (doesn't have $ref)
+        // Cast to any to handle OpenAPIV3_1 -> OpenAPIV3 type compatibility
+        requestBody: requestBody && '$ref' in requestBody ? undefined : requestBody
+    } as any;
     const requestValidator = new OpenAPIRequestValidator(validatorInput)
     return requestValidator.validateRequest(newRequest) as t.Validation
 }

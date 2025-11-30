@@ -3,6 +3,10 @@ import { redact } from '../../slaops-public/dist';
 import type { HarEntry, HarLog, HarLogListener } from '../../slaops-public/dist';
 import { SlaOpsClient } from './SlaOpsClient';
 
+/**
+ * THIS FILE IS AI SLOP
+ */
+
 
 export type InterceptorOptions = {
   endpoint: string;
@@ -115,6 +119,20 @@ function extractQueryString(cfg: InternalAxiosRequestConfig, url: URL): Array<{ 
   return entries;
 }
 
+/**
+ * TODO consider refactoring into a class for better semantics and to allow for extensibility.
+ * 
+ * @param instance - The Axios instance to attach the interceptor to.
+ * @param options - The options for the interceptor.
+ * @param options.endpoint - The endpoint to send the events to.
+ * @param options.apiKey - The API key to use for the events.
+ * @param options.projectId - The project ID to use for the events.
+ * @param options.listeners - The listeners to use for the events.
+ * @param options.sendPath - The path to send the events to.
+ * @param options.includeRequestBody - Whether to include the request body in the events.
+ * @param options.includeResponseBody - Whether to include the response body in the events.
+ * @param options.redactHeaders - The headers to redact from the events.
+ */
 export function attachSlaOpsInterceptor(instance: AxiosInstance, options: InterceptorOptions) {
   const client = new SlaOpsClient({
     endpoint: options.endpoint,
@@ -126,6 +144,9 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
   const started = new WeakMap<InternalAxiosRequestConfig, number>();
 
   instance.interceptors.request.use(async (cfg) => {
+
+    console.log({ request: cfg });
+
     if (isInternal(cfg)) return cfg; // don't capture internal posts
     started.set(cfg, Date.now());
     return cfg;
@@ -133,6 +154,7 @@ export function attachSlaOpsInterceptor(instance: AxiosInstance, options: Interc
 
   instance.interceptors.response.use(
     async (res) => {
+
       const cfg = res.config;
       if (isInternal(cfg)) return res;
 

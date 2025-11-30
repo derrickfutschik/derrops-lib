@@ -66,6 +66,11 @@ export const WELL_KNOWN_SPECS = {
   awsS3: () => resolveOpenApiSpec('amazonaws.com', 's3', '2006-03-01'),
 
   /**
+   * Get an AWS DynamoDB API spec
+   */
+  awsDynamoDB: () => resolveOpenApiSpec('amazonaws.com', 'dynamodb', '2012-08-10'),
+
+  /**
    * Get an AWS CloudTrail API spec
    */
   awsCloudTrail: () => resolveOpenApiSpec('amazonaws.com', 'cloudtrail', '2013-11-01'),

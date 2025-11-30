@@ -3,6 +3,8 @@ import axios, { AxiosStatic } from 'axios';
 import { attachSlaOpsInterceptor } from '../src/index.js';
 
 async function testRequest() {
+
+
   const { data } = await axios.get("https://api.open-meteo.com/v1/forecast", {
     params: {
       latitude: -37.81,
