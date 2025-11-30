@@ -1,8 +1,11 @@
 import { test, expect, describe } from '@jest/globals';
 import { zipOperations } from "../../src/openapi/openapi-spec-zipper";
 import * as fixture from './openapi-spec-zipper.fixture';
+import { loadSpec } from '../../src/openapi/openapi-parser';
+import { TEST_API_SPECS } from '../../../../test-resources/loader';
 
 describe("zipOperations", () => {
+
     test("should return empty array for spec with no paths", () => {
         const spec = fixture.EMPTY_OPERATION_SPEC;
 
@@ -108,4 +111,14 @@ describe("zipOperations", () => {
         // Parameter schema references UserId
         expect(result[0]!.m_i).toEqual([0]);
     });
+
+    test("zipping a test resource", async () => {
+        const specPath = TEST_API_SPECS.ably();
+        const spec = await loadSpec(specPath);
+        const operationsZipped = zipOperations(spec)
+        expect(operationsZipped.length).toBeGreaterThan(0)
+    })
+
+
+
 })

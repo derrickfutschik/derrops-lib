@@ -1,7 +1,7 @@
 import { CreateTableCommand, DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBRepo } from "../../src/openapi/repo/dynamodb-repo";
 import { IndexedOperationDoc, IndexedServerDoc } from "../../src/openapi/openapi-types";
-import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
+import { TEST_API_SPECS } from "../../../../test-resources/loader";
 import { loadSpec } from "../../src/openapi/openapi-parser";
 import { buildAPIIndex, buildOperationIndex } from "../../src/openapi/openapi-indexer";
 
@@ -32,7 +32,7 @@ describe("Operation Indexer", () => {
     })
 
     test('buildOperationIndex', async () => {
-        const specPaths = Object.values(WELL_KNOWN_SPECS).map(path => path())
+        const specPaths = Object.values(TEST_API_SPECS).map(path => path())
         const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
             const spec = await loadSpec(specPath)
             const createdOperations = await buildOperationIndex(spec, repo)

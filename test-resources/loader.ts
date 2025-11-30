@@ -49,7 +49,7 @@ export function resolveOpenApiSpec(host: string, path: string, version: string):
   return resolve(monorepoRoot, 'test-resources', 'openapi-directory', 'APIs', host, path, version, 'openapi.yaml');
 }
 
-export const WELL_KNOWN_SPECS = {
+export const TEST_API_SPECS = {
   /**
    * Get the Ably.net control API spec
    */

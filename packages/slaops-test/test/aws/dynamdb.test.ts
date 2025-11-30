@@ -7,7 +7,7 @@ import axios from 'axios';
 import { AxiosHttpHandler } from "../../../slaops-client-nodejs-axios/test/AxiosHttpHandler";
 import { matchPath } from "../../../slaops-private/src/openapi/match/OpenAPIUtil";
 import { loadSpec } from "../../../slaops-private/src/openapi/openapi-parser";
-import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
+import { TEST_API_SPECS } from "../../../../test-resources/loader";
 import { HarEntry, HarLogListener } from "@slaops/public";
 import { OpenAPIV3, OpenAPIV3_1 } from "openapi-types";
 
@@ -25,7 +25,7 @@ describe('AWS DynamoDB', () => {
     var openapiSpec: OpenAPIV3_1.Document
 
     beforeAll(async () => {
-        openapiSpec = await loadSpec(WELL_KNOWN_SPECS.awsDynamoDB())
+        openapiSpec = await loadSpec(TEST_API_SPECS.awsDynamoDB())
     })
 
 

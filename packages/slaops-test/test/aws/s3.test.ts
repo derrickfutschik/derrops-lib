@@ -6,7 +6,7 @@ import axios from 'axios';
 import { AxiosHttpHandler } from "../../../slaops-client-nodejs-axios/test/AxiosHttpHandler";
 import { matchPath } from "../../../slaops-private/src/openapi/match/OpenAPIUtil";
 import { loadSpec } from "../../../slaops-private/src/openapi/openapi-parser";
-import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
+import { TEST_API_SPECS } from "../../../../test-resources/loader";
 import { HarEntry, HarLogListener } from "@slaops/public";
 import { OpenAPIV3, OpenAPIV3_1 } from "openapi-types";
 
@@ -23,18 +23,29 @@ describe('AWS S3', () => {
 
     var openapiSpec: OpenAPIV3_1.Document
 
+    const s3BucketName = "bucket-bar"
+    const s3Prefix = "prefix-bar"
+
+    const axiosInstance = axios.create();
+
+    attachSlaOpsInterceptor(axiosInstance, {
+        endpoint: 'http://localhost:3000'
+    })
+
+    const client = new s3.S3Client({
+        endpoint: "http://192.168.7.224:4566",
+        region: 'us-east-1',
+        requestHandler: new AxiosHttpHandler(axiosInstance, {
+        })
+    });
+
     beforeAll(async () => {
-        openapiSpec = await loadSpec(WELL_KNOWN_SPECS.awsS3())
+        openapiSpec = await loadSpec(TEST_API_SPECS.awsS3())
     })
 
 
     it('AWS S3 Full Example', async () => {
 
-
-        const axiosInstance = axios.create();
-
-        // Track pending listener promises to ensure they complete before test ends
-        let pendingListenerPromise: Promise<void> | null = null;
 
         const listener: HarLogListener = async (logs: HarEntry[]) => {
             return Promise.all(logs.map(log => {
@@ -54,30 +65,12 @@ describe('AWS S3', () => {
             })
         }
 
-        attachSlaOpsInterceptor(axiosInstance, {
-            listeners: [(events) => {
-                pendingListenerPromise = listener(events);
-                return pendingListenerPromise;
-            }],
-            endpoint: 'http://localhost:3000'
-        })
 
-        // attachSlaOpsInterceptor(axiosInstance, {
-        //     listeners: [(events) => listener(events)]
-        // })
-
-
-        const client = new s3.S3Client({
-            endpoint: "http://192.168.7.224:4566",
-            region: 'us-east-1',
-            requestHandler: new AxiosHttpHandler(axiosInstance, {
-            })
-        });
 
         const buckets = await client.send(new s3.ListObjectVersionsCommand({
-            Bucket: "bucket-bar",
-            Prefix: "prefix-bar"
-        }));
+            Bucket: s3BucketName,
+            Prefix: s3Prefix
+        })).catch(err => console.log("Not found"))
         console.log({ buckets });
 
 

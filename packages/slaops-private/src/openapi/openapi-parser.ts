@@ -1,7 +1,10 @@
 import { OpenAPIV3_1 } from "openapi-types"
 import SwaggerParser from "@apidevtools/swagger-parser"
+import { readFileSync } from "fs"
+import { extname } from "path"
+import { load as yamlLoad } from "js-yaml"
 
-function toCamelCase(input: string): string {
+export function toCamelCase(input: string): string {
     return input
         .split(/[_\s-]+/)
         .filter(Boolean)
@@ -77,8 +80,48 @@ export function ensureOperationIds(spec: OpenAPIV3_1.Document): OpenAPIV3_1.Docu
     return spec;
 }
 
+export class OpenAPIParser {
+
+    constructor(private readonly path: string) {
+
+    }
+
+    async loadSpec(): Promise<OpenAPIV3_1.Document> {
+        return loadSpec(this.path);
+    }
+
+    loadSpecSync(): OpenAPIV3_1.Document {
+        return loadSpecSync(this.path);
+    }
+}
+
+
 export async function loadSpec(path: string): Promise<OpenAPIV3_1.Document> {
     const api = await SwaggerParser.bundle(path);
     const spec = api as OpenAPIV3_1.Document;
+    return ensureOperationIds(spec);
+}
+
+/**
+ * Synchronous version of loadSpec.
+ * Note: This version does not resolve external $ref references like the async version.
+ * It only reads and parses the file synchronously.
+ */
+export function loadSpecSync(path: string): OpenAPIV3_1.Document {
+    const content = readFileSync(path, "utf-8");
+    const ext = extname(path).toLowerCase();
+
+    let spec: OpenAPIV3_1.Document;
+
+    if (ext === ".json" || content.trim().startsWith("{")) {
+        spec = JSON.parse(content) as OpenAPIV3_1.Document;
+    } else if (ext === ".yaml" || ext === ".yml" || content.trim().startsWith("openapi:") || content.trim().startsWith("swagger:")) {
+        // Parse YAML using js-yaml
+        spec = yamlLoad(content) as OpenAPIV3_1.Document;
+    } else {
+        // Default to JSON parsing
+        spec = JSON.parse(content) as OpenAPIV3_1.Document;
+    }
+
     return ensureOperationIds(spec);
 }

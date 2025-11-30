@@ -45,7 +45,7 @@ import {
   findOpenApiSpecs,
   listOpenApiDomains,
   getRandomOpenApiSpec,
-  WELL_KNOWN_SPECS,
+  TEST_API_SPECS,
 } from '../../../../test-resources/loader'
 ```
 
@@ -70,10 +70,10 @@ const specPath = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4')
 ### Using well-known specs
 
 ```typescript
-import { WELL_KNOWN_SPECS } from '../../../../test-resources/loader'
+import { TEST_API_SPECS } from '../../../../test-resources/loader'
 
 // Get the Ably.net control API spec
-const ablyPath = WELL_KNOWN_SPECS.ably()
+const ablyPath = TEST_API_SPECS.ably()
 
 // Use with your spec loader
 import { loadSpec } from '../../src/openapi/parser'
@@ -106,10 +106,10 @@ Here's a complete example from [packages/slaops-private/test/openapi/parser.test
 ```typescript
 import { test, expect } from '@jest/globals'
 import { loadSpec } from '../../src/openapi/parser'
-import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader'
+import { TEST_API_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader'
 
 test('should load a spec from a file', async () => {
-  const specPath = WELL_KNOWN_SPECS.ably()
+  const specPath = TEST_API_SPECS.ably()
   const spec = await loadSpec(specPath)
   expect(spec).toBeDefined()
   expect(spec.info).toBeDefined()
@@ -251,12 +251,12 @@ The absolute path to the openapi-directory/APIs directory.
 
 ---
 
-#### `WELL_KNOWN_SPECS`
+#### `TEST_API_SPECS`
 
 Common well-known specs for easy access:
 
 ```typescript
-const WELL_KNOWN_SPECS = {
+const TEST_API_SPECS = {
   ably: () => resolveOpenApiSpec('ably.net', 'control', 'v1'),
   github: () => resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4'),
 }
@@ -265,13 +265,13 @@ const WELL_KNOWN_SPECS = {
 **Usage:**
 
 ```typescript
-const ablyPath = WELL_KNOWN_SPECS.ably()
-const githubPath = WELL_KNOWN_SPECS.github()
+const ablyPath = TEST_API_SPECS.ably()
+const githubPath = TEST_API_SPECS.github()
 ```
 
 ## Adding New Well-Known Specs
 
-To add a commonly used spec to `WELL_KNOWN_SPECS`:
+To add a commonly used spec to `TEST_API_SPECS`:
 
 1. Verify the spec exists in openapi-directory:
 
@@ -279,9 +279,9 @@ To add a commonly used spec to `WELL_KNOWN_SPECS`:
    ls test-resources/openapi-directory/APIs/example.com/api/v1/
    ```
 
-2. Add it to the `WELL_KNOWN_SPECS` object in [loader.ts](./loader.ts):
+2. Add it to the `TEST_API_SPECS` object in [loader.ts](./loader.ts):
    ```typescript
-   export const WELL_KNOWN_SPECS = {
+   export const TEST_API_SPECS = {
      // ... existing specs
      myApi: () => resolveOpenApiSpec('example.com', 'api', 'v1'),
    } as const

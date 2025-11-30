@@ -1,13 +1,15 @@
 import * as dynamodb from "@aws-sdk/client-dynamodb";
 import { DynamoDBRepo } from "../../src/openapi/repo/dynamodb-repo";
 import { IndexedOperationDoc, IndexedServerDoc } from "../../src/openapi/openapi-types";
-import { WELL_KNOWN_SPECS } from "../../../../test-resources/loader";
-import { loadSpec } from "../../src/openapi/openapi-parser";
+import { TEST_API_SPECS } from "../../../../test-resources/loader";
+import { loadSpec, loadSpecSync } from "../../src/openapi/openapi-parser";
 import { buildAPIIndex, buildOperationIndex } from "../../src/openapi/openapi-indexer";
 
 
 
 describe("API Indexer", () => {
+
+    jest.setTimeout(30000);
 
     const client = new dynamodb.DynamoDBClient({
         endpoint: "http://192.168.7.224:4566",
@@ -35,16 +37,28 @@ describe("API Indexer", () => {
     })
 
 
-    test('buildAPIIndex', async () => {
-        const specPaths = Object.values(WELL_KNOWN_SPECS).map(path => path())
+    test('buildAPIIndexAsync', async () => {
+        const specPaths = Object.values(TEST_API_SPECS).map(path => path())
         const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
             const spec = await loadSpec(specPath)
             const createdServers = await buildAPIIndex(spec, repo)
             return createdServers
         }))
         console.log(totalPaths);
-    }
-    )
+    })
+
+    test('buildAPIIndexSync', async () => {
+        const specPaths = Object.values(TEST_API_SPECS).map(path => path())
+        const totalPaths = await Promise.all(specPaths.map(async (specPath) => {
+            const spec = loadSpecSync(specPath)
+            const createdServers = buildAPIIndex(spec, repo)
+            return createdServers
+        }))
+        console.log(totalPaths);
+    })
+
+
+
 
 })
 

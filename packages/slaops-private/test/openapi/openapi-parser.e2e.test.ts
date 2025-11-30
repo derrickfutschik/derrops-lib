@@ -1,12 +1,18 @@
 import { getHttpMethodOperations, loadSpec } from '../../src/openapi/openapi-parser';
-import { WELL_KNOWN_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
+import { TEST_API_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
 import { OpenAPIV3_1 } from 'openapi-types';
 
 
 
 test("should ensureOperationIds is populating all operations with an operationId", async () => {
-    const specPath = WELL_KNOWN_SPECS.ably();
+
+    // given 
+    const specPath = TEST_API_SPECS.ably();
+
+    // when
     const spec = await loadSpec(specPath);
+
+    //then 
     expect(spec).toBeDefined();
     expect(spec.paths).toBeDefined();
     Object.values(spec.paths!).forEach((path) => {
@@ -20,7 +26,7 @@ test("should ensureOperationIds is populating all operations with an operationId
 });
 
 test("should load a spec from a file", async () => {
-    const specPath = WELL_KNOWN_SPECS.ably();
+    const specPath = TEST_API_SPECS.ably();
     const spec = await loadSpec(specPath);
     expect(spec).toBeDefined();
     expect(spec.info).toBeDefined();
