@@ -52,8 +52,8 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        #- pnpm run test:watch:notify
-        - ssh -t derrick@192.168.7.224 "source ~/.nvm/nvm.sh && cd /home/derrick/slaops/slaops-platform && pnpm run test:watch:notify"
+        - pnpm run test:watch:notify
+        #- ssh -t derrick@192.168.7.224 "source ~/.nvm/nvm.sh && cd /home/derrick/slaops/slaops-platform && pnpm run test:watch:notify"
 
   - root:
       root: .
