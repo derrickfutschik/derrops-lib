@@ -8,8 +8,7 @@ import { buildAPIIndex, buildOperationIndex } from "../../src/openapi/openapi-in
 
 
 describe("API Indexer", () => {
-
-    jest.setTimeout(30000);
+    // jest.setTimeout(30000);
 
     const client = new dynamodb.DynamoDBClient({
         endpoint: "http://192.168.7.224:4566",

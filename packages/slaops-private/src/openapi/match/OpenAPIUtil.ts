@@ -295,6 +295,8 @@ export function matchPath<T extends {} = {}>(requestRaw: RelativeRequest, doc: O
         path: cleanPath(requestRaw.path)
     }
 
+    console.log({ request })
+
     const operations = flatMapOperations(doc)
 
     return exactMatch(request, operations) ?? operations.find(operation => pathsMatch(request, operation)) ?? operations.find(operation => pathsMatch(request, operation, true))
