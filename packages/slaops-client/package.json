@@ -45,6 +45,7 @@
   "devDependencies": {
     "@jest/globals": "*",
     "@types/jest": "*",
+    "jest-md-dashboard": "^0.8.1",
     "@types/node": "^22.7.8",
     "jest": "*",
     "ts-jest": "*",

@@ -57,6 +57,7 @@
     }
   },
   "devDependencies": {
+    "jest-md-dashboard": "^0.8.1",
     "@aws-sdk/client-dynamodb": "^3.940.0",
     "@aws-sdk/protocol-http": "^3.374.0",
     "@aws-sdk/types": "^3.936.0",

@@ -19,13 +19,18 @@ export default {
   },
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   testPathIgnorePatterns: ['/node_modules/', '\\.e2e\\.test\\.ts$'],
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.d.ts',
-    '!src/**/*.test.ts',
-    '!src/**/*.spec.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.test.ts', '!src/**/*.spec.ts'],
   passWithNoTests: true,
   // Ensure NODE_OPTIONS is set for ESM support
   setupFiles: ['<rootDir>/jest.setup.js'],
-};
+  reporters: [
+    'default',
+    [
+      'jest-md-dashboard',
+      {
+        title: 'Tests for @slaops/private',
+        outputPath: '../../apps/slaops-docs/docs/test/slaops-private.md', // where to write the markdown
+      },
+    ],
+  ],
+}

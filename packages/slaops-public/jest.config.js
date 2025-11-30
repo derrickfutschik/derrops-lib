@@ -15,11 +15,16 @@ export default {
   },
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   testPathIgnorePatterns: ['/node_modules/', '\\.e2e\\.test\\.ts$'],
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.d.ts',
-    '!src/**/*.test.ts',
-    '!src/**/*.spec.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.test.ts', '!src/**/*.spec.ts'],
   passWithNoTests: true,
-};
+  reporters: [
+    'default',
+    [
+      'jest-md-dashboard',
+      {
+        title: 'Tests for @slaops/public',
+        outputPath: '../../apps/slaops-docs/docs/test/slaops-public.md', // where to write the markdown
+      },
+    ],
+  ],
+}

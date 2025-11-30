@@ -23,4 +23,14 @@ export default {
   passWithNoTests: true,
   // Ensure NODE_OPTIONS is set for ESM support
   setupFiles: ['<rootDir>/jest.setup.js'],
+  reporters: [
+    'default',
+    [
+      'jest-md-dashboard',
+      {
+        title: 'Tests for @slaops/test',
+        outputPath: '../../apps/slaops-docs/docs/test/slaops-test.md', // where to write the markdown
+      },
+    ],
+  ],
 }

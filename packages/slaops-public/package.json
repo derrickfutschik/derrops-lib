@@ -46,6 +46,7 @@
     "jest": "*",
     "ts-jest": "*",
     "tsup": "^8.3.0",
+    "jest-md-dashboard": "^0.8.1",
     "typescript": "^5.6.3"
   }
 }
