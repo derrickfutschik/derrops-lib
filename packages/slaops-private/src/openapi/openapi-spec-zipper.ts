@@ -7,6 +7,8 @@ export type ZippedOperation = {
     m: string; // method (first character only)
     m_i: number[]; // model_indices
     p_k: string; // partition_key
+    seg: number; // number of segments in the path
+    p: string; // path
 };
 
 /**
@@ -290,6 +292,8 @@ function zipOperation(
         m: getMethodShorthand(method),
         m_i: modelIndices,
         p_k: partitionKey,
+        seg: variablePath.split("/").length,
+        p: path,
     };
 }
 

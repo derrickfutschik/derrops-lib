@@ -1,6 +1,0 @@
-
-
-
-
-https://redocly.com/respect
-

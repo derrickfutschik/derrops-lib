@@ -20,9 +20,11 @@ describe("zipOperations", () => {
         expect(result).toHaveLength(1);
         expect(result[0]).toEqual({
             o_i: "getUser",
+            "seg": 3,
             v_p: "/users/{i}",
             m: "G",
             m_i: [],
+            "p": "/users/{userId}",
             p_k: "G:users/{i}",
         });
     });
