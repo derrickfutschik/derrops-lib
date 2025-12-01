@@ -41,13 +41,15 @@ describe('AWS DynamoDB', () => {
             return Promise.all(logs.map(log => {
 
                 console.log({ log });
+                console.log("Looking for operation")
 
                 const operation = matchPath({
+                    // path: new URL(log.request.url).pathname,
                     path: new URL(log.request.url).pathname,
                     method: log.request.method as OpenAPIV3.HttpMethods,
                 }, openapiSpec)
 
-                console.log({ operation });
+                console.log("Operation found", { operation });
 
 
             })).then(() => {

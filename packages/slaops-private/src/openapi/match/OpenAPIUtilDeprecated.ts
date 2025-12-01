@@ -2,8 +2,6 @@ import * as t from "./types"
 
 import * as _ from 'lodash';
 
-import Oas from 'oas';
-
 import { OpenAPIV3, OpenAPIV3_1, } from "openapi-types";
 // var Url = require('url-parse');
 
@@ -292,16 +290,16 @@ const exactMatch = (
 
 export function matchPath<T extends {} = {}>(requestRaw: RelativeRequest, doc: OpenAPIV3_1.Document<T>) {
 
-    const spec = new Oas(doc)
-    const operation = spec.getOperation(requestRaw.path, requestRaw.method)
-
-
-
-    return {
-        operation: operation as OpenAPIV3_1.OperationObject,
-        path: requestRaw.path,
-        method: requestRaw.method
+    const request = {
+        ...requestRaw,
+        path: cleanPath(requestRaw.path)
     }
+
+    console.log({ request })
+
+    const operations = flatMapOperations(doc)
+
+    return exactMatch(request, operations) ?? operations.find(operation => pathsMatch(request, operation)) ?? operations.find(operation => pathsMatch(request, operation, true))
 }
 
 
