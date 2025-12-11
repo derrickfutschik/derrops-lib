@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock } from "lucide-react";
+import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import yaml from "js-yaml";
 
@@ -67,6 +67,7 @@ interface MatchResult {
     description?: string;
     pathParameters: ParameterInfo[];
     queryParameters: ParameterInfo[];
+    headerParameters: ParameterInfo[];
   } | null;
   validationErrors: string[];
   spec: any;
@@ -101,6 +102,9 @@ const ApiTester = () => {
     service: false,
     server: false,
     operation: false,
+    pathParams: false,
+    queryParams: false,
+    headerParams: false,
     validation: false,
   });
   
@@ -110,10 +114,81 @@ const ApiTester = () => {
   const [availableOperations, setAvailableOperations] = useState<OperationOption[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [parsedSpecs, setParsedSpecs] = useState<Record<string, any>>({});
+  
+  // Sorting state for parameter tables
+  type SortColumn = 'name' | 'type' | 'required' | 'value' | 'isValid';
+  type SortDirection = 'asc' | 'desc';
+  const [pathParamSort, setPathParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
+  const [queryParamSort, setQueryParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
+  const [headerParamSort, setHeaderParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
 
   const toggleSection = (section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+
+  const sortParameters = (params: ParameterInfo[], sortConfig: { column: SortColumn; direction: SortDirection }): ParameterInfo[] => {
+    return [...params].sort((a, b) => {
+      let comparison = 0;
+      switch (sortConfig.column) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'type':
+          comparison = a.type.localeCompare(b.type);
+          break;
+        case 'required':
+          comparison = (a.required === b.required) ? 0 : a.required ? -1 : 1;
+          break;
+        case 'value':
+          comparison = (a.value || '').localeCompare(b.value || '');
+          break;
+        case 'isValid':
+          comparison = (a.isValid === b.isValid) ? 0 : a.isValid ? -1 : 1;
+          break;
+      }
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  const handleSort = (
+    column: SortColumn,
+    currentSort: { column: SortColumn; direction: SortDirection },
+    setSort: React.Dispatch<React.SetStateAction<{ column: SortColumn; direction: SortDirection }>>
+  ) => {
+    if (currentSort.column === column) {
+      setSort({ column, direction: currentSort.direction === 'asc' ? 'desc' : 'asc' });
+    } else {
+      setSort({ column, direction: 'asc' });
+    }
+  };
+
+  const SortableHeader = ({ 
+    column, 
+    label, 
+    currentSort, 
+    onSort 
+  }: { 
+    column: SortColumn; 
+    label: string; 
+    currentSort: { column: SortColumn; direction: SortDirection }; 
+    onSort: (column: SortColumn) => void;
+  }) => (
+    <th 
+      className="text-left px-3 py-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none"
+      onClick={() => onSort(column)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {currentSort.column === column ? (
+          currentSort.direction === 'asc' ? 
+            <ArrowUp className="h-3 w-3" /> : 
+            <ArrowDown className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </div>
+    </th>
+  );
 
   useEffect(() => {
     fetchServices();
@@ -495,6 +570,22 @@ const ApiTester = () => {
             };
           });
 
+        const headerParameters: ParameterInfo[] = parameters
+          .filter((p: any) => p.in === "header")
+          .map((p: any) => {
+            const headerParam = headers.find(h => h.enabled && h.key.toLowerCase() === p.name.toLowerCase());
+            const value = headerParam?.value || null;
+            const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? false);
+            return {
+              name: p.name,
+              type: p.schema?.type || "string",
+              required: p.required ?? false,
+              value,
+              isValid: validation.isValid,
+              validationReason: validation.reason,
+            };
+          });
+
         const operation: MatchResult["operation"] = {
           path: pathTemplate,
           method: opMethod,
@@ -503,6 +594,7 @@ const ApiTester = () => {
           description: operationDef.description,
           pathParameters,
           queryParameters,
+          headerParameters,
         };
 
         const errors = validateRequest(spec, operationDef, body, headers, queryParams);
@@ -607,6 +699,22 @@ const ApiTester = () => {
                           validationReason: validation.reason,
                         };
                       });
+
+                    const headerParameters: ParameterInfo[] = parameters
+                      .filter((p: any) => p.in === "header")
+                      .map((p: any) => {
+                        const headerParam = headers.find(h => h.enabled && h.key.toLowerCase() === p.name.toLowerCase());
+                        const value = headerParam?.value || null;
+                        const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? false);
+                        return {
+                          name: p.name,
+                          type: p.schema?.type || "string",
+                          required: p.required ?? false,
+                          value,
+                          isValid: validation.isValid,
+                          validationReason: validation.reason,
+                        };
+                      });
                     
                     matchedOperation = {
                       path: pathTemplate,
@@ -616,6 +724,7 @@ const ApiTester = () => {
                       description: pathMethods[lowerMethod].description,
                       pathParameters,
                       queryParameters,
+                      headerParameters,
                     };
                     
                     validationErrors = validateRequest(spec, pathMethods[lowerMethod], body, headers, queryParams);
@@ -1112,117 +1221,240 @@ const ApiTester = () => {
                             )}
                           </div>
                         )}
-                        
-                        {/* Path Parameters */}
-                        {matchResult.operation?.pathParameters && matchResult.operation.pathParameters.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-border">
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Path Parameters</p>
-                            <div className="rounded border border-border overflow-hidden">
-                              <table className="w-full text-sm">
-                                <thead className="bg-muted/50">
-                                  <tr>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Type</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Required</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Valid</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {matchResult.operation.pathParameters.map((param, index) => (
-                                    <tr key={index} className="border-t border-border">
-                                      <td className="px-3 py-2 text-foreground font-mono">{param.name}</td>
-                                      <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
-                                      <td className="px-3 py-2">
-                                        <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
-                                          {param.required ? "Required" : "Optional"}
-                                        </Badge>
-                                      </td>
-                                      <td className="px-3 py-2 text-foreground font-mono">
-                                        {param.value || <span className="text-muted-foreground italic">-</span>}
-                                      </td>
-                                      <td className="px-3 py-2">
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Badge 
-                                                variant={param.isValid ? "default" : "destructive"} 
-                                                className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
-                                              >
-                                                {param.isValid ? "Valid" : "Invalid"}
-                                              </Badge>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{param.validationReason}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Query Parameters */}
-                        {matchResult.operation?.queryParameters && matchResult.operation.queryParameters.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-border">
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Query Parameters</p>
-                            <div className="rounded border border-border overflow-hidden">
-                              <table className="w-full text-sm">
-                                <thead className="bg-muted/50">
-                                  <tr>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Type</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Required</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Valid</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {matchResult.operation.queryParameters.map((param, index) => (
-                                    <tr key={index} className="border-t border-border">
-                                      <td className="px-3 py-2 text-foreground font-mono">{param.name}</td>
-                                      <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
-                                      <td className="px-3 py-2">
-                                        <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
-                                          {param.required ? "Required" : "Optional"}
-                                        </Badge>
-                                      </td>
-                                      <td className="px-3 py-2 text-foreground font-mono">
-                                        {param.value || <span className="text-muted-foreground italic">-</span>}
-                                      </td>
-                                      <td className="px-3 py-2">
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Badge 
-                                                variant={param.isValid ? "default" : "destructive"} 
-                                                className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
-                                              >
-                                                {param.isValid ? "Valid" : "Invalid"}
-                                              </Badge>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{param.validationReason}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
 
-                  {/* Validation Errors */}
+                  {/* Path Parameters */}
+                  {matchResult.operation?.pathParameters && matchResult.operation.pathParameters.length > 0 && (
+                    <Collapsible
+                      open={!collapsedSections.pathParams}
+                      onOpenChange={() => toggleSection('pathParams')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Route className="h-4 w-4" />
+                          Path Parameters
+                          <Badge variant="secondary" className="text-xs ml-1">
+                            {matchResult.operation.pathParameters.length}
+                          </Badge>
+                        </div>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            {collapsedSections.pathParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                          <div className="rounded border border-border overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr>
+                                  <SortableHeader column="name" label="Name" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
+                                  <SortableHeader column="type" label="Type" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
+                                  <SortableHeader column="required" label="Required" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
+                                  <SortableHeader column="value" label="Value" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
+                                  <SortableHeader column="isValid" label="Valid" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sortParameters(matchResult.operation.pathParameters, pathParamSort).map((param, index) => (
+                                  <tr key={index} className="border-t border-border">
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>{param.name}</td>
+                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
+                                    <td className="px-3 py-2">
+                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
+                                        {param.required ? "Required" : "Optional"}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-2 text-foreground font-mono">
+                                      {param.value || <span className="text-muted-foreground italic">-</span>}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge 
+                                              variant={param.isValid ? "default" : "destructive"} 
+                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                            >
+                                              {param.isValid ? "Valid" : "Invalid"}
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{param.validationReason}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Query Parameters */}
+                  {matchResult.operation?.queryParameters && matchResult.operation.queryParameters.length > 0 && (
+                    <Collapsible
+                      open={!collapsedSections.queryParams}
+                      onOpenChange={() => toggleSection('queryParams')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Route className="h-4 w-4" />
+                          Query Parameters
+                          <Badge variant="secondary" className="text-xs ml-1">
+                            {matchResult.operation.queryParameters.length}
+                          </Badge>
+                        </div>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            {collapsedSections.queryParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                          <div className="rounded border border-border overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr>
+                                  <SortableHeader column="name" label="Name" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
+                                  <SortableHeader column="type" label="Type" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
+                                  <SortableHeader column="required" label="Required" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
+                                  <SortableHeader column="value" label="Value" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
+                                  <SortableHeader column="isValid" label="Valid" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sortParameters(matchResult.operation.queryParameters, queryParamSort).map((param, index) => (
+                                  <tr key={index} className="border-t border-border">
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>{param.name}</td>
+                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
+                                    <td className="px-3 py-2">
+                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
+                                        {param.required ? "Required" : "Optional"}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-2 text-foreground font-mono">
+                                      {param.value || <span className="text-muted-foreground italic">-</span>}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge 
+                                              variant={param.isValid ? "default" : "destructive"} 
+                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                            >
+                                              {param.isValid ? "Valid" : "Invalid"}
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{param.validationReason}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Header Parameters */}
+                  {matchResult.operation?.headerParameters && matchResult.operation.headerParameters.length > 0 && (
+                    <Collapsible
+                      open={!collapsedSections.headerParams}
+                      onOpenChange={() => toggleSection('headerParams')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileCode className="h-4 w-4" />
+                          Header Parameters
+                          <Badge variant="secondary" className="text-xs ml-1">
+                            {matchResult.operation.headerParameters.length}
+                          </Badge>
+                        </div>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            {collapsedSections.headerParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                          <div className="rounded border border-border overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr>
+                                  <SortableHeader column="name" label="Name" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
+                                  <SortableHeader column="type" label="Type" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
+                                  <SortableHeader column="required" label="Required" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
+                                  <SortableHeader column="value" label="Value" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
+                                  <SortableHeader column="isValid" label="Valid" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sortParameters(matchResult.operation.headerParameters, headerParamSort).map((param, index) => (
+                                  <tr key={index} className="border-t border-border">
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>{param.name}</td>
+                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
+                                    <td className="px-3 py-2">
+                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
+                                        {param.required ? "Required" : "Optional"}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-2 text-foreground font-mono">
+                                      {param.value || <span className="text-muted-foreground italic">-</span>}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge 
+                                              variant={param.isValid ? "default" : "destructive"} 
+                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                            >
+                                              {param.isValid ? "Valid" : "Invalid"}
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{param.validationReason}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
                   <Collapsible
                     open={!collapsedSections.validation}
                     onOpenChange={() => toggleSection('validation')}
