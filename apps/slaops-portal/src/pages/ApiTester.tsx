@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import yaml from "js-yaml";
+import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParameterRow";
 
 interface KeyValuePair {
   key: string;
@@ -35,9 +36,13 @@ interface ParameterInfo {
   type: string;
   required: boolean;
   value: string | null;
+  defaultValue?: string | null;
+  isUsingDefault: boolean;
+  isUnspecified: boolean;
   isValid: boolean;
   validationReason: string;
   description?: string;
+  rawJson: object;
 }
 
 interface ServerVariable {
@@ -64,6 +69,7 @@ interface BodyPropertyInfo {
   isValid: boolean;
   validationReason: string;
   description?: string;
+  rawJson: object;
 }
 
 interface MatchResult {
@@ -83,6 +89,7 @@ interface MatchResult {
     bodyContentType?: string;
   } | null;
   validationErrors: string[];
+  validationWarnings: string[];
   spec: any;
 }
 
@@ -397,8 +404,9 @@ const ApiTester = () => {
     }
   };
 
-  const validateRequest = (spec: any, operation: any, requestBody: string, requestHeaders: KeyValuePair[], requestQueryParams: KeyValuePair[]): string[] => {
+  const validateRequest = (spec: any, operation: any, requestBody: string, requestHeaders: KeyValuePair[], requestQueryParams: KeyValuePair[]): { errors: string[]; warnings: string[] } => {
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     // Check if body is required
     if (operation.requestBody?.required && !requestBody.trim()) {
@@ -415,6 +423,36 @@ const ApiTester = () => {
       } catch {
         errors.push("Request body is not valid JSON");
       }
+    }
+
+    // Get spec parameter names
+    const specQueryParams = (operation.parameters || [])
+      .filter((p: any) => p.in === "query")
+      .map((p: any) => p.name.toLowerCase());
+    
+    const specHeaderParams = (operation.parameters || [])
+      .filter((p: any) => p.in === "header")
+      .map((p: any) => p.name.toLowerCase());
+
+    // Common headers to ignore
+    const commonHeaders = ['content-type', 'accept', 'authorization', 'user-agent', 'host', 'connection', 'cache-control'];
+
+    // Check for unspecified query parameters
+    const unspecifiedQueryParams = requestQueryParams
+      .filter(p => p.enabled && p.key.trim() && !specQueryParams.includes(p.key.toLowerCase()));
+    
+    for (const param of unspecifiedQueryParams) {
+      warnings.push(`Query parameter "${param.key}" is not defined in the OpenAPI specification`);
+    }
+
+    // Check for unspecified header parameters
+    const unspecifiedHeaders = requestHeaders
+      .filter(h => h.enabled && h.key.trim() && 
+        !specHeaderParams.includes(h.key.toLowerCase()) &&
+        !commonHeaders.includes(h.key.toLowerCase()));
+    
+    for (const header of unspecifiedHeaders) {
+      warnings.push(`Header "${header.key}" is not defined in the OpenAPI specification`);
     }
 
     // Check required parameters
@@ -440,7 +478,7 @@ const ApiTester = () => {
       }
     }
 
-    return errors;
+    return { errors, warnings };
   };
 
   const analyzeRequest = async () => {
@@ -458,6 +496,7 @@ const ApiTester = () => {
       let matchedOperation: MatchResult["operation"] = null;
       let spec: any = null;
       let validationErrors: string[] = [];
+      let validationWarnings: string[] = [];
 
       // Helper functions that will be used in both locked and auto-match modes
       const extractPathValues = (requestUrl: string, pathTemplate: string): Record<string, string> => {
@@ -558,51 +597,124 @@ const ApiTester = () => {
           .filter((p: any) => p.in === "path")
           .map((p: any) => {
             const value = pathValues[p.name] || null;
-            const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? true);
+            const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null;
+            const isUsingDefault = value === null && defaultValue !== null;
+            const effectiveValue = value ?? defaultValue;
+            const validation = validateParamValue(effectiveValue, p.schema?.type || 'string', p.required ?? true);
             return {
               name: p.name,
               type: p.schema?.type || "string",
               required: p.required ?? true,
               value,
+              defaultValue,
+              isUsingDefault,
+              isUnspecified: false,
               isValid: validation.isValid,
               validationReason: validation.reason,
               description: p.description,
+              rawJson: p,
             };
           });
+
+        // Get spec query parameter names for comparison
+        const specQueryParamNames = parameters
+          .filter((p: any) => p.in === "query")
+          .map((p: any) => p.name.toLowerCase());
 
         const queryParameters: ParameterInfo[] = parameters
           .filter((p: any) => p.in === "query")
           .map((p: any) => {
             const queryParam = queryParams.find(qp => qp.enabled && qp.key.toLowerCase() === p.name.toLowerCase());
             const value = queryParam?.value || null;
-            const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? false);
+            const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null;
+            const isUsingDefault = value === null && defaultValue !== null;
+            const effectiveValue = value ?? defaultValue;
+            const validation = validateParamValue(effectiveValue, p.schema?.type || 'string', p.required ?? false);
             return {
               name: p.name,
               type: p.schema?.type || "string",
               required: p.required ?? false,
               value,
+              defaultValue,
+              isUsingDefault,
+              isUnspecified: false,
               isValid: validation.isValid,
               validationReason: validation.reason,
               description: p.description,
+              rawJson: p,
             };
           });
+
+        // Add unspecified query parameters (in request but not in spec)
+        const unspecifiedQueryParams: ParameterInfo[] = queryParams
+          .filter(qp => qp.enabled && qp.key.trim() && !specQueryParamNames.includes(qp.key.toLowerCase()))
+          .map(qp => ({
+            name: qp.key,
+            type: 'unknown',
+            required: false,
+            value: qp.value,
+            defaultValue: null,
+            isUsingDefault: false,
+            isUnspecified: true,
+            isValid: true,
+            validationReason: 'Parameter not in specification',
+            description: undefined,
+            rawJson: {},
+          }));
+        
+        queryParameters.push(...unspecifiedQueryParams);
+
+        // Get spec header parameter names for comparison
+        const specHeaderParamNames = parameters
+          .filter((p: any) => p.in === "header")
+          .map((p: any) => p.name.toLowerCase());
 
         const headerParameters: ParameterInfo[] = parameters
           .filter((p: any) => p.in === "header")
           .map((p: any) => {
             const headerParam = headers.find(h => h.enabled && h.key.toLowerCase() === p.name.toLowerCase());
             const value = headerParam?.value || null;
-            const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? false);
+            const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null;
+            const isUsingDefault = value === null && defaultValue !== null;
+            const effectiveValue = value ?? defaultValue;
+            const validation = validateParamValue(effectiveValue, p.schema?.type || 'string', p.required ?? false);
             return {
               name: p.name,
               type: p.schema?.type || "string",
               required: p.required ?? false,
               value,
+              defaultValue,
+              isUsingDefault,
+              isUnspecified: false,
               isValid: validation.isValid,
               validationReason: validation.reason,
               description: p.description,
+              rawJson: p,
             };
           });
+
+        // Add unspecified header parameters (in request but not in spec)
+        // Exclude common headers that are typically not defined in OpenAPI specs
+        const commonHeaders = ['content-type', 'accept', 'authorization', 'user-agent', 'host', 'connection', 'cache-control'];
+        const unspecifiedHeaderParams: ParameterInfo[] = headers
+          .filter(h => h.enabled && h.key.trim() && 
+            !specHeaderParamNames.includes(h.key.toLowerCase()) &&
+            !commonHeaders.includes(h.key.toLowerCase()))
+          .map(h => ({
+            name: h.key,
+            type: 'unknown',
+            required: false,
+            value: h.value,
+            defaultValue: null,
+            isUsingDefault: false,
+            isUnspecified: true,
+            isValid: true,
+            validationReason: 'Parameter not in specification',
+            description: undefined,
+            rawJson: {},
+          }));
+        
+        headerParameters.push(...unspecifiedHeaderParams);
 
         // Extract body properties from requestBody schema
         const bodyProperties: BodyPropertyInfo[] = [];
@@ -696,6 +808,7 @@ const ApiTester = () => {
                     isValid,
                     validationReason,
                     description: propDef.description,
+                    rawJson: propDef,
                   });
                 }
               }
@@ -716,9 +829,9 @@ const ApiTester = () => {
           bodyContentType,
         };
 
-        const errors = validateRequest(spec, operationDef, body, headers, queryParams);
+        const validationResult = validateRequest(spec, operationDef, body, headers, queryParams);
 
-        return { service, serverInfo, operation, errors };
+        return { service, serverInfo, operation, errors: validationResult.errors, warnings: validationResult.warnings };
       };
 
       // If locked and we have a selection, use it
@@ -736,6 +849,7 @@ const ApiTester = () => {
               matchedServer = result.serverInfo;
               matchedOperation = result.operation;
               validationErrors = result.errors;
+              validationWarnings = result.warnings;
             }
           }
         }
@@ -792,51 +906,123 @@ const ApiTester = () => {
                       .filter((p: any) => p.in === "path")
                       .map((p: any) => {
                         const value = pathValues[p.name] || null;
-                        const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? true);
+                        const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null;
+                        const isUsingDefault = value === null && defaultValue !== null;
+                        const effectiveValue = value ?? defaultValue;
+                        const validation = validateParamValue(effectiveValue, p.schema?.type || 'string', p.required ?? true);
                         return {
                           name: p.name,
                           type: p.schema?.type || "string",
                           required: p.required ?? true,
                           value,
+                          defaultValue,
+                          isUsingDefault,
+                          isUnspecified: false,
                           isValid: validation.isValid,
                           validationReason: validation.reason,
                           description: p.description,
+                          rawJson: p,
                         };
                       });
+
+                    // Get spec query parameter names for comparison
+                    const specQueryParamNames = parameters
+                      .filter((p: any) => p.in === "query")
+                      .map((p: any) => p.name.toLowerCase());
                     
                     const queryParameters: ParameterInfo[] = parameters
                       .filter((p: any) => p.in === "query")
                       .map((p: any) => {
                         const queryParam = queryParams.find(qp => qp.enabled && qp.key.toLowerCase() === p.name.toLowerCase());
                         const value = queryParam?.value || null;
-                        const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? false);
+                        const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null;
+                        const isUsingDefault = value === null && defaultValue !== null;
+                        const effectiveValue = value ?? defaultValue;
+                        const validation = validateParamValue(effectiveValue, p.schema?.type || 'string', p.required ?? false);
                         return {
                           name: p.name,
                           type: p.schema?.type || "string",
                           required: p.required ?? false,
                           value,
+                          defaultValue,
+                          isUsingDefault,
+                          isUnspecified: false,
                           isValid: validation.isValid,
                           validationReason: validation.reason,
                           description: p.description,
+                          rawJson: p,
                         };
                       });
+
+                    // Add unspecified query parameters (in request but not in spec)
+                    const unspecifiedQueryParams: ParameterInfo[] = queryParams
+                      .filter(qp => qp.enabled && qp.key.trim() && !specQueryParamNames.includes(qp.key.toLowerCase()))
+                      .map(qp => ({
+                        name: qp.key,
+                        type: 'unknown',
+                        required: false,
+                        value: qp.value,
+                        defaultValue: null,
+                        isUsingDefault: false,
+                        isUnspecified: true,
+                        isValid: true,
+                        validationReason: 'Parameter not in specification',
+                        description: undefined,
+                        rawJson: {},
+                      }));
+                    
+                    queryParameters.push(...unspecifiedQueryParams);
+
+                    // Get spec header parameter names for comparison
+                    const specHeaderParamNames = parameters
+                      .filter((p: any) => p.in === "header")
+                      .map((p: any) => p.name.toLowerCase());
 
                     const headerParameters: ParameterInfo[] = parameters
                       .filter((p: any) => p.in === "header")
                       .map((p: any) => {
                         const headerParam = headers.find(h => h.enabled && h.key.toLowerCase() === p.name.toLowerCase());
                         const value = headerParam?.value || null;
-                        const validation = validateParamValue(value, p.schema?.type || 'string', p.required ?? false);
+                        const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null;
+                        const isUsingDefault = value === null && defaultValue !== null;
+                        const effectiveValue = value ?? defaultValue;
+                        const validation = validateParamValue(effectiveValue, p.schema?.type || 'string', p.required ?? false);
                         return {
                           name: p.name,
                           type: p.schema?.type || "string",
                           required: p.required ?? false,
                           value,
+                          defaultValue,
+                          isUsingDefault,
+                          isUnspecified: false,
                           isValid: validation.isValid,
                           validationReason: validation.reason,
                           description: p.description,
+                          rawJson: p,
                         };
                       });
+
+                    // Add unspecified header parameters (in request but not in spec)
+                    const commonHeaders = ['content-type', 'accept', 'authorization', 'user-agent', 'host', 'connection', 'cache-control'];
+                    const unspecifiedHeaderParams: ParameterInfo[] = headers
+                      .filter(h => h.enabled && h.key.trim() && 
+                        !specHeaderParamNames.includes(h.key.toLowerCase()) &&
+                        !commonHeaders.includes(h.key.toLowerCase()))
+                      .map(h => ({
+                        name: h.key,
+                        type: 'unknown',
+                        required: false,
+                        value: h.value,
+                        defaultValue: null,
+                        isUsingDefault: false,
+                        isUnspecified: true,
+                        isValid: true,
+                        validationReason: 'Parameter not in specification',
+                        description: undefined,
+                        rawJson: {},
+                      }));
+                    
+                    headerParameters.push(...unspecifiedHeaderParams);
 
                     // Extract body properties in auto-match mode
                     const bodyProperties: BodyPropertyInfo[] = [];
@@ -927,6 +1113,7 @@ const ApiTester = () => {
                                 isValid,
                                 validationReason,
                                 description: propDef.description,
+                                rawJson: propDef,
                               });
                             }
                           }
@@ -947,7 +1134,9 @@ const ApiTester = () => {
                       bodyContentType,
                     };
                     
-                    validationErrors = validateRequest(spec, pathMethods[lowerMethod], body, headers, queryParams);
+                    const validationResult = validateRequest(spec, pathMethods[lowerMethod], body, headers, queryParams);
+                    validationErrors = validationResult.errors;
+                    validationWarnings = validationResult.warnings;
                     break;
                   }
                 }
@@ -967,6 +1156,7 @@ const ApiTester = () => {
         server: matchedServer,
         operation: matchedOperation,
         validationErrors,
+        validationWarnings,
         spec,
       });
 
@@ -1348,16 +1538,14 @@ const ApiTester = () => {
                                       <td className="px-3 py-2">
                                         <code className="text-primary">{variable.value}</code>
                                         {variable.enum && variable.enum.length > 0 && (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <span className="ml-2 text-xs text-muted-foreground cursor-help">(enum)</span>
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                <p>Allowed values: {variable.enum.join(', ')}</p>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
+                                          <Tooltip delayDuration={0}>
+                                            <TooltipTrigger asChild>
+                                              <span className="ml-2 text-xs text-muted-foreground cursor-help">(enum)</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Allowed values: {variable.enum.join(', ')}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
                                         )}
                                       </td>
                                       <td className="px-3 py-2 text-muted-foreground">
@@ -1500,50 +1688,20 @@ const ApiTester = () => {
                               </thead>
                               <tbody>
                                 {sortParameters(matchResult.operation.pathParameters, pathParamSort).map((param, index) => (
-                                  <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
-                                      {param.description ? (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className="cursor-help">{param.name}</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                              <p>{param.description}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      ) : (
-                                        param.name
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
-                                    <td className="px-3 py-2">
-                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
-                                        {param.required ? "Required" : "Optional"}
-                                      </Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-foreground font-mono">
-                                      {param.value || <span className="text-muted-foreground italic">-</span>}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Badge 
-                                              variant={param.isValid ? "default" : "destructive"} 
-                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
-                                            >
-                                              {param.isValid ? "Valid" : "Invalid"}
-                                            </Badge>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{param.validationReason}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    </td>
-                                  </tr>
+                                  <ExpandableParameterRow
+                                    key={index}
+                                    name={param.name}
+                                    type={param.type}
+                                    required={param.required}
+                                    value={param.value}
+                                    defaultValue={param.defaultValue}
+                                    isUsingDefault={param.isUsingDefault}
+                                    isUnspecified={param.isUnspecified}
+                                    isValid={param.isValid}
+                                    validationReason={param.validationReason}
+                                    description={param.description}
+                                    rawJson={param.rawJson}
+                                  />
                                 ))}
                               </tbody>
                             </table>
@@ -1603,50 +1761,20 @@ const ApiTester = () => {
                               </thead>
                               <tbody>
                                 {sortParameters(matchResult.operation.queryParameters, queryParamSort).map((param, index) => (
-                                  <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
-                                      {param.description ? (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className="cursor-help">{param.name}</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                              <p>{param.description}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      ) : (
-                                        param.name
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
-                                    <td className="px-3 py-2">
-                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
-                                        {param.required ? "Required" : "Optional"}
-                                      </Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-foreground font-mono">
-                                      {param.value || <span className="text-muted-foreground italic">-</span>}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Badge 
-                                              variant={param.isValid ? "default" : "destructive"} 
-                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
-                                            >
-                                              {param.isValid ? "Valid" : "Invalid"}
-                                            </Badge>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{param.validationReason}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    </td>
-                                  </tr>
+                                  <ExpandableParameterRow
+                                    key={index}
+                                    name={param.name}
+                                    type={param.type}
+                                    required={param.required}
+                                    value={param.value}
+                                    defaultValue={param.defaultValue}
+                                    isUsingDefault={param.isUsingDefault}
+                                    isUnspecified={param.isUnspecified}
+                                    isValid={param.isValid}
+                                    validationReason={param.validationReason}
+                                    description={param.description}
+                                    rawJson={param.rawJson}
+                                  />
                                 ))}
                               </tbody>
                             </table>
@@ -1706,50 +1834,20 @@ const ApiTester = () => {
                               </thead>
                               <tbody>
                                 {sortParameters(matchResult.operation.headerParameters, headerParamSort).map((param, index) => (
-                                  <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
-                                      {param.description ? (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className="cursor-help">{param.name}</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                              <p>{param.description}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      ) : (
-                                        param.name
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
-                                    <td className="px-3 py-2">
-                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
-                                        {param.required ? "Required" : "Optional"}
-                                      </Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-foreground font-mono">
-                                      {param.value || <span className="text-muted-foreground italic">-</span>}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Badge 
-                                              variant={param.isValid ? "default" : "destructive"} 
-                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
-                                            >
-                                              {param.isValid ? "Valid" : "Invalid"}
-                                            </Badge>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{param.validationReason}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    </td>
-                                  </tr>
+                                  <ExpandableParameterRow
+                                    key={index}
+                                    name={param.name}
+                                    type={param.type}
+                                    required={param.required}
+                                    value={param.value}
+                                    defaultValue={param.defaultValue}
+                                    isUsingDefault={param.isUsingDefault}
+                                    isUnspecified={param.isUnspecified}
+                                    isValid={param.isValid}
+                                    validationReason={param.validationReason}
+                                    description={param.description}
+                                    rawJson={param.rawJson}
+                                  />
                                 ))}
                               </tbody>
                             </table>
@@ -1840,52 +1938,23 @@ const ApiTester = () => {
                               <tbody>
                                 {sortParameters(matchResult.operation.bodyProperties.map(p => ({
                                   ...p,
-                                  value: p.value !== null ? JSON.stringify(p.value) : null
+                                  value: p.value !== null ? JSON.stringify(p.value) : null,
+                                  isUsingDefault: false,
+                                  isUnspecified: false
                                 })), bodyParamSort).map((param, index) => (
-                                  <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
-                                      {param.description ? (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className="cursor-help">{param.name}</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                              <p>{param.description}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      ) : (
-                                        param.name
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
-                                    <td className="px-3 py-2">
-                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
-                                        {param.required ? "Required" : "Optional"}
-                                      </Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-foreground font-mono max-w-[200px] truncate">
-                                      {param.value || <span className="text-muted-foreground italic">-</span>}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Badge 
-                                              variant={param.isValid ? "default" : "destructive"} 
-                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
-                                            >
-                                              {param.isValid ? "Valid" : "Invalid"}
-                                            </Badge>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{param.validationReason}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    </td>
-                                  </tr>
+                                  <ExpandableParameterRow
+                                    key={index}
+                                    name={param.name}
+                                    type={param.type}
+                                    required={param.required}
+                                    value={param.value}
+                                    defaultValue={null}
+                                    isUsingDefault={param.isUsingDefault}
+                                    isValid={param.isValid}
+                                    validationReason={param.validationReason}
+                                    description={param.description}
+                                    rawJson={param.rawJson}
+                                  />
                                 ))}
                               </tbody>
                             </table>
@@ -1914,21 +1983,35 @@ const ApiTester = () => {
                       </CollapsibleTrigger>
                     </div>
                     <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                        {matchResult.validationErrors.length === 0 ? (
+                      <div className="bg-background rounded-lg p-4 border border-border mt-2 space-y-4">
+                        {matchResult.validationErrors.length === 0 && matchResult.validationWarnings.length === 0 ? (
                           <div className="flex items-center gap-2 text-success">
                             <CheckCircle className="h-4 w-4" />
                             <span>Request is valid</span>
                           </div>
                         ) : (
-                          <ul className="space-y-2">
-                            {matchResult.validationErrors.map((error, index) => (
-                              <li key={index} className="flex items-start gap-2 text-destructive text-sm">
-                                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                {error}
-                              </li>
-                            ))}
-                          </ul>
+                          <>
+                            {matchResult.validationErrors.length > 0 && (
+                              <ul className="space-y-2">
+                                {matchResult.validationErrors.map((error, index) => (
+                                  <li key={index} className="flex items-start gap-2 text-destructive text-sm">
+                                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    {error}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            {matchResult.validationWarnings.length > 0 && (
+                              <ul className="space-y-2">
+                                {matchResult.validationWarnings.map((warning, index) => (
+                                  <li key={index} className="flex items-start gap-2 text-orange-500 text-sm">
+                                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    {warning}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
                         )}
                       </div>
                     </CollapsibleContent>
