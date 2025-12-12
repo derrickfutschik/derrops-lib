@@ -37,6 +37,7 @@ interface ParameterInfo {
   value: string | null;
   isValid: boolean;
   validationReason: string;
+  description?: string;
 }
 
 interface ServerVariable {
@@ -55,6 +56,16 @@ interface ServerInfo {
   variables: ServerVariable[];
 }
 
+interface BodyPropertyInfo {
+  name: string;
+  type: string;
+  required: boolean;
+  value: any;
+  isValid: boolean;
+  validationReason: string;
+  description?: string;
+}
+
 interface MatchResult {
   matched: boolean;
   service: Service | null;
@@ -68,6 +79,8 @@ interface MatchResult {
     pathParameters: ParameterInfo[];
     queryParameters: ParameterInfo[];
     headerParameters: ParameterInfo[];
+    bodyProperties: BodyPropertyInfo[];
+    bodyContentType?: string;
   } | null;
   validationErrors: string[];
   spec: any;
@@ -105,6 +118,7 @@ const ApiTester = () => {
     pathParams: false,
     queryParams: false,
     headerParams: false,
+    bodyParams: false,
     validation: false,
   });
   
@@ -121,6 +135,7 @@ const ApiTester = () => {
   const [pathParamSort, setPathParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
   const [queryParamSort, setQueryParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
   const [headerParamSort, setHeaderParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
+  const [bodyParamSort, setBodyParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
 
   const toggleSection = (section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -551,6 +566,7 @@ const ApiTester = () => {
               value,
               isValid: validation.isValid,
               validationReason: validation.reason,
+              description: p.description,
             };
           });
 
@@ -567,6 +583,7 @@ const ApiTester = () => {
               value,
               isValid: validation.isValid,
               validationReason: validation.reason,
+              description: p.description,
             };
           });
 
@@ -583,8 +600,108 @@ const ApiTester = () => {
               value,
               isValid: validation.isValid,
               validationReason: validation.reason,
+              description: p.description,
             };
           });
+
+        // Extract body properties from requestBody schema
+        const bodyProperties: BodyPropertyInfo[] = [];
+        let bodyContentType: string | undefined;
+        
+        if (operationDef.requestBody) {
+          const content = operationDef.requestBody.content;
+          if (content) {
+            // Try to find JSON content type first
+            const jsonContentType = Object.keys(content).find(ct => ct.includes('json'));
+            bodyContentType = jsonContentType || Object.keys(content)[0];
+            
+            if (bodyContentType && content[bodyContentType]?.schema) {
+              const schema = content[bodyContentType].schema;
+              const requiredFields = schema.required || [];
+              
+              // Parse the request body to get actual values
+              let parsedBody: Record<string, any> = {};
+              if (body.trim()) {
+                try {
+                  parsedBody = JSON.parse(body);
+                } catch {
+                  // Body is not valid JSON
+                }
+              }
+              
+              // Extract properties from schema
+              if (schema.properties) {
+                for (const [propName, propDef] of Object.entries(schema.properties as Record<string, any>)) {
+                  const isRequired = requiredFields.includes(propName);
+                  const value = parsedBody[propName];
+                  const propType = propDef.type || 'any';
+                  
+                  let isValid = true;
+                  let validationReason = 'Value matches expected type';
+                  
+                  if (value === undefined || value === null) {
+                    if (isRequired) {
+                      isValid = false;
+                      validationReason = 'Required property is missing';
+                    } else {
+                      validationReason = 'Optional property not provided';
+                    }
+                  } else {
+                    // Type validation
+                    switch (propType) {
+                      case 'string':
+                        if (typeof value !== 'string') {
+                          isValid = false;
+                          validationReason = `Expected string, got ${typeof value}`;
+                        }
+                        break;
+                      case 'integer':
+                        if (!Number.isInteger(value)) {
+                          isValid = false;
+                          validationReason = `Expected integer, got ${typeof value}`;
+                        }
+                        break;
+                      case 'number':
+                        if (typeof value !== 'number') {
+                          isValid = false;
+                          validationReason = `Expected number, got ${typeof value}`;
+                        }
+                        break;
+                      case 'boolean':
+                        if (typeof value !== 'boolean') {
+                          isValid = false;
+                          validationReason = `Expected boolean, got ${typeof value}`;
+                        }
+                        break;
+                      case 'array':
+                        if (!Array.isArray(value)) {
+                          isValid = false;
+                          validationReason = `Expected array, got ${typeof value}`;
+                        }
+                        break;
+                      case 'object':
+                        if (typeof value !== 'object' || Array.isArray(value)) {
+                          isValid = false;
+                          validationReason = `Expected object, got ${typeof value}`;
+                        }
+                        break;
+                    }
+                  }
+                  
+                  bodyProperties.push({
+                    name: propName,
+                    type: propType,
+                    required: isRequired,
+                    value: value !== undefined ? value : null,
+                    isValid,
+                    validationReason,
+                    description: propDef.description,
+                  });
+                }
+              }
+            }
+          }
+        }
 
         const operation: MatchResult["operation"] = {
           path: pathTemplate,
@@ -595,6 +712,8 @@ const ApiTester = () => {
           pathParameters,
           queryParameters,
           headerParameters,
+          bodyProperties,
+          bodyContentType,
         };
 
         const errors = validateRequest(spec, operationDef, body, headers, queryParams);
@@ -681,6 +800,7 @@ const ApiTester = () => {
                           value,
                           isValid: validation.isValid,
                           validationReason: validation.reason,
+                          description: p.description,
                         };
                       });
                     
@@ -697,6 +817,7 @@ const ApiTester = () => {
                           value,
                           isValid: validation.isValid,
                           validationReason: validation.reason,
+                          description: p.description,
                         };
                       });
 
@@ -713,8 +834,105 @@ const ApiTester = () => {
                           value,
                           isValid: validation.isValid,
                           validationReason: validation.reason,
+                          description: p.description,
                         };
                       });
+
+                    // Extract body properties in auto-match mode
+                    const bodyProperties: BodyPropertyInfo[] = [];
+                    let bodyContentType: string | undefined;
+                    const operationDef = pathMethods[lowerMethod];
+                    
+                    if (operationDef.requestBody) {
+                      const content = operationDef.requestBody.content;
+                      if (content) {
+                        const jsonContentType = Object.keys(content).find(ct => ct.includes('json'));
+                        bodyContentType = jsonContentType || Object.keys(content)[0];
+                        
+                        if (bodyContentType && content[bodyContentType]?.schema) {
+                          const schema = content[bodyContentType].schema;
+                          const requiredFields = schema.required || [];
+                          
+                          let parsedBody: Record<string, any> = {};
+                          if (body.trim()) {
+                            try {
+                              parsedBody = JSON.parse(body);
+                            } catch {
+                              // Body is not valid JSON
+                            }
+                          }
+                          
+                          if (schema.properties) {
+                            for (const [propName, propDef] of Object.entries(schema.properties as Record<string, any>)) {
+                              const isRequired = requiredFields.includes(propName);
+                              const value = parsedBody[propName];
+                              const propType = propDef.type || 'any';
+                              
+                              let isValid = true;
+                              let validationReason = 'Value matches expected type';
+                              
+                              if (value === undefined || value === null) {
+                                if (isRequired) {
+                                  isValid = false;
+                                  validationReason = 'Required property is missing';
+                                } else {
+                                  validationReason = 'Optional property not provided';
+                                }
+                              } else {
+                                switch (propType) {
+                                  case 'string':
+                                    if (typeof value !== 'string') {
+                                      isValid = false;
+                                      validationReason = `Expected string, got ${typeof value}`;
+                                    }
+                                    break;
+                                  case 'integer':
+                                    if (!Number.isInteger(value)) {
+                                      isValid = false;
+                                      validationReason = `Expected integer, got ${typeof value}`;
+                                    }
+                                    break;
+                                  case 'number':
+                                    if (typeof value !== 'number') {
+                                      isValid = false;
+                                      validationReason = `Expected number, got ${typeof value}`;
+                                    }
+                                    break;
+                                  case 'boolean':
+                                    if (typeof value !== 'boolean') {
+                                      isValid = false;
+                                      validationReason = `Expected boolean, got ${typeof value}`;
+                                    }
+                                    break;
+                                  case 'array':
+                                    if (!Array.isArray(value)) {
+                                      isValid = false;
+                                      validationReason = `Expected array, got ${typeof value}`;
+                                    }
+                                    break;
+                                  case 'object':
+                                    if (typeof value !== 'object' || Array.isArray(value)) {
+                                      isValid = false;
+                                      validationReason = `Expected object, got ${typeof value}`;
+                                    }
+                                    break;
+                                }
+                              }
+                              
+                              bodyProperties.push({
+                                name: propName,
+                                type: propType,
+                                required: isRequired,
+                                value: value !== undefined ? value : null,
+                                isValid,
+                                validationReason,
+                                description: propDef.description,
+                              });
+                            }
+                          }
+                        }
+                      }
+                    }
                     
                     matchedOperation = {
                       path: pathTemplate,
@@ -725,6 +943,8 @@ const ApiTester = () => {
                       pathParameters,
                       queryParameters,
                       headerParameters,
+                      bodyProperties,
+                      bodyContentType,
                     };
                     
                     validationErrors = validateRequest(spec, pathMethods[lowerMethod], body, headers, queryParams);
@@ -823,6 +1043,11 @@ const ApiTester = () => {
                   placeholder="Enter request URL (e.g., https://api.example.com/users)"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isAnalyzing) {
+                      analyzeRequest();
+                    }
+                  }}
                   className="flex-1 bg-background"
                 />
                 <Button onClick={analyzeRequest} disabled={isAnalyzing}>
@@ -1238,6 +1463,17 @@ const ApiTester = () => {
                           <Badge variant="secondary" className="text-xs ml-1">
                             {matchResult.operation.pathParameters.length}
                           </Badge>
+                          {(() => {
+                            const invalidCount = matchResult.operation!.pathParameters.filter(p => !p.isValid).length;
+                            return (
+                              <Badge 
+                                variant={invalidCount > 0 ? "destructive" : "default"} 
+                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                              >
+                                {invalidCount} invalid
+                              </Badge>
+                            );
+                          })()}
                         </div>
                         <CollapsibleTrigger asChild>
                           <Button
@@ -1265,7 +1501,22 @@ const ApiTester = () => {
                               <tbody>
                                 {sortParameters(matchResult.operation.pathParameters, pathParamSort).map((param, index) => (
                                   <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>{param.name}</td>
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
+                                      {param.description ? (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="cursor-help">{param.name}</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs">
+                                              <p>{param.description}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      ) : (
+                                        param.name
+                                      )}
+                                    </td>
                                     <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
                                     <td className="px-3 py-2">
                                       <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
@@ -1315,6 +1566,17 @@ const ApiTester = () => {
                           <Badge variant="secondary" className="text-xs ml-1">
                             {matchResult.operation.queryParameters.length}
                           </Badge>
+                          {(() => {
+                            const invalidCount = matchResult.operation!.queryParameters.filter(p => !p.isValid).length;
+                            return (
+                              <Badge 
+                                variant={invalidCount > 0 ? "destructive" : "default"} 
+                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                              >
+                                {invalidCount} invalid
+                              </Badge>
+                            );
+                          })()}
                         </div>
                         <CollapsibleTrigger asChild>
                           <Button
@@ -1342,7 +1604,22 @@ const ApiTester = () => {
                               <tbody>
                                 {sortParameters(matchResult.operation.queryParameters, queryParamSort).map((param, index) => (
                                   <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>{param.name}</td>
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
+                                      {param.description ? (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="cursor-help">{param.name}</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs">
+                                              <p>{param.description}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      ) : (
+                                        param.name
+                                      )}
+                                    </td>
                                     <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
                                     <td className="px-3 py-2">
                                       <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
@@ -1392,6 +1669,17 @@ const ApiTester = () => {
                           <Badge variant="secondary" className="text-xs ml-1">
                             {matchResult.operation.headerParameters.length}
                           </Badge>
+                          {(() => {
+                            const invalidCount = matchResult.operation!.headerParameters.filter(p => !p.isValid).length;
+                            return (
+                              <Badge 
+                                variant={invalidCount > 0 ? "destructive" : "default"} 
+                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                              >
+                                {invalidCount} invalid
+                              </Badge>
+                            );
+                          })()}
                         </div>
                         <CollapsibleTrigger asChild>
                           <Button
@@ -1419,7 +1707,22 @@ const ApiTester = () => {
                               <tbody>
                                 {sortParameters(matchResult.operation.headerParameters, headerParamSort).map((param, index) => (
                                   <tr key={index} className="border-t border-border">
-                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>{param.name}</td>
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
+                                      {param.description ? (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="cursor-help">{param.name}</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs">
+                                              <p>{param.description}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      ) : (
+                                        param.name
+                                      )}
+                                    </td>
                                     <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
                                     <td className="px-3 py-2">
                                       <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
@@ -1427,6 +1730,142 @@ const ApiTester = () => {
                                       </Badge>
                                     </td>
                                     <td className="px-3 py-2 text-foreground font-mono">
+                                      {param.value || <span className="text-muted-foreground italic">-</span>}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge 
+                                              variant={param.isValid ? "default" : "destructive"} 
+                                              className={`text-xs cursor-help ${param.isValid ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                            >
+                                              {param.isValid ? "Valid" : "Invalid"}
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{param.validationReason}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Body Parameters */}
+                  {matchResult.operation?.bodyProperties && matchResult.operation.bodyProperties.length > 0 && (
+                    <Collapsible
+                      open={!collapsedSections.bodyParams}
+                      onOpenChange={() => toggleSection('bodyParams')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileCode className="h-4 w-4" />
+                          Body Properties
+                          {matchResult.operation.bodyContentType && (
+                            <Badge variant="outline" className="text-xs ml-1">
+                              {matchResult.operation.bodyContentType}
+                            </Badge>
+                          )}
+                          <Badge variant="secondary" className="text-xs ml-1">
+                            {matchResult.operation.bodyProperties.length}
+                          </Badge>
+                          {(() => {
+                            const invalidCount = matchResult.operation!.bodyProperties.filter(p => !p.isValid).length;
+                            return (
+                              <Badge 
+                                variant={invalidCount > 0 ? "destructive" : "default"} 
+                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                              >
+                                {invalidCount} invalid
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            {collapsedSections.bodyParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-border">
+                                  <SortableHeader 
+                                    column="name" 
+                                    label="Name" 
+                                    currentSort={bodyParamSort} 
+                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                  />
+                                  <SortableHeader 
+                                    column="type" 
+                                    label="Type" 
+                                    currentSort={bodyParamSort} 
+                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                  />
+                                  <SortableHeader 
+                                    column="required" 
+                                    label="Required" 
+                                    currentSort={bodyParamSort} 
+                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                  />
+                                  <SortableHeader 
+                                    column="value" 
+                                    label="Value" 
+                                    currentSort={bodyParamSort} 
+                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                  />
+                                  <SortableHeader 
+                                    column="isValid" 
+                                    label="Valid" 
+                                    currentSort={bodyParamSort} 
+                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                  />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sortParameters(matchResult.operation.bodyProperties.map(p => ({
+                                  ...p,
+                                  value: p.value !== null ? JSON.stringify(p.value) : null
+                                })), bodyParamSort).map((param, index) => (
+                                  <tr key={index} className="border-t border-border">
+                                    <td className={`px-3 py-2 font-mono ${param.isValid ? 'text-foreground' : 'text-destructive'}`}>
+                                      {param.description ? (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="cursor-help">{param.name}</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs">
+                                              <p>{param.description}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      ) : (
+                                        param.name
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted-foreground">{param.type}</td>
+                                    <td className="px-3 py-2">
+                                      <Badge variant={param.required ? "destructive" : "secondary"} className="text-xs">
+                                        {param.required ? "Required" : "Optional"}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-2 text-foreground font-mono max-w-[200px] truncate">
                                       {param.value || <span className="text-muted-foreground italic">-</span>}
                                     </td>
                                     <td className="px-3 py-2">
