@@ -11,11 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { toast } from "sonner";
 import yaml from "js-yaml";
 import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParameterRow";
 import { RequestBodyEditor, BodyType, RawType, FormDataEntry } from "@/components/api-tester/RequestBodyEditor";
+import { JsonResponseViewer } from "@/components/api-tester/JsonResponseViewer";
 
 interface KeyValuePair {
   key: string;
@@ -87,6 +89,7 @@ interface MatchResult {
     headerParameters: ParameterInfo[];
     bodyProperties: BodyPropertyInfo[];
     bodyContentType?: string;
+    responseSchema?: any;
   } | null;
   validationErrors: string[];
   validationWarnings: string[];
@@ -123,6 +126,20 @@ const ApiTester = () => {
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
+  
+  // Action mode: "analyze" or "request"
+  type ActionMode = "analyze" | "request";
+  const [actionMode, setActionMode] = useState<ActionMode>("analyze");
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
+  const [requestResponse, setRequestResponse] = useState<{
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string;
+    duration: number;
+  } | null>(null);
+  const [rightPanelTab, setRightPanelTab] = useState<"match" | "response">("match");
+  
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     service: false,
     server: false,
@@ -153,6 +170,53 @@ const ApiTester = () => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // Check if a query param key is duplicated
+  const isQueryParamDuplicate = (index: number, key: string): boolean => {
+    if (!key.trim()) return false;
+    const lowerKey = key.toLowerCase();
+    return queryParams.some((p, i) => i !== index && p.enabled && p.key.toLowerCase() === lowerKey);
+  };
+
+  // Check if a header key is duplicated
+  const isHeaderDuplicate = (index: number, key: string): boolean => {
+    if (!key.trim()) return false;
+    const lowerKey = key.toLowerCase();
+    return headers.some((h, i) => i !== index && h.enabled && h.key.toLowerCase() === lowerKey);
+  };
+
+  // Get validation status for a query param from matchResult
+  const getQueryParamValidationStatus = (paramKey: string): { isValid: boolean; isUnspecified: boolean } | null => {
+    if (!matchResult?.operation || !paramKey.trim()) return null;
+    const param = matchResult.operation.queryParameters.find(
+      p => p.name.toLowerCase() === paramKey.toLowerCase()
+    );
+    if (param) {
+      return { isValid: param.isValid, isUnspecified: param.isUnspecified };
+    }
+    return null;
+  };
+
+  // Get validation status for a header from matchResult
+  const getHeaderValidationStatus = (headerKey: string): { isValid: boolean; isUnspecified: boolean } | null => {
+    if (!matchResult?.operation || !headerKey.trim()) return null;
+    const param = matchResult.operation.headerParameters.find(
+      p => p.name.toLowerCase() === headerKey.toLowerCase()
+    );
+    if (param) {
+      return { isValid: param.isValid, isUnspecified: param.isUnspecified };
+    }
+    return null;
+  };
+
+  // Get input border class based on validation status and duplicate detection
+  const getValidationBorderClass = (status: { isValid: boolean; isUnspecified: boolean } | null, isDuplicate: boolean): string => {
+    if (isDuplicate) return "border-destructive focus-visible:ring-destructive";
+    if (!status) return "";
+    if (!status.isValid) return "border-destructive focus-visible:ring-destructive";
+    if (status.isUnspecified) return "border-orange-500 focus-visible:ring-orange-500";
+    return "border-green-500 focus-visible:ring-green-500";
+  };
+
   const sortParameters = (params: ParameterInfo[], sortConfig: { column: SortColumn; direction: SortDirection }): ParameterInfo[] => {
     return [...params].sort((a, b) => {
       let comparison = 0;
@@ -170,7 +234,13 @@ const ApiTester = () => {
           comparison = (a.value || '').localeCompare(b.value || '');
           break;
         case 'isValid':
-          comparison = (a.isValid === b.isValid) ? 0 : a.isValid ? -1 : 1;
+          // Sort order: Valid (0) < Warning/Unspecified (1) < Invalid (2)
+          const getValidityScore = (p: ParameterInfo) => {
+            if (!p.isValid) return 2; // Invalid
+            if (p.isUnspecified) return 1; // Warning
+            return 0; // Valid
+          };
+          comparison = getValidityScore(a) - getValidityScore(b);
           break;
       }
       return sortConfig.direction === 'asc' ? comparison : -comparison;
@@ -306,11 +376,11 @@ const ApiTester = () => {
       urlObj.searchParams.forEach((value, key) => {
         params.push({ key, value, enabled: true });
       });
-      if (params.length > 0) {
-        setQueryParams(params);
-      }
+      // Always add an empty row at the end for new entries
+      params.push({ key: "", value: "", enabled: true });
+      setQueryParams(params);
     } catch {
-      // Invalid URL, ignore
+      // Invalid URL, ignore - keep existing params
     }
   };
 
@@ -486,12 +556,105 @@ const ApiTester = () => {
     return { errors, warnings };
   };
 
+  const sendRequest = async () => {
+    if (!url.trim()) {
+      toast.error("Please enter a URL");
+      return;
+    }
+
+    setIsSendingRequest(true);
+    setRequestResponse(null);
+    setRightPanelTab("response");
+
+    const startTime = performance.now();
+
+    try {
+      // Build headers object
+      const headersObj: Record<string, string> = {};
+      headers.filter(h => h.enabled && h.key.trim()).forEach(h => {
+        headersObj[h.key] = h.value;
+      });
+
+      // Build request options
+      const requestOptions: RequestInit = {
+        method,
+        headers: headersObj,
+      };
+
+      // Add body for methods that support it
+      if (["POST", "PUT", "PATCH"].includes(method)) {
+        if (bodyType === "raw") {
+          requestOptions.body = body;
+        } else if (bodyType === "form-data") {
+          const formDataObj = new FormData();
+          formData.filter(f => f.enabled && f.key.trim()).forEach(f => {
+            formDataObj.append(f.key, f.value);
+          });
+          requestOptions.body = formDataObj;
+          // Remove content-type header to let browser set it with boundary
+          delete headersObj["Content-Type"];
+        } else if (bodyType === "x-www-form-urlencoded") {
+          const params = new URLSearchParams();
+          formData.filter(f => f.enabled && f.key.trim()).forEach(f => {
+            params.append(f.key, f.value);
+          });
+          requestOptions.body = params.toString();
+          headersObj["Content-Type"] = "application/x-www-form-urlencoded";
+        }
+      }
+
+      const response = await fetch(url, requestOptions);
+      const endTime = performance.now();
+
+      // Extract response headers
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      // Get response body as text
+      const responseBody = await response.text();
+
+      setRequestResponse({
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+        body: responseBody,
+        duration: Math.round(endTime - startTime),
+      });
+    } catch (error) {
+      const endTime = performance.now();
+      setRequestResponse({
+        status: 0,
+        statusText: "Network Error",
+        headers: {},
+        body: error instanceof Error ? error.message : "Failed to send request",
+        duration: Math.round(endTime - startTime),
+      });
+      toast.error("Failed to send request");
+    } finally {
+      setIsSendingRequest(false);
+    }
+  };
+
+  const handleActionButton = async () => {
+    if (actionMode === "analyze") {
+      await analyzeRequest();
+      setRightPanelTab("match");
+    } else {
+      // Request mode: analyze first, then send request
+      await analyzeRequest();
+      sendRequest();
+    }
+  };
+
   const analyzeRequest = async () => {
     if (!url.trim()) {
       toast.error("Please enter a URL");
       return;
     }
 
+    const startTime = Date.now();
     setIsAnalyzing(true);
     setMatchResult(null);
 
@@ -821,6 +984,21 @@ const ApiTester = () => {
           }
         }
 
+        // Extract response schema for successful responses (2xx)
+        let responseSchema: any = undefined;
+        if (operationDef.responses) {
+          // Look for 200, 201, or default response
+          const successResponse = operationDef.responses['200'] || 
+                                  operationDef.responses['201'] || 
+                                  operationDef.responses['default'];
+          if (successResponse?.content) {
+            const jsonContent = Object.keys(successResponse.content).find(ct => ct.includes('json'));
+            if (jsonContent && successResponse.content[jsonContent]?.schema) {
+              responseSchema = successResponse.content[jsonContent].schema;
+            }
+          }
+        }
+
         const operation: MatchResult["operation"] = {
           path: pathTemplate,
           method: opMethod,
@@ -832,6 +1010,7 @@ const ApiTester = () => {
           headerParameters,
           bodyProperties,
           bodyContentType,
+          responseSchema,
         };
 
         const validationResult = validateRequest(spec, operationDef, body, headers, queryParams);
@@ -1125,6 +1304,20 @@ const ApiTester = () => {
                         }
                       }
                     }
+
+                    // Extract response schema for successful responses (2xx)
+                    let responseSchema: any = undefined;
+                    if (operationDef.responses) {
+                      const successResponse = operationDef.responses['200'] || 
+                                              operationDef.responses['201'] || 
+                                              operationDef.responses['default'];
+                      if (successResponse?.content) {
+                        const jsonContent = Object.keys(successResponse.content).find(ct => ct.includes('json'));
+                        if (jsonContent && successResponse.content[jsonContent]?.schema) {
+                          responseSchema = successResponse.content[jsonContent].schema;
+                        }
+                      }
+                    }
                     
                     matchedOperation = {
                       path: pathTemplate,
@@ -1137,6 +1330,7 @@ const ApiTester = () => {
                       headerParameters,
                       bodyProperties,
                       bodyContentType,
+                      responseSchema,
                     };
                     
                     const validationResult = validateRequest(spec, pathMethods[lowerMethod], body, headers, queryParams);
@@ -1175,6 +1369,11 @@ const ApiTester = () => {
     } catch (error) {
       toast.error("Failed to analyze request");
     } finally {
+      // Ensure minimum 1 second loading for user feedback
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 500) {
+        await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+      }
       setIsAnalyzing(false);
     }
   };
@@ -1237,24 +1436,62 @@ const ApiTester = () => {
                 <Input
                   placeholder="Enter request URL (e.g., https://api.example.com/users)"
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => handleUrlChange(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isAnalyzing) {
-                      analyzeRequest();
+                    if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
+                      handleActionButton();
                     }
                   }}
                   className="flex-1 bg-background"
                 />
-                <Button onClick={analyzeRequest} disabled={isAnalyzing}>
-                  {isAnalyzing ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Analyze
-                    </>
-                  )}
-                </Button>
+                <div className="flex">
+                  <Button 
+                    onClick={handleActionButton} 
+                    disabled={isAnalyzing || isSendingRequest}
+                    className="rounded-r-none border-r-0 relative min-w-[110px]"
+                  >
+                    <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                      {actionMode === "analyze" ? (
+                        <Search className="h-4 w-4 mr-2 inline" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2 inline" />
+                      )}
+                      {actionMode === "analyze" ? "Analyze" : "Request"}
+                    </span>
+                    {(isAnalyzing || isSendingRequest) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                      </div>
+                    )}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="default" 
+                        className="rounded-l-none px-2"
+                        disabled={isAnalyzing || isSendingRequest}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover z-50">
+                      <DropdownMenuItem 
+                        onClick={() => setActionMode("analyze")}
+                        className={actionMode === "analyze" ? "bg-accent" : ""}
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Analyze
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setActionMode("request")}
+                        className={actionMode === "request" ? "bg-accent" : ""}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Request
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               {/* Tabs for Params, Headers, Body */}
@@ -1266,36 +1503,41 @@ const ApiTester = () => {
                 </TabsList>
 
                 <TabsContent value="params" className="space-y-3 mt-4">
-                  {queryParams.map((param, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <input
-                        type="checkbox"
-                        checked={param.enabled}
-                        onChange={(e) => updateQueryParam(index, "enabled", e.target.checked)}
-                        className="h-4 w-4 rounded border-border"
-                      />
-                      <Input
-                        placeholder="Parameter name"
-                        value={param.key}
-                        onChange={(e) => updateQueryParam(index, "key", e.target.value)}
-                        className="flex-1 bg-background"
-                      />
-                      <Input
-                        placeholder="Value"
-                        value={param.value}
-                        onChange={(e) => updateQueryParam(index, "value", e.target.value)}
-                        className="flex-1 bg-background"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeQueryParam(index)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  {queryParams.map((param, index) => {
+                    const validationStatus = param.enabled ? getQueryParamValidationStatus(param.key) : null;
+                    const isDuplicate = param.enabled ? isQueryParamDuplicate(index, param.key) : false;
+                    const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
+                    return (
+                      <div key={index} className="flex gap-2 items-center">
+                        <input
+                          type="checkbox"
+                          checked={param.enabled}
+                          onChange={(e) => updateQueryParam(index, "enabled", e.target.checked)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        <Input
+                          placeholder="Parameter name"
+                          value={param.key}
+                          onChange={(e) => updateQueryParam(index, "key", e.target.value)}
+                          className={`flex-1 bg-background ${borderClass}`}
+                        />
+                        <Input
+                          placeholder="Value"
+                          value={param.value}
+                          onChange={(e) => updateQueryParam(index, "value", e.target.value)}
+                          className={`flex-1 bg-background ${borderClass}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeQueryParam(index)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                   <Button variant="outline" size="sm" onClick={addQueryParam}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Parameter
@@ -1303,36 +1545,41 @@ const ApiTester = () => {
                 </TabsContent>
 
                 <TabsContent value="headers" className="space-y-3 mt-4">
-                  {headers.map((header, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <input
-                        type="checkbox"
-                        checked={header.enabled}
-                        onChange={(e) => updateHeader(index, "enabled", e.target.checked)}
-                        className="h-4 w-4 rounded border-border"
-                      />
-                      <Input
-                        placeholder="Header name"
-                        value={header.key}
-                        onChange={(e) => updateHeader(index, "key", e.target.value)}
-                        className="flex-1 bg-background"
-                      />
-                      <Input
-                        placeholder="Value"
-                        value={header.value}
-                        onChange={(e) => updateHeader(index, "value", e.target.value)}
-                        className="flex-1 bg-background"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeHeader(index)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  {headers.map((header, index) => {
+                    const validationStatus = header.enabled ? getHeaderValidationStatus(header.key) : null;
+                    const isDuplicate = header.enabled ? isHeaderDuplicate(index, header.key) : false;
+                    const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
+                    return (
+                      <div key={index} className="flex gap-2 items-center">
+                        <input
+                          type="checkbox"
+                          checked={header.enabled}
+                          onChange={(e) => updateHeader(index, "enabled", e.target.checked)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        <Input
+                          placeholder="Header name"
+                          value={header.key}
+                          onChange={(e) => updateHeader(index, "key", e.target.value)}
+                          className={`flex-1 bg-background ${borderClass}`}
+                        />
+                        <Input
+                          placeholder="Value"
+                          value={header.value}
+                          onChange={(e) => updateHeader(index, "value", e.target.value)}
+                          className={`flex-1 bg-background ${borderClass}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeHeader(index)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                   <Button variant="outline" size="sm" onClick={addHeader}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Header
@@ -1360,706 +1607,932 @@ const ApiTester = () => {
           <ResizableHandle withHandle />
           
           <ResizablePanel defaultSize={50} minSize={30}>
-            {/* Right Panel - Match Results */}
+            {/* Right Panel - Results */}
             <Card className="border-0 bg-card/50 h-full rounded-none overflow-auto">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileCode className="h-5 w-5 text-primary" />
-                  OpenAPI Match Results
-                </CardTitle>
-                <Button
-                  variant={isLocked ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsLocked(!isLocked)}
-                  className="gap-2"
-                >
-                  {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                  {isLocked ? "Locked" : "Auto"}
-                </Button>
-              </div>
-              
-              {/* Manual Selection Controls */}
-              <div className="mt-4 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Select API Service</label>
-                  <Select 
-                    value={selectedServiceId || "__auto__"} 
-                    onValueChange={(value) => {
-                      setSelectedServiceId(value === "__auto__" ? null : value);
-                      setSelectedOperationKey(null);
-                    }}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Auto-detect from URL" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover z-50">
-                      <SelectItem value="__auto__">Auto-detect</SelectItem>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {selectedServiceId && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">
-                      Select Operation
-                      {selectedOperationKey && (() => {
-                        const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
-                        return selectedOp?.operationId ? (
-                          <span className="ml-2 font-mono text-foreground">{selectedOp.operationId}</span>
-                        ) : null;
-                      })()}
-                    </label>
-                    <Select 
-                      value={selectedOperationKey || "__auto__"} 
-                      onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Auto-detect from URL & method">
-                          {selectedOperationKey ? (() => {
-                            const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
-                            return selectedOp ? (
-                              <span>
-                                <span className={`font-mono text-xs mr-2 ${
-                                  selectedOp.method === "GET" ? "text-green-500" :
-                                  selectedOp.method === "POST" ? "text-yellow-500" :
-                                  selectedOp.method === "PUT" ? "text-blue-500" :
-                                  selectedOp.method === "DELETE" ? "text-red-500" :
-                                  "text-muted-foreground"
-                                }`}>
-                                  {selectedOp.method}
-                                </span>
-                                <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
-                              </span>
-                            ) : null;
-                          })() : (
-                            <span className="text-muted-foreground">Auto-detect</span>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover z-50 max-h-[300px]">
-                        <SelectItem value="__auto__">Auto-detect</SelectItem>
-                        {availableOperations.map((op) => (
-                          <SelectItem key={op.key} value={op.key}>
-                            <span className={`font-mono text-xs mr-2 ${
-                              op.method === "GET" ? "text-green-500" :
-                              op.method === "POST" ? "text-yellow-500" :
-                              op.method === "PUT" ? "text-blue-500" :
-                              op.method === "DELETE" ? "text-red-500" :
-                              "text-muted-foreground"
-                            }`}>
-                              {op.method}
-                            </span>
-                            {op.operationId && (
-                              <span className="font-mono text-sm mr-2">{op.operationId}</span>
-                            )}
-                            <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
-                            {op.summary && (
-                              <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
-                            )}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {isLocked && selectedServiceId && selectedOperationKey && (
-                  <div className="flex items-center gap-2 text-xs text-primary">
-                    <Lock className="h-3 w-3" />
-                    <span>Validation locked to selected operation</span>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!matchResult ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileCode className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Enter a URL and click "Analyze" to match against your OpenAPI specs</p>
-                </div>
-              ) : !matchResult.matched ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-warning" />
-                  <p className="text-foreground font-medium">No Match Found</p>
-                  <p className="text-muted-foreground text-sm mt-2">
-                    The request URL doesn't match any endpoint in your registered services
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Matched Service */}
-                  <Collapsible
-                    open={!collapsedSections.service}
-                    onOpenChange={() => toggleSection('service')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CheckCircle className="h-4 w-4 text-success" />
-                        Matched Service
-                      </div>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          {collapsedSections.service ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                        <p className="font-medium text-foreground">{matchResult.service?.name}</p>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-
-                  {/* Server */}
-                  <Collapsible
-                    open={!collapsedSections.server}
-                    onOpenChange={() => toggleSection('server')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Server className="h-4 w-4" />
-                        Server URL
-                      </div>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          {collapsedSections.server ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="bg-background rounded-lg p-4 border border-border space-y-3 mt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Server Index:</span>
-                          <Badge variant="outline" className="font-mono">{matchResult.server?.index}</Badge>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">URL Template:</p>
-                          <code className="text-sm text-primary">{matchResult.server?.url}</code>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Resolved URL:</p>
-                          <code className="text-sm text-foreground">{matchResult.server?.resolvedUrl}</code>
-                        </div>
-                        {matchResult.server?.description && (
-                          <p className="text-sm text-muted-foreground italic">{matchResult.server.description}</p>
-                        )}
-                        
-                        {/* Server Variables */}
-                        {matchResult.server?.variables && matchResult.server.variables.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-border">
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Server Variables</p>
-                            <div className="rounded border border-border overflow-hidden">
-                              <table className="w-full text-sm">
-                                <thead className="bg-muted/50">
-                                  <tr>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Description</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {matchResult.server.variables.map((variable, index) => (
-                                    <tr key={index} className="border-t border-border">
-                                      <td className="px-3 py-2 text-foreground font-mono">{variable.name}</td>
-                                      <td className="px-3 py-2">
-                                        <code className="text-primary">{variable.value}</code>
-                                        {variable.enum && variable.enum.length > 0 && (
-                                          <Tooltip delayDuration={0}>
-                                            <TooltipTrigger asChild>
-                                              <span className="ml-2 text-xs text-muted-foreground cursor-help">(enum)</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>Allowed values: {variable.enum.join(', ')}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        )}
-                                      </td>
-                                      <td className="px-3 py-2 text-muted-foreground">
-                                        {variable.description || <span className="italic">-</span>}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  {/* Operation */}
-                  <Collapsible
-                    open={!collapsedSections.operation}
-                    onOpenChange={() => toggleSection('operation')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Route className="h-4 w-4" />
-                        Matched Operation
-                      </div>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          {collapsedSections.operation ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="bg-background rounded-lg p-4 border border-border space-y-3 mt-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={
-                            matchResult.operation?.method === "GET" ? "default" :
-                            matchResult.operation?.method === "POST" ? "secondary" :
-                            matchResult.operation?.method === "DELETE" ? "destructive" :
-                            "outline"
-                          }>
-                            {matchResult.operation?.method}
-                          </Badge>
-                          <code className="text-sm text-foreground">{matchResult.operation?.path}</code>
-                        </div>
-                        {matchResult.operation?.operationId && (
-                          <p className="text-sm">
-                            <span className="text-muted-foreground">Operation ID:</span>{" "}
-                            <span className="text-foreground">{matchResult.operation.operationId}</span>
-                          </p>
-                        )}
-                        {matchResult.operation?.summary && (
-                          <p className="text-sm">
-                            <span className="text-muted-foreground">Summary:</span>{" "}
-                            <span className="text-foreground">{matchResult.operation.summary}</span>
-                          </p>
-                        )}
-                        {matchResult.operation?.description && (
-                          <div className="space-y-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setShowDescription(!showDescription)}
-                              className="text-muted-foreground hover:text-foreground p-0 h-auto"
+              <CardHeader className="pb-4">
+                <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as "match" | "response")}>
+                  <div className="flex items-center justify-between mb-4">
+                    <TabsList className="bg-muted/50">
+                      <TabsTrigger value="match" className="flex items-center gap-2">
+                        <FileCode className="h-4 w-4" />
+                        OpenAPI Match Results
+                        {matchResult?.operation && (() => {
+                          const invalidCount = [
+                            ...(matchResult.operation.pathParameters || []),
+                            ...(matchResult.operation.queryParameters || []),
+                            ...(matchResult.operation.headerParameters || []),
+                            ...(matchResult.operation.bodyProperties || []),
+                          ].filter(p => !p.isValid).length;
+                          return (
+                            <Badge 
+                              variant={invalidCount > 0 ? "destructive" : "default"}
+                              className={`ml-1 text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
                             >
-                              {showDescription ? (
-                                <>
-                                  <ChevronUp className="h-4 w-4 mr-1" />
-                                  Hide Description
-                                </>
+                              {invalidCount} invalid
+                            </Badge>
+                          );
+                        })()}
+                      </TabsTrigger>
+                      <TabsTrigger value="response" className="flex items-center gap-2">
+                        <Send className="h-4 w-4" />
+                        Response
+                        {requestResponse && (
+                          <Badge 
+                            variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
+                            className="ml-1 text-xs"
+                          >
+                            {requestResponse.status}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+                    {rightPanelTab === "match" && (
+                      <Button
+                        variant={isLocked ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsLocked(!isLocked)}
+                        className="gap-2"
+                      >
+                        {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                        {isLocked ? "Locked" : "Auto"}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <TabsContent value="match" className="mt-0">
+                    {/* Manual Selection Controls */}
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-sm text-muted-foreground">Select API Service</label>
+                        <Select 
+                          value={selectedServiceId || "__auto__"} 
+                          onValueChange={(value) => {
+                            setSelectedServiceId(value === "__auto__" ? null : value);
+                            setSelectedOperationKey(null);
+                          }}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Auto-detect from URL" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="__auto__">Auto-detect</SelectItem>
+                            {services.map((service) => (
+                              <SelectItem key={service.id} value={service.id}>
+                                {service.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {selectedServiceId && (
+                        <div className="space-y-1">
+                          <label className="text-sm text-muted-foreground">
+                            Select Operation
+                            {selectedOperationKey && (() => {
+                              const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                              return selectedOp?.operationId ? (
+                                <span className="ml-2 font-mono text-foreground">{selectedOp.operationId}</span>
+                              ) : null;
+                            })()}
+                          </label>
+                          <Select 
+                            value={selectedOperationKey || "__auto__"} 
+                            onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
+                          >
+                            <SelectTrigger className="bg-background">
+                              <SelectValue placeholder="Auto-detect from URL & method">
+                                {selectedOperationKey ? (() => {
+                                  const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                                  return selectedOp ? (
+                                    <span>
+                                      <span className={`font-mono text-xs mr-2 ${
+                                        selectedOp.method === "GET" ? "text-green-500" :
+                                        selectedOp.method === "POST" ? "text-yellow-500" :
+                                        selectedOp.method === "PUT" ? "text-blue-500" :
+                                        selectedOp.method === "DELETE" ? "text-red-500" :
+                                        "text-muted-foreground"
+                                      }`}>
+                                        {selectedOp.method}
+                                      </span>
+                                      <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
+                                    </span>
+                                  ) : null;
+                                })() : (
+                                  <span className="text-muted-foreground">Auto-detect</span>
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50 max-h-[300px]">
+                              <SelectItem value="__auto__">Auto-detect</SelectItem>
+                              {availableOperations.map((op) => (
+                                <SelectItem key={op.key} value={op.key}>
+                                  <span className={`font-mono text-xs mr-2 ${
+                                    op.method === "GET" ? "text-green-500" :
+                                    op.method === "POST" ? "text-yellow-500" :
+                                    op.method === "PUT" ? "text-blue-500" :
+                                    op.method === "DELETE" ? "text-red-500" :
+                                    "text-muted-foreground"
+                                  }`}>
+                                    {op.method}
+                                  </span>
+                                  {op.operationId && (
+                                    <span className="font-mono text-sm mr-2">{op.operationId}</span>
+                                  )}
+                                  <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
+                                  {op.summary && (
+                                    <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
+                                  )}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {isLocked && selectedServiceId && selectedOperationKey && (
+                        <div className="flex items-center gap-2 text-xs text-primary">
+                          <Lock className="h-3 w-3" />
+                          <span>Validation locked to selected operation</span>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="response" className="mt-0">
+                    {requestResponse && (
+                      <div className="flex items-center gap-4 text-sm">
+                        <Badge 
+                          variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
+                          className={requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600 hover:bg-green-700" : ""}
+                        >
+                          {requestResponse.status} {requestResponse.statusText}
+                        </Badge>
+                        <span className="text-muted-foreground">{requestResponse.duration}ms</span>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardHeader>
+              <CardContent>
+                {rightPanelTab === "match" ? (
+                  <>
+                    {!matchResult ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <FileCode className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Enter a URL and click "Analyze" to match against your OpenAPI specs</p>
+                      </div>
+                    ) : !matchResult.matched ? (
+                      <div className="text-center py-12">
+                        <AlertCircle className="h-12 w-12 mx-auto mb-4 text-warning" />
+                        <p className="text-foreground font-medium">No Match Found</p>
+                        <p className="text-muted-foreground text-sm mt-2">
+                          The request URL doesn't match any endpoint in your registered services
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* Matched Service */}
+                        <Collapsible
+                          open={!collapsedSections.service}
+                          onOpenChange={() => toggleSection('service')}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <CheckCircle className="h-4 w-4 text-success" />
+                              Matched Service
+                            </div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                              >
+                                {collapsedSections.service ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                              <p className="font-medium text-foreground">{matchResult.service?.name}</p>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        {/* Server */}
+                        <Collapsible
+                          open={!collapsedSections.server}
+                          onOpenChange={() => toggleSection('server')}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Server className="h-4 w-4" />
+                              Server URL
+                            </div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                              >
+                                {collapsedSections.server ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            <div className="bg-background rounded-lg p-4 border border-border space-y-3 mt-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">Server Index:</span>
+                                <Badge variant="outline" className="font-mono">{matchResult.server?.index}</Badge>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground mb-1">URL Template:</p>
+                                <code className="text-sm text-primary">{matchResult.server?.url}</code>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground mb-1">Resolved URL:</p>
+                                <code className="text-sm text-foreground">{matchResult.server?.resolvedUrl}</code>
+                              </div>
+                              {matchResult.server?.description && (
+                                <p className="text-sm text-muted-foreground italic">{matchResult.server.description}</p>
+                              )}
+                              
+                              {/* Server Variables */}
+                              {matchResult.server?.variables && matchResult.server.variables.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-border">
+                                  <p className="text-sm font-medium text-muted-foreground mb-2">Server Variables</p>
+                                  <div className="rounded border border-border overflow-hidden">
+                                    <table className="w-full text-sm">
+                                      <thead className="bg-muted/50">
+                                        <tr>
+                                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
+                                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
+                                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Description</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {matchResult.server.variables.map((variable, index) => (
+                                          <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                                            <td className="px-3 py-2 font-mono text-foreground">{variable.name}</td>
+                                            <td className="px-3 py-2">
+                                              <Badge variant="secondary" className="font-mono">{variable.value}</Badge>
+                                              {variable.default && variable.value === variable.default && (
+                                                <span className="text-xs text-muted-foreground ml-2">(default)</span>
+                                              )}
+                                            </td>
+                                            <td className="px-3 py-2 text-muted-foreground">{variable.description || '-'}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        {/* Operation */}
+                        <Collapsible
+                          open={!collapsedSections.operation}
+                          onOpenChange={() => toggleSection('operation')}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Route className="h-4 w-4" />
+                              Operation
+                            </div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                              >
+                                {collapsedSections.operation ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            <div className="bg-background rounded-lg p-4 border border-border space-y-3 mt-2">
+                              <div className="flex items-center gap-3">
+                                <Badge className={
+                                  matchResult.operation?.method === "GET" ? "bg-green-600 hover:bg-green-700" :
+                                  matchResult.operation?.method === "POST" ? "bg-yellow-600 hover:bg-yellow-700" :
+                                  matchResult.operation?.method === "PUT" ? "bg-blue-600 hover:bg-blue-700" :
+                                  matchResult.operation?.method === "DELETE" ? "bg-red-600 hover:bg-red-700" :
+                                  "bg-muted"
+                                }>
+                                  {matchResult.operation?.method}
+                                </Badge>
+                                <code className="text-foreground font-medium">{matchResult.operation?.path}</code>
+                              </div>
+                              {matchResult.operation?.operationId && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-muted-foreground">Operation ID:</span>
+                                  <code className="text-sm text-primary">{matchResult.operation.operationId}</code>
+                                </div>
+                              )}
+                              {matchResult.operation?.summary && (
+                                <p className="text-sm text-muted-foreground">{matchResult.operation.summary}</p>
+                              )}
+                              {matchResult.operation?.description && (
+                                <Collapsible open={showDescription} onOpenChange={setShowDescription}>
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="p-0 h-auto text-primary hover:text-primary/80">
+                                      {showDescription ? (
+                                        <>
+                                          <ChevronUp className="h-3 w-3 mr-1" />
+                                          Hide description
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="h-3 w-3 mr-1" />
+                                          Show description
+                                        </>
+                                      )}
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">
+                                      {matchResult.operation.description}
+                                    </p>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        {/* Path Parameters */}
+                        {matchResult.operation?.pathParameters && matchResult.operation.pathParameters.length > 0 && (
+                          <Collapsible
+                            open={!collapsedSections.pathParams}
+                            onOpenChange={() => toggleSection('pathParams')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Route className="h-4 w-4" />
+                                Path Parameters
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  {matchResult.operation.pathParameters.length}
+                                </Badge>
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.pathParameters.filter(p => !p.isValid).length;
+                                  return (
+                                    <Badge 
+                                      variant={invalidCount > 0 ? "destructive" : "default"} 
+                                      className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                    >
+                                      {invalidCount} invalid
+                                    </Badge>
+                                  );
+                                })()}
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  {collapsedSections.pathParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <SortableHeader 
+                                          column="name" 
+                                          label="Name" 
+                                          currentSort={pathParamSort} 
+                                          onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="type" 
+                                          label="Type" 
+                                          currentSort={pathParamSort} 
+                                          onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="required" 
+                                          label="Required" 
+                                          currentSort={pathParamSort} 
+                                          onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="value" 
+                                          label="Value" 
+                                          currentSort={pathParamSort} 
+                                          onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="isValid" 
+                                          label="Valid" 
+                                          currentSort={pathParamSort} 
+                                          onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} 
+                                        />
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sortParameters(matchResult.operation.pathParameters, pathParamSort).map((param, index) => (
+                                        <ExpandableParameterRow
+                                          key={index}
+                                          name={param.name}
+                                          type={param.type}
+                                          required={param.required}
+                                          value={param.value}
+                                          defaultValue={param.defaultValue}
+                                          isUsingDefault={param.isUsingDefault}
+                                          isUnspecified={param.isUnspecified}
+                                          isValid={param.isValid}
+                                          validationReason={param.validationReason}
+                                          description={param.description}
+                                          rawJson={param.rawJson}
+                                        />
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+
+                        {/* Query Parameters */}
+                        {matchResult.operation?.queryParameters && matchResult.operation.queryParameters.length > 0 && (
+                          <Collapsible
+                            open={!collapsedSections.queryParams}
+                            onOpenChange={() => toggleSection('queryParams')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <FileCode className="h-4 w-4" />
+                                Query Parameters
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  {matchResult.operation.queryParameters.length}
+                                </Badge>
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.queryParameters.filter(p => !p.isValid).length;
+                                  return (
+                                    <Badge 
+                                      variant={invalidCount > 0 ? "destructive" : "default"} 
+                                      className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                    >
+                                      {invalidCount} invalid
+                                    </Badge>
+                                  );
+                                })()}
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  {collapsedSections.queryParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <SortableHeader 
+                                          column="name" 
+                                          label="Name" 
+                                          currentSort={queryParamSort} 
+                                          onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="type" 
+                                          label="Type" 
+                                          currentSort={queryParamSort} 
+                                          onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="required" 
+                                          label="Required" 
+                                          currentSort={queryParamSort} 
+                                          onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="value" 
+                                          label="Value" 
+                                          currentSort={queryParamSort} 
+                                          onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="isValid" 
+                                          label="Valid" 
+                                          currentSort={queryParamSort} 
+                                          onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} 
+                                        />
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sortParameters(matchResult.operation.queryParameters, queryParamSort).map((param, index) => (
+                                        <ExpandableParameterRow
+                                          key={index}
+                                          name={param.name}
+                                          type={param.type}
+                                          required={param.required}
+                                          value={param.value}
+                                          defaultValue={param.defaultValue}
+                                          isUsingDefault={param.isUsingDefault}
+                                          isUnspecified={param.isUnspecified}
+                                          isValid={param.isValid}
+                                          validationReason={param.validationReason}
+                                          description={param.description}
+                                          rawJson={param.rawJson}
+                                        />
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+
+                        {/* Header Parameters */}
+                        {matchResult.operation?.headerParameters && matchResult.operation.headerParameters.length > 0 && (
+                          <Collapsible
+                            open={!collapsedSections.headerParams}
+                            onOpenChange={() => toggleSection('headerParams')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <FileCode className="h-4 w-4" />
+                                Header Parameters
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  {matchResult.operation.headerParameters.length}
+                                </Badge>
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.headerParameters.filter(p => !p.isValid).length;
+                                  return (
+                                    <Badge 
+                                      variant={invalidCount > 0 ? "destructive" : "default"} 
+                                      className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                    >
+                                      {invalidCount} invalid
+                                    </Badge>
+                                  );
+                                })()}
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  {collapsedSections.headerParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <SortableHeader 
+                                          column="name" 
+                                          label="Name" 
+                                          currentSort={headerParamSort} 
+                                          onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="type" 
+                                          label="Type" 
+                                          currentSort={headerParamSort} 
+                                          onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="required" 
+                                          label="Required" 
+                                          currentSort={headerParamSort} 
+                                          onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="value" 
+                                          label="Value" 
+                                          currentSort={headerParamSort} 
+                                          onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="isValid" 
+                                          label="Valid" 
+                                          currentSort={headerParamSort} 
+                                          onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} 
+                                        />
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sortParameters(matchResult.operation.headerParameters, headerParamSort).map((param, index) => (
+                                        <ExpandableParameterRow
+                                          key={index}
+                                          name={param.name}
+                                          type={param.type}
+                                          required={param.required}
+                                          value={param.value}
+                                          defaultValue={param.defaultValue}
+                                          isUsingDefault={param.isUsingDefault}
+                                          isUnspecified={param.isUnspecified}
+                                          isValid={param.isValid}
+                                          validationReason={param.validationReason}
+                                          description={param.description}
+                                          rawJson={param.rawJson}
+                                        />
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+
+                        {/* Body Parameters */}
+                        {matchResult.operation?.bodyProperties && matchResult.operation.bodyProperties.length > 0 && (
+                          <Collapsible
+                            open={!collapsedSections.bodyParams}
+                            onOpenChange={() => toggleSection('bodyParams')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <FileCode className="h-4 w-4" />
+                                Body Properties
+                                {matchResult.operation.bodyContentType && (
+                                  <Badge variant="outline" className="text-xs ml-1">
+                                    {matchResult.operation.bodyContentType}
+                                  </Badge>
+                                )}
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  {matchResult.operation.bodyProperties.length}
+                                </Badge>
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.bodyProperties.filter(p => !p.isValid).length;
+                                  return (
+                                    <Badge 
+                                      variant={invalidCount > 0 ? "destructive" : "default"} 
+                                      className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                    >
+                                      {invalidCount} invalid
+                                    </Badge>
+                                  );
+                                })()}
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  {collapsedSections.bodyParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <SortableHeader 
+                                          column="name" 
+                                          label="Name" 
+                                          currentSort={bodyParamSort} 
+                                          onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="type" 
+                                          label="Type" 
+                                          currentSort={bodyParamSort} 
+                                          onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="required" 
+                                          label="Required" 
+                                          currentSort={bodyParamSort} 
+                                          onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="value" 
+                                          label="Value" 
+                                          currentSort={bodyParamSort} 
+                                          onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                        />
+                                        <SortableHeader 
+                                          column="isValid" 
+                                          label="Valid" 
+                                          currentSort={bodyParamSort} 
+                                          onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
+                                        />
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sortParameters(matchResult.operation.bodyProperties.map(p => ({
+                                        ...p,
+                                        value: p.value !== null ? JSON.stringify(p.value) : null,
+                                        isUsingDefault: false,
+                                        isUnspecified: false
+                                      })), bodyParamSort).map((param, index) => (
+                                        <ExpandableParameterRow
+                                          key={index}
+                                          name={param.name}
+                                          type={param.type}
+                                          required={param.required}
+                                          value={param.value}
+                                          defaultValue={null}
+                                          isUsingDefault={param.isUsingDefault}
+                                          isValid={param.isValid}
+                                          validationReason={param.validationReason}
+                                          description={param.description}
+                                          rawJson={param.rawJson}
+                                        />
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+
+                        {/* Validation */}
+                        <Collapsible
+                          open={!collapsedSections.validation}
+                          onOpenChange={() => toggleSection('validation')}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <AlertCircle className="h-4 w-4" />
+                              Validation
+                            </div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                              >
+                                {collapsedSections.validation ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            <div className="bg-background rounded-lg p-4 border border-border mt-2 space-y-4">
+                              {matchResult.validationErrors.length === 0 && matchResult.validationWarnings.length === 0 ? (
+                                <div className="flex items-center gap-2 text-success">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span>Request is valid</span>
+                                </div>
                               ) : (
                                 <>
-                                  <ChevronDown className="h-4 w-4 mr-1" />
-                                  Show Description
+                                  {matchResult.validationErrors.length > 0 && (
+                                    <ul className="space-y-2">
+                                      {matchResult.validationErrors.map((error, index) => (
+                                        <li key={index} className="flex items-start gap-2 text-destructive text-sm">
+                                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                          {error}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                  {matchResult.validationWarnings.length > 0 && (
+                                    <ul className="space-y-2">
+                                      {matchResult.validationWarnings.map((warning, index) => (
+                                        <li key={index} className="flex items-start gap-2 text-orange-500 text-sm">
+                                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                          {warning}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </>
                               )}
-                            </Button>
-                            {showDescription && (
-                              <div 
-                                className="text-sm text-muted-foreground prose prose-sm prose-invert max-w-none [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-foreground [&_a]:text-primary [&_a]:underline"
-                                dangerouslySetInnerHTML={{ __html: matchResult.operation.description }}
-                              />
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-
-                  {/* Path Parameters */}
-                  {matchResult.operation?.pathParameters && matchResult.operation.pathParameters.length > 0 && (
-                    <Collapsible
-                      open={!collapsedSections.pathParams}
-                      onOpenChange={() => toggleSection('pathParams')}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Route className="h-4 w-4" />
-                          Path Parameters
-                          <Badge variant="secondary" className="text-xs ml-1">
-                            {matchResult.operation.pathParameters.length}
-                          </Badge>
-                          {(() => {
-                            const invalidCount = matchResult.operation!.pathParameters.filter(p => !p.isValid).length;
-                            return (
-                              <Badge 
-                                variant={invalidCount > 0 ? "destructive" : "default"} 
-                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
-                              >
-                                {invalidCount} invalid
+                    )}
+                  </>
+                ) : (
+                  /* Response Tab Content */
+                  <>
+                    {!requestResponse ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Send className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Send a request to see the response</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* Response Headers */}
+                        <Collapsible defaultOpen>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <FileCode className="h-4 w-4" />
+                              Headers
+                              <Badge variant="secondary" className="text-xs ml-1">
+                                {Object.keys(requestResponse.headers).length}
                               </Badge>
-                            );
-                          })()}
-                        </div>
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            {collapsedSections.pathParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                      </div>
-                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                          <div className="rounded border border-border overflow-hidden">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted/50">
-                                <tr>
-                                  <SortableHeader column="name" label="Name" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
-                                  <SortableHeader column="type" label="Type" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
-                                  <SortableHeader column="required" label="Required" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
-                                  <SortableHeader column="value" label="Value" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
-                                  <SortableHeader column="isValid" label="Valid" currentSort={pathParamSort} onSort={(col) => handleSort(col, pathParamSort, setPathParamSort)} />
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sortParameters(matchResult.operation.pathParameters, pathParamSort).map((param, index) => (
-                                  <ExpandableParameterRow
-                                    key={index}
-                                    name={param.name}
-                                    type={param.type}
-                                    required={param.required}
-                                    value={param.value}
-                                    defaultValue={param.defaultValue}
-                                    isUsingDefault={param.isUsingDefault}
-                                    isUnspecified={param.isUnspecified}
-                                    isValid={param.isValid}
-                                    validationReason={param.validationReason}
-                                    description={param.description}
-                                    rawJson={param.rawJson}
-                                  />
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-
-                  {/* Query Parameters */}
-                  {matchResult.operation?.queryParameters && matchResult.operation.queryParameters.length > 0 && (
-                    <Collapsible
-                      open={!collapsedSections.queryParams}
-                      onOpenChange={() => toggleSection('queryParams')}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Route className="h-4 w-4" />
-                          Query Parameters
-                          <Badge variant="secondary" className="text-xs ml-1">
-                            {matchResult.operation.queryParameters.length}
-                          </Badge>
-                          {(() => {
-                            const invalidCount = matchResult.operation!.queryParameters.filter(p => !p.isValid).length;
-                            return (
-                              <Badge 
-                                variant={invalidCount > 0 ? "destructive" : "default"} 
-                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                            </div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
                               >
-                                {invalidCount} invalid
-                              </Badge>
-                            );
-                          })()}
-                        </div>
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            {collapsedSections.queryParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                      </div>
-                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                          <div className="rounded border border-border overflow-hidden">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted/50">
-                                <tr>
-                                  <SortableHeader column="name" label="Name" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
-                                  <SortableHeader column="type" label="Type" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
-                                  <SortableHeader column="required" label="Required" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
-                                  <SortableHeader column="value" label="Value" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
-                                  <SortableHeader column="isValid" label="Valid" currentSort={queryParamSort} onSort={(col) => handleSort(col, queryParamSort, setQueryParamSort)} />
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sortParameters(matchResult.operation.queryParameters, queryParamSort).map((param, index) => (
-                                  <ExpandableParameterRow
-                                    key={index}
-                                    name={param.name}
-                                    type={param.type}
-                                    required={param.required}
-                                    value={param.value}
-                                    defaultValue={param.defaultValue}
-                                    isUsingDefault={param.isUsingDefault}
-                                    isUnspecified={param.isUnspecified}
-                                    isValid={param.isValid}
-                                    validationReason={param.validationReason}
-                                    description={param.description}
-                                    rawJson={param.rawJson}
-                                  />
-                                ))}
-                              </tbody>
-                            </table>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            </CollapsibleTrigger>
                           </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                              {Object.keys(requestResponse.headers).length === 0 ? (
+                                <p className="text-muted-foreground text-sm">No headers returned</p>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
+                                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {Object.entries(requestResponse.headers).map(([key, value], index) => (
+                                        <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                                          <td className="px-3 py-2 font-mono text-foreground">{key}</td>
+                                          <td className="px-3 py-2 font-mono text-muted-foreground break-all">{value}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
 
-                  {/* Header Parameters */}
-                  {matchResult.operation?.headerParameters && matchResult.operation.headerParameters.length > 0 && (
-                    <Collapsible
-                      open={!collapsedSections.headerParams}
-                      onOpenChange={() => toggleSection('headerParams')}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <FileCode className="h-4 w-4" />
-                          Header Parameters
-                          <Badge variant="secondary" className="text-xs ml-1">
-                            {matchResult.operation.headerParameters.length}
-                          </Badge>
-                          {(() => {
-                            const invalidCount = matchResult.operation!.headerParameters.filter(p => !p.isValid).length;
-                            return (
-                              <Badge 
-                                variant={invalidCount > 0 ? "destructive" : "default"} 
-                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
-                              >
-                                {invalidCount} invalid
+                        {/* Response Body */}
+                        <Collapsible defaultOpen>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <FileCode className="h-4 w-4" />
+                              Body
+                              <Badge variant="secondary" className="text-xs ml-1">
+                                {requestResponse.body.length} chars
                               </Badge>
-                            );
-                          })()}
-                        </div>
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            {collapsedSections.headerParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                      </div>
-                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                          <div className="rounded border border-border overflow-hidden">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted/50">
-                                <tr>
-                                  <SortableHeader column="name" label="Name" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
-                                  <SortableHeader column="type" label="Type" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
-                                  <SortableHeader column="required" label="Required" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
-                                  <SortableHeader column="value" label="Value" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
-                                  <SortableHeader column="isValid" label="Valid" currentSort={headerParamSort} onSort={(col) => handleSort(col, headerParamSort, setHeaderParamSort)} />
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sortParameters(matchResult.operation.headerParameters, headerParamSort).map((param, index) => (
-                                  <ExpandableParameterRow
-                                    key={index}
-                                    name={param.name}
-                                    type={param.type}
-                                    required={param.required}
-                                    value={param.value}
-                                    defaultValue={param.defaultValue}
-                                    isUsingDefault={param.isUsingDefault}
-                                    isUnspecified={param.isUnspecified}
-                                    isValid={param.isValid}
-                                    validationReason={param.validationReason}
-                                    description={param.description}
-                                    rawJson={param.rawJson}
-                                  />
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-
-                  {/* Body Parameters */}
-                  {matchResult.operation?.bodyProperties && matchResult.operation.bodyProperties.length > 0 && (
-                    <Collapsible
-                      open={!collapsedSections.bodyParams}
-                      onOpenChange={() => toggleSection('bodyParams')}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <FileCode className="h-4 w-4" />
-                          Body Properties
-                          {matchResult.operation.bodyContentType && (
-                            <Badge variant="outline" className="text-xs ml-1">
-                              {matchResult.operation.bodyContentType}
-                            </Badge>
-                          )}
-                          <Badge variant="secondary" className="text-xs ml-1">
-                            {matchResult.operation.bodyProperties.length}
-                          </Badge>
-                          {(() => {
-                            const invalidCount = matchResult.operation!.bodyProperties.filter(p => !p.isValid).length;
-                            return (
-                              <Badge 
-                                variant={invalidCount > 0 ? "destructive" : "default"} 
-                                className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                            </div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
                               >
-                                {invalidCount} invalid
-                              </Badge>
-                            );
-                          })()}
-                        </div>
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            {collapsedSections.bodyParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                      </div>
-                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                        <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-border">
-                                  <SortableHeader 
-                                    column="name" 
-                                    label="Name" 
-                                    currentSort={bodyParamSort} 
-                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
-                                  />
-                                  <SortableHeader 
-                                    column="type" 
-                                    label="Type" 
-                                    currentSort={bodyParamSort} 
-                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
-                                  />
-                                  <SortableHeader 
-                                    column="required" 
-                                    label="Required" 
-                                    currentSort={bodyParamSort} 
-                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
-                                  />
-                                  <SortableHeader 
-                                    column="value" 
-                                    label="Value" 
-                                    currentSort={bodyParamSort} 
-                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
-                                  />
-                                  <SortableHeader 
-                                    column="isValid" 
-                                    label="Valid" 
-                                    currentSort={bodyParamSort} 
-                                    onSort={(col) => handleSort(col, bodyParamSort, setBodyParamSort)} 
-                                  />
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sortParameters(matchResult.operation.bodyProperties.map(p => ({
-                                  ...p,
-                                  value: p.value !== null ? JSON.stringify(p.value) : null,
-                                  isUsingDefault: false,
-                                  isUnspecified: false
-                                })), bodyParamSort).map((param, index) => (
-                                  <ExpandableParameterRow
-                                    key={index}
-                                    name={param.name}
-                                    type={param.type}
-                                    required={param.required}
-                                    value={param.value}
-                                    defaultValue={null}
-                                    isUsingDefault={param.isUsingDefault}
-                                    isValid={param.isValid}
-                                    validationReason={param.validationReason}
-                                    description={param.description}
-                                    rawJson={param.rawJson}
-                                  />
-                                ))}
-                              </tbody>
-                            </table>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            </CollapsibleTrigger>
                           </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-                  <Collapsible
-                    open={!collapsedSections.validation}
-                    onOpenChange={() => toggleSection('validation')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <AlertCircle className="h-4 w-4" />
-                        Validation
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                              <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all max-h-[400px] overflow-auto">
+                                <code>
+                                  {(() => {
+                                    const contentType = requestResponse.headers['content-type'] || requestResponse.headers['Content-Type'] || '';
+                                    const isJson = contentType.includes('application/json');
+                                    
+                                    if (isJson) {
+                                      try {
+                                        JSON.parse(requestResponse.body); // Validate JSON
+                                        return (
+                                          <JsonResponseViewer 
+                                            jsonString={requestResponse.body} 
+                                            responseSchema={matchResult?.operation?.responseSchema}
+                                          />
+                                        );
+                                      } catch {
+                                        return requestResponse.body;
+                                      }
+                                    }
+                                    return requestResponse.body;
+                                  })()}
+                                </code>
+                              </pre>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       </div>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          {collapsedSections.validation ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="bg-background rounded-lg p-4 border border-border mt-2 space-y-4">
-                        {matchResult.validationErrors.length === 0 && matchResult.validationWarnings.length === 0 ? (
-                          <div className="flex items-center gap-2 text-success">
-                            <CheckCircle className="h-4 w-4" />
-                            <span>Request is valid</span>
-                          </div>
-                        ) : (
-                          <>
-                            {matchResult.validationErrors.length > 0 && (
-                              <ul className="space-y-2">
-                                {matchResult.validationErrors.map((error, index) => (
-                                  <li key={index} className="flex items-start gap-2 text-destructive text-sm">
-                                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                    {error}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                            {matchResult.validationWarnings.length > 0 && (
-                              <ul className="space-y-2">
-                                {matchResult.validationWarnings.map((warning, index) => (
-                                  <li key={index} className="flex items-start gap-2 text-orange-500 text-sm">
-                                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                    {warning}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </ResizablePanel>
         </ResizablePanelGroup>
       </main>

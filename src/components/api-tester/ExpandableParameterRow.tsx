@@ -89,7 +89,7 @@ export function ExpandableParameterRow({
             name
           )}
         </td>
-        <td className={`px-3 py-2 ${isUnspecified ? 'text-orange-500/70' : 'text-muted-foreground'}`}>
+        <td className={`px-3 py-2 ${isUnspecified ? 'text-orange-500' : 'text-muted-foreground'}`}>
           {isUnspecified ? 'unknown' : type}
         </td>
         <td className="px-3 py-2">
@@ -97,9 +97,16 @@ export function ExpandableParameterRow({
             <Badge variant="outline" className="text-xs text-orange-500 border-orange-500/50">
               Unspecified
             </Badge>
+          ) : required ? (
+            <Badge 
+              variant="destructive" 
+              className={`text-xs ${displayValue ? 'bg-destructive/30 text-destructive/70 hover:bg-destructive/40' : ''}`}
+            >
+              Required
+            </Badge>
           ) : (
-            <Badge variant={required ? "destructive" : "secondary"} className="text-xs">
-              {required ? "Required" : "Optional"}
+            <Badge variant="secondary" className="text-xs">
+              Optional
             </Badge>
           )}
         </td>
