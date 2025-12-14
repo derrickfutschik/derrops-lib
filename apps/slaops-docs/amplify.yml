@@ -11,6 +11,9 @@ applications:
             - |
               if ! git diff --name-only HEAD^ HEAD | grep -q "^apps/slaops-docs/"; then
                 echo "No changes in apps/slaops-docs, skipping build."
+                echo "Creating placeholder build directory for AWS Amplify..."
+                mkdir -p build
+                echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://blog.slaops.com" /></head><body>Redirecting...</body></html>' > build/index.html
                 exit 0
               fi
             - chmod +x amplify-prebuild.sh
