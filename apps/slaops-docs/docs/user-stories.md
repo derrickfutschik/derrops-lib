@@ -7,11 +7,10 @@ tags: [user-stories]
 
 # User Stories
 
-
 ### As a **User** I want to be able to login to the platform and see Dashboards
 
-
 ### As a **Developer**
+
 - Node.js, Python, Ruby, Go, Java, C#.
 - I want to be able to use the SDK to track my API usage
 - I want to be able to use the SDK to track my API latency
@@ -23,9 +22,10 @@ tags: [user-stories]
 - I want to be able to use the SDK to track my API compliance
 - I want to be able to use the SDK to track my API performance
 - I want to be able to use the SDK to track my API scalability
-
+- I want a replacement for Postman, so I can test my API without leaving my IDE
 
 ### As a **Software Manager** I want to be able to Conduct QBRs
+
 - Usage
 - Error rates
 - Latency
@@ -39,6 +39,7 @@ tags: [user-stories]
 - Scalability
 
 ### As a **CFO** I want to be be able to calculate the cost of
+
 - API usage current
 - API usage forecast
 - API usage history
@@ -52,10 +53,12 @@ tags: [user-stories]
 - API usage normals
 
 ### As a **CFO** I want to be notified when:
+
 - Usage of an Service has exceeded a usage plan
 - Usage of an API is likely to be exceeded
 
 ### As a **Business Owner** I want to be notified when:
+
 - Usage of an Service has exceeded a usage plan
 - Usage of an Service has stopped
 - Usage of an Service has started
@@ -68,12 +71,14 @@ tags: [user-stories]
 - Usage of an Service has normalized
 
 ### As a **SRE Engineer** I want to be notified when a
+
 - Vendor API is slow
 - Vendor API is overloaded
 - Vendor API is unresponsive
 - Vendor API is down/unavailable
 
-### As a **SRE Engineer** a want to be able to configure when AI will investigate issues:  
+### As a **SRE Engineer** a want to be able to configure when AI will investigate issues:
+
 - Suddenly spikes in error rates
 - Suddenly spikes in latency
 - Suddenly spikes in throughput
@@ -86,10 +91,12 @@ tags: [user-stories]
 - Suddenly spikes in scalability
 
 ### As a **SRE Engineer** I want to be able to conduct performance tests
+
 - Load Testing
 - Stress Testing
 
 ### As a **Developer** I want to be notified when
+
 - I am making incorrect calls, let me know what I am doing wrong and how to fix it
 - My calls contain validation errors, let me know what I am doing wrong and how to fix it
 - My calls should be working, but they are not
