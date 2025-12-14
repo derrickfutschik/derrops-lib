@@ -28,6 +28,8 @@ applications:
           - '**/*'
       cache:
         paths:
+          - ~/.nvm/.cache/**/*
+          - ~/.nvm/versions/**/*
           - ~/.pnpm-store/**/*
           - ../../.turbo/**/*
           - .docusaurus/**/*
