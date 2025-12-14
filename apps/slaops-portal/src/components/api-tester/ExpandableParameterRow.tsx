@@ -176,7 +176,7 @@ export function ExpandableParameterRow({
                 )}
               </TabsContent>
               <TabsContent value="raw" className="mt-2">
-                <pre className="text-xs bg-background p-3 rounded border border-border overflow-x-auto">
+                <pre className="text-xs bg-background p-3 rounded border border-border overflow-x-auto whitespace-pre-wrap break-all max-w-full">
                   <code className="text-foreground">
                     {highlightJson(rawJson)}
                   </code>

@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +15,7 @@ import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route,
 import { toast } from "sonner";
 import yaml from "js-yaml";
 import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParameterRow";
+import { RequestBodyEditor, BodyType, RawType, FormDataEntry } from "@/components/api-tester/RequestBodyEditor";
 
 interface KeyValuePair {
   key: string;
@@ -114,6 +114,11 @@ const ApiTester = () => {
     { key: "", value: "", enabled: true },
   ]);
   const [body, setBody] = useState("");
+  const [bodyType, setBodyType] = useState<BodyType>("raw");
+  const [rawType, setRawType] = useState<RawType>("json");
+  const [formData, setFormData] = useState<FormDataEntry[]>([
+    { key: "", value: "", enabled: true },
+  ]);
   const [services, setServices] = useState<Service[]>([]);
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -1335,11 +1340,15 @@ const ApiTester = () => {
                 </TabsContent>
 
                 <TabsContent value="body" className="mt-4">
-                  <Textarea
-                    placeholder='{"key": "value"}'
+                  <RequestBodyEditor
                     value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    className="min-h-[300px] font-mono text-sm bg-background"
+                    onChange={setBody}
+                    bodyType={bodyType}
+                    onBodyTypeChange={setBodyType}
+                    rawType={rawType}
+                    onRawTypeChange={setRawType}
+                    formData={formData}
+                    onFormDataChange={setFormData}
                   />
                 </TabsContent>
               </Tabs>
@@ -1397,13 +1406,41 @@ const ApiTester = () => {
                 
                 {selectedServiceId && (
                   <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Select Operation</label>
+                    <label className="text-sm text-muted-foreground">
+                      Select Operation
+                      {selectedOperationKey && (() => {
+                        const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                        return selectedOp?.operationId ? (
+                          <span className="ml-2 font-mono text-foreground">{selectedOp.operationId}</span>
+                        ) : null;
+                      })()}
+                    </label>
                     <Select 
                       value={selectedOperationKey || "__auto__"} 
                       onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
                     >
                       <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Auto-detect from URL & method" />
+                        <SelectValue placeholder="Auto-detect from URL & method">
+                          {selectedOperationKey ? (() => {
+                            const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                            return selectedOp ? (
+                              <span>
+                                <span className={`font-mono text-xs mr-2 ${
+                                  selectedOp.method === "GET" ? "text-green-500" :
+                                  selectedOp.method === "POST" ? "text-yellow-500" :
+                                  selectedOp.method === "PUT" ? "text-blue-500" :
+                                  selectedOp.method === "DELETE" ? "text-red-500" :
+                                  "text-muted-foreground"
+                                }`}>
+                                  {selectedOp.method}
+                                </span>
+                                <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
+                              </span>
+                            ) : null;
+                          })() : (
+                            <span className="text-muted-foreground">Auto-detect</span>
+                          )}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-popover z-50 max-h-[300px]">
                         <SelectItem value="__auto__">Auto-detect</SelectItem>
@@ -1418,7 +1455,10 @@ const ApiTester = () => {
                             }`}>
                               {op.method}
                             </span>
-                            <span className="font-mono text-sm">{op.path}</span>
+                            {op.operationId && (
+                              <span className="font-mono text-sm mr-2">{op.operationId}</span>
+                            )}
+                            <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
                             {op.summary && (
                               <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
                             )}
