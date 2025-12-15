@@ -605,7 +605,7 @@ const ApiTester = () => {
     }
   }, [openAPIFormValues, activeTab, openAPIOperation]);
 
-  // Sync: Other tabs → OpenAPI form (when switching TO openapi tab)
+  // Sync: Other tabs → OpenAPI form (when switching TO openapi tab OR when params change)
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
 
@@ -654,14 +654,15 @@ const ApiTester = () => {
       }
     }
 
-    // Only update if we actually have something to sync
-    const hasDataToSync =
-      Object.keys(syncedQueryParams).length > 0 ||
-      Object.keys(syncedHeaderParams).length > 0 ||
-      Object.keys(syncedPathParams).length > 0 ||
-      Object.keys(syncedBodyParams).length > 0;
+    // Check if the synced values are different from current openAPIFormValues
+    // This prevents unnecessary updates and infinite loops
+    const isQueryParamsDifferent = JSON.stringify(syncedQueryParams) !== JSON.stringify(openAPIFormValues.queryParams);
+    const isHeaderParamsDifferent = JSON.stringify(syncedHeaderParams) !== JSON.stringify(openAPIFormValues.headerParams);
+    const isPathParamsDifferent = JSON.stringify(syncedPathParams) !== JSON.stringify(openAPIFormValues.pathParams);
+    const isBodyParamsDifferent = JSON.stringify(syncedBodyParams) !== JSON.stringify(openAPIFormValues.bodyParams);
 
-    if (hasDataToSync) {
+    // Only update if there are actual changes
+    if (isQueryParamsDifferent || isHeaderParamsDifferent || isPathParamsDifferent || isBodyParamsDifferent) {
       setOpenAPIFormValues({
         pathParams: syncedPathParams,
         queryParams: syncedQueryParams,
@@ -669,7 +670,7 @@ const ApiTester = () => {
         bodyParams: syncedBodyParams,
       });
     }
-  }, [activeTab]); // Only trigger when switching tabs
+  }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation, openAPIFormValues]); // Trigger when any relevant state changes
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();

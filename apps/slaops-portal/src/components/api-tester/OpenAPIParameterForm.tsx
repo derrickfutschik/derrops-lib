@@ -75,6 +75,44 @@ export function OpenAPIParameterForm({ operation, values, onChange }: OpenAPIPar
     }
   }
 
+  // Validate parameter value based on schema and required status
+  const validateParam = (param: Parameter, value: any): { isValid: boolean; reason: string } => {
+    const schema = param.schema || {};
+    const type = schema.type || "string";
+
+    // Required check
+    if (param.required && (value === undefined || value === null || value === "")) {
+      return { isValid: false, reason: "Required parameter is missing" };
+    }
+
+    // If no value provided and not required, it's valid
+    if (value === undefined || value === null || value === "") {
+      return { isValid: true, reason: "" };
+    }
+
+    // Type validation
+    const valueStr = String(value);
+
+    if (type === "integer") {
+      const isInteger = /^-?\d+$/.test(valueStr);
+      if (!isInteger) {
+        return { isValid: false, reason: "Must be an integer" };
+      }
+    } else if (type === "number") {
+      const isNumber = !isNaN(Number(valueStr));
+      if (!isNumber) {
+        return { isValid: false, reason: "Must be a number" };
+      }
+    } else if (type === "boolean") {
+      const isBoolean = valueStr === "true" || valueStr === "false" || typeof value === "boolean";
+      if (!isBoolean) {
+        return { isValid: false, reason: "Must be true or false" };
+      }
+    }
+
+    return { isValid: true, reason: "" };
+  };
+
   // Sort parameters: required first, then optional, then alphabetically
   const sortParams = (params: Parameter[]) => {
     return [...params].sort((a, b) => {
@@ -144,18 +182,25 @@ export function OpenAPIParameterForm({ operation, values, onChange }: OpenAPIPar
         </CollapsibleTrigger>
 
         <CollapsibleContent className="px-4 py-3 space-y-4">
-          {params.map((param) => (
-            <ParameterInput
-              key={param.name}
-              name={param.name}
-              schema={param.schema || {}}
-              value={values[location][param.name]}
-              required={param.required || false}
-              description={param.description}
-              onChange={(value) => handleParamChange(location, param.name, value)}
-              defaultValue={param.schema?.default}
-            />
-          ))}
+          {params.map((param) => {
+            const paramValue = values[location][param.name];
+            const validation = validateParam(param, paramValue);
+
+            return (
+              <ParameterInput
+                key={param.name}
+                name={param.name}
+                schema={param.schema || {}}
+                value={paramValue}
+                required={param.required || false}
+                description={param.description}
+                onChange={(value) => handleParamChange(location, param.name, value)}
+                defaultValue={param.schema?.default}
+                isValid={validation.isValid}
+                validationReason={validation.reason}
+              />
+            );
+          })}
         </CollapsibleContent>
       </Collapsible>
     );

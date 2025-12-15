@@ -16,6 +16,9 @@ interface ParameterInputProps {
   description?: string;
   onChange: (value: any) => void;
   defaultValue?: any;
+  isValid?: boolean; // Validation state for error highlighting (red)
+  isUnspecified?: boolean; // Warning state for unspecified parameters (orange)
+  validationReason?: string; // Optional tooltip text for validation
 }
 
 /**
@@ -29,6 +32,9 @@ export function ParameterInput({
   description,
   onChange,
   defaultValue,
+  isValid = true,
+  isUnspecified = false,
+  validationReason,
 }: ParameterInputProps) {
   const [arrayItems, setArrayItems] = useState<any[]>(
     Array.isArray(value) ? value : defaultValue && Array.isArray(defaultValue) ? defaultValue : []
@@ -372,11 +378,18 @@ export function ParameterInput({
     );
   };
 
+  // Determine the styling based on validation state (matching ExpandableParameterRow)
+  const getNameClassName = () => {
+    if (isUnspecified) return 'text-orange-500';
+    if (!isValid) return 'text-destructive';
+    return 'text-foreground';
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Label htmlFor={`param-${name}`} className="flex items-center gap-1">
-          <span className="font-mono text-sm">{name}</span>
+          <span className={`font-mono text-sm ${getNameClassName()}`}>{name}</span>
           {required && <span className="text-destructive">*</span>}
           {!required && (
             <span className="text-xs text-muted-foreground font-normal">(optional)</span>
