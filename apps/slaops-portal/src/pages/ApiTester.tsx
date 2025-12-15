@@ -18,6 +18,8 @@ import yaml from "js-yaml";
 import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParameterRow";
 import { RequestBodyEditor, BodyType, RawType, FormDataEntry } from "@/components/api-tester/RequestBodyEditor";
 import { JsonResponseViewer } from "@/components/api-tester/JsonResponseViewer";
+import { OpenAPIRequestTab } from "@/components/api-tester/OpenAPIRequestTab";
+import { OpenAPIFormValues } from "@/components/api-tester/OpenAPIParameterForm";
 
 interface KeyValuePair {
   key: string;
@@ -157,6 +159,18 @@ const ApiTester = () => {
   const [availableOperations, setAvailableOperations] = useState<OperationOption[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [parsedSpecs, setParsedSpecs] = useState<Record<string, any>>({});
+
+  // OpenAPI tab state
+  const [openAPIServiceId, setOpenAPIServiceId] = useState<string | null>(null);
+  const [openAPIOperationKey, setOpenAPIOperationKey] = useState<string | null>(null);
+  const [openAPIOperation, setOpenAPIOperation] = useState<any>(null);
+  const [openAPIFormValues, setOpenAPIFormValues] = useState<OpenAPIFormValues>({
+    pathParams: {},
+    queryParams: {},
+    headerParams: {},
+    bodyParams: {},
+  });
+  const [activeTab, setActiveTab] = useState<string>("params");
   
   // Sorting state for parameter tables
   type SortColumn = 'name' | 'type' | 'required' | 'value' | 'isValid';
@@ -369,7 +383,7 @@ const ApiTester = () => {
   // Parse URL query params when URL changes manually
   const handleUrlChange = (newUrl: string) => {
     setUrl(newUrl);
-    
+
     try {
       const urlObj = new URL(newUrl);
       const params: KeyValuePair[] = [];
@@ -383,6 +397,211 @@ const ApiTester = () => {
       // Invalid URL, ignore - keep existing params
     }
   };
+
+  // Helper: Reconstruct URL from OpenAPI operation + path params
+  const reconstructUrlFromOperation = (operation: any, pathParams: Record<string, any>): string => {
+    if (!operation || !operation.path) return "";
+
+    let path = operation.path;
+
+    // Replace path parameters with actual values
+    Object.entries(pathParams).forEach(([paramName, paramValue]) => {
+      path = path.replace(`{${paramName}}`, String(paramValue || ""));
+    });
+
+    // Get the first service to construct base URL
+    // In a real scenario, you might want to use the server URL from the spec
+    const service = services.find(s => s.id === openAPIServiceId);
+    if (service?.endpoint) {
+      return `${service.endpoint}${path}`;
+    }
+
+    // Fallback: just return the path
+    return path.startsWith("http") ? path : `https://api.example.com${path}`;
+  };
+
+  // Helper: Parse value by type
+  const parseValueByType = (value: string, schema: any): any => {
+    if (!schema) return value;
+
+    const type = schema.type;
+
+    if (type === "boolean") {
+      return value === "true" || value === "1";
+    }
+
+    if (type === "number") {
+      const num = parseFloat(value);
+      return isNaN(num) ? value : num;
+    }
+
+    if (type === "integer") {
+      const num = parseInt(value, 10);
+      return isNaN(num) ? value : num;
+    }
+
+    if (type === "array" || type === "object") {
+      // Try to parse as JSON
+      try {
+        return JSON.parse(value);
+      } catch {
+        // If parsing fails, return as-is
+        return value;
+      }
+    }
+
+    return value;
+  };
+
+  // Helper: Extract path params from URL using operation path template
+  const extractPathParamsFromUrl = (url: string, pathTemplate: string): Record<string, string> => {
+    const pathParams: Record<string, string> = {};
+
+    try {
+      const urlObj = new URL(url);
+      const urlPath = urlObj.pathname;
+
+      // Convert path template to regex
+      // e.g., "/users/{id}/posts/{postId}" -> "/users/([^/]+)/posts/([^/]+)"
+      const paramNames: string[] = [];
+      const regexPattern = pathTemplate.replace(/\{([^}]+)\}/g, (_, paramName) => {
+        paramNames.push(paramName);
+        return "([^/]+)";
+      });
+
+      const regex = new RegExp(`^${regexPattern}$`);
+      const match = urlPath.match(regex);
+
+      if (match) {
+        paramNames.forEach((paramName, index) => {
+          pathParams[paramName] = match[index + 1];
+        });
+      }
+    } catch {
+      // Invalid URL or template
+    }
+
+    return pathParams;
+  };
+
+  // Sync: OpenAPI form → Other tabs
+  useEffect(() => {
+    if (activeTab !== "openapi" || !openAPIOperation) return;
+
+    // Update URL and method
+    const reconstructedUrl = reconstructUrlFromOperation(openAPIOperation, openAPIFormValues.pathParams);
+    setUrl(reconstructedUrl);
+    setMethod(openAPIOperation.method);
+
+    // Update query params
+    const newQueryParams: KeyValuePair[] = Object.entries(openAPIFormValues.queryParams)
+      .filter(([_, value]) => {
+        // Keep arrays and objects even if empty, but filter out undefined, null, and empty strings
+        if (Array.isArray(value) || (typeof value === "object" && value !== null)) return true;
+        return value !== undefined && value !== null && value !== "";
+      })
+      .map(([key, value]) => ({
+        key,
+        // Serialize arrays and objects as JSON, otherwise convert to string
+        value: Array.isArray(value) || typeof value === "object" ? JSON.stringify(value) : String(value),
+        enabled: true,
+      }));
+    // Add empty row
+    newQueryParams.push({ key: "", value: "", enabled: true });
+    setQueryParams(newQueryParams);
+
+    // Update headers
+    const newHeaders: KeyValuePair[] = Object.entries(openAPIFormValues.headerParams)
+      .filter(([_, value]) => {
+        // Keep arrays and objects even if empty, but filter out undefined, null, and empty strings
+        if (Array.isArray(value) || (typeof value === "object" && value !== null)) return true;
+        return value !== undefined && value !== null && value !== "";
+      })
+      .map(([key, value]) => ({
+        key,
+        // Serialize arrays and objects as JSON, otherwise convert to string
+        value: Array.isArray(value) || typeof value === "object" ? JSON.stringify(value) : String(value),
+        enabled: true,
+      }));
+    // Add Content-Type if not present and ensure at least one empty row
+    if (!newHeaders.some(h => h.key.toLowerCase() === "content-type")) {
+      newHeaders.push({ key: "Content-Type", value: "application/json", enabled: true });
+    }
+    setHeaders(newHeaders);
+
+    // Update body
+    if (Object.keys(openAPIFormValues.bodyParams).length > 0) {
+      setBody(JSON.stringify(openAPIFormValues.bodyParams, null, 2));
+      setBodyType("raw");
+      setRawType("json");
+    }
+  }, [openAPIFormValues, activeTab, openAPIOperation]);
+
+  // Sync: Other tabs → OpenAPI form (when switching TO openapi tab)
+  useEffect(() => {
+    if (activeTab !== "openapi" || !openAPIOperation) return;
+
+    const operation = openAPIOperation;
+    const parameters = operation.parameters || [];
+
+    // Sync query params
+    const syncedQueryParams: Record<string, any> = {};
+    const opQueryParams = parameters.filter((p: any) => p.in === "query");
+    opQueryParams.forEach((param: any) => {
+      const existing = queryParams.find(p => p.key === param.name && p.enabled);
+      if (existing && existing.value) {
+        syncedQueryParams[param.name] = parseValueByType(existing.value, param.schema);
+      }
+    });
+
+    // Sync headers
+    const syncedHeaderParams: Record<string, any> = {};
+    const opHeaderParams = parameters.filter((p: any) => p.in === "header");
+    opHeaderParams.forEach((param: any) => {
+      const existing = headers.find(h => h.key.toLowerCase() === param.name.toLowerCase() && h.enabled);
+      if (existing && existing.value) {
+        syncedHeaderParams[param.name] = parseValueByType(existing.value, param.schema);
+      }
+    });
+
+    // Sync path params (extract from URL)
+    const syncedPathParams: Record<string, any> = {};
+    const opPathParams = parameters.filter((p: any) => p.in === "path");
+    if (url && operation.path) {
+      const extractedParams = extractPathParamsFromUrl(url, operation.path);
+      opPathParams.forEach((param: any) => {
+        if (extractedParams[param.name]) {
+          syncedPathParams[param.name] = parseValueByType(extractedParams[param.name], param.schema);
+        }
+      });
+    }
+
+    // Sync body params (parse JSON if available)
+    let syncedBodyParams: Record<string, any> = {};
+    if (bodyType === "raw" && rawType === "json" && body) {
+      try {
+        syncedBodyParams = JSON.parse(body);
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+
+    // Only update if we actually have something to sync
+    const hasDataToSync =
+      Object.keys(syncedQueryParams).length > 0 ||
+      Object.keys(syncedHeaderParams).length > 0 ||
+      Object.keys(syncedPathParams).length > 0 ||
+      Object.keys(syncedBodyParams).length > 0;
+
+    if (hasDataToSync) {
+      setOpenAPIFormValues({
+        pathParams: syncedPathParams,
+        queryParams: syncedQueryParams,
+        headerParams: syncedHeaderParams,
+        bodyParams: syncedBodyParams,
+      });
+    }
+  }, [activeTab]); // Only trigger when switching tabs
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -1494,12 +1713,13 @@ const ApiTester = () => {
                 </div>
               </div>
 
-              {/* Tabs for Params, Headers, Body */}
-              <Tabs defaultValue="params" className="w-full">
+              {/* Tabs for Params, Headers, Body, OpenAPI */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="w-full justify-start bg-muted/50">
                   <TabsTrigger value="params">Query Params</TabsTrigger>
                   <TabsTrigger value="headers">Headers</TabsTrigger>
                   <TabsTrigger value="body">Body</TabsTrigger>
+                  <TabsTrigger value="openapi">OpenAPI</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="params" className="space-y-3 mt-4">
@@ -1596,6 +1816,19 @@ const ApiTester = () => {
                     onRawTypeChange={setRawType}
                     formData={formData}
                     onFormDataChange={setFormData}
+                  />
+                </TabsContent>
+
+                <TabsContent value="openapi" className="mt-4">
+                  <OpenAPIRequestTab
+                    services={services}
+                    selectedServiceId={openAPIServiceId}
+                    selectedOperationKey={openAPIOperationKey}
+                    formValues={openAPIFormValues}
+                    onServiceChange={setOpenAPIServiceId}
+                    onOperationChange={setOpenAPIOperationKey}
+                    onFormValuesChange={setOpenAPIFormValues}
+                    onOperationParsed={setOpenAPIOperation}
                   />
                 </TabsContent>
               </Tabs>

@@ -1,0 +1,300 @@
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface ParameterInputProps {
+  name: string;
+  schema: any; // OpenAPI schema object
+  value: any;
+  required: boolean;
+  description?: string;
+  onChange: (value: any) => void;
+  defaultValue?: any;
+}
+
+/**
+ * Type-aware input component that renders different UI elements based on OpenAPI schema type
+ */
+export function ParameterInput({
+  name,
+  schema,
+  value,
+  required,
+  description,
+  onChange,
+  defaultValue,
+}: ParameterInputProps) {
+  const [arrayItems, setArrayItems] = useState<any[]>(
+    Array.isArray(value) ? value : defaultValue && Array.isArray(defaultValue) ? defaultValue : []
+  );
+
+  // Sync arrayItems when value prop changes (e.g., when switching tabs)
+  useEffect(() => {
+    if (schema?.type === "array") {
+      if (Array.isArray(value)) {
+        setArrayItems(value);
+      } else if (value === undefined && Array.isArray(defaultValue)) {
+        setArrayItems(defaultValue);
+      }
+    }
+  }, [value, defaultValue, schema?.type]);
+
+  // Determine the type from schema
+  const type = schema?.type || "string";
+  const format = schema?.format;
+  const enumValues = schema?.enum;
+
+  // Check if value is using default
+  const isUsingDefault = value === undefined && defaultValue !== undefined;
+  const displayValue = value !== undefined ? value : defaultValue;
+
+  // Handle different input types based on schema
+  const renderInput = () => {
+    // Boolean type - render switch
+    if (type === "boolean") {
+      return (
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={displayValue === true}
+            onCheckedChange={(checked) => onChange(checked)}
+          />
+          <span className="text-sm text-muted-foreground">
+            {displayValue === true ? "true" : "false"}
+          </span>
+        </div>
+      );
+    }
+
+    // Enum type - render select dropdown
+    if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
+      return (
+        <Select
+          value={displayValue !== undefined ? String(displayValue) : undefined}
+          onValueChange={(val) => {
+            // Convert to appropriate type
+            if (type === "number" || type === "integer") {
+              onChange(Number(val));
+            } else {
+              onChange(val);
+            }
+          }}
+        >
+          <SelectTrigger className={isUsingDefault ? "italic text-muted-foreground" : ""}>
+            <SelectValue placeholder={`Select ${name}...`} />
+          </SelectTrigger>
+          <SelectContent>
+            {enumValues.map((enumVal) => (
+              <SelectItem key={String(enumVal)} value={String(enumVal)}>
+                {String(enumVal)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    // Number or Integer type - render number input
+    if (type === "number" || type === "integer") {
+      return (
+        <Input
+          type="number"
+          value={displayValue !== undefined ? displayValue : ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "") {
+              onChange(undefined);
+            } else {
+              onChange(type === "integer" ? parseInt(val, 10) : parseFloat(val));
+            }
+          }}
+          placeholder={defaultValue !== undefined ? String(defaultValue) : ""}
+          className={isUsingDefault ? "italic text-muted-foreground" : ""}
+          step={type === "integer" ? 1 : "any"}
+        />
+      );
+    }
+
+    // File/Binary type - render file input
+    if (format === "binary" || format === "byte") {
+      return (
+        <div className="space-y-2">
+          <Input
+            type="file"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              onChange(file);
+            }}
+          />
+          {displayValue instanceof File && (
+            <div className="text-sm text-muted-foreground">
+              Selected: {displayValue.name} ({Math.round(displayValue.size / 1024)} KB)
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Array type - render multiple inputs
+    if (type === "array") {
+      const itemSchema = schema?.items || { type: "string" };
+      const itemType = itemSchema.type || "string";
+
+      const handleAddItem = () => {
+        const newItems = [...arrayItems, ""];
+        setArrayItems(newItems);
+        onChange(newItems);
+      };
+
+      const handleRemoveItem = (index: number) => {
+        const newItems = arrayItems.filter((_, i) => i !== index);
+        setArrayItems(newItems);
+        onChange(newItems);
+      };
+
+      const handleUpdateItem = (index: number, val: any) => {
+        const newItems = [...arrayItems];
+        newItems[index] = val;
+        setArrayItems(newItems);
+        onChange(newItems);
+      };
+
+      return (
+        <div className="space-y-2">
+          {arrayItems.map((item, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                type={itemType === "number" || itemType === "integer" ? "number" : "text"}
+                value={item}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (itemType === "number") {
+                    handleUpdateItem(index, parseFloat(val));
+                  } else if (itemType === "integer") {
+                    handleUpdateItem(index, parseInt(val, 10));
+                  } else {
+                    handleUpdateItem(index, val);
+                  }
+                }}
+                placeholder={`Item ${index + 1}`}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemoveItem(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddItem}
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
+      );
+    }
+
+    // Object type or complex schema - render JSON textarea
+    if (type === "object" || schema?.allOf || schema?.anyOf || schema?.oneOf) {
+      let jsonValue = "";
+      try {
+        jsonValue = displayValue !== undefined ? JSON.stringify(displayValue, null, 2) : "";
+      } catch (e) {
+        jsonValue = "";
+      }
+
+      return (
+        <div className="space-y-2">
+          <Textarea
+            value={jsonValue}
+            onChange={(e) => {
+              try {
+                const parsed = JSON.parse(e.target.value);
+                onChange(parsed);
+              } catch (err) {
+                // Allow invalid JSON while typing
+                // Could add validation feedback here
+              }
+            }}
+            placeholder='{"key": "value"}'
+            className={`font-mono text-sm ${isUsingDefault ? "italic text-muted-foreground" : ""}`}
+            rows={5}
+          />
+          <div className="text-xs text-muted-foreground">
+            Enter valid JSON object
+          </div>
+        </div>
+      );
+    }
+
+    // Default: String type - render text input
+    return (
+      <Input
+        type="text"
+        value={displayValue !== undefined ? displayValue : ""}
+        onChange={(e) => onChange(e.target.value || undefined)}
+        placeholder={defaultValue !== undefined ? String(defaultValue) : ""}
+        className={isUsingDefault ? "italic text-muted-foreground" : ""}
+      />
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Label htmlFor={`param-${name}`} className="flex items-center gap-1">
+          <span className="font-mono text-sm">{name}</span>
+          {required && <span className="text-destructive">*</span>}
+          {!required && (
+            <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+          )}
+        </Label>
+
+        {description && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-sm">
+              <div className="space-y-1">
+                <p className="text-sm">{description}</p>
+                <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                  <div>Type: {type}</div>
+                  {format && <div>Format: {format}</div>}
+                  {defaultValue !== undefined && (
+                    <div>Default: {JSON.stringify(defaultValue)}</div>
+                  )}
+                  {enumValues && (
+                    <div>Options: {enumValues.join(", ")}</div>
+                  )}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      <div id={`param-${name}`}>{renderInput()}</div>
+
+      {isUsingDefault && (
+        <div className="text-xs text-muted-foreground italic">
+          Using default value: {JSON.stringify(defaultValue)}
+        </div>
+      )}
+    </div>
+  );
+}
