@@ -108,6 +108,74 @@ interface OperationOption {
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
+/**
+ * Extract validation errors from match result to display in response JSON tooltips
+ */
+const extractValidationErrors = (matchResult: MatchResult | null): Record<string, string> => {
+  if (!matchResult?.operation) return {};
+
+  const errors: Record<string, string> = {};
+
+  // Collect errors from all parameter types
+  const allParameters = [
+    ...(matchResult.operation.pathParameters || []),
+    ...(matchResult.operation.queryParameters || []),
+    ...(matchResult.operation.headerParameters || []),
+    ...(matchResult.operation.bodyProperties || []),
+  ];
+
+  // Map parameter names to their validation errors
+  allParameters.forEach((param) => {
+    if (!param.isValid && param.validationReason) {
+      errors[param.name] = param.validationReason;
+    }
+  });
+
+  return errors;
+};
+
+/**
+ * Extract response schema from OpenAPI spec based on HTTP status code
+ * Looks for exact status code match first, then falls back to default or 2xx pattern
+ */
+const getResponseSchemaForStatus = (matchResult: MatchResult | null, statusCode: number): any => {
+  if (!matchResult?.operation || !matchResult?.spec) return undefined;
+
+  const { spec, operation } = matchResult;
+  const { paths } = spec;
+
+  if (!paths || !paths[operation.path]) return undefined;
+
+  const pathMethods = paths[operation.path];
+  const lowerMethod = operation.method.toLowerCase();
+  const operationDef = pathMethods[lowerMethod];
+
+  if (!operationDef?.responses) return undefined;
+
+  // Try to find response schema in this order:
+  // 1. Exact status code match (e.g., "400", "404")
+  // 2. Pattern match (e.g., "4XX", "2XX")
+  // 3. Default response
+  const statusString = String(statusCode);
+  const statusPattern = `${statusString[0]}XX`;
+
+  const responseToCheck =
+    operationDef.responses[statusString] ||
+    operationDef.responses[statusPattern] ||
+    operationDef.responses['default'];
+
+  if (!responseToCheck?.content) return undefined;
+
+  // Look for JSON content type
+  const jsonContent = Object.keys(responseToCheck.content).find(ct => ct.includes('json'));
+
+  if (jsonContent && responseToCheck.content[jsonContent]?.schema) {
+    return responseToCheck.content[jsonContent].schema;
+  }
+
+  return undefined;
+};
+
 const ApiTester = () => {
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
@@ -2739,14 +2807,18 @@ const ApiTester = () => {
                                   {(() => {
                                     const contentType = requestResponse.headers['content-type'] || requestResponse.headers['Content-Type'] || '';
                                     const isJson = contentType.includes('application/json');
-                                    
+
                                     if (isJson) {
                                       try {
                                         JSON.parse(requestResponse.body); // Validate JSON
+                                        const validationErrors = extractValidationErrors(matchResult);
+                                        // Get response schema based on actual status code
+                                        const responseSchema = getResponseSchemaForStatus(matchResult, requestResponse.status);
                                         return (
-                                          <JsonResponseViewer 
-                                            jsonString={requestResponse.body} 
-                                            responseSchema={matchResult?.operation?.responseSchema}
+                                          <JsonResponseViewer
+                                            jsonString={requestResponse.body}
+                                            responseSchema={responseSchema}
+                                            validationErrors={validationErrors}
                                           />
                                         );
                                       } catch {

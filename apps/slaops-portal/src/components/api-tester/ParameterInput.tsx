@@ -144,9 +144,18 @@ export function ParameterInput({
     if (type === "array") {
       const itemSchema = schema?.items || { type: "string" };
       const itemType = itemSchema.type || "string";
+      const itemEnum = itemSchema.enum;
+
+      const getDefaultItemValue = () => {
+        if (itemType === "boolean") return false;
+        if (itemType === "number" || itemType === "integer") return 0;
+        if (itemType === "object") return {};
+        if (itemEnum && itemEnum.length > 0) return itemEnum[0];
+        return "";
+      };
 
       const handleAddItem = () => {
-        const newItems = [...arrayItems, ""];
+        const newItems = [...arrayItems, getDefaultItemValue()];
         setArrayItems(newItems);
         onChange(newItems);
       };
@@ -164,31 +173,124 @@ export function ParameterInput({
         onChange(newItems);
       };
 
+      // Render individual array item based on schema type
+      const renderArrayItem = (item: any, index: number) => {
+        // Boolean type - render switch
+        if (itemType === "boolean") {
+          return (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={item === true}
+                onCheckedChange={(checked) => handleUpdateItem(index, checked)}
+              />
+              <span className="text-sm text-muted-foreground">
+                {item === true ? "true" : "false"}
+              </span>
+            </div>
+          );
+        }
+
+        // Enum type - render select
+        if (itemEnum && Array.isArray(itemEnum) && itemEnum.length > 0) {
+          return (
+            <Select
+              value={item !== undefined ? String(item) : undefined}
+              onValueChange={(val) => {
+                if (itemType === "number" || itemType === "integer") {
+                  handleUpdateItem(index, Number(val));
+                } else {
+                  handleUpdateItem(index, val);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={`Select item ${index + 1}...`} />
+              </SelectTrigger>
+              <SelectContent>
+                {itemEnum.map((enumVal) => (
+                  <SelectItem key={String(enumVal)} value={String(enumVal)}>
+                    {String(enumVal)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        }
+
+        // Number or Integer type
+        if (itemType === "number" || itemType === "integer") {
+          return (
+            <Input
+              type="number"
+              value={item !== undefined ? item : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  handleUpdateItem(index, itemType === "integer" ? 0 : 0.0);
+                } else {
+                  handleUpdateItem(
+                    index,
+                    itemType === "integer" ? parseInt(val, 10) : parseFloat(val)
+                  );
+                }
+              }}
+              placeholder={`Item ${index + 1}`}
+              step={itemType === "integer" ? 1 : "any"}
+            />
+          );
+        }
+
+        // Object type - render JSON textarea
+        if (itemType === "object") {
+          let jsonValue = "";
+          try {
+            jsonValue = item !== undefined ? JSON.stringify(item, null, 2) : "";
+          } catch (e) {
+            jsonValue = "";
+          }
+
+          return (
+            <Textarea
+              value={jsonValue}
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  handleUpdateItem(index, parsed);
+                } catch (err) {
+                  // Allow invalid JSON while typing
+                }
+              }}
+              placeholder={`{"key": "value"}`}
+              className="font-mono text-sm"
+              rows={3}
+            />
+          );
+        }
+
+        // Default: String type
+        return (
+          <Input
+            type="text"
+            value={item !== undefined ? item : ""}
+            onChange={(e) => handleUpdateItem(index, e.target.value)}
+            placeholder={`Item ${index + 1}`}
+          />
+        );
+      };
+
       return (
         <div className="space-y-2">
           {arrayItems.map((item, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                type={itemType === "number" || itemType === "integer" ? "number" : "text"}
-                value={item}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (itemType === "number") {
-                    handleUpdateItem(index, parseFloat(val));
-                  } else if (itemType === "integer") {
-                    handleUpdateItem(index, parseInt(val, 10));
-                  } else {
-                    handleUpdateItem(index, val);
-                  }
-                }}
-                placeholder={`Item ${index + 1}`}
-                className="flex-1"
-              />
+            <div key={index} className="flex items-start gap-2">
+              <div className="flex-1">
+                {renderArrayItem(item, index)}
+              </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => handleRemoveItem(index)}
+                className="mt-0.5"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 interface JsonResponseViewerProps {
   jsonString: string;
   responseSchema: any;
+  validationErrors?: Record<string, string>; // Map of field names to validation error messages
 }
 
 interface PropertySchema {
@@ -39,6 +40,7 @@ const getPropertySchema = (schema: PropertySchema | undefined, path: string[]): 
 const renderJsonWithTooltips = (
   value: any,
   schema: PropertySchema | undefined,
+  validationErrors: Record<string, string> | undefined,
   path: string[] = [],
   indent: number = 0
 ): React.ReactNode => {
@@ -75,7 +77,7 @@ const renderJsonWithTooltips = (
         {value.map((item, index) => (
           <React.Fragment key={index}>
             {nextIndentStr}
-            {renderJsonWithTooltips(item, itemSchema, [...path, String(index)], nextIndent)}
+            {renderJsonWithTooltips(item, itemSchema, validationErrors, [...path, String(index)], nextIndent)}
             {index < value.length - 1 ? ",\n" : "\n"}
           </React.Fragment>
         ))}
@@ -98,32 +100,43 @@ const renderJsonWithTooltips = (
           const propSchema = getPropertySchema(schema, [key]);
           const description = propSchema?.description;
           const propType = propSchema?.type;
+          const validationError = validationErrors?.[key];
+          const hasTooltip = description || validationError;
 
           const keyElement = (
-            <span className="text-purple-400">"{key}"</span>
+            <span className={validationError ? "text-red-400" : "text-purple-400"}>"{key}"</span>
           );
 
           return (
             <React.Fragment key={key}>
               {nextIndentStr}
-              {description ? (
+              {hasTooltip ? (
                 <Tooltip delayDuration={200}>
                   <TooltipTrigger asChild>
-                    <span className="cursor-help border-b border-dashed border-purple-400/50 hover:border-purple-400">
+                    <span className={`cursor-help border-b border-dashed ${
+                      validationError
+                        ? "border-red-400/50 hover:border-red-400"
+                        : "border-purple-400/50 hover:border-purple-400"
+                    }`}>
                       {keyElement}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent 
-                    side="top" 
+                  <TooltipContent
+                    side="top"
                     className="max-w-[300px] text-sm"
                   >
                     <div className="space-y-1">
+                      {validationError && (
+                        <div className="text-red-400 font-medium">
+                          {validationError}
+                        </div>
+                      )}
                       {propType && (
                         <div className="text-xs text-muted-foreground font-mono">
                           Type: {propType}
                         </div>
                       )}
-                      <div>{description}</div>
+                      {description && <div>{description}</div>}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -131,7 +144,7 @@ const renderJsonWithTooltips = (
                 keyElement
               )}
               {": "}
-              {renderJsonWithTooltips(val, propSchema, propPath, nextIndent)}
+              {renderJsonWithTooltips(val, propSchema, validationErrors, propPath, nextIndent)}
               {index < entries.length - 1 ? ",\n" : "\n"}
             </React.Fragment>
           );
@@ -144,13 +157,14 @@ const renderJsonWithTooltips = (
   return <span>{String(value)}</span>;
 };
 
-export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({ 
-  jsonString, 
-  responseSchema 
+export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
+  jsonString,
+  responseSchema,
+  validationErrors
 }) => {
   try {
     const parsed = JSON.parse(jsonString);
-    return <>{renderJsonWithTooltips(parsed, responseSchema)}</>;
+    return <>{renderJsonWithTooltips(parsed, responseSchema, validationErrors)}</>;
   } catch {
     // If parsing fails, return the raw string
     return <>{jsonString}</>;
