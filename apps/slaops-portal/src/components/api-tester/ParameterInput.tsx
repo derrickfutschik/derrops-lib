@@ -51,8 +51,9 @@ export function ParameterInput({
   const enumValues = schema?.enum;
 
   // Check if value is using default
+  // For enums, we don't auto-fill with defaultValue - user must explicitly select
   const isUsingDefault = value === undefined && defaultValue !== undefined;
-  const displayValue = value !== undefined ? value : defaultValue;
+  const displayValue = value !== undefined ? value : (enumValues ? undefined : defaultValue);
 
   // Handle different input types based on schema
   const renderInput = () => {
@@ -77,6 +78,11 @@ export function ParameterInput({
         <Select
           value={displayValue !== undefined ? String(displayValue) : undefined}
           onValueChange={(val) => {
+            // Special value for clearing selection
+            if (val === "__NONE__") {
+              onChange(undefined);
+              return;
+            }
             // Convert to appropriate type
             if (type === "number" || type === "integer") {
               onChange(Number(val));
@@ -89,6 +95,9 @@ export function ParameterInput({
             <SelectValue placeholder={`Select ${name}...`} />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="__NONE__">
+              <span className="text-muted-foreground italic">(none)</span>
+            </SelectItem>
             {enumValues.map((enumVal) => (
               <SelectItem key={String(enumVal)} value={String(enumVal)}>
                 {String(enumVal)}
@@ -150,7 +159,7 @@ export function ParameterInput({
         if (itemType === "boolean") return false;
         if (itemType === "number" || itemType === "integer") return 0;
         if (itemType === "object") return {};
-        if (itemEnum && itemEnum.length > 0) return itemEnum[0];
+        if (itemEnum && itemEnum.length > 0) return undefined; // Start with no selection for enums
         return "";
       };
 
@@ -196,6 +205,11 @@ export function ParameterInput({
             <Select
               value={item !== undefined ? String(item) : undefined}
               onValueChange={(val) => {
+                // Special value for clearing selection
+                if (val === "__NONE__") {
+                  handleUpdateItem(index, undefined);
+                  return;
+                }
                 if (itemType === "number" || itemType === "integer") {
                   handleUpdateItem(index, Number(val));
                 } else {
@@ -207,6 +221,9 @@ export function ParameterInput({
                 <SelectValue placeholder={`Select item ${index + 1}...`} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__NONE__">
+                  <span className="text-muted-foreground italic">(none)</span>
+                </SelectItem>
                 {itemEnum.map((enumVal) => (
                   <SelectItem key={String(enumVal)} value={String(enumVal)}>
                     {String(enumVal)}
