@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import yaml from "js-yaml";
 import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParameterRow";
@@ -197,8 +197,8 @@ const ApiTester = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   
-  // Action mode: "analyze" or "request"
-  type ActionMode = "analyze" | "request";
+  // Action mode: "analyze", "request", or "preview"
+  type ActionMode = "analyze" | "request" | "preview";
   const [actionMode, setActionMode] = useState<ActionMode>("analyze");
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [requestResponse, setRequestResponse] = useState<{
@@ -208,7 +208,7 @@ const ApiTester = () => {
     body: string;
     duration: number;
   } | null>(null);
-  const [rightPanelTab, setRightPanelTab] = useState<"match" | "response">("match");
+  const [rightPanelTab, setRightPanelTab] = useState<"match" | "response" | "preview">("match");
   
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     service: false,
@@ -238,6 +238,13 @@ const ApiTester = () => {
     headerParams: {},
     bodyParams: {},
   });
+  // Ref to track the last synced form values to prevent infinite loops
+  const lastSyncedFormValuesRef = useRef<OpenAPIFormValues>(openAPIFormValues);
+  // Track the last sync direction and timestamp to prevent rapid oscillations
+  const lastSyncInfoRef = useRef<{ direction: 'toTabs' | 'toForm' | null; timestamp: number }>({
+    direction: null,
+    timestamp: 0,
+  });
   const [activeTab, setActiveTab] = useState<string>("params");
   
   // Sorting state for parameter tables
@@ -247,6 +254,26 @@ const ApiTester = () => {
   const [queryParamSort, setQueryParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
   const [headerParamSort, setHeaderParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
   const [bodyParamSort, setBodyParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
+
+  // URL validation - requires protocol
+  const urlValidation = useMemo(() => {
+    if (!url.trim()) return { isValid: true, isEmpty: true, message: '' }; // Empty is OK, show placeholder
+    
+    try {
+      const parsedUrl = new URL(url);
+      // Check if protocol is http or https
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return { isValid: false, isEmpty: false, message: `Invalid protocol "${parsedUrl.protocol}" - must be http:// or https://` };
+      }
+      return { isValid: true, isEmpty: false, message: '' };
+    } catch {
+      // Check for common issues
+      if (!url.includes('://')) {
+        return { isValid: false, isEmpty: false, message: 'Missing protocol - URL must start with http:// or https://' };
+      }
+      return { isValid: false, isEmpty: false, message: 'Invalid URL format' };
+    }
+  }, [url]);
 
   const toggleSection = (section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -433,15 +460,22 @@ const ApiTester = () => {
       const urlObj = new URL(url);
       const enabledParams = queryParams.filter(p => p.enabled && p.key.trim());
       
-      // Clear existing params and add from state
-      urlObj.search = "";
+      // Build the new search string
+      const newSearchParams = new URLSearchParams();
       enabledParams.forEach(p => {
-        urlObj.searchParams.append(p.key, p.value);
+        newSearchParams.append(p.key, p.value);
       });
+      const newSearch = newSearchParams.toString();
       
-      const newUrl = urlObj.toString();
-      if (newUrl !== url) {
-        setUrl(newUrl);
+      // Only update if the search params actually changed
+      // Preserve the original URL structure (don't normalize with toString())
+      const currentSearch = urlObj.search.replace(/^\?/, '');
+      if (newSearch !== currentSearch) {
+        const baseUrl = url.split('?')[0];
+        const newUrl = newSearch ? `${baseUrl}?${newSearch}` : baseUrl;
+        if (newUrl !== url) {
+          setUrl(newUrl);
+        }
       }
     } catch {
       // Invalid URL, ignore
@@ -556,6 +590,36 @@ const ApiTester = () => {
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
 
+    // Check if the form is completely empty (initial state)
+    const isFormEmpty =
+      Object.keys(openAPIFormValues.queryParams).length === 0 &&
+      Object.keys(openAPIFormValues.headerParams).length === 0 &&
+      Object.keys(openAPIFormValues.pathParams).length === 0 &&
+      Object.keys(openAPIFormValues.bodyParams).length === 0;
+
+    // If form is empty and we haven't synced yet, skip this sync to allow
+    // the second sync (tabs → form) to populate the form first
+    if (isFormEmpty && lastSyncInfoRef.current.direction === null) {
+      return; // Skip initial sync when form is empty
+    }
+
+    const now = Date.now();
+    const lastSync = lastSyncInfoRef.current;
+
+    // Prevent rapid oscillation: if we just synced from tabs to form (within 50ms),
+    // and the values haven't actually changed, skip this sync
+    if (lastSync.direction === 'toForm' && (now - lastSync.timestamp) < 50) {
+      // Check if values actually changed
+      const valuesMatch = JSON.stringify(openAPIFormValues) === JSON.stringify(lastSyncedFormValuesRef.current);
+      if (valuesMatch) {
+        return; // Skip this sync to prevent oscillation
+      }
+    }
+
+    // Update the ref to track what we're syncing
+    lastSyncedFormValuesRef.current = openAPIFormValues;
+    lastSyncInfoRef.current = { direction: 'toTabs', timestamp: now };
+
     // Update URL and method
     const reconstructedUrl = reconstructUrlFromOperation(openAPIOperation, openAPIFormValues.pathParams);
     setUrl(reconstructedUrl);
@@ -609,6 +673,9 @@ const ApiTester = () => {
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
 
+    const now = Date.now();
+    const lastSync = lastSyncInfoRef.current;
+
     const operation = openAPIOperation;
     const parameters = operation.parameters || [];
 
@@ -654,23 +721,51 @@ const ApiTester = () => {
       }
     }
 
-    // Check if the synced values are different from current openAPIFormValues
-    // This prevents unnecessary updates and infinite loops
-    const isQueryParamsDifferent = JSON.stringify(syncedQueryParams) !== JSON.stringify(openAPIFormValues.queryParams);
-    const isHeaderParamsDifferent = JSON.stringify(syncedHeaderParams) !== JSON.stringify(openAPIFormValues.headerParams);
-    const isPathParamsDifferent = JSON.stringify(syncedPathParams) !== JSON.stringify(openAPIFormValues.pathParams);
-    const isBodyParamsDifferent = JSON.stringify(syncedBodyParams) !== JSON.stringify(openAPIFormValues.bodyParams);
+    // Helper to normalize objects for comparison (sort keys alphabetically)
+    const normalizeForComparison = (obj: Record<string, any>): string => {
+      const sortedKeys = Object.keys(obj).sort();
+      const normalized: Record<string, any> = {};
+      sortedKeys.forEach(key => {
+        normalized[key] = obj[key];
+      });
+      return JSON.stringify(normalized);
+    };
 
-    // Only update if there are actual changes
+    // Compare against the last synced values (stored in ref) instead of current openAPIFormValues
+    // This prevents infinite loops while still allowing proper synchronization
+    const lastSynced = lastSyncedFormValuesRef.current;
+    const isQueryParamsDifferent = normalizeForComparison(syncedQueryParams) !== normalizeForComparison(lastSynced.queryParams);
+    const isHeaderParamsDifferent = normalizeForComparison(syncedHeaderParams) !== normalizeForComparison(lastSynced.headerParams);
+    const isPathParamsDifferent = normalizeForComparison(syncedPathParams) !== normalizeForComparison(lastSynced.pathParams);
+    const isBodyParamsDifferent = normalizeForComparison(syncedBodyParams) !== normalizeForComparison(lastSynced.bodyParams);
+
+    // Only update if there are actual changes compared to last synced values
     if (isQueryParamsDifferent || isHeaderParamsDifferent || isPathParamsDifferent || isBodyParamsDifferent) {
-      setOpenAPIFormValues({
+      // Check if this is the first sync (lastSynced is all empty objects)
+      const isFirstSync =
+        Object.keys(lastSynced.queryParams).length === 0 &&
+        Object.keys(lastSynced.headerParams).length === 0 &&
+        Object.keys(lastSynced.pathParams).length === 0 &&
+        Object.keys(lastSynced.bodyParams).length === 0;
+
+      // Prevent rapid oscillation: if we just synced from form to tabs (within 50ms), skip this sync
+      // BUT allow the initial sync to populate the form from existing tab values
+      if (!isFirstSync && lastSync.direction === 'toTabs' && (now - lastSync.timestamp) < 50) {
+        return; // Skip to prevent immediate bounce-back
+      }
+
+      const newFormValues = {
         pathParams: syncedPathParams,
         queryParams: syncedQueryParams,
         headerParams: syncedHeaderParams,
         bodyParams: syncedBodyParams,
-      });
+      };
+      // Update both the state and the ref
+      lastSyncedFormValuesRef.current = newFormValues;
+      lastSyncInfoRef.current = { direction: 'toForm', timestamp: now };
+      setOpenAPIFormValues(newFormValues);
     }
-  }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation, openAPIFormValues]); // Trigger when any relevant state changes
+  }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation]); // Removed openAPIFormValues to prevent circular dependency
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -929,11 +1024,76 @@ const ApiTester = () => {
     if (actionMode === "analyze") {
       await analyzeRequest();
       setRightPanelTab("match");
+    } else if (actionMode === "preview") {
+      // Preview mode: just show the preview tab
+      setRightPanelTab("preview");
     } else {
       // Request mode: analyze first, then send request
       await analyzeRequest();
       sendRequest();
     }
+  };
+
+  // Build the HTTP request preview
+  const buildRequestPreview = () => {
+    // Build full URL with query params
+    let fullUrl = url;
+    const enabledParams = queryParams.filter(p => p.enabled && p.key.trim());
+    if (enabledParams.length > 0) {
+      const searchParams = new URLSearchParams();
+      enabledParams.forEach(p => searchParams.append(p.key, p.value));
+      const separator = url.includes('?') ? '&' : '?';
+      fullUrl = `${url}${separator}${searchParams.toString()}`;
+    }
+
+    // Build headers including calculated ones
+    const previewHeaders: Record<string, string> = {};
+    headers.filter(h => h.enabled && h.key.trim()).forEach(h => {
+      previewHeaders[h.key] = h.value;
+    });
+
+    // Calculate body and content-related headers
+    let bodyContent = '';
+    if (method !== 'GET' && method !== 'HEAD') {
+      if (bodyType === 'raw') {
+        bodyContent = body;
+        if (!previewHeaders['Content-Type']) {
+          previewHeaders['Content-Type'] = rawType === 'json' ? 'application/json' : rawType === 'xml' ? 'application/xml' : 'text/plain';
+        }
+      } else if (bodyType === 'form-data') {
+        // For form-data, we show the boundary format
+        const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW';
+        if (!previewHeaders['Content-Type']) {
+          previewHeaders['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+        }
+        const parts = formData.filter(f => f.enabled && f.key.trim()).map(f => {
+          return `--${boundary}\r\nContent-Disposition: form-data; name="${f.key}"\r\n\r\n${f.value}\r\n`;
+        });
+        bodyContent = parts.join('') + `--${boundary}--`;
+      } else if (bodyType === 'x-www-form-urlencoded') {
+        if (!previewHeaders['Content-Type']) {
+          previewHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+        const formParams = new URLSearchParams();
+        formData.filter(f => f.enabled && f.key.trim()).forEach(f => {
+          formParams.append(f.key, f.value);
+        });
+        bodyContent = formParams.toString();
+      } else if (bodyType === 'binary') {
+        bodyContent = '[Binary content]';
+        if (!previewHeaders['Content-Type']) {
+          previewHeaders['Content-Type'] = 'application/octet-stream';
+        }
+      }
+    }
+
+    // Add Content-Length for non-form-data bodies
+    if (bodyContent && bodyType !== 'form-data') {
+      const encoder = new TextEncoder();
+      previewHeaders['Content-Length'] = String(encoder.encode(bodyContent).length);
+    }
+
+    return { fullUrl, previewHeaders, bodyContent };
   };
 
   const analyzeRequest = async () => {
@@ -1721,17 +1881,26 @@ const ApiTester = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  placeholder="Enter request URL (e.g., https://api.example.com/users)"
-                  value={url}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
-                      handleActionButton();
-                    }
-                  }}
-                  className="flex-1 bg-background"
-                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Input
+                      placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                      value={url}
+                      onChange={(e) => handleUrlChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
+                          handleActionButton();
+                        }
+                      }}
+                      className={`flex-1 bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                    />
+                  </TooltipTrigger>
+                  {!urlValidation.isValid && !urlValidation.isEmpty && (
+                    <TooltipContent side="bottom" className="bg-destructive text-destructive-foreground">
+                      <p>{urlValidation.message}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
                 <div className="flex">
                   <Button 
                     onClick={handleActionButton} 
@@ -1741,10 +1910,12 @@ const ApiTester = () => {
                     <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
                       {actionMode === "analyze" ? (
                         <Search className="h-4 w-4 mr-2 inline" />
+                      ) : actionMode === "preview" ? (
+                        <Eye className="h-4 w-4 mr-2 inline" />
                       ) : (
                         <Send className="h-4 w-4 mr-2 inline" />
                       )}
-                      {actionMode === "analyze" ? "Analyze" : "Request"}
+                      {actionMode === "analyze" ? "Analyze" : actionMode === "preview" ? "Preview" : "Request"}
                     </span>
                     {(isAnalyzing || isSendingRequest) && (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -1764,18 +1935,25 @@ const ApiTester = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover z-50">
                       <DropdownMenuItem 
-                        onClick={() => setActionMode("analyze")}
+                        onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
                         className={actionMode === "analyze" ? "bg-accent" : ""}
                       >
                         <Search className="h-4 w-4 mr-2" />
                         Analyze
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        onClick={() => setActionMode("request")}
+                        onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
                         className={actionMode === "request" ? "bg-accent" : ""}
                       >
                         <Send className="h-4 w-4 mr-2" />
                         Request
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                        className={actionMode === "preview" ? "bg-accent" : ""}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Preview
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1946,6 +2124,10 @@ const ApiTester = () => {
                             {requestResponse.status}
                           </Badge>
                         )}
+                      </TabsTrigger>
+                      <TabsTrigger value="preview" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Preview
                       </TabsTrigger>
                     </TabsList>
                     {rightPanelTab === "match" && (
@@ -2723,7 +2905,7 @@ const ApiTester = () => {
                       </div>
                     )}
                   </>
-                ) : (
+                ) : rightPanelTab === "response" ? (
                   /* Response Tab Content */
                   <>
                     {!requestResponse ? (
@@ -2835,6 +3017,129 @@ const ApiTester = () => {
                         </Collapsible>
                       </div>
                     )}
+                  </>
+                ) : (
+                  /* Preview Tab Content */
+                  <>
+                    {(() => {
+                      const preview = buildRequestPreview();
+                      return (
+                        <div className="space-y-6">
+                          {/* Request Line */}
+                          <Collapsible defaultOpen>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Route className="h-4 w-4" />
+                                Request Line
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+                                  <span className={
+                                    method === "GET" ? "text-green-500" :
+                                    method === "POST" ? "text-yellow-500" :
+                                    method === "PUT" ? "text-blue-500" :
+                                    method === "DELETE" ? "text-red-500" :
+                                    "text-foreground"
+                                  }>{method}</span>{" "}
+                                  <span className="text-primary">{preview.fullUrl}</span>{" "}
+                                  <span className="text-muted-foreground">HTTP/1.1</span>
+                                </pre>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          {/* Request Headers */}
+                          <Collapsible defaultOpen>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <FileCode className="h-4 w-4" />
+                                Headers
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  {Object.keys(preview.previewHeaders).length}
+                                </Badge>
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                {Object.keys(preview.previewHeaders).length === 0 ? (
+                                  <p className="text-muted-foreground text-sm">No headers</p>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                      <thead>
+                                        <tr className="border-b border-border">
+                                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
+                                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(preview.previewHeaders).map(([key, value], index) => (
+                                          <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                                            <td className="px-3 py-2 font-mono text-foreground">{key}</td>
+                                            <td className="px-3 py-2 font-mono text-muted-foreground break-all">{value}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          {/* Request Body */}
+                          {preview.bodyContent && (
+                            <Collapsible defaultOpen>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <FileCode className="h-4 w-4" />
+                                  Body
+                                  <Badge variant="secondary" className="text-xs ml-1">
+                                    {preview.bodyContent.length} chars
+                                  </Badge>
+                                </div>
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                  <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all max-h-[400px] overflow-auto">
+                                    {preview.bodyContent}
+                                  </pre>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </CardContent>

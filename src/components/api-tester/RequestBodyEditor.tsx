@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, AlignLeft } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 type BodyType = "none" | "form-data" | "x-www-form-urlencoded" | "raw" | "binary";
-type RawType = "json" | "xml";
+type RawType = "json" | "xml" | "text";
 
 interface FormDataEntry {
   key: string;
@@ -100,20 +101,39 @@ function highlightJsonWithErrors(content: string, error: JsonError | null): stri
 function highlightXmlString(content: string): string {
   if (!content.trim()) return "";
   
-  let highlighted = content
+  // First escape HTML entities
+  let escaped = content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
   
-  // Tags
-  highlighted = highlighted
-    .replace(/(&lt;\/?)([\w-]+)/g, '<span class="text-blue-400">$1$2</span>')
-    // Attributes
-    .replace(/(\s)([\w-]+)(=)/g, '$1<span class="text-purple-400">$2</span>$3')
-    // Attribute values
-    .replace(/(=)("(?:[^"\\]|\\.)*")/g, '$1<span class="text-green-400">$2</span>');
+  // Use placeholders to avoid regex conflicts with inserted HTML
+  const placeholders: string[] = [];
+  const placeholder = (html: string) => {
+    const index = placeholders.length;
+    placeholders.push(html);
+    return `\x00${index}\x00`;
+  };
   
-  return highlighted;
+  // Highlight tags (opening and closing)
+  escaped = escaped.replace(/(&lt;\/?)([\w-]+)/g, (_, prefix, tagName) => {
+    return placeholder(`<span class="text-blue-400">${prefix}${tagName}</span>`);
+  });
+  
+  // Highlight attribute names (word followed by =)
+  escaped = escaped.replace(/(\s)([\w-]+)(=)/g, (_, space, attrName, eq) => {
+    return `${space}${placeholder(`<span class="text-purple-400">${attrName}</span>`)}${eq}`;
+  });
+  
+  // Highlight attribute values
+  escaped = escaped.replace(/(=)("(?:[^"\\]|\\.)*")/g, (_, eq, value) => {
+    return `${eq}${placeholder(`<span class="text-green-400">${value}</span>`)}`;
+  });
+  
+  // Restore placeholders
+  escaped = escaped.replace(/\x00(\d+)\x00/g, (_, index) => placeholders[parseInt(index, 10)]);
+  
+  return escaped;
 }
 
 export function RequestBodyEditor({
@@ -159,6 +179,59 @@ export function RequestBodyEditor({
     }
   };
 
+  const formatContent = () => {
+    if (!value.trim()) {
+      toast.error("No content to format");
+      return;
+    }
+    
+    if (rawType === "json") {
+      try {
+        const parsed = JSON.parse(value);
+        const formatted = JSON.stringify(parsed, null, 2);
+        onChange(formatted);
+        toast.success("JSON formatted");
+      } catch {
+        toast.error("Invalid JSON - cannot format");
+      }
+    } else if (rawType === "xml") {
+      try {
+        // Simple XML formatting
+        let formatted = value
+          .replace(/>\s*</g, '>\n<')  // Add newlines between tags
+          .replace(/(<[^\/!][^>]*[^\/]>)(?=\s*<[^\/])/g, '$1\n')  // Newline after opening tags
+          .trim();
+        
+        // Add indentation
+        const lines = formatted.split('\n');
+        let indent = 0;
+        const indentedLines = lines.map(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return '';
+          
+          // Decrease indent for closing tags
+          if (trimmed.startsWith('</') || trimmed.startsWith('?>')) {
+            indent = Math.max(0, indent - 1);
+          }
+          
+          const result = '  '.repeat(indent) + trimmed;
+          
+          // Increase indent for opening tags (not self-closing)
+          if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.startsWith('<?') && !trimmed.startsWith('<!') && !trimmed.endsWith('/>') && !trimmed.includes('</')) {
+            indent++;
+          }
+          
+          return result;
+        });
+        
+        onChange(indentedLines.join('\n'));
+        toast.success("XML formatted");
+      } catch {
+        toast.error("Failed to format XML");
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Body Type Selector */}
@@ -190,7 +263,7 @@ export function RequestBodyEditor({
       </RadioGroup>
 
       {bodyType === "raw" && (
-        <div className="flex items-center gap-2 border-b border-border pb-3">
+        <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
           <Select value={rawType} onValueChange={(val) => onRawTypeChange(val as RawType)}>
             <SelectTrigger className="w-24 h-8">
               <SelectValue />
@@ -198,8 +271,20 @@ export function RequestBodyEditor({
             <SelectContent>
               <SelectItem value="json">JSON</SelectItem>
               <SelectItem value="xml">XML</SelectItem>
+              <SelectItem value="text">Text</SelectItem>
             </SelectContent>
           </Select>
+          {rawType !== "text" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={formatContent}
+              className="h-8 gap-2"
+            >
+              <AlignLeft className="h-4 w-4" />
+              Format
+            </Button>
+          )}
         </div>
       )}
 
@@ -258,13 +343,13 @@ export function RequestBodyEditor({
           >
             <code 
               dangerouslySetInnerHTML={{ 
-                __html: (rawType === "json" ? highlightJsonWithErrors(value, jsonError) : highlightXmlString(value)) || '&nbsp;'
+                __html: (rawType === "json" ? highlightJsonWithErrors(value, jsonError) : rawType === "xml" ? highlightXmlString(value) : value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')) || '&nbsp;'
               }} 
             />
           </pre>
           {/* Editable textarea */}
           <textarea
-            placeholder={rawType === "json" ? '{"key": "value"}' : '<root>\n  <element>value</element>\n</root>'}
+            placeholder={rawType === "json" ? '{"key": "value"}' : rawType === "xml" ? '<root>\n  <element>value</element>\n</root>' : 'Enter plain text...'}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {

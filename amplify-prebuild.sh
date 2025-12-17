@@ -3,6 +3,12 @@ set -e
 
 echo "=== Amplify PreBuild Script for slaops-portal ==="
 
+# Check if we should skip the build
+if [ -f /tmp/skip-build ]; then
+  echo "Skip flag detected, exiting prebuild early"
+  exit 0
+fi
+
 echo "Check NVM exists"
 command -v nvm >/dev/null || { export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; }
 
