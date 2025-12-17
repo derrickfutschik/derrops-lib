@@ -3,6 +3,14 @@ set -e
 
 echo "=== Amplify Build Script for slaops-portal ==="
 
+# Check if we should skip the build
+if [ -f /tmp/skip-build ]; then
+  echo "Skip flag detected, creating empty dist to satisfy Amplify"
+  mkdir -p ../../dist
+  echo "<html><body>Build skipped - no changes detected</body></html>" > ../../dist/index.html
+  exit 0
+fi
+
 echo "Check NVM exists"
 command -v nvm >/dev/null || { export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; }
 

@@ -11,7 +11,7 @@ applications:
             - |
               if ! git diff --name-only HEAD^ HEAD | grep -q "^apps/slaops-portal/"; then
                 echo "No changes in apps/slaops-portal, skipping build."
-                exit 0
+                touch /tmp/skip-build
               fi
             - chmod +x amplify-prebuild.sh
             - ./amplify-prebuild.sh
