@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
