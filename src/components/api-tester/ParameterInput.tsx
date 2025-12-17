@@ -367,12 +367,16 @@ export function ParameterInput({
     }
 
     // Default: String type - render text input
+    // Use param name as placeholder if no default value
+    const placeholderText = defaultValue !== undefined 
+      ? String(defaultValue) 
+      : `Enter ${name}`;
     return (
       <Input
         type="text"
         value={displayValue !== undefined ? displayValue : ""}
         onChange={(e) => onChange(e.target.value || undefined)}
-        placeholder={defaultValue !== undefined ? String(defaultValue) : ""}
+        placeholder={placeholderText}
         className={isUsingDefault ? "italic text-muted-foreground" : ""}
       />
     );

@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import yaml from "js-yaml";
@@ -20,6 +21,7 @@ import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParame
 import { RequestBodyEditor, BodyType, RawType, FormDataEntry } from "@/components/api-tester/RequestBodyEditor";
 import { JsonResponseViewer } from "@/components/api-tester/JsonResponseViewer";
 import { OpenAPIRequestTab } from "@/components/api-tester/OpenAPIRequestTab";
+import { OpenAPISelection } from "@/components/api-tester/OpenAPISelection";
 import { OpenAPIFormValues } from "@/components/api-tester/OpenAPIParameterForm";
 
 interface KeyValuePair {
@@ -212,6 +214,7 @@ const ApiTester = () => {
   const [rightPanelTab, setRightPanelTab] = useState<"match" | "response" | "preview">("match");
   
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    apiMatch: false,
     service: false,
     server: false,
     operation: false,
@@ -220,6 +223,9 @@ const ApiTester = () => {
     headerParams: false,
     bodyParams: false,
     validation: false,
+    previewRequestLine: false,
+    previewHeaders: false,
+    previewBody: false,
   });
   
   // Manual selection state
@@ -229,10 +235,16 @@ const ApiTester = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [parsedSpecs, setParsedSpecs] = useState<Record<string, any>>({});
 
+  // Builder mode: "standard" or "openapi"
+  type BuilderMode = "standard" | "openapi";
+  const [builderMode, setBuilderMode] = useState<BuilderMode>("openapi");
+
   // OpenAPI tab state
   const [openAPIServiceId, setOpenAPIServiceId] = useState<string | null>(null);
   const [openAPIOperationKey, setOpenAPIOperationKey] = useState<string | null>(null);
   const [openAPIOperation, setOpenAPIOperation] = useState<any>(null);
+  const [openAPIServerUrl, setOpenAPIServerUrl] = useState<string>("");
+  const [openAPIParsedSpec, setOpenAPIParsedSpec] = useState<any>(null);
   const [openAPIFormValues, setOpenAPIFormValues] = useState<OpenAPIFormValues>({
     pathParams: {},
     queryParams: {},
@@ -246,6 +258,9 @@ const ApiTester = () => {
     direction: null,
     timestamp: 0,
   });
+  // Ref to read openAPIServerUrl without triggering effect re-runs
+  const openAPIServerUrlRef = useRef(openAPIServerUrl);
+  openAPIServerUrlRef.current = openAPIServerUrl;
   const [activeTab, setActiveTab] = useState<string>("params");
   
   // Sorting state for parameter tables
@@ -275,6 +290,43 @@ const ApiTester = () => {
       return { isValid: false, isEmpty: false, message: 'Invalid URL format' };
     }
   }, [url]);
+
+  // Check if all required params are filled in OpenAPI mode
+  const openAPIMissingRequiredParams = useMemo(() => {
+    if (builderMode !== "openapi" || !openAPIOperation) return false;
+    
+    const parameters = openAPIOperation.parameters || [];
+    const requiredParams = parameters.filter((p: any) => p.required);
+    
+    for (const param of requiredParams) {
+      const location = param.in === "path" ? "pathParams" 
+        : param.in === "query" ? "queryParams"
+        : param.in === "header" ? "headerParams"
+        : "bodyParams";
+      
+      const value = openAPIFormValues[location]?.[param.name];
+      if (value === undefined || value === null || value === "") {
+        return true;
+      }
+    }
+    
+    // Also check required body properties
+    if (openAPIOperation.requestBody) {
+      const content = openAPIOperation.requestBody.content;
+      if (content?.["application/json"]?.schema) {
+        const schema = content["application/json"].schema;
+        const requiredBodyProps = schema.required || [];
+        for (const propName of requiredBodyProps) {
+          const value = openAPIFormValues.bodyParams?.[propName];
+          if (value === undefined || value === null || value === "") {
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
+  }, [builderMode, openAPIOperation, openAPIFormValues]);
 
   const toggleSection = (section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -587,9 +639,9 @@ const ApiTester = () => {
     return pathParams;
   };
 
-  // Sync: OpenAPI form → Other tabs
+  // Sync: OpenAPI form → Other tabs (Standard mode state)
   useEffect(() => {
-    if (activeTab !== "openapi" || !openAPIOperation) return;
+    if (builderMode !== "openapi" || !openAPIOperation) return;
 
     // Check if the form is completely empty (initial state)
     const isFormEmpty =
@@ -610,9 +662,8 @@ const ApiTester = () => {
     // Prevent rapid oscillation: if we just synced from tabs to form (within 50ms),
     // and the values haven't actually changed, skip this sync
     if (lastSync.direction === 'toForm' && (now - lastSync.timestamp) < 50) {
-      // Check if values actually changed
-      const valuesMatch = JSON.stringify(openAPIFormValues) === JSON.stringify(lastSyncedFormValuesRef.current);
-      if (valuesMatch) {
+      // Quick reference check - if same object reference, values haven't changed
+      if (openAPIFormValues === lastSyncedFormValuesRef.current) {
         return; // Skip this sync to prevent oscillation
       }
     }
@@ -621,8 +672,15 @@ const ApiTester = () => {
     lastSyncedFormValuesRef.current = openAPIFormValues;
     lastSyncInfoRef.current = { direction: 'toTabs', timestamp: now };
 
-    // Update URL and method
-    const reconstructedUrl = reconstructUrlFromOperation(openAPIOperation, openAPIFormValues.pathParams);
+    // Build URL from server URL + operation path with path params
+    let fullPath = openAPIOperation.path;
+    if (openAPIFormValues.pathParams) {
+      Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+        fullPath = fullPath.replace(`{${key}}`, String(value || `{${key}}`));
+      });
+    }
+    const baseUrl = openAPIServerUrlRef.current.replace(/\/$/, "");
+    const reconstructedUrl = baseUrl ? `${baseUrl}${fullPath}` : fullPath;
     setUrl(reconstructedUrl);
     setMethod(openAPIOperation.method);
 
@@ -668,11 +726,11 @@ const ApiTester = () => {
       setBodyType("raw");
       setRawType("json");
     }
-  }, [openAPIFormValues, activeTab, openAPIOperation]);
+  }, [openAPIFormValues, builderMode, openAPIOperation]);
 
-  // Sync: Other tabs → OpenAPI form (when switching TO openapi tab OR when params change)
+  // Sync: Other tabs (Standard mode state) → OpenAPI form (when in openapi mode OR when params change)
   useEffect(() => {
-    if (activeTab !== "openapi" || !openAPIOperation) return;
+    if (builderMode !== "openapi" || !openAPIOperation) return;
 
     const now = Date.now();
     const lastSync = lastSyncInfoRef.current;
@@ -700,14 +758,32 @@ const ApiTester = () => {
       }
     });
 
-    // Sync path params (extract from URL)
-    const syncedPathParams: Record<string, any> = {};
+    // Sync path params - preserve existing form values, only extract from URL for initial population
+    // Path params should primarily be edited via the form, not extracted from URL
+    const syncedPathParams: Record<string, any> = { ...openAPIFormValues.pathParams };
     const opPathParams = parameters.filter((p: any) => p.in === "path");
-    if (url && operation.path) {
+    
+    // Only extract from URL if the form path params are empty (initial load)
+    const formPathParamsEmpty = Object.keys(openAPIFormValues.pathParams).length === 0 || 
+      Object.values(openAPIFormValues.pathParams).every(v => v === undefined || v === null || v === "");
+    
+    if (formPathParamsEmpty && url && operation.path) {
       const extractedParams = extractPathParamsFromUrl(url, operation.path);
       opPathParams.forEach((param: any) => {
         if (extractedParams[param.name]) {
-          syncedPathParams[param.name] = parseValueByType(extractedParams[param.name], param.schema);
+          const rawValue = extractedParams[param.name];
+          // Decode URL-encoded values and check if they're just placeholders
+          try {
+            const decoded = decodeURIComponent(rawValue);
+            // If the decoded value equals the placeholder pattern {paramName}, treat as empty
+            if (decoded === `{${param.name}}`) {
+              // Leave it empty/undefined
+              return;
+            }
+          } catch {
+            // decodeURIComponent failed, use raw value
+          }
+          syncedPathParams[param.name] = parseValueByType(rawValue, param.schema);
         }
       });
     }
@@ -720,6 +796,11 @@ const ApiTester = () => {
       } catch {
         // Invalid JSON, ignore
       }
+    }
+
+    // Prevent rapid oscillation: if we just synced from form to tabs (within 50ms), skip entirely
+    if (lastSync.direction === 'toTabs' && (now - lastSync.timestamp) < 50) {
+      return; // Skip to prevent immediate bounce-back
     }
 
     // Helper to normalize objects for comparison (sort keys alphabetically)
@@ -742,19 +823,6 @@ const ApiTester = () => {
 
     // Only update if there are actual changes compared to last synced values
     if (isQueryParamsDifferent || isHeaderParamsDifferent || isPathParamsDifferent || isBodyParamsDifferent) {
-      // Check if this is the first sync (lastSynced is all empty objects)
-      const isFirstSync =
-        Object.keys(lastSynced.queryParams).length === 0 &&
-        Object.keys(lastSynced.headerParams).length === 0 &&
-        Object.keys(lastSynced.pathParams).length === 0 &&
-        Object.keys(lastSynced.bodyParams).length === 0;
-
-      // Prevent rapid oscillation: if we just synced from form to tabs (within 50ms), skip this sync
-      // BUT allow the initial sync to populate the form from existing tab values
-      if (!isFirstSync && lastSync.direction === 'toTabs' && (now - lastSync.timestamp) < 50) {
-        return; // Skip to prevent immediate bounce-back
-      }
-
       const newFormValues = {
         pathParams: syncedPathParams,
         queryParams: syncedQueryParams,
@@ -766,7 +834,25 @@ const ApiTester = () => {
       lastSyncInfoRef.current = { direction: 'toForm', timestamp: now };
       setOpenAPIFormValues(newFormValues);
     }
-  }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation]); // Removed openAPIFormValues to prevent circular dependency
+  }, [builderMode, queryParams, headers, url, body, bodyType, rawType, openAPIOperation]); // Removed openAPIFormValues to prevent circular dependency
+
+  // Sync Match Results panel selection with OpenAPI mode selection
+  useEffect(() => {
+    if (builderMode === "openapi") {
+      // When in OpenAPI mode, sync the Match Results panel to match the Request Builder
+      if (openAPIServiceId !== selectedServiceId) {
+        setSelectedServiceId(openAPIServiceId);
+      }
+      if (openAPIOperationKey !== selectedOperationKey) {
+        setSelectedOperationKey(openAPIOperationKey);
+      }
+      // Collapse the API Match, Service, Server, and Operation sections in OpenAPI mode
+      setCollapsedSections(prev => ({ ...prev, apiMatch: true, service: true, server: true, operation: true }));
+    } else {
+      // Expand sections in standard mode
+      setCollapsedSections(prev => ({ ...prev, apiMatch: false, service: false, server: false, operation: false }));
+    }
+  }, [builderMode, openAPIServiceId, openAPIOperationKey]);
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -941,7 +1027,20 @@ const ApiTester = () => {
   };
 
   const sendRequest = async () => {
-    if (!url.trim()) {
+    // In OpenAPI mode, construct URL from server + path if url is empty
+    let requestUrl = url;
+    if (builderMode === "openapi" && openAPIOperation && openAPIServerUrl) {
+      let fullPath = openAPIOperation.path;
+      if (openAPIFormValues.pathParams) {
+        Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+          fullPath = fullPath.replace(`{${key}}`, encodeURIComponent(String(value || "")));
+        });
+      }
+      const baseUrl = openAPIServerUrl.replace(/\/$/, "");
+      requestUrl = `${baseUrl}${fullPath}`;
+    }
+    
+    if (!requestUrl.trim()) {
       toast.error("Please enter a URL");
       return;
     }
@@ -987,7 +1086,7 @@ const ApiTester = () => {
         }
       }
 
-      const response = await fetch(url, requestOptions);
+      const response = await fetch(requestUrl, requestOptions);
       const endTime = performance.now();
 
       // Extract response headers
@@ -1037,14 +1136,26 @@ const ApiTester = () => {
 
   // Build the HTTP request preview
   const buildRequestPreview = () => {
+    // In OpenAPI mode, construct URL from server + path
+    let baseUrl = url;
+    if (builderMode === "openapi" && openAPIOperation && openAPIServerUrl) {
+      let fullPath = openAPIOperation.path;
+      if (openAPIFormValues.pathParams) {
+        Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+          fullPath = fullPath.replace(`{${key}}`, encodeURIComponent(String(value || `{${key}}`)));
+        });
+      }
+      baseUrl = `${openAPIServerUrl.replace(/\/$/, "")}${fullPath}`;
+    }
+    
     // Build full URL with query params
-    let fullUrl = url;
+    let fullUrl = baseUrl;
     const enabledParams = queryParams.filter(p => p.enabled && p.key.trim());
     if (enabledParams.length > 0) {
       const searchParams = new URLSearchParams();
       enabledParams.forEach(p => searchParams.append(p.key, p.value));
-      const separator = url.includes('?') ? '&' : '?';
-      fullUrl = `${url}${separator}${searchParams.toString()}`;
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      fullUrl = `${baseUrl}${separator}${searchParams.toString()}`;
     }
 
     // Build headers including calculated ones
@@ -1098,7 +1209,20 @@ const ApiTester = () => {
   };
 
   const analyzeRequest = async () => {
-    if (!url.trim()) {
+    // In OpenAPI mode, construct URL from server + path if url is empty
+    let requestUrl = url;
+    if (builderMode === "openapi" && openAPIOperation && openAPIServerUrl) {
+      let fullPath = openAPIOperation.path;
+      if (openAPIFormValues.pathParams) {
+        Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+          fullPath = fullPath.replace(`{${key}}`, encodeURIComponent(String(value || "")));
+        });
+      }
+      const baseUrl = openAPIServerUrl.replace(/\/$/, "");
+      requestUrl = `${baseUrl}${fullPath}`;
+    }
+    
+    if (!requestUrl.trim()) {
       toast.error("Please enter a URL");
       return;
     }
@@ -1208,7 +1332,7 @@ const ApiTester = () => {
         };
 
         const parameters = operationDef.parameters || [];
-        const pathValues = extractPathValues(url, pathTemplate);
+        const pathValues = extractPathValues(requestUrl, pathTemplate);
 
         const pathParameters: ParameterInfo[] = parameters
           .filter((p: any) => p.in === "path")
@@ -1467,8 +1591,9 @@ const ApiTester = () => {
         return { service, serverInfo, operation, errors: validationResult.errors, warnings: validationResult.warnings };
       };
 
-      // If locked and we have a selection, use it
-      if (isLocked && selectedServiceId && selectedOperationKey) {
+      // If locked or in OpenAPI mode and we have a selection, use it
+      const useLockedSelection = (isLocked || builderMode === "openapi") && selectedServiceId && selectedOperationKey;
+      if (useLockedSelection) {
         const service = services.find(s => s.id === selectedServiceId);
         if (service) {
           spec = parsedSpecs[selectedServiceId] || await parseOpenApiSpec(service);
@@ -1522,7 +1647,7 @@ const ApiTester = () => {
                 const lowerMethod = method.toLowerCase();
                 
                 if (pathMethods[lowerMethod]) {
-                  if (matchUrlToPath(url, serverUrl, pathTemplate)) {
+                  if (matchUrlToPath(requestUrl, serverUrl, pathTemplate)) {
                     matchedService = service;
                     matchedServer = {
                       index: serverIndex,
@@ -1533,7 +1658,7 @@ const ApiTester = () => {
                     };
                     
                     const parameters = pathMethods[lowerMethod].parameters || [];
-                    const pathValues = extractPathValues(url, pathTemplate);
+                    const pathValues = extractPathValues(requestUrl, pathTemplate);
                     
                     const pathParameters: ParameterInfo[] = parameters
                       .filter((p: any) => p.in === "path")
@@ -1853,233 +1978,369 @@ const ApiTester = () => {
             {/* Left Panel - Request Builder */}
             <Card className="border-0 bg-card/50 h-full rounded-none">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Send className="h-5 w-5 text-primary" />
-                Request Builder
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Send className="h-5 w-5 text-primary" />
+                  Request Builder
+                </CardTitle>
+                <ToggleGroup 
+                  type="single" 
+                  value={builderMode} 
+                  onValueChange={(value) => value && setBuilderMode(value as "standard" | "openapi")}
+                  className="bg-muted/50 rounded-md p-1"
+                >
+                  <ToggleGroupItem value="standard" className="px-3 py-1 text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                    Standard
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="openapi" className="px-3 py-1 text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                    OpenAPI
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* URL Bar */}
-              <div className="flex gap-2">
-                <Select value={method} onValueChange={setMethod}>
-                  <SelectTrigger className="w-[120px] bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HTTP_METHODS.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        <span className={
-                          m === "GET" ? "text-green-500" :
-                          m === "POST" ? "text-yellow-500" :
-                          m === "PUT" ? "text-blue-500" :
-                          m === "PATCH" ? "text-purple-500" :
-                          m === "DELETE" ? "text-red-500" :
-                          "text-muted-foreground"
-                        }>
-                          {m}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      placeholder="Enter request URL (e.g., https://api.example.com/users)"
-                      value={url}
-                      onChange={(e) => handleUrlChange(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
-                          handleActionButton();
-                        }
-                      }}
-                      className={`flex-1 bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                    />
-                  </TooltipTrigger>
-                  {!urlValidation.isValid && !urlValidation.isEmpty && (
-                    <TooltipContent side="bottom" className="bg-destructive text-destructive-foreground">
-                      <p>{urlValidation.message}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                <div className="flex">
-                  <Button 
-                    onClick={handleActionButton} 
-                    disabled={isAnalyzing || isSendingRequest}
-                    className="rounded-r-none border-r-0 relative min-w-[110px]"
-                  >
-                    <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
-                      {actionMode === "analyze" ? (
-                        <Search className="h-4 w-4 mr-2 inline" />
-                      ) : actionMode === "preview" ? (
-                        <Eye className="h-4 w-4 mr-2 inline" />
-                      ) : (
-                        <Send className="h-4 w-4 mr-2 inline" />
+              {builderMode === "standard" ? (
+                <>
+                  {/* Standard Mode - URL Bar */}
+                  <div className="flex gap-2">
+                    <Select value={method} onValueChange={setMethod}>
+                      <SelectTrigger className="w-[120px] bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HTTP_METHODS.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            <span className={
+                              m === "GET" ? "text-green-500" :
+                              m === "POST" ? "text-yellow-500" :
+                              m === "PUT" ? "text-blue-500" :
+                              m === "PATCH" ? "text-purple-500" :
+                              m === "DELETE" ? "text-red-500" :
+                              "text-muted-foreground"
+                            }>
+                              {m}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Input
+                          placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                          value={url}
+                          onChange={(e) => handleUrlChange(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
+                              handleActionButton();
+                            }
+                          }}
+                          className={`flex-1 bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                        />
+                      </TooltipTrigger>
+                      {!urlValidation.isValid && !urlValidation.isEmpty && (
+                        <TooltipContent side="bottom" className="bg-destructive text-destructive-foreground">
+                          <p>{urlValidation.message}</p>
+                        </TooltipContent>
                       )}
-                      {actionMode === "analyze" ? "Analyze" : actionMode === "preview" ? "Preview" : "Request"}
-                    </span>
-                    {(isAnalyzing || isSendingRequest) && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
-                      </div>
-                    )}
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    </Tooltip>
+                    <div className="flex">
                       <Button 
-                        variant="default" 
-                        className="rounded-l-none px-2"
+                        onClick={handleActionButton} 
                         disabled={isAnalyzing || isSendingRequest}
+                        className="rounded-r-none border-r-0 relative min-w-[110px]"
                       >
-                        <ChevronDown className="h-4 w-4" />
+                        <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                          {actionMode === "analyze" ? (
+                            <Search className="h-4 w-4 mr-2 inline" />
+                          ) : actionMode === "preview" ? (
+                            <Eye className="h-4 w-4 mr-2 inline" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-2 inline" />
+                          )}
+                          {actionMode === "analyze" ? "Analyze" : actionMode === "preview" ? "Preview" : "Request"}
+                        </span>
+                        {(isAnalyzing || isSendingRequest) && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                          </div>
+                        )}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover z-50">
-                      <DropdownMenuItem 
-                        onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
-                        className={actionMode === "analyze" ? "bg-accent" : ""}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="default" 
+                            className="rounded-l-none px-2"
+                            disabled={isAnalyzing || isSendingRequest}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-popover z-50">
+                          <DropdownMenuItem 
+                            onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                            className={actionMode === "analyze" ? "bg-accent" : ""}
+                          >
+                            <Search className="h-4 w-4 mr-2" />
+                            Analyze
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                            className={actionMode === "request" ? "bg-accent" : ""}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Request
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                            className={actionMode === "preview" ? "bg-accent" : ""}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  {/* Standard Mode - Tabs for Params, Headers, Body */}
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="w-full justify-start bg-muted/50">
+                      <TabsTrigger value="params">Query Params</TabsTrigger>
+                      <TabsTrigger value="headers">Headers</TabsTrigger>
+                      <TabsTrigger value="body">Body</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="params" className="space-y-3 mt-4">
+                      {queryParams.map((param, index) => {
+                        const validationStatus = param.enabled ? getQueryParamValidationStatus(param.key) : null;
+                        const isDuplicate = param.enabled ? isQueryParamDuplicate(index, param.key) : false;
+                        const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
+                        return (
+                          <div key={index} className="flex gap-2 items-center">
+                            <input
+                              type="checkbox"
+                              checked={param.enabled}
+                              onChange={(e) => updateQueryParam(index, "enabled", e.target.checked)}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <Input
+                              placeholder="Parameter name"
+                              value={param.key}
+                              onChange={(e) => updateQueryParam(index, "key", e.target.value)}
+                              className={`flex-1 bg-background ${borderClass}`}
+                            />
+                            <Input
+                              placeholder="Value"
+                              value={param.value}
+                              onChange={(e) => updateQueryParam(index, "value", e.target.value)}
+                              className={`flex-1 bg-background ${borderClass}`}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeQueryParam(index)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      <Button variant="outline" size="sm" onClick={addQueryParam}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Parameter
+                      </Button>
+                    </TabsContent>
+
+                    <TabsContent value="headers" className="space-y-3 mt-4">
+                      {headers.map((header, index) => {
+                        const validationStatus = header.enabled ? getHeaderValidationStatus(header.key) : null;
+                        const isDuplicate = header.enabled ? isHeaderDuplicate(index, header.key) : false;
+                        const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
+                        return (
+                          <div key={index} className="flex gap-2 items-center">
+                            <input
+                              type="checkbox"
+                              checked={header.enabled}
+                              onChange={(e) => updateHeader(index, "enabled", e.target.checked)}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <Input
+                              placeholder="Header name"
+                              value={header.key}
+                              onChange={(e) => updateHeader(index, "key", e.target.value)}
+                              className={`flex-1 bg-background ${borderClass}`}
+                            />
+                            <Input
+                              placeholder="Value"
+                              value={header.value}
+                              onChange={(e) => updateHeader(index, "value", e.target.value)}
+                              className={`flex-1 bg-background ${borderClass}`}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeHeader(index)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      <Button variant="outline" size="sm" onClick={addHeader}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Header
+                      </Button>
+                    </TabsContent>
+
+                    <TabsContent value="body" className="mt-4">
+                      <RequestBodyEditor
+                        value={body}
+                        onChange={setBody}
+                        bodyType={bodyType}
+                        onBodyTypeChange={setBodyType}
+                        rawType={rawType}
+                        onRawTypeChange={setRawType}
+                        formData={formData}
+                        onFormDataChange={setFormData}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </>
+              ) : (
+                /* OpenAPI Mode */
+                <div className="space-y-4">
+                  {/* URL Bar - Same layout as standard mode */}
+                  <div className="flex gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Select value={openAPIOperation?.method || ""} disabled>
+                            <SelectTrigger className="w-[120px] bg-background opacity-70 cursor-not-allowed">
+                              <SelectValue placeholder="Method">
+                                {openAPIOperation?.method ? (
+                                  <span className={
+                                    openAPIOperation.method === "GET" ? "text-green-500" :
+                                    openAPIOperation.method === "POST" ? "text-yellow-500" :
+                                    openAPIOperation.method === "PUT" ? "text-blue-500" :
+                                    openAPIOperation.method === "PATCH" ? "text-purple-500" :
+                                    openAPIOperation.method === "DELETE" ? "text-red-500" :
+                                    "text-muted-foreground"
+                                  }>
+                                    {openAPIOperation.method}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">Method</span>
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </Select>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>Select an operation below to set the method</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Input
+                      placeholder={!openAPIServiceId ? "Select an API Service to build the request URL" : "Select an operation to build the request URL"}
+                      value={openAPIOperation && openAPIServerUrl ? (() => {
+                        let fullPath = openAPIOperation.path;
+                        if (openAPIFormValues.pathParams) {
+                          Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+                            fullPath = fullPath.replace(`{${key}}`, String(value || `{${key}}`));
+                          });
+                        }
+                        const queryParts: string[] = [];
+                        if (openAPIFormValues.queryParams) {
+                          Object.entries(openAPIFormValues.queryParams).forEach(([key, value]) => {
+                            if (value !== undefined && value !== null && value !== "") {
+                              queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+                            }
+                          });
+                        }
+                        const baseUrl = openAPIServerUrl.replace(/\/$/, "");
+                        const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+                        return `${baseUrl}${fullPath}${queryString}`;
+                      })() : ""}
+                      readOnly
+                      className="flex-1 bg-background"
+                    />
+                    <div className="flex">
+                      <Button 
+                        onClick={handleActionButton} 
+                        disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey || (actionMode === "request" && openAPIMissingRequiredParams)}
+                        className="rounded-r-none border-r-0 relative min-w-[110px]"
                       >
-                        <Search className="h-4 w-4 mr-2" />
-                        Analyze
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
-                        className={actionMode === "request" ? "bg-accent" : ""}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Request
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
-                        className={actionMode === "preview" ? "bg-accent" : ""}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Preview
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
+                        <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                          {actionMode === "analyze" ? (
+                            <Search className="h-4 w-4 mr-2 inline" />
+                          ) : actionMode === "preview" ? (
+                            <Eye className="h-4 w-4 mr-2 inline" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-2 inline" />
+                          )}
+                          {actionMode === "analyze" ? "Analyze" : actionMode === "preview" ? "Preview" : "Request"}
+                        </span>
+                        {(isAnalyzing || isSendingRequest) && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                          </div>
+                        )}
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="default" 
+                            className="rounded-l-none px-2"
+                            disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-popover z-50">
+                          <DropdownMenuItem 
+                            onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                            className={actionMode === "analyze" ? "bg-accent" : ""}
+                          >
+                            <Search className="h-4 w-4 mr-2" />
+                            Analyze
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                            className={actionMode === "request" ? "bg-accent" : ""}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Request
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                            className={actionMode === "preview" ? "bg-accent" : ""}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
 
-              {/* Tabs for Params, Headers, Body, OpenAPI */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="w-full justify-start bg-muted/50">
-                  <TabsTrigger value="params">Query Params</TabsTrigger>
-                  <TabsTrigger value="headers">Headers</TabsTrigger>
-                  <TabsTrigger value="body">Body</TabsTrigger>
-                  <TabsTrigger value="openapi">OpenAPI</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="params" className="space-y-3 mt-4">
-                  {queryParams.map((param, index) => {
-                    const validationStatus = param.enabled ? getQueryParamValidationStatus(param.key) : null;
-                    const isDuplicate = param.enabled ? isQueryParamDuplicate(index, param.key) : false;
-                    const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
-                    return (
-                      <div key={index} className="flex gap-2 items-center">
-                        <input
-                          type="checkbox"
-                          checked={param.enabled}
-                          onChange={(e) => updateQueryParam(index, "enabled", e.target.checked)}
-                          className="h-4 w-4 rounded border-border"
-                        />
-                        <Input
-                          placeholder="Parameter name"
-                          value={param.key}
-                          onChange={(e) => updateQueryParam(index, "key", e.target.value)}
-                          className={`flex-1 bg-background ${borderClass}`}
-                        />
-                        <Input
-                          placeholder="Value"
-                          value={param.value}
-                          onChange={(e) => updateQueryParam(index, "value", e.target.value)}
-                          className={`flex-1 bg-background ${borderClass}`}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeQueryParam(index)}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  <Button variant="outline" size="sm" onClick={addQueryParam}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Parameter
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="headers" className="space-y-3 mt-4">
-                  {headers.map((header, index) => {
-                    const validationStatus = header.enabled ? getHeaderValidationStatus(header.key) : null;
-                    const isDuplicate = header.enabled ? isHeaderDuplicate(index, header.key) : false;
-                    const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
-                    return (
-                      <div key={index} className="flex gap-2 items-center">
-                        <input
-                          type="checkbox"
-                          checked={header.enabled}
-                          onChange={(e) => updateHeader(index, "enabled", e.target.checked)}
-                          className="h-4 w-4 rounded border-border"
-                        />
-                        <Input
-                          placeholder="Header name"
-                          value={header.key}
-                          onChange={(e) => updateHeader(index, "key", e.target.value)}
-                          className={`flex-1 bg-background ${borderClass}`}
-                        />
-                        <Input
-                          placeholder="Value"
-                          value={header.value}
-                          onChange={(e) => updateHeader(index, "value", e.target.value)}
-                          className={`flex-1 bg-background ${borderClass}`}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeHeader(index)}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  <Button variant="outline" size="sm" onClick={addHeader}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Header
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="body" className="mt-4">
-                  <RequestBodyEditor
-                    value={body}
-                    onChange={setBody}
-                    bodyType={bodyType}
-                    onBodyTypeChange={setBodyType}
-                    rawType={rawType}
-                    onRawTypeChange={setRawType}
-                    formData={formData}
-                    onFormDataChange={setFormData}
-                  />
-                </TabsContent>
-
-                <TabsContent value="openapi" className="mt-4">
-                  <OpenAPIRequestTab
+                  <OpenAPISelection
                     services={services}
                     selectedServiceId={openAPIServiceId}
                     selectedOperationKey={openAPIOperationKey}
+                    serverUrl={openAPIServerUrl}
                     formValues={openAPIFormValues}
                     onServiceChange={setOpenAPIServiceId}
                     onOperationChange={setOpenAPIOperationKey}
+                    onServerUrlChange={setOpenAPIServerUrl}
                     onFormValuesChange={setOpenAPIFormValues}
                     onOperationParsed={setOpenAPIOperation}
+                    onSpecParsed={setOpenAPIParsedSpec}
                   />
-                </TabsContent>
-              </Tabs>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -2132,116 +2393,162 @@ const ApiTester = () => {
                       </TabsTrigger>
                     </TabsList>
                     {rightPanelTab === "match" && (
-                      <Button
-                        variant={isLocked ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setIsLocked(!isLocked)}
-                        className="gap-2"
-                      >
-                        {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                        {isLocked ? "Locked" : "Auto"}
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={isLocked || builderMode === "openapi" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => builderMode !== "openapi" && setIsLocked(!isLocked)}
+                            className="gap-2"
+                            disabled={builderMode === "openapi"}
+                          >
+                            {isLocked || builderMode === "openapi" ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                            {isLocked || builderMode === "openapi" ? "Locked" : "Auto"}
+                          </Button>
+                        </TooltipTrigger>
+                        {builderMode === "openapi" && (
+                          <TooltipContent>
+                            <p>Synced with OpenAPI Request Builder</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
                     )}
                   </div>
                   
                   <TabsContent value="match" className="mt-0">
-                    {/* Manual Selection Controls */}
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-sm text-muted-foreground">Select API Service</label>
-                        <Select 
-                          value={selectedServiceId || "__auto__"} 
-                          onValueChange={(value) => {
-                            setSelectedServiceId(value === "__auto__" ? null : value);
-                            setSelectedOperationKey(null);
-                          }}
-                        >
-                          <SelectTrigger className="bg-background">
-                            <SelectValue placeholder="Auto-detect from URL" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
-                            <SelectItem value="__auto__">Auto-detect</SelectItem>
-                            {services.map((service) => (
-                              <SelectItem key={service.id} value={service.id}>
-                                {service.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      {selectedServiceId && (
-                        <div className="space-y-1">
-                          <label className="text-sm text-muted-foreground">
-                            Select Operation
-                            {selectedOperationKey && (() => {
-                              const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
-                              return selectedOp?.operationId ? (
-                                <span className="ml-2 font-mono text-foreground">{selectedOp.operationId}</span>
-                              ) : null;
-                            })()}
-                          </label>
-                          <Select 
-                            value={selectedOperationKey || "__auto__"} 
-                            onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
+                    {/* API Match Section */}
+                    <Collapsible
+                      open={!collapsedSections.apiMatch}
+                      onOpenChange={() => toggleSection('apiMatch')}
+                    >
+                      <div className="flex items-center justify-between py-2 border-b border-border">
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
                           >
-                            <SelectTrigger className="bg-background">
-                              <SelectValue placeholder="Auto-detect from URL & method">
-                                {selectedOperationKey ? (() => {
+                            {collapsedSections.apiMatch ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <div className="flex-1 flex items-center gap-2 ml-2">
+                          <span className="text-sm font-medium">API Match</span>
+                          {builderMode === "openapi" && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Synced
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <CollapsibleContent>
+                        <div className="space-y-3 py-3">
+                          <div className="space-y-1">
+                            <label className="text-sm text-muted-foreground">Select API Service</label>
+                            <Select 
+                              value={selectedServiceId || "__auto__"} 
+                              onValueChange={(value) => {
+                                setSelectedServiceId(value === "__auto__" ? null : value);
+                                setSelectedOperationKey(null);
+                              }}
+                              disabled={builderMode === "openapi"}
+                            >
+                              <SelectTrigger className={`bg-background ${builderMode === "openapi" ? "opacity-70" : ""}`}>
+                                <SelectValue placeholder="Auto-detect from URL" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="__auto__">Auto-detect</SelectItem>
+                                {services.map((service) => (
+                                  <SelectItem key={service.id} value={service.id}>
+                                    {service.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {selectedServiceId && (
+                            <div className="space-y-1">
+                              <label className="text-sm text-muted-foreground">
+                                Select Operation
+                                {selectedOperationKey && (() => {
                                   const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
-                                  return selectedOp ? (
-                                    <span>
+                                  return selectedOp?.operationId ? (
+                                    <span className="ml-2 font-mono text-foreground">{selectedOp.operationId}</span>
+                                  ) : null;
+                                })()}
+                              </label>
+                              <Select 
+                                value={selectedOperationKey || "__auto__"} 
+                                onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
+                                disabled={builderMode === "openapi"}
+                              >
+                                <SelectTrigger className={`bg-background ${builderMode === "openapi" ? "opacity-70" : ""}`}>
+                                  <SelectValue placeholder="Auto-detect from URL & method">
+                                    {selectedOperationKey ? (() => {
+                                      const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                                      return selectedOp ? (
+                                        <span>
+                                          <span className={`font-mono text-xs mr-2 ${
+                                            selectedOp.method === "GET" ? "text-green-500" :
+                                            selectedOp.method === "POST" ? "text-yellow-500" :
+                                            selectedOp.method === "PUT" ? "text-blue-500" :
+                                            selectedOp.method === "DELETE" ? "text-red-500" :
+                                            "text-muted-foreground"
+                                          }`}>
+                                            {selectedOp.method}
+                                          </span>
+                                          <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
+                                        </span>
+                                      ) : null;
+                                    })() : (
+                                      <span className="text-muted-foreground">Auto-detect</span>
+                                    )}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover z-50 max-h-[300px]">
+                                  <SelectItem value="__auto__">Auto-detect</SelectItem>
+                                  {availableOperations.map((op) => (
+                                    <SelectItem key={op.key} value={op.key}>
                                       <span className={`font-mono text-xs mr-2 ${
-                                        selectedOp.method === "GET" ? "text-green-500" :
-                                        selectedOp.method === "POST" ? "text-yellow-500" :
-                                        selectedOp.method === "PUT" ? "text-blue-500" :
-                                        selectedOp.method === "DELETE" ? "text-red-500" :
+                                        op.method === "GET" ? "text-green-500" :
+                                        op.method === "POST" ? "text-yellow-500" :
+                                        op.method === "PUT" ? "text-blue-500" :
+                                        op.method === "DELETE" ? "text-red-500" :
                                         "text-muted-foreground"
                                       }`}>
-                                        {selectedOp.method}
+                                        {op.method}
                                       </span>
-                                      <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
-                                    </span>
-                                  ) : null;
-                                })() : (
-                                  <span className="text-muted-foreground">Auto-detect</span>
-                                )}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="bg-popover z-50 max-h-[300px]">
-                              <SelectItem value="__auto__">Auto-detect</SelectItem>
-                              {availableOperations.map((op) => (
-                                <SelectItem key={op.key} value={op.key}>
-                                  <span className={`font-mono text-xs mr-2 ${
-                                    op.method === "GET" ? "text-green-500" :
-                                    op.method === "POST" ? "text-yellow-500" :
-                                    op.method === "PUT" ? "text-blue-500" :
-                                    op.method === "DELETE" ? "text-red-500" :
-                                    "text-muted-foreground"
-                                  }`}>
-                                    {op.method}
-                                  </span>
-                                  {op.operationId && (
-                                    <span className="font-mono text-sm mr-2">{op.operationId}</span>
-                                  )}
-                                  <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
-                                  {op.summary && (
-                                    <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
-                                  )}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+                                      {op.operationId && (
+                                        <span className="font-mono text-sm mr-2">{op.operationId}</span>
+                                      )}
+                                      <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
+                                      {op.summary && (
+                                        <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
+                                      )}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
-                      {isLocked && selectedServiceId && selectedOperationKey && (
-                        <div className="flex items-center gap-2 text-xs text-primary">
-                          <Lock className="h-3 w-3" />
-                          <span>Validation locked to selected operation</span>
+                          {builderMode === "openapi" && selectedServiceId && selectedOperationKey && (
+                            <div className="flex items-center gap-2 text-xs text-primary">
+                              <Lock className="h-3 w-3" />
+                              <span>Synced with OpenAPI Request Builder</span>
+                            </div>
+                          )}
+
+                          {builderMode !== "openapi" && isLocked && selectedServiceId && selectedOperationKey && (
+                            <div className="flex items-center gap-2 text-xs text-primary">
+                              <Lock className="h-3 w-3" />
+                              <span>Validation locked to selected operation</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </TabsContent>
                   
                   <TabsContent value="response" className="mt-0">
@@ -3027,7 +3334,10 @@ const ApiTester = () => {
                       return (
                         <div className="space-y-6">
                           {/* Request Line */}
-                          <Collapsible defaultOpen>
+                          <Collapsible
+                            open={!collapsedSections.previewRequestLine}
+                            onOpenChange={() => toggleSection('previewRequestLine')}
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Route className="h-4 w-4" />
@@ -3039,7 +3349,7 @@ const ApiTester = () => {
                                   size="sm"
                                   className="h-6 w-6 p-0"
                                 >
-                                  <Minus className="h-4 w-4" />
+                                  {collapsedSections.previewRequestLine ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
                                 </Button>
                               </CollapsibleTrigger>
                             </div>
@@ -3061,7 +3371,10 @@ const ApiTester = () => {
                           </Collapsible>
 
                           {/* Request Headers */}
-                          <Collapsible defaultOpen>
+                          <Collapsible
+                            open={!collapsedSections.previewHeaders}
+                            onOpenChange={() => toggleSection('previewHeaders')}
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <FileCode className="h-4 w-4" />
@@ -3076,7 +3389,7 @@ const ApiTester = () => {
                                   size="sm"
                                   className="h-6 w-6 p-0"
                                 >
-                                  <Minus className="h-4 w-4" />
+                                  {collapsedSections.previewHeaders ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
                                 </Button>
                               </CollapsibleTrigger>
                             </div>
@@ -3110,7 +3423,10 @@ const ApiTester = () => {
 
                           {/* Request Body */}
                           {preview.bodyContent && (
-                            <Collapsible defaultOpen>
+                            <Collapsible
+                              open={!collapsedSections.previewBody}
+                              onOpenChange={() => toggleSection('previewBody')}
+                            >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                   <FileCode className="h-4 w-4" />
@@ -3125,7 +3441,7 @@ const ApiTester = () => {
                                     size="sm"
                                     className="h-6 w-6 p-0"
                                   >
-                                    <Minus className="h-4 w-4" />
+                                    {collapsedSections.previewBody ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
                                   </Button>
                                 </CollapsibleTrigger>
                               </div>
