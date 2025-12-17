@@ -240,8 +240,11 @@ const ApiTester = () => {
   });
   // Ref to track the last synced form values to prevent infinite loops
   const lastSyncedFormValuesRef = useRef<OpenAPIFormValues>(openAPIFormValues);
-  // Ref to prevent bidirectional sync loops (acts as a lock)
-  const isSyncingRef = useRef<boolean>(false);
+  // Track the last sync direction and timestamp to prevent rapid oscillations
+  const lastSyncInfoRef = useRef<{ direction: 'toTabs' | 'toForm' | null; timestamp: number }>({
+    direction: null,
+    timestamp: 0,
+  });
   const [activeTab, setActiveTab] = useState<string>("params");
   
   // Sorting state for parameter tables
@@ -560,14 +563,35 @@ const ApiTester = () => {
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
 
-    // Skip if we're already syncing (prevents bidirectional loop)
-    if (isSyncingRef.current) return;
+    // Check if the form is completely empty (initial state)
+    const isFormEmpty =
+      Object.keys(openAPIFormValues.queryParams).length === 0 &&
+      Object.keys(openAPIFormValues.headerParams).length === 0 &&
+      Object.keys(openAPIFormValues.pathParams).length === 0 &&
+      Object.keys(openAPIFormValues.bodyParams).length === 0;
 
-    // Set the sync lock
-    isSyncingRef.current = true;
+    // If form is empty and we haven't synced yet, skip this sync to allow
+    // the second sync (tabs → form) to populate the form first
+    if (isFormEmpty && lastSyncInfoRef.current.direction === null) {
+      return; // Skip initial sync when form is empty
+    }
+
+    const now = Date.now();
+    const lastSync = lastSyncInfoRef.current;
+
+    // Prevent rapid oscillation: if we just synced from tabs to form (within 50ms),
+    // and the values haven't actually changed, skip this sync
+    if (lastSync.direction === 'toForm' && (now - lastSync.timestamp) < 50) {
+      // Check if values actually changed
+      const valuesMatch = JSON.stringify(openAPIFormValues) === JSON.stringify(lastSyncedFormValuesRef.current);
+      if (valuesMatch) {
+        return; // Skip this sync to prevent oscillation
+      }
+    }
 
     // Update the ref to track what we're syncing
     lastSyncedFormValuesRef.current = openAPIFormValues;
+    lastSyncInfoRef.current = { direction: 'toTabs', timestamp: now };
 
     // Update URL and method
     const reconstructedUrl = reconstructUrlFromOperation(openAPIOperation, openAPIFormValues.pathParams);
@@ -616,19 +640,14 @@ const ApiTester = () => {
       setBodyType("raw");
       setRawType("json");
     }
-
-    // Clear the sync lock after a microtask to allow state updates to propagate
-    Promise.resolve().then(() => {
-      isSyncingRef.current = false;
-    });
   }, [openAPIFormValues, activeTab, openAPIOperation]);
 
   // Sync: Other tabs → OpenAPI form (when switching TO openapi tab OR when params change)
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
 
-    // Skip if we're already syncing (prevents bidirectional loop)
-    if (isSyncingRef.current) return;
+    const now = Date.now();
+    const lastSync = lastSyncInfoRef.current;
 
     const operation = openAPIOperation;
     const parameters = operation.parameters || [];
@@ -695,8 +714,18 @@ const ApiTester = () => {
 
     // Only update if there are actual changes compared to last synced values
     if (isQueryParamsDifferent || isHeaderParamsDifferent || isPathParamsDifferent || isBodyParamsDifferent) {
-      // Set the sync lock
-      isSyncingRef.current = true;
+      // Check if this is the first sync (lastSynced is all empty objects)
+      const isFirstSync =
+        Object.keys(lastSynced.queryParams).length === 0 &&
+        Object.keys(lastSynced.headerParams).length === 0 &&
+        Object.keys(lastSynced.pathParams).length === 0 &&
+        Object.keys(lastSynced.bodyParams).length === 0;
+
+      // Prevent rapid oscillation: if we just synced from form to tabs (within 50ms), skip this sync
+      // BUT allow the initial sync to populate the form from existing tab values
+      if (!isFirstSync && lastSync.direction === 'toTabs' && (now - lastSync.timestamp) < 50) {
+        return; // Skip to prevent immediate bounce-back
+      }
 
       const newFormValues = {
         pathParams: syncedPathParams,
@@ -706,12 +735,8 @@ const ApiTester = () => {
       };
       // Update both the state and the ref
       lastSyncedFormValuesRef.current = newFormValues;
+      lastSyncInfoRef.current = { direction: 'toForm', timestamp: now };
       setOpenAPIFormValues(newFormValues);
-
-      // Clear the sync lock after a microtask to allow state updates to propagate
-      Promise.resolve().then(() => {
-        isSyncingRef.current = false;
-      });
     }
   }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation]); // Removed openAPIFormValues to prevent circular dependency
 
