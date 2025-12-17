@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -238,6 +238,10 @@ const ApiTester = () => {
     headerParams: {},
     bodyParams: {},
   });
+  // Ref to track the last synced form values to prevent infinite loops
+  const lastSyncedFormValuesRef = useRef<OpenAPIFormValues>(openAPIFormValues);
+  // Ref to prevent bidirectional sync loops (acts as a lock)
+  const isSyncingRef = useRef<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("params");
   
   // Sorting state for parameter tables
@@ -556,6 +560,15 @@ const ApiTester = () => {
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
 
+    // Skip if we're already syncing (prevents bidirectional loop)
+    if (isSyncingRef.current) return;
+
+    // Set the sync lock
+    isSyncingRef.current = true;
+
+    // Update the ref to track what we're syncing
+    lastSyncedFormValuesRef.current = openAPIFormValues;
+
     // Update URL and method
     const reconstructedUrl = reconstructUrlFromOperation(openAPIOperation, openAPIFormValues.pathParams);
     setUrl(reconstructedUrl);
@@ -603,11 +616,19 @@ const ApiTester = () => {
       setBodyType("raw");
       setRawType("json");
     }
+
+    // Clear the sync lock after a microtask to allow state updates to propagate
+    Promise.resolve().then(() => {
+      isSyncingRef.current = false;
+    });
   }, [openAPIFormValues, activeTab, openAPIOperation]);
 
   // Sync: Other tabs → OpenAPI form (when switching TO openapi tab OR when params change)
   useEffect(() => {
     if (activeTab !== "openapi" || !openAPIOperation) return;
+
+    // Skip if we're already syncing (prevents bidirectional loop)
+    if (isSyncingRef.current) return;
 
     const operation = openAPIOperation;
     const parameters = operation.parameters || [];
@@ -654,23 +675,45 @@ const ApiTester = () => {
       }
     }
 
-    // Check if the synced values are different from current openAPIFormValues
-    // This prevents unnecessary updates and infinite loops
-    const isQueryParamsDifferent = JSON.stringify(syncedQueryParams) !== JSON.stringify(openAPIFormValues.queryParams);
-    const isHeaderParamsDifferent = JSON.stringify(syncedHeaderParams) !== JSON.stringify(openAPIFormValues.headerParams);
-    const isPathParamsDifferent = JSON.stringify(syncedPathParams) !== JSON.stringify(openAPIFormValues.pathParams);
-    const isBodyParamsDifferent = JSON.stringify(syncedBodyParams) !== JSON.stringify(openAPIFormValues.bodyParams);
+    // Helper to normalize objects for comparison (sort keys alphabetically)
+    const normalizeForComparison = (obj: Record<string, any>): string => {
+      const sortedKeys = Object.keys(obj).sort();
+      const normalized: Record<string, any> = {};
+      sortedKeys.forEach(key => {
+        normalized[key] = obj[key];
+      });
+      return JSON.stringify(normalized);
+    };
 
-    // Only update if there are actual changes
+    // Compare against the last synced values (stored in ref) instead of current openAPIFormValues
+    // This prevents infinite loops while still allowing proper synchronization
+    const lastSynced = lastSyncedFormValuesRef.current;
+    const isQueryParamsDifferent = normalizeForComparison(syncedQueryParams) !== normalizeForComparison(lastSynced.queryParams);
+    const isHeaderParamsDifferent = normalizeForComparison(syncedHeaderParams) !== normalizeForComparison(lastSynced.headerParams);
+    const isPathParamsDifferent = normalizeForComparison(syncedPathParams) !== normalizeForComparison(lastSynced.pathParams);
+    const isBodyParamsDifferent = normalizeForComparison(syncedBodyParams) !== normalizeForComparison(lastSynced.bodyParams);
+
+    // Only update if there are actual changes compared to last synced values
     if (isQueryParamsDifferent || isHeaderParamsDifferent || isPathParamsDifferent || isBodyParamsDifferent) {
-      setOpenAPIFormValues({
+      // Set the sync lock
+      isSyncingRef.current = true;
+
+      const newFormValues = {
         pathParams: syncedPathParams,
         queryParams: syncedQueryParams,
         headerParams: syncedHeaderParams,
         bodyParams: syncedBodyParams,
+      };
+      // Update both the state and the ref
+      lastSyncedFormValuesRef.current = newFormValues;
+      setOpenAPIFormValues(newFormValues);
+
+      // Clear the sync lock after a microtask to allow state updates to propagate
+      Promise.resolve().then(() => {
+        isSyncingRef.current = false;
       });
     }
-  }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation, openAPIFormValues]); // Trigger when any relevant state changes
+  }, [activeTab, queryParams, headers, url, body, bodyType, rawType, openAPIOperation]); // Removed openAPIFormValues to prevent circular dependency
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();
