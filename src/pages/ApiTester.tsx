@@ -202,7 +202,7 @@ const ApiTester = () => {
   
   // Action mode: "analyze", "request", or "preview"
   type ActionMode = "analyze" | "request" | "preview";
-  const [actionMode, setActionMode] = useState<ActionMode>("analyze");
+  const [actionMode, setActionMode] = useState<ActionMode>("request");
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [requestResponse, setRequestResponse] = useState<{
     status: number;
@@ -393,7 +393,10 @@ const ApiTester = () => {
           comparison = (a.required === b.required) ? 0 : a.required ? -1 : 1;
           break;
         case 'value':
-          comparison = (a.value || '').localeCompare(b.value || '');
+          // Include default values in sorting - use actual value if present, otherwise use default
+          const aEffectiveValue = a.value || a.defaultValue || '';
+          const bEffectiveValue = b.value || b.defaultValue || '';
+          comparison = aEffectiveValue.localeCompare(bEffectiveValue);
           break;
         case 'isValid':
           // Sort order: Valid (0) < Warning/Unspecified (1) < Invalid (2)
@@ -836,10 +839,17 @@ const ApiTester = () => {
     }
   }, [builderMode, queryParams, headers, url, body, bodyType, rawType, openAPIOperation]); // Removed openAPIFormValues to prevent circular dependency
 
-  // Sync Match Results panel selection with OpenAPI mode selection
+  // Sync Service and Operation selection between OpenAPI mode and Standard mode
   useEffect(() => {
     if (builderMode === "openapi") {
-      // When in OpenAPI mode, sync the Match Results panel to match the Request Builder
+      // When switching to OpenAPI mode, sync FROM Standard TO OpenAPI if Standard has selections
+      if (selectedServiceId && !openAPIServiceId) {
+        setOpenAPIServiceId(selectedServiceId);
+      }
+      if (selectedOperationKey && !openAPIOperationKey) {
+        setOpenAPIOperationKey(selectedOperationKey);
+      }
+      // Also sync Match Results panel to match the OpenAPI Request Builder
       if (openAPIServiceId !== selectedServiceId) {
         setSelectedServiceId(openAPIServiceId);
       }
@@ -849,10 +859,24 @@ const ApiTester = () => {
       // Collapse the API Match, Service, Server, and Operation sections in OpenAPI mode
       setCollapsedSections(prev => ({ ...prev, apiMatch: true, service: true, server: true, operation: true }));
     } else {
+      // When switching to Standard mode, sync FROM OpenAPI TO Standard if OpenAPI has selections
+      if (openAPIServiceId && !selectedServiceId) {
+        setSelectedServiceId(openAPIServiceId);
+      }
+      if (openAPIOperationKey && !selectedOperationKey) {
+        setSelectedOperationKey(openAPIOperationKey);
+      }
+      // Also sync OpenAPI state to match Standard selections
+      if (selectedServiceId !== openAPIServiceId) {
+        setOpenAPIServiceId(selectedServiceId);
+      }
+      if (selectedOperationKey !== openAPIOperationKey) {
+        setOpenAPIOperationKey(selectedOperationKey);
+      }
       // Expand sections in standard mode
       setCollapsedSections(prev => ({ ...prev, apiMatch: false, service: false, server: false, operation: false }));
     }
-  }, [builderMode, openAPIServiceId, openAPIOperationKey]);
+  }, [builderMode, openAPIServiceId, openAPIOperationKey, selectedServiceId, selectedOperationKey]);
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -1037,7 +1061,26 @@ const ApiTester = () => {
         });
       }
       const baseUrl = openAPIServerUrl.replace(/\/$/, "");
-      requestUrl = `${baseUrl}${fullPath}`;
+      
+      // Build query string from openAPIFormValues.queryParams
+      const queryParts: string[] = [];
+      if (openAPIFormValues.queryParams) {
+        Object.entries(openAPIFormValues.queryParams).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            // Handle array values
+            if (Array.isArray(value)) {
+              value.forEach(v => {
+                queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
+              });
+            } else {
+              queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+            }
+          }
+        });
+      }
+      
+      const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+      requestUrl = `${baseUrl}${fullPath}${queryString}`;
     }
     
     if (!requestUrl.trim()) {
@@ -1121,6 +1164,12 @@ const ApiTester = () => {
   };
 
   const handleActionButton = async () => {
+    // Lock the API Match selection when any action button is clicked
+    // This confirms the user's intent to use the selected API and operation
+    if (!isLocked) {
+      setIsLocked(true);
+    }
+    
     if (actionMode === "analyze") {
       await analyzeRequest();
       setRightPanelTab("match");
@@ -1987,12 +2036,18 @@ const ApiTester = () => {
                   type="single" 
                   value={builderMode} 
                   onValueChange={(value) => value && setBuilderMode(value as "standard" | "openapi")}
-                  className="bg-muted/50 rounded-md p-1"
+                  className="bg-muted rounded-md p-1"
                 >
-                  <ToggleGroupItem value="standard" className="px-3 py-1 text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  <ToggleGroupItem 
+                    value="standard" 
+                    className="px-3 py-1 text-sm text-muted-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                  >
                     Standard
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="openapi" className="px-3 py-1 text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  <ToggleGroupItem 
+                    value="openapi" 
+                    className="px-3 py-1 text-sm text-muted-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                  >
                     OpenAPI
                   </ToggleGroupItem>
                 </ToggleGroup>
@@ -2265,6 +2320,7 @@ const ApiTester = () => {
                         return `${baseUrl}${fullPath}${queryString}`;
                       })() : ""}
                       readOnly
+                      disabled={!openAPIServiceId}
                       className="flex-1 bg-background"
                     />
                     <div className="flex">
@@ -2294,7 +2350,7 @@ const ApiTester = () => {
                           <Button 
                             variant="default" 
                             className="rounded-l-none px-2"
-                            disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                            disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey || (actionMode === "request" && openAPIMissingRequiredParams)}
                           >
                             <ChevronDown className="h-4 w-4" />
                           </Button>
