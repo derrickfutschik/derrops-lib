@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HelpCircle, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -401,11 +401,11 @@ export function ParameterInput({
         </Label>
 
         {description && (
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="right" className="max-w-sm">
+            </PopoverTrigger>
+            <PopoverContent side="right" className="max-w-sm p-3">
               <div className="space-y-1">
                 <p className="text-sm">{description}</p>
                 <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
@@ -419,8 +419,8 @@ export function ParameterInput({
                   )}
                 </div>
               </div>
-            </TooltipContent>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
 

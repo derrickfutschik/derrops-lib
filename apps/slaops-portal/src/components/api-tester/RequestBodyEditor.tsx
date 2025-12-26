@@ -1,11 +1,17 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus, AlignLeft } from "lucide-react";
+import { Trash2, Plus, AlignLeft, Maximize2, Minimize2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type BodyType = "none" | "form-data" | "x-www-form-urlencoded" | "raw" | "binary";
 type RawType = "json" | "xml" | "text";
@@ -147,6 +153,7 @@ export function RequestBodyEditor({
   onFormDataChange,
 }: RequestBodyEditorProps) {
   const [binaryFileName, setBinaryFileName] = useState<string>("");
+  const [isMaximized, setIsMaximized] = useState(false);
   
   // Memoize JSON error detection
   const jsonError = useMemo(() => {
@@ -274,17 +281,28 @@ export function RequestBodyEditor({
               <SelectItem value="text">Text</SelectItem>
             </SelectContent>
           </Select>
-          {rawType !== "text" && (
+          <div className="flex items-center gap-2">
+            {rawType !== "text" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={formatContent}
+                className="h-8 gap-2"
+              >
+                <AlignLeft className="h-4 w-4" />
+                Format
+              </Button>
+            )}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={formatContent}
-              className="h-8 gap-2"
+              onClick={() => setIsMaximized(true)}
+              className="h-8 w-8 p-0"
+              title="Maximize"
             >
-              <AlignLeft className="h-4 w-4" />
-              Format
+              <Maximize2 className="h-4 w-4" />
             </Button>
-          )}
+          </div>
         </div>
       )}
 
@@ -335,75 +353,81 @@ export function RequestBodyEditor({
       )}
 
       {bodyType === "raw" && (
-        <div className="relative min-h-[300px] border border-border rounded-md bg-background overflow-hidden">
-          {/* Syntax highlighted layer */}
-          <pre 
-            className="absolute inset-0 p-3 font-mono text-sm pointer-events-none overflow-auto whitespace-pre-wrap break-words"
-            aria-hidden="true"
-          >
-            <code 
-              dangerouslySetInnerHTML={{ 
-                __html: (rawType === "json" ? highlightJsonWithErrors(value, jsonError) : rawType === "xml" ? highlightXmlString(value) : value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')) || '&nbsp;'
-              }} 
-            />
-          </pre>
-          {/* Editable textarea */}
-          <textarea
-            placeholder={rawType === "json" ? '{"key": "value"}' : rawType === "xml" ? '<root>\n  <element>value</element>\n</root>' : 'Enter plain text...'}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              const { selectionStart, selectionEnd } = target;
-              
-              // Handle Tab key
-              if (e.key === "Tab") {
-                e.preventDefault();
-                const newValue = value.substring(0, selectionStart) + "  " + value.substring(selectionEnd);
-                onChange(newValue);
-                setTimeout(() => {
-                  target.selectionStart = target.selectionEnd = selectionStart + 2;
-                }, 0);
-              }
-              
-              // Handle Enter key with auto-indent
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const beforeCursor = value.substring(0, selectionStart);
-                const afterCursor = value.substring(selectionEnd);
+        <div className="flex flex-col border border-border rounded-md bg-background overflow-hidden">
+          <div className="relative min-h-[300px] flex-1">
+            {/* Syntax highlighted layer */}
+            <pre 
+              className="absolute inset-0 p-3 font-mono text-sm pointer-events-none overflow-auto whitespace-pre-wrap break-words"
+              aria-hidden="true"
+            >
+              <code 
+                dangerouslySetInnerHTML={{ 
+                  __html: (rawType === "json" ? highlightJsonWithErrors(value, jsonError) : rawType === "xml" ? highlightXmlString(value) : value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')) || '&nbsp;'
+                }} 
+              />
+            </pre>
+            {/* Editable textarea */}
+            <textarea
+              placeholder={rawType === "json" ? '{"key": "value"}' : rawType === "xml" ? '<root>\n  <element>value</element>\n</root>' : 'Enter plain text...'}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                const { selectionStart, selectionEnd } = target;
                 
-                const currentLine = beforeCursor.split("\n").pop() || "";
-                const currentIndent = currentLine.match(/^(\s*)/)?.[1] || "";
-                
-                const charBefore = beforeCursor.trim().slice(-1);
-                const charAfter = afterCursor.trim().charAt(0);
-                const shouldIndent = ["{", "["].includes(charBefore);
-                const shouldAddClosingIndent = shouldIndent && ["}", "]"].includes(charAfter);
-                
-                let newValue: string;
-                let cursorOffset: number;
-                
-                if (shouldAddClosingIndent) {
-                  newValue = beforeCursor + "\n" + currentIndent + "  " + "\n" + currentIndent + afterCursor;
-                  cursorOffset = selectionStart + 1 + currentIndent.length + 2;
-                } else if (shouldIndent) {
-                  newValue = beforeCursor + "\n" + currentIndent + "  " + afterCursor;
-                  cursorOffset = selectionStart + 1 + currentIndent.length + 2;
-                } else {
-                  newValue = beforeCursor + "\n" + currentIndent + afterCursor;
-                  cursorOffset = selectionStart + 1 + currentIndent.length;
+                // Handle Tab key
+                if (e.key === "Tab") {
+                  e.preventDefault();
+                  const newValue = value.substring(0, selectionStart) + "  " + value.substring(selectionEnd);
+                  onChange(newValue);
+                  setTimeout(() => {
+                    target.selectionStart = target.selectionEnd = selectionStart + 2;
+                  }, 0);
                 }
                 
-                onChange(newValue);
-                setTimeout(() => {
-                  target.selectionStart = target.selectionEnd = cursorOffset;
-                }, 0);
-              }
-            }}
-            className="relative w-full h-full min-h-[300px] font-mono text-sm p-3 resize-y bg-transparent text-transparent caret-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            style={{ caretColor: 'hsl(var(--foreground))' }}
-            spellCheck={false}
-          />
+                // Handle Enter key with auto-indent
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const beforeCursor = value.substring(0, selectionStart);
+                  const afterCursor = value.substring(selectionEnd);
+                  
+                  const currentLine = beforeCursor.split("\n").pop() || "";
+                  const currentIndent = currentLine.match(/^(\s*)/)?.[1] || "";
+                  
+                  const charBefore = beforeCursor.trim().slice(-1);
+                  const charAfter = afterCursor.trim().charAt(0);
+                  const shouldIndent = ["{", "["].includes(charBefore);
+                  const shouldAddClosingIndent = shouldIndent && ["}", "]"].includes(charAfter);
+                  
+                  let newValue: string;
+                  let cursorOffset: number;
+                  
+                  if (shouldAddClosingIndent) {
+                    newValue = beforeCursor + "\n" + currentIndent + "  " + "\n" + currentIndent + afterCursor;
+                    cursorOffset = selectionStart + 1 + currentIndent.length + 2;
+                  } else if (shouldIndent) {
+                    newValue = beforeCursor + "\n" + currentIndent + "  " + afterCursor;
+                    cursorOffset = selectionStart + 1 + currentIndent.length + 2;
+                  } else {
+                    newValue = beforeCursor + "\n" + currentIndent + afterCursor;
+                    cursorOffset = selectionStart + 1 + currentIndent.length;
+                  }
+                  
+                  onChange(newValue);
+                  setTimeout(() => {
+                    target.selectionStart = target.selectionEnd = cursorOffset;
+                  }, 0);
+                }
+              }}
+              className="relative w-full h-full min-h-[300px] font-mono text-sm p-3 resize-y bg-transparent text-transparent caret-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              style={{ caretColor: 'hsl(var(--foreground))' }}
+              spellCheck={false}
+            />
+          </div>
+          {/* Status bar ribbon */}
+          <div className="flex items-center justify-end px-3 py-1 border-t border-border bg-muted/50 text-xs text-muted-foreground">
+            <span>{value.length.toLocaleString()} chars</span>
+          </div>
         </div>
       )}
 
@@ -434,6 +458,113 @@ export function RequestBodyEditor({
             </label>
           </div>
         </div>
+      )}
+
+      {/* Maximize Dialog for Raw Body */}
+      {bodyType === "raw" && (
+        <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
+          <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col p-0">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+              <div className="flex items-center justify-between pr-8">
+                <DialogTitle>Request Body ({rawType.toUpperCase()})</DialogTitle>
+                <div className="flex items-center gap-2">
+                  {rawType !== "text" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={formatContent}
+                      className="h-8 gap-2"
+                    >
+                      <AlignLeft className="h-4 w-4" />
+                      Format
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMaximized(false)}
+                    className="h-8 w-8 p-0"
+                    title="Minimize"
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden p-6">
+              <div className="relative h-full border border-border rounded-md bg-background overflow-hidden">
+                {/* Syntax highlighted layer */}
+                <pre 
+                  className="absolute inset-0 p-3 font-mono text-sm pointer-events-none overflow-auto whitespace-pre-wrap break-words"
+                  aria-hidden="true"
+                >
+                  <code 
+                    dangerouslySetInnerHTML={{ 
+                      __html: (rawType === "json" ? highlightJsonWithErrors(value, jsonError) : rawType === "xml" ? highlightXmlString(value) : value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')) || '&nbsp;'
+                    }} 
+                  />
+                </pre>
+                {/* Editable textarea */}
+                <textarea
+                  placeholder={rawType === "json" ? '{"key": "value"}' : rawType === "xml" ? '<root>\n  <element>value</element>\n</root>' : 'Enter plain text...'}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    const { selectionStart, selectionEnd } = target;
+                    
+                    // Handle Tab key
+                    if (e.key === "Tab") {
+                      e.preventDefault();
+                      const newValue = value.substring(0, selectionStart) + "  " + value.substring(selectionEnd);
+                      onChange(newValue);
+                      setTimeout(() => {
+                        target.selectionStart = target.selectionEnd = selectionStart + 2;
+                      }, 0);
+                    }
+                    
+                    // Handle Enter key with auto-indent
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const beforeCursor = value.substring(0, selectionStart);
+                      const afterCursor = value.substring(selectionEnd);
+                      
+                      const currentLine = beforeCursor.split("\n").pop() || "";
+                      const currentIndent = currentLine.match(/^(\s*)/)?.[1] || "";
+                      
+                      const charBefore = beforeCursor.trim().slice(-1);
+                      const charAfter = afterCursor.trim().charAt(0);
+                      const shouldIndent = ["{", "["].includes(charBefore);
+                      const shouldAddClosingIndent = shouldIndent && ["}", "]"].includes(charAfter);
+                      
+                      let newValue: string;
+                      let cursorOffset: number;
+                      
+                      if (shouldAddClosingIndent) {
+                        newValue = beforeCursor + "\n" + currentIndent + "  " + "\n" + currentIndent + afterCursor;
+                        cursorOffset = selectionStart + 1 + currentIndent.length + 2;
+                      } else if (shouldIndent) {
+                        newValue = beforeCursor + "\n" + currentIndent + "  " + afterCursor;
+                        cursorOffset = selectionStart + 1 + currentIndent.length + 2;
+                      } else {
+                        newValue = beforeCursor + "\n" + currentIndent + afterCursor;
+                        cursorOffset = selectionStart + 1 + currentIndent.length;
+                      }
+                      
+                      onChange(newValue);
+                      setTimeout(() => {
+                        target.selectionStart = target.selectionEnd = cursorOffset;
+                      }, 0);
+                    }
+                  }}
+                  className="relative w-full h-full font-mono text-sm p-3 resize-none bg-transparent text-transparent caret-foreground focus:outline-none"
+                  style={{ caretColor: 'hsl(var(--foreground))' }}
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
