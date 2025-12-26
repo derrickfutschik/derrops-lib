@@ -1,5 +1,5 @@
-import React from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import React, { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface JsonResponseViewerProps {
   jsonString: string;
@@ -34,6 +34,54 @@ const getPropertySchema = (schema: PropertySchema | undefined, path: string[]): 
   }
   
   return undefined;
+};
+
+// Component for property key with popover tooltip
+const PropertyKeyWithTooltip: React.FC<{
+  keyName: string;
+  description?: string;
+  propType?: string;
+  validationError?: string;
+}> = ({ keyName, description, propType, validationError }) => {
+  const [open, setOpen] = useState(false);
+
+  const keyElement = (
+    <span className={validationError ? "text-red-400" : "text-purple-400"}>"{keyName}"</span>
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span 
+          className={`cursor-help border-b border-dashed ${
+            validationError
+              ? "border-red-400/50 hover:border-red-400"
+              : "border-purple-400/50 hover:border-purple-400"
+          }`}
+        >
+          {keyElement}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        className="max-w-[300px] text-sm p-2"
+      >
+        <div className="space-y-1">
+          {validationError && (
+            <div className="text-red-400 font-medium">
+              {validationError}
+            </div>
+          )}
+          {propType && (
+            <div className="text-xs text-muted-foreground font-mono">
+              Type: {propType}
+            </div>
+          )}
+          {description && <div>{description}</div>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 };
 
 // Parse JSON and render with tooltips
@@ -111,35 +159,12 @@ const renderJsonWithTooltips = (
             <React.Fragment key={key}>
               {nextIndentStr}
               {hasTooltip ? (
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <span className={`cursor-help border-b border-dashed ${
-                      validationError
-                        ? "border-red-400/50 hover:border-red-400"
-                        : "border-purple-400/50 hover:border-purple-400"
-                    }`}>
-                      {keyElement}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    className="max-w-[300px] text-sm"
-                  >
-                    <div className="space-y-1">
-                      {validationError && (
-                        <div className="text-red-400 font-medium">
-                          {validationError}
-                        </div>
-                      )}
-                      {propType && (
-                        <div className="text-xs text-muted-foreground font-mono">
-                          Type: {propType}
-                        </div>
-                      )}
-                      {description && <div>{description}</div>}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <PropertyKeyWithTooltip
+                  keyName={key}
+                  description={description}
+                  propType={propType}
+                  validationError={validationError}
+                />
               ) : (
                 keyElement
               )}

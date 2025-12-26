@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,16 +11,19 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown, Search, Eye } from "lucide-react";
+import { ArrowLeft, Send, Plus, Trash2, AlertCircle, CheckCircle, Server, Route, FileCode, Minus, Lock, ArrowUpDown, ArrowUp, ArrowDown, Search, Eye, Hash, AlignLeft, Copy, Maximize2, Minimize2, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import yaml from "js-yaml";
 import { ExpandableParameterRow } from "@/components/api-tester/ExpandableParameterRow";
+import { MobileExpandableParameter } from "@/components/api-tester/MobileExpandableParameter";
 import { RequestBodyEditor, BodyType, RawType, FormDataEntry } from "@/components/api-tester/RequestBodyEditor";
 import { JsonResponseViewer } from "@/components/api-tester/JsonResponseViewer";
+import { MaximizableCodeViewer, JMESPathState } from "@/components/api-tester/MaximizableCodeViewer";
 import { OpenAPIRequestTab } from "@/components/api-tester/OpenAPIRequestTab";
 import { OpenAPISelection } from "@/components/api-tester/OpenAPISelection";
 import { OpenAPIFormValues } from "@/components/api-tester/OpenAPIParameterForm";
@@ -107,6 +111,7 @@ interface OperationOption {
   path: string;
   operationId?: string;
   summary?: string;
+  description?: string;
 }
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -232,7 +237,8 @@ const ApiTester = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedOperationKey, setSelectedOperationKey] = useState<string | null>(null);
   const [availableOperations, setAvailableOperations] = useState<OperationOption[]>([]);
-  const [isLocked, setIsLocked] = useState(false);
+  // Match mode: "auto" = calculated from request, "manual" = user specifies
+  const [matchMode, setMatchMode] = useState<"auto" | "manual">("auto");
   const [parsedSpecs, setParsedSpecs] = useState<Record<string, any>>({});
 
   // Builder mode: "standard" or "openapi"
@@ -263,6 +269,10 @@ const ApiTester = () => {
   openAPIServerUrlRef.current = openAPIServerUrl;
   const [activeTab, setActiveTab] = useState<string>("params");
   
+  // Mobile panel tab for switching between Request and Response
+  const [mobilePanelTab, setMobilePanelTab] = useState<"request" | "response">("request");
+  const isMobile = useIsMobile();
+  
   // Sorting state for parameter tables
   type SortColumn = 'name' | 'type' | 'required' | 'value' | 'isValid';
   type SortDirection = 'asc' | 'desc';
@@ -271,7 +281,13 @@ const ApiTester = () => {
   const [headerParamSort, setHeaderParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
   const [bodyParamSort, setBodyParamSort] = useState<{ column: SortColumn; direction: SortDirection }>({ column: 'name', direction: 'asc' });
 
-  // URL validation - requires protocol
+  // JMESPath state - persists across tab changes and requests
+  const [jmespathState, setJmespathState] = useState<JMESPathState>({
+    enabled: false,
+    query: "",
+    mode: "filter",
+  });
+
   const urlValidation = useMemo(() => {
     if (!url.trim()) return { isValid: true, isEmpty: true, message: '' }; // Empty is OK, show placeholder
     
@@ -291,10 +307,11 @@ const ApiTester = () => {
     }
   }, [url]);
 
-  // Check if all required params are filled in OpenAPI mode
-  const openAPIMissingRequiredParams = useMemo(() => {
-    if (builderMode !== "openapi" || !openAPIOperation) return false;
+  // Check if all required params are filled in OpenAPI mode and get validation message
+  const openAPIValidationResult = useMemo(() => {
+    if (builderMode !== "openapi" || !openAPIOperation) return { hasErrors: false, message: "" };
     
+    const missingParams: string[] = [];
     const parameters = openAPIOperation.parameters || [];
     const requiredParams = parameters.filter((p: any) => p.required);
     
@@ -306,7 +323,7 @@ const ApiTester = () => {
       
       const value = openAPIFormValues[location]?.[param.name];
       if (value === undefined || value === null || value === "") {
-        return true;
+        missingParams.push(`${param.name} (${param.in})`);
       }
     }
     
@@ -319,14 +336,21 @@ const ApiTester = () => {
         for (const propName of requiredBodyProps) {
           const value = openAPIFormValues.bodyParams?.[propName];
           if (value === undefined || value === null || value === "") {
-            return true;
+            missingParams.push(`${propName} (body)`);
           }
         }
       }
     }
     
-    return false;
+    const hasErrors = missingParams.length > 0;
+    const message = hasErrors 
+      ? `Missing required: ${missingParams.join(", ")}`
+      : "";
+    
+    return { hasErrors, message };
   }, [builderMode, openAPIOperation, openAPIFormValues]);
+
+  const openAPIMissingRequiredParams = openAPIValidationResult.hasErrors;
 
   const toggleSection = (section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -454,6 +478,29 @@ const ApiTester = () => {
 
   useEffect(() => {
     fetchServices();
+    
+    // Restore last successful request from localStorage
+    const savedState = localStorage.getItem('apiTester_lastRequest');
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        if (parsed.url) setUrl(parsed.url);
+        if (parsed.method) setMethod(parsed.method);
+        if (parsed.headers) setHeaders(parsed.headers);
+        if (parsed.queryParams) setQueryParams(parsed.queryParams);
+        if (parsed.body !== undefined) setBody(parsed.body);
+        if (parsed.bodyType) setBodyType(parsed.bodyType);
+        if (parsed.rawType) setRawType(parsed.rawType);
+        if (parsed.formData) setFormData(parsed.formData);
+        if (parsed.builderMode) setBuilderMode(parsed.builderMode);
+        if (parsed.openAPIServiceId) setOpenAPIServiceId(parsed.openAPIServiceId);
+        if (parsed.openAPIOperationKey) setOpenAPIOperationKey(parsed.openAPIOperationKey);
+        if (parsed.openAPIServerUrl) setOpenAPIServerUrl(parsed.openAPIServerUrl);
+        if (parsed.openAPIFormValues) setOpenAPIFormValues(parsed.openAPIFormValues);
+      } catch (e) {
+        console.error('Failed to restore saved request state:', e);
+      }
+    }
   }, []);
 
   // Extract operations when service is selected
@@ -499,6 +546,7 @@ const ApiTester = () => {
               path: path,
               operationId: methods[lowerMethod].operationId,
               summary: methods[lowerMethod].summary,
+              description: methods[lowerMethod].description,
             });
           }
         }
@@ -653,10 +701,23 @@ const ApiTester = () => {
       Object.keys(openAPIFormValues.pathParams).length === 0 &&
       Object.keys(openAPIFormValues.bodyParams).length === 0;
 
-    // If form is empty and we haven't synced yet, skip this sync to allow
+    // Always sync URL and method when operation changes, even if form is empty
+    // Build URL from server URL + operation path with path params
+    let fullPath = openAPIOperation.path;
+    if (openAPIFormValues.pathParams) {
+      Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+        fullPath = fullPath.replace(`{${key}}`, String(value || `{${key}}`));
+      });
+    }
+    const baseUrl = openAPIServerUrlRef.current.replace(/\/$/, "");
+    const reconstructedUrl = baseUrl ? `${baseUrl}${fullPath}` : fullPath;
+    setUrl(reconstructedUrl);
+    setMethod(openAPIOperation.method);
+
+    // If form is empty and we haven't synced yet, skip the rest to allow
     // the second sync (tabs → form) to populate the form first
     if (isFormEmpty && lastSyncInfoRef.current.direction === null) {
-      return; // Skip initial sync when form is empty
+      return; // Skip rest of sync when form is empty
     }
 
     const now = Date.now();
@@ -674,18 +735,6 @@ const ApiTester = () => {
     // Update the ref to track what we're syncing
     lastSyncedFormValuesRef.current = openAPIFormValues;
     lastSyncInfoRef.current = { direction: 'toTabs', timestamp: now };
-
-    // Build URL from server URL + operation path with path params
-    let fullPath = openAPIOperation.path;
-    if (openAPIFormValues.pathParams) {
-      Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
-        fullPath = fullPath.replace(`{${key}}`, String(value || `{${key}}`));
-      });
-    }
-    const baseUrl = openAPIServerUrlRef.current.replace(/\/$/, "");
-    const reconstructedUrl = baseUrl ? `${baseUrl}${fullPath}` : fullPath;
-    setUrl(reconstructedUrl);
-    setMethod(openAPIOperation.method);
 
     // Update query params
     const newQueryParams: KeyValuePair[] = Object.entries(openAPIFormValues.queryParams)
@@ -1148,6 +1197,26 @@ const ApiTester = () => {
         body: responseBody,
         duration: Math.round(endTime - startTime),
       });
+
+      // Save successful request state to localStorage
+      if (response.ok) {
+        const savedState = {
+          url: requestUrl,
+          method,
+          headers,
+          queryParams,
+          body,
+          bodyType,
+          rawType,
+          formData,
+          builderMode,
+          openAPIServiceId,
+          openAPIOperationKey,
+          openAPIServerUrl,
+          openAPIFormValues,
+        };
+        localStorage.setItem('apiTester_lastRequest', JSON.stringify(savedState));
+      }
     } catch (error) {
       const endTime = performance.now();
       setRequestResponse({
@@ -1164,22 +1233,30 @@ const ApiTester = () => {
   };
 
   const handleActionButton = async () => {
-    // Lock the API Match selection when any action button is clicked
+    // For request mode, check validation errors first
+    if (actionMode === "request" && openAPIValidationResult.hasErrors) {
+      toast.error(openAPIValidationResult.message);
+    }
+    
+    // When user clicks action button and has made manual selections, switch to manual mode
     // This confirms the user's intent to use the selected API and operation
-    if (!isLocked) {
-      setIsLocked(true);
+    if (matchMode === "auto" && selectedServiceId && selectedOperationKey) {
+      setMatchMode("manual");
     }
     
     if (actionMode === "analyze") {
       await analyzeRequest();
       setRightPanelTab("match");
+      if (isMobile) setMobilePanelTab("response");
     } else if (actionMode === "preview") {
       // Preview mode: just show the preview tab
       setRightPanelTab("preview");
+      if (isMobile) setMobilePanelTab("response");
     } else {
       // Request mode: analyze first, then send request
       await analyzeRequest();
       sendRequest();
+      if (isMobile) setMobilePanelTab("response");
     }
   };
 
@@ -1640,8 +1717,8 @@ const ApiTester = () => {
         return { service, serverInfo, operation, errors: validationResult.errors, warnings: validationResult.warnings };
       };
 
-      // If locked or in OpenAPI mode and we have a selection, use it
-      const useLockedSelection = (isLocked || builderMode === "openapi") && selectedServiceId && selectedOperationKey;
+      // If in manual mode or in OpenAPI mode and we have a selection, use it
+      const useLockedSelection = (matchMode === "manual" || builderMode === "openapi") && selectedServiceId && selectedOperationKey;
       if (useLockedSelection) {
         const service = services.find(s => s.id === selectedServiceId);
         if (service) {
@@ -1983,8 +2060,8 @@ const ApiTester = () => {
       });
 
       if (!matchedOperation) {
-        if (isLocked) {
-          toast.info("Locked operation not found - check your selection");
+        if (matchMode === "manual") {
+          toast.info("Selected operation not found - check your selection");
         } else {
           toast.info("No matching API endpoint found in your services");
         }
@@ -2022,10 +2099,1274 @@ const ApiTester = () => {
       </header>
 
       <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <ResizablePanelGroup direction="horizontal" className="min-h-[600px] rounded-lg border border-border">
-          <ResizablePanel defaultSize={50} minSize={30}>
-            {/* Left Panel - Request Builder */}
-            <Card className="border-0 bg-card/50 h-full rounded-none">
+        {isMobile ? (
+          /* Mobile View - Tabs for Request/Response */
+          <Tabs value={mobilePanelTab} onValueChange={(v) => setMobilePanelTab(v as "request" | "response")} className="w-full">
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="request" className="flex-1">
+                <Send className="h-4 w-4 mr-2" />
+                Request
+              </TabsTrigger>
+              <TabsTrigger value="response" className="flex-1">
+                <FileCode className="h-4 w-4 mr-2" />
+                Response
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="request" className="mt-0">
+              <Card className="border border-border bg-card/50">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Send className="h-5 w-5 text-primary" />
+                      Request Builder
+                    </CardTitle>
+                    <ToggleGroup 
+                      type="single" 
+                      value={builderMode} 
+                      onValueChange={(value) => value && setBuilderMode(value as "standard" | "openapi")}
+                      className="bg-muted rounded-md p-1"
+                    >
+                      <ToggleGroupItem 
+                        value="standard" 
+                        className="px-3 py-1 text-sm text-muted-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      >
+                        Standard
+                      </ToggleGroupItem>
+                      <ToggleGroupItem 
+                        value="openapi" 
+                        className="px-3 py-1 text-sm text-muted-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      >
+                        OpenAPI
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {builderMode === "standard" ? (
+                    <>
+                      {/* Standard Mode - URL Bar */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2 items-center justify-between">
+                          <Select value={method} onValueChange={setMethod}>
+                            <SelectTrigger className="w-[100px] bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50">
+                              {HTTP_METHODS.map((m) => (
+                                <SelectItem key={m} value={m}>
+                                  <span className={
+                                    m === "GET" ? "text-green-500" :
+                                    m === "POST" ? "text-yellow-500" :
+                                    m === "PUT" ? "text-blue-500" :
+                                    m === "PATCH" ? "text-purple-500" :
+                                    m === "DELETE" ? "text-red-500" :
+                                    "text-muted-foreground"
+                                  }>
+                                    {m}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex">
+                            <Button 
+                              onClick={handleActionButton} 
+                              disabled={isAnalyzing || isSendingRequest}
+                              className="rounded-r-none border-r-0 relative min-w-[110px]"
+                            >
+                              <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                                {actionMode === "analyze" ? (
+                                  <Search className="h-4 w-4 mr-2 inline" />
+                                ) : actionMode === "preview" ? (
+                                  <Eye className="h-4 w-4 mr-2 inline" />
+                                ) : (
+                                  <Send className="h-4 w-4 mr-2 inline" />
+                                )}
+                                {actionMode === "analyze" ? "Match" : actionMode === "preview" ? "Preview" : "Request"}
+                              </span>
+                              {(isAnalyzing || isSendingRequest) && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                                </div>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="default" 
+                                  className="rounded-l-none px-2"
+                                  disabled={isAnalyzing || isSendingRequest}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover z-50">
+                                <DropdownMenuItem 
+                                  onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                                  className={actionMode === "analyze" ? "bg-accent" : ""}
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Match
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                                  className={actionMode === "request" ? "bg-accent" : ""}
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Request
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                                  className={actionMode === "preview" ? "bg-accent" : ""}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Preview
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative">
+                              <Input
+                                placeholder="Enter request URL (e.g., https://api.example.com/v1/users)"
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                                className={`bg-background pr-8 ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                              />
+                              {!urlValidation.isValid && !urlValidation.isEmpty && (
+                                <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {!urlValidation.isValid && !urlValidation.isEmpty && (
+                            <TooltipContent>
+                              <p>{urlValidation.message}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </div>
+
+                      {/* Standard Mode - Tabs for Params, Headers, Body */}
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="w-full justify-start bg-muted/50">
+                          <TabsTrigger value="params">Query Params</TabsTrigger>
+                          <TabsTrigger value="headers">Headers</TabsTrigger>
+                          <TabsTrigger value="body">Body</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="params" className="space-y-3 mt-4">
+                          {queryParams.map((param, index) => {
+                            const validationStatus = param.enabled ? getQueryParamValidationStatus(param.key) : null;
+                            const isDuplicate = param.enabled ? isQueryParamDuplicate(index, param.key) : false;
+                            const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
+                            return (
+                              <div key={index} className="flex gap-2 items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={param.enabled}
+                                  onChange={(e) => updateQueryParam(index, "enabled", e.target.checked)}
+                                  className="h-4 w-4 rounded border-border"
+                                />
+                                <Input
+                                  placeholder="Parameter name"
+                                  value={param.key}
+                                  onChange={(e) => updateQueryParam(index, "key", e.target.value)}
+                                  className={`flex-1 bg-background ${borderClass}`}
+                                />
+                                <Input
+                                  placeholder="Value"
+                                  value={param.value}
+                                  onChange={(e) => updateQueryParam(index, "value", e.target.value)}
+                                  className={`flex-1 bg-background ${borderClass}`}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeQueryParam(index)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                          <Button variant="outline" size="sm" onClick={addQueryParam}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Parameter
+                          </Button>
+                        </TabsContent>
+
+                        <TabsContent value="headers" className="space-y-3 mt-4">
+                          {headers.map((header, index) => {
+                            const validationStatus = header.enabled ? getHeaderValidationStatus(header.key) : null;
+                            const isDuplicate = header.enabled ? isHeaderDuplicate(index, header.key) : false;
+                            const borderClass = getValidationBorderClass(validationStatus, isDuplicate);
+                            return (
+                              <div key={index} className="flex gap-2 items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={header.enabled}
+                                  onChange={(e) => updateHeader(index, "enabled", e.target.checked)}
+                                  className="h-4 w-4 rounded border-border"
+                                />
+                                <Input
+                                  placeholder="Header name"
+                                  value={header.key}
+                                  onChange={(e) => updateHeader(index, "key", e.target.value)}
+                                  className={`flex-1 bg-background ${borderClass}`}
+                                />
+                                <Input
+                                  placeholder="Value"
+                                  value={header.value}
+                                  onChange={(e) => updateHeader(index, "value", e.target.value)}
+                                  className={`flex-1 bg-background ${borderClass}`}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeHeader(index)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                          <Button variant="outline" size="sm" onClick={addHeader}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Header
+                          </Button>
+                        </TabsContent>
+
+                        <TabsContent value="body" className="mt-4">
+                          <RequestBodyEditor
+                            value={body}
+                            onChange={setBody}
+                            bodyType={bodyType}
+                            onBodyTypeChange={setBodyType}
+                            rawType={rawType}
+                            onRawTypeChange={setRawType}
+                            formData={formData}
+                            onFormDataChange={setFormData}
+                          />
+                        </TabsContent>
+                      </Tabs>
+                    </>
+                  ) : (
+                    /* OpenAPI Mode */
+                    <div className="space-y-4">
+                      {/* URL Bar - Same layout as standard mode */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2 items-center justify-between">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Select value={openAPIOperation?.method || ""} disabled>
+                                  <SelectTrigger className="w-[100px] bg-background opacity-70 cursor-not-allowed">
+                                    <SelectValue placeholder="Method">
+                                      {openAPIOperation?.method ? (
+                                        <span className={
+                                          openAPIOperation.method === "GET" ? "text-green-500" :
+                                          openAPIOperation.method === "POST" ? "text-yellow-500" :
+                                          openAPIOperation.method === "PUT" ? "text-blue-500" :
+                                          openAPIOperation.method === "PATCH" ? "text-purple-500" :
+                                          openAPIOperation.method === "DELETE" ? "text-red-500" :
+                                          "text-muted-foreground"
+                                        }>
+                                          {openAPIOperation.method}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">Method</span>
+                                      )}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                </Select>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              <p>Select an operation below to set the method</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <div className="flex">
+                            <Button 
+                              onClick={handleActionButton} 
+                              disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                              className={`rounded-r-none border-r-0 relative min-w-[110px] ${actionMode === "request" && openAPIMissingRequiredParams ? "opacity-50" : ""}`}
+                            >
+                              <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                                {actionMode === "analyze" ? (
+                                  <Search className="h-4 w-4 mr-2 inline" />
+                                ) : actionMode === "preview" ? (
+                                  <Eye className="h-4 w-4 mr-2 inline" />
+                                ) : (
+                                  <Send className="h-4 w-4 mr-2 inline" />
+                                )}
+                                {actionMode === "analyze" ? "Match" : actionMode === "preview" ? "Preview" : "Request"}
+                              </span>
+                              {(isAnalyzing || isSendingRequest) && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                                </div>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="default" 
+                                  className={`rounded-l-none px-2 ${actionMode === "request" && openAPIMissingRequiredParams ? "opacity-50" : ""}`}
+                                  disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover z-50">
+                                <DropdownMenuItem 
+                                  onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                                  className={actionMode === "analyze" ? "bg-accent" : ""}
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Match
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                                  className={actionMode === "request" ? "bg-accent" : ""}
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Request
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                                  className={actionMode === "preview" ? "bg-accent" : ""}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Preview
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        <Input
+                          placeholder={!openAPIServiceId ? "Select an API Service to build the request URL" : "Select an operation to build the request URL"}
+                          value={openAPIOperation && openAPIServerUrl ? (() => {
+                            let fullPath = openAPIOperation.path;
+                            if (openAPIFormValues.pathParams) {
+                              Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+                                fullPath = fullPath.replace(`{${key}}`, String(value || `{${key}}`));
+                              });
+                            }
+                            const queryParts: string[] = [];
+                            if (openAPIFormValues.queryParams) {
+                              Object.entries(openAPIFormValues.queryParams).forEach(([key, value]) => {
+                                if (value !== undefined && value !== null && value !== "") {
+                                  queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+                                }
+                              });
+                            }
+                            const baseUrl = openAPIServerUrl.replace(/\/$/, "");
+                            const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+                            return `${baseUrl}${fullPath}${queryString}`;
+                          })() : ""}
+                          readOnly
+                          disabled={!openAPIServiceId}
+                          className="bg-background"
+                        />
+                      </div>
+
+                      <OpenAPISelection
+                        services={services}
+                        selectedServiceId={openAPIServiceId}
+                        selectedOperationKey={openAPIOperationKey}
+                        serverUrl={openAPIServerUrl}
+                        formValues={openAPIFormValues}
+                        onServiceChange={setOpenAPIServiceId}
+                        onOperationChange={setOpenAPIOperationKey}
+                        onServerUrlChange={setOpenAPIServerUrl}
+                        onFormValuesChange={setOpenAPIFormValues}
+                        onOperationParsed={setOpenAPIOperation}
+                        onSpecParsed={setOpenAPIParsedSpec}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="response" className="mt-0">
+              {/* Response panel content - same as right panel but in a card */}
+              <Card className="border border-border bg-card/50 overflow-auto">
+                <CardHeader className="pb-4">
+                  <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as "match" | "response" | "preview")}>
+                    <div className="flex items-center justify-between mb-4">
+                      <TabsList className="bg-muted/50 flex-wrap h-auto gap-1">
+                        <TabsTrigger value="match" className="flex items-center gap-1 text-xs px-2">
+                          {matchResult ? (() => {
+                            const errorCount = matchResult.validationErrors?.length || 0;
+                            const warningCount = matchResult.validationWarnings?.length || 0;
+                            const invalidCount = matchResult.operation ? [
+                              ...(matchResult.operation.pathParameters || []),
+                              ...(matchResult.operation.queryParameters || []),
+                              ...(matchResult.operation.headerParameters || []),
+                              ...(matchResult.operation.bodyProperties || []),
+                            ].filter(p => !p.isValid).length : 0;
+                            
+                            if (errorCount > 0 || invalidCount > 0) {
+                              return (
+                                <span className="flex items-center gap-1 text-destructive">
+                                  <FileCode className="h-3 w-3" />
+                                  <span>Match</span>
+                                  <Badge variant="destructive" className="ml-1 text-xs">
+                                    {errorCount + invalidCount}
+                                  </Badge>
+                                </span>
+                              );
+                            } else if (warningCount > 0) {
+                              return (
+                                <span className="flex items-center gap-1 text-orange-500">
+                                  <FileCode className="h-3 w-3" />
+                                  <span>Match</span>
+                                  <Badge className="ml-1 text-xs bg-orange-500 hover:bg-orange-600">
+                                    {warningCount}
+                                  </Badge>
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="flex items-center gap-1 text-green-500">
+                                  <FileCode className="h-3 w-3" />
+                                  <span>Match</span>
+                                </span>
+                              );
+                            }
+                          })() : (
+                            <>
+                              <FileCode className="h-3 w-3" />
+                              <span>Match</span>
+                            </>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="response" className="flex items-center gap-1 text-xs px-2">
+                          <Send className="h-3 w-3" />
+                          Response
+                          {requestResponse && (
+                            <Badge 
+                              variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
+                              className={`ml-1 text-xs ${requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                            >
+                              {requestResponse.status}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="preview" className="flex items-center gap-1 text-xs px-2">
+                          <Eye className="h-3 w-3" />
+                          Preview
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
+                    
+                    <TabsContent value="match" className="mt-0">
+                      {!matchResult ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <FileCode className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Enter a URL and click "Match" to match against OpenAPI specs</p>
+                        </div>
+                      ) : !matchResult.matched ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
+                          <p className="text-destructive">No matching API found</p>
+                          <p className="text-sm mt-2">The URL doesn't match any registered service endpoints</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* API Match - Mobile - Only show in standard mode */}
+                          {builderMode === "standard" && (
+                            <Collapsible
+                              open={!collapsedSections.apiMatch}
+                              onOpenChange={() => toggleSection('apiMatch')}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <CheckCircle className="h-4 w-4" />
+                                  API Match
+                                  <ToggleGroup
+                                    type="single"
+                                    value={matchMode}
+                                    onValueChange={(value) => {
+                                      if (value) setMatchMode(value as "auto" | "manual");
+                                    }}
+                                    className="h-5"
+                                  >
+                                    <ToggleGroupItem value="auto" className="h-5 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                                      Auto
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="manual" className="h-5 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                                      Manual
+                                    </ToggleGroupItem>
+                                  </ToggleGroup>
+                                </div>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.apiMatch ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg p-3 border border-border mt-2 space-y-3">
+                                  {matchMode === "auto" ? (
+                                    <div className="text-xs text-muted-foreground">
+                                      API service and operation will be automatically detected from the request URL.
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {/* Service Selector */}
+                                      <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">Select API Service</label>
+                                        <Select 
+                                          value={selectedServiceId || "__auto__"} 
+                                          onValueChange={(value) => {
+                                            setSelectedServiceId(value === "__auto__" ? null : value);
+                                            setSelectedOperationKey(null);
+                                          }}
+                                        >
+                                          <SelectTrigger className="bg-background text-sm">
+                                            <SelectValue placeholder="Select a service" />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-popover z-50">
+                                            <SelectItem value="__auto__">Select a service</SelectItem>
+                                            {services.map((service) => (
+                                              <SelectItem key={service.id} value={service.id}>
+                                                {service.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      
+                                      {/* Operation Selector */}
+                                      {selectedServiceId && (
+                                        <div className="space-y-1">
+                                          <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                            Select Operation
+                                            {selectedOperationKey && (() => {
+                                              const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                                              return (
+                                                <>
+                                                  {selectedOp?.operationId && (
+                                                    <span className="ml-1 font-mono text-foreground">{selectedOp.operationId}</span>
+                                                  )}
+                                                  {(selectedOp?.summary || selectedOp?.description) && (
+                                                    <Popover>
+                                                      <PopoverTrigger asChild>
+                                                        <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                                                      </PopoverTrigger>
+                                                      <PopoverContent side="top" className="max-w-xs text-xs p-3">
+                                                        {selectedOp.summary && <p className="font-medium">{selectedOp.summary}</p>}
+                                                        {selectedOp.summary && selectedOp.description && <br />}
+                                                        {selectedOp.description && <p>{selectedOp.description}</p>}
+                                                      </PopoverContent>
+                                                    </Popover>
+                                                  )}
+                                                </>
+                                              );
+                                            })()}
+                                          </label>
+                                          <Select 
+                                            value={selectedOperationKey || "__auto__"} 
+                                            onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
+                                          >
+                                            <SelectTrigger className="bg-background text-sm">
+                                              <SelectValue placeholder="Select an operation">
+                                                {selectedOperationKey ? (() => {
+                                                  const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                                                  return selectedOp ? (
+                                                    <span>
+                                                      <span className={`font-mono text-xs mr-2 ${
+                                                        selectedOp.method === "GET" ? "text-green-500" :
+                                                        selectedOp.method === "POST" ? "text-yellow-500" :
+                                                        selectedOp.method === "PUT" ? "text-blue-500" :
+                                                        selectedOp.method === "DELETE" ? "text-red-500" :
+                                                        "text-muted-foreground"
+                                                      }`}>
+                                                        {selectedOp.method}
+                                                      </span>
+                                                      <span className="font-mono text-xs text-foreground">{selectedOp.path}</span>
+                                                    </span>
+                                                  ) : null;
+                                                })() : (
+                                                  <span className="text-muted-foreground">Select an operation</span>
+                                                )}
+                                              </SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-popover z-50 max-h-[300px]">
+                                              <SelectItem value="__auto__">Select an operation</SelectItem>
+                                              {availableOperations.map((op) => (
+                                                <SelectItem key={op.key} value={op.key}>
+                                                  <span className={`font-mono text-xs mr-2 ${
+                                                    op.method === "GET" ? "text-green-500" :
+                                                    op.method === "POST" ? "text-yellow-500" :
+                                                    op.method === "PUT" ? "text-blue-500" :
+                                                    op.method === "DELETE" ? "text-red-500" :
+                                                    "text-muted-foreground"
+                                                  }`}>
+                                                    {op.method}
+                                                  </span>
+                                                  <span className="font-mono text-xs text-foreground">{op.path}</span>
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      )}
+
+                                      {/* Manual Mode Message */}
+                                      {selectedServiceId && selectedOperationKey && (
+                                        <div className="flex items-center gap-2 text-xs text-primary">
+                                          <Lock className="h-3 w-3" />
+                                          <span>Validation locked to selected operation</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {/* Server URL - Mobile */}
+                          <Collapsible
+                            open={!collapsedSections.server}
+                            onOpenChange={() => toggleSection('server')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Server className="h-4 w-4" />
+                                Server URL
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                  {collapsedSections.server ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-3 border border-border mt-2 space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">Index:</span>
+                                  <Badge variant="outline" className="font-mono text-xs">{matchResult.server?.index}</Badge>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">URL Template:</p>
+                                  <code className="text-xs text-primary break-all">{matchResult.server?.url}</code>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Resolved URL:</p>
+                                  <code className="text-xs text-foreground break-all">{matchResult.server?.resolvedUrl}</code>
+                                </div>
+                                {matchResult.server?.description && (
+                                  <p className="text-xs text-muted-foreground italic">{matchResult.server.description}</p>
+                                )}
+                                {/* Server Variables */}
+                                {matchResult.server?.variables && matchResult.server.variables.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-border">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">Variables:</p>
+                                    <div className="space-y-1">
+                                      {matchResult.server.variables.map((variable, index) => (
+                                        <div key={index} className="flex items-center gap-2 text-xs flex-wrap">
+                                          <span className="font-mono text-foreground">{variable.name}:</span>
+                                          <Badge variant="secondary" className="font-mono text-xs">{variable.value}</Badge>
+                                          {variable.default && variable.value === variable.default && (
+                                            <span className="text-muted-foreground">(default)</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          {/* Operation - minimized by default in OpenAPI mode */}
+                          <Collapsible
+                            open={!collapsedSections.operation}
+                            onOpenChange={() => toggleSection('operation')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Route className="h-4 w-4" />
+                                Operation
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                  {collapsedSections.operation ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-3 border border-border space-y-2 mt-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge className={`text-xs ${
+                                    matchResult.operation?.method === "GET" ? "bg-green-600 hover:bg-green-700" :
+                                    matchResult.operation?.method === "POST" ? "bg-yellow-600 hover:bg-yellow-700" :
+                                    matchResult.operation?.method === "PUT" ? "bg-blue-600 hover:bg-blue-700" :
+                                    matchResult.operation?.method === "DELETE" ? "bg-red-600 hover:bg-red-700" :
+                                    "bg-muted"
+                                  }`}>
+                                    {matchResult.operation?.method}
+                                  </Badge>
+                                  <code className="text-foreground text-xs break-all">{matchResult.operation?.path}</code>
+                                </div>
+                                {matchResult.operation?.operationId && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">ID: </span>
+                                    <code className="text-primary">{matchResult.operation.operationId}</code>
+                                  </div>
+                                )}
+                                {matchResult.operation?.summary && (
+                                  <p className="text-xs text-muted-foreground">{matchResult.operation.summary}</p>
+                                )}
+                                {matchResult.operation?.description && (
+                                  <Collapsible open={showDescription} onOpenChange={setShowDescription}>
+                                    <CollapsibleTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="p-0 h-auto text-primary hover:text-primary/80 text-xs">
+                                        {showDescription ? (
+                                          <>
+                                            <ChevronUp className="h-3 w-3 mr-1" />
+                                            Hide description
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ChevronDown className="h-3 w-3 mr-1" />
+                                            Show description
+                                          </>
+                                        )}
+                                      </Button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                      <p className="text-xs text-muted-foreground mt-2 whitespace-pre-wrap">
+                                        {matchResult.operation.description}
+                                      </p>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          {/* Path Parameters */}
+                          {matchResult.operation?.pathParameters && matchResult.operation.pathParameters.length > 0 && (
+                            <Collapsible
+                              open={!collapsedSections.pathParams}
+                              onOpenChange={() => toggleSection('pathParams')}
+                            >
+                              <div className="flex items-center justify-between">
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.pathParameters.filter(p => !p.isValid).length;
+                                  return (
+                                    <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                      <Route className="h-4 w-4" />
+                                      Path Params
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchResult.operation.pathParameters.length}
+                                      </Badge>
+                                      <Badge 
+                                        variant={invalidCount > 0 ? "destructive" : "default"} 
+                                        className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                      >
+                                        {invalidCount} invalid
+                                      </Badge>
+                                    </div>
+                                  );
+                                })()}
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.pathParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg border border-border mt-2 overflow-x-auto">
+                                  <div className="space-y-2 p-3">
+                                    {matchResult.operation.pathParameters.map((param, index) => (
+                                      <MobileExpandableParameter
+                                        key={index}
+                                        name={param.name}
+                                        type={param.type}
+                                        required={param.required}
+                                        value={param.value}
+                                        defaultValue={param.defaultValue}
+                                        isUsingDefault={param.isUsingDefault}
+                                        isUnspecified={param.isUnspecified}
+                                        isValid={param.isValid}
+                                        validationReason={param.validationReason}
+                                        description={param.description}
+                                        rawJson={param.rawJson}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {/* Query Parameters */}
+                          {matchResult.operation?.queryParameters && matchResult.operation.queryParameters.length > 0 && (
+                            <Collapsible
+                              open={!collapsedSections.queryParams}
+                              onOpenChange={() => toggleSection('queryParams')}
+                            >
+                              <div className="flex items-center justify-between">
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.queryParameters.filter(p => !p.isValid).length;
+                                  return (
+                                    <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                      <Hash className="h-4 w-4" />
+                                      Query Params
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchResult.operation.queryParameters.length}
+                                      </Badge>
+                                      <Badge 
+                                        variant={invalidCount > 0 ? "destructive" : "default"} 
+                                        className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                      >
+                                        {invalidCount} invalid
+                                      </Badge>
+                                    </div>
+                                  );
+                                })()}
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.queryParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg border border-border mt-2 overflow-x-auto">
+                                  <div className="space-y-2 p-3">
+                                    {matchResult.operation.queryParameters.map((param, index) => (
+                                      <MobileExpandableParameter
+                                        key={index}
+                                        name={param.name}
+                                        type={param.type}
+                                        required={param.required}
+                                        value={param.value}
+                                        defaultValue={param.defaultValue}
+                                        isUsingDefault={param.isUsingDefault}
+                                        isUnspecified={param.isUnspecified}
+                                        isValid={param.isValid}
+                                        validationReason={param.validationReason}
+                                        description={param.description}
+                                        rawJson={param.rawJson}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {/* Header Parameters */}
+                          {matchResult.operation?.headerParameters && matchResult.operation.headerParameters.length > 0 && (
+                            <Collapsible
+                              open={!collapsedSections.headerParams}
+                              onOpenChange={() => toggleSection('headerParams')}
+                            >
+                              <div className="flex items-center justify-between">
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.headerParameters.filter(p => !p.isValid).length;
+                                  return (
+                                    <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                      <FileCode className="h-4 w-4" />
+                                      Header Params
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchResult.operation.headerParameters.length}
+                                      </Badge>
+                                      <Badge 
+                                        variant={invalidCount > 0 ? "destructive" : "default"} 
+                                        className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                      >
+                                        {invalidCount} invalid
+                                      </Badge>
+                                    </div>
+                                  );
+                                })()}
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.headerParams ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg border border-border mt-2 overflow-x-auto">
+                                  <div className="space-y-2 p-3">
+                                    {matchResult.operation.headerParameters.map((param, index) => (
+                                      <MobileExpandableParameter
+                                        key={index}
+                                        name={param.name}
+                                        type={param.type}
+                                        required={param.required}
+                                        value={param.value}
+                                        defaultValue={param.defaultValue}
+                                        isUsingDefault={param.isUsingDefault}
+                                        isUnspecified={param.isUnspecified}
+                                        isValid={param.isValid}
+                                        validationReason={param.validationReason}
+                                        description={param.description}
+                                        rawJson={param.rawJson}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {/* Body Properties */}
+                          {matchResult.operation?.bodyProperties && matchResult.operation.bodyProperties.length > 0 && (
+                            <Collapsible
+                              open={!collapsedSections.bodyProps}
+                              onOpenChange={() => toggleSection('bodyProps')}
+                            >
+                              <div className="flex items-center justify-between">
+                                {(() => {
+                                  const invalidCount = matchResult.operation!.bodyProperties.filter(p => !p.isValid).length;
+                                  return (
+                                    <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                      <FileCode className="h-4 w-4" />
+                                      Body Props
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchResult.operation.bodyProperties.length}
+                                      </Badge>
+                                      <Badge 
+                                        variant={invalidCount > 0 ? "destructive" : "default"} 
+                                        className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                      >
+                                        {invalidCount} invalid
+                                      </Badge>
+                                    </div>
+                                  );
+                                })()}
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.bodyProps ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg border border-border mt-2 overflow-x-auto">
+                                  <div className="space-y-2 p-3">
+                                    {matchResult.operation.bodyProperties.map((prop, index) => (
+                                      <MobileExpandableParameter
+                                        key={index}
+                                        name={prop.name}
+                                        type={prop.type}
+                                        required={prop.required}
+                                        value={prop.value !== null ? JSON.stringify(prop.value) : null}
+                                        isValid={prop.isValid}
+                                        validationReason={prop.validationReason}
+                                        description={prop.description}
+                                        rawJson={prop.rawJson}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {/* Validation */}
+                          <Collapsible
+                            open={!collapsedSections.validation}
+                            onOpenChange={() => toggleSection('validation')}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className={`flex items-center gap-2 text-sm ${
+                                matchResult.validationErrors.length > 0 
+                                  ? "text-destructive" 
+                                  : matchResult.validationWarnings.length > 0 
+                                    ? "text-orange-500" 
+                                    : "text-green-500"
+                              }`}>
+                                <AlertCircle className="h-4 w-4" />
+                                Validation
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                  {collapsedSections.validation ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-3 border border-border mt-2 space-y-3">
+                                {matchResult.validationErrors.length === 0 && matchResult.validationWarnings.length === 0 ? (
+                                  <div className="flex items-center gap-2 text-success text-sm">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span>Request is valid</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    {matchResult.validationErrors.length > 0 && (
+                                      <ul className="space-y-2">
+                                        {matchResult.validationErrors.map((error, index) => (
+                                          <li key={index} className="flex items-start gap-2 text-destructive text-sm min-w-0">
+                                            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                            <span className="flex-1 min-w-0 break-words">{error}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                    {matchResult.validationWarnings.length > 0 && (
+                                      <ul className="space-y-2">
+                                        {matchResult.validationWarnings.map((warning, index) => (
+                                          <li key={index} className="flex items-start gap-2 text-warning text-sm min-w-0">
+                                            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                            <span className="flex-1 min-w-0 break-words">{warning}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="response" className="mt-0">
+                      {isSendingRequest ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+                          <p>Sending request...</p>
+                        </div>
+                      ) : !requestResponse ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Send className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Send a request to see the response</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <Badge 
+                              variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
+                              className={`text-sm px-3 py-1 ${requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600" : ""}`}
+                            >
+                              {requestResponse.status} {requestResponse.statusText}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {requestResponse.duration}ms
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {new Blob([requestResponse.body]).size >= 1024 
+                                ? `${(new Blob([requestResponse.body]).size / 1024).toFixed(1)} KB`
+                                : `${new Blob([requestResponse.body]).size} B`}
+                            </span>
+                          </div>
+                          
+                          {/* Response Headers */}
+                          <Collapsible>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <FileCode className="h-4 w-4" />
+                                Headers
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  {Object.keys(requestResponse.headers).length}
+                                </Badge>
+                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                              <div className="bg-background rounded-lg p-3 border border-border mt-2">
+                                {Object.keys(requestResponse.headers).length === 0 ? (
+                                  <p className="text-muted-foreground text-sm">No headers returned</p>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                      <thead>
+                                        <tr className="border-b border-border">
+                                          <th className="text-left px-2 py-2 font-medium text-muted-foreground">Name</th>
+                                          <th className="text-left px-2 py-2 font-medium text-muted-foreground">Value</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(requestResponse.headers).map(([key, value], index) => (
+                                          <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                                            <td className="px-2 py-2 font-mono text-xs text-foreground">{key}</td>
+                                            <td className="px-2 py-2 font-mono text-xs text-muted-foreground break-all">{value}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                          
+                          <MaximizableCodeViewer
+                            title="Response Body"
+                            content={requestResponse.body}
+                            contentType={requestResponse.headers['content-type'] || requestResponse.headers['Content-Type'] || ''}
+                            responseSchema={getResponseSchemaForStatus(matchResult, requestResponse.status)}
+                            validationErrors={extractValidationErrors(matchResult)}
+                            jmespathState={jmespathState}
+                            onJMESPathStateChange={setJmespathState}
+                            onFormat={() => {
+                              try {
+                                const parsed = JSON.parse(requestResponse.body);
+                                const formatted = JSON.stringify(parsed, null, 2);
+                                setRequestResponse({
+                                  ...requestResponse,
+                                  body: formatted
+                                });
+                                toast.success("Response formatted");
+                              } catch {
+                                toast.error("Invalid JSON - cannot format");
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="preview" className="mt-0">
+                      {(() => {
+                        const preview = buildRequestPreview();
+                        return (
+                          <div className="space-y-4">
+                            {/* Request Line */}
+                            <Collapsible
+                              open={!collapsedSections.previewRequestLine}
+                              onOpenChange={() => toggleSection('previewRequestLine')}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Route className="h-4 w-4" />
+                                  Request Line
+                                </div>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.previewRequestLine ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg p-3 border border-border mt-2">
+                                  <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all">
+                                    <span className={
+                                      method === "GET" ? "text-green-500" :
+                                      method === "POST" ? "text-yellow-500" :
+                                      method === "PUT" ? "text-blue-500" :
+                                      method === "DELETE" ? "text-red-500" :
+                                      "text-foreground"
+                                    }>{method}</span>{" "}
+                                    <span className="text-primary">{preview.fullUrl}</span>{" "}
+                                    <span className="text-muted-foreground">HTTP/1.1</span>
+                                  </pre>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+
+                            {/* Request Headers */}
+                            <Collapsible
+                              open={!collapsedSections.previewHeaders}
+                              onOpenChange={() => toggleSection('previewHeaders')}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <FileCode className="h-4 w-4" />
+                                  Headers
+                                  <Badge variant="secondary" className="text-xs ml-1">
+                                    {Object.keys(preview.previewHeaders).length}
+                                  </Badge>
+                                </div>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    {collapsedSections.previewHeaders ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                <div className="bg-background rounded-lg p-3 border border-border mt-2 overflow-x-auto">
+                                  {Object.keys(preview.previewHeaders).length === 0 ? (
+                                    <p className="text-muted-foreground text-sm">No headers</p>
+                                  ) : (
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="border-b border-border">
+                                          <th className="text-left px-2 py-1 font-medium text-muted-foreground">Name</th>
+                                          <th className="text-left px-2 py-1 font-medium text-muted-foreground">Value</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(preview.previewHeaders).map(([key, value], index) => (
+                                          <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                                            <td className="px-2 py-1 font-mono text-foreground">{key}</td>
+                                            <td className="px-2 py-1 font-mono text-muted-foreground break-all">{value}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+
+                            {/* Request Body */}
+                            {preview.bodyContent && (
+                              <Collapsible
+                                open={!collapsedSections.previewBody}
+                                onOpenChange={() => toggleSection('previewBody')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <FileCode className="h-4 w-4" />
+                                    Body
+                                    <Badge variant="secondary" className="text-xs ml-1">
+                                      {preview.bodyContent.length} chars
+                                    </Badge>
+                                  </div>
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                      {collapsedSections.previewBody ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                </div>
+                                <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                                  <div className="bg-background rounded-lg p-3 border border-border mt-2">
+                                    <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all max-h-[300px] overflow-auto">
+                                      {preview.bodyContent}
+                                    </pre>
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TabsContent>
+                  </Tabs>
+                </CardHeader>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          /* Desktop View - Resizable Panels */
+          <ResizablePanelGroup direction="horizontal" className="min-h-[600px] rounded-lg border border-border">
+            <ResizablePanel defaultSize={50} minSize={30}>
+              {/* Left Panel - Request Builder */}
+              <Card className="border-0 bg-card/50 h-full rounded-none">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -2057,28 +3398,87 @@ const ApiTester = () => {
               {builderMode === "standard" ? (
                 <>
                   {/* Standard Mode - URL Bar */}
-                  <div className="flex gap-2">
-                    <Select value={method} onValueChange={setMethod}>
-                      <SelectTrigger className="w-[120px] bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {HTTP_METHODS.map((m) => (
-                          <SelectItem key={m} value={m}>
-                            <span className={
-                              m === "GET" ? "text-green-500" :
-                              m === "POST" ? "text-yellow-500" :
-                              m === "PUT" ? "text-blue-500" :
-                              m === "PATCH" ? "text-purple-500" :
-                              m === "DELETE" ? "text-red-500" :
-                              "text-muted-foreground"
-                            }>
-                              {m}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2 items-center justify-between xl:hidden">
+                      <Select value={method} onValueChange={setMethod}>
+                        <SelectTrigger className="w-[100px] bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          {HTTP_METHODS.map((m) => (
+                            <SelectItem key={m} value={m}>
+                              <span className={
+                                m === "GET" ? "text-green-500" :
+                                m === "POST" ? "text-yellow-500" :
+                                m === "PUT" ? "text-blue-500" :
+                                m === "PATCH" ? "text-purple-500" :
+                                m === "DELETE" ? "text-red-500" :
+                                "text-muted-foreground"
+                              }>
+                                {m}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex">
+                        <Button 
+                          onClick={handleActionButton} 
+                          disabled={isAnalyzing || isSendingRequest}
+                          className="rounded-r-none border-r-0 relative min-w-[110px]"
+                        >
+                          <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                            {actionMode === "analyze" ? (
+                              <Search className="h-4 w-4 mr-2 inline" />
+                            ) : actionMode === "preview" ? (
+                              <Eye className="h-4 w-4 mr-2 inline" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2 inline" />
+                            )}
+                            {actionMode === "analyze" ? "Match" : actionMode === "preview" ? "Preview" : "Request"}
+                          </span>
+                          {(isAnalyzing || isSendingRequest) && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                            </div>
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="default" 
+                              className="rounded-l-none px-2"
+                              disabled={isAnalyzing || isSendingRequest}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover z-50">
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                              className={actionMode === "analyze" ? "bg-accent" : ""}
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              Match
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                              className={actionMode === "request" ? "bg-accent" : ""}
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Request
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                              className={actionMode === "preview" ? "bg-accent" : ""}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Input
@@ -2090,7 +3490,7 @@ const ApiTester = () => {
                               handleActionButton();
                             }
                           }}
-                          className={`flex-1 bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                          className={`bg-background xl:hidden ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                         />
                       </TooltipTrigger>
                       {!urlValidation.isValid && !urlValidation.isEmpty && (
@@ -2099,62 +3499,106 @@ const ApiTester = () => {
                         </TooltipContent>
                       )}
                     </Tooltip>
-                    <div className="flex">
-                      <Button 
-                        onClick={handleActionButton} 
-                        disabled={isAnalyzing || isSendingRequest}
-                        className="rounded-r-none border-r-0 relative min-w-[110px]"
-                      >
-                        <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
-                          {actionMode === "analyze" ? (
-                            <Search className="h-4 w-4 mr-2 inline" />
-                          ) : actionMode === "preview" ? (
-                            <Eye className="h-4 w-4 mr-2 inline" />
-                          ) : (
-                            <Send className="h-4 w-4 mr-2 inline" />
-                          )}
-                          {actionMode === "analyze" ? "Analyze" : actionMode === "preview" ? "Preview" : "Request"}
-                        </span>
-                        {(isAnalyzing || isSendingRequest) && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
-                          </div>
+                    {/* Desktop layout - all on one row */}
+                    <div className="hidden xl:flex gap-2">
+                      <Select value={method} onValueChange={setMethod}>
+                        <SelectTrigger className="w-[120px] bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          {HTTP_METHODS.map((m) => (
+                            <SelectItem key={m} value={m}>
+                              <span className={
+                                m === "GET" ? "text-green-500" :
+                                m === "POST" ? "text-yellow-500" :
+                                m === "PUT" ? "text-blue-500" :
+                                m === "PATCH" ? "text-purple-500" :
+                                m === "DELETE" ? "text-red-500" :
+                                "text-muted-foreground"
+                              }>
+                                {m}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Input
+                            placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                            value={url}
+                            onChange={(e) => handleUrlChange(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
+                                handleActionButton();
+                              }
+                            }}
+                            className={`flex-1 bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                          />
+                        </TooltipTrigger>
+                        {!urlValidation.isValid && !urlValidation.isEmpty && (
+                          <TooltipContent side="bottom" className="bg-destructive text-destructive-foreground">
+                            <p>{urlValidation.message}</p>
+                          </TooltipContent>
                         )}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="default" 
-                            className="rounded-l-none px-2"
-                            disabled={isAnalyzing || isSendingRequest}
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover z-50">
-                          <DropdownMenuItem 
-                            onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
-                            className={actionMode === "analyze" ? "bg-accent" : ""}
-                          >
-                            <Search className="h-4 w-4 mr-2" />
-                            Analyze
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
-                            className={actionMode === "request" ? "bg-accent" : ""}
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            Request
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
-                            className={actionMode === "preview" ? "bg-accent" : ""}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      </Tooltip>
+                      <div className="flex">
+                        <Button 
+                          onClick={handleActionButton} 
+                          disabled={isAnalyzing || isSendingRequest}
+                          className="rounded-r-none border-r-0 relative min-w-[110px]"
+                        >
+                          <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                            {actionMode === "analyze" ? (
+                              <Search className="h-4 w-4 mr-2 inline" />
+                            ) : actionMode === "preview" ? (
+                              <Eye className="h-4 w-4 mr-2 inline" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2 inline" />
+                            )}
+                            {actionMode === "analyze" ? "Match" : actionMode === "preview" ? "Preview" : "Request"}
+                          </span>
+                          {(isAnalyzing || isSendingRequest) && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                            </div>
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="default" 
+                              className="rounded-l-none px-2"
+                              disabled={isAnalyzing || isSendingRequest}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover z-50">
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                              className={actionMode === "analyze" ? "bg-accent" : ""}
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              Match
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                              className={actionMode === "request" ? "bg-accent" : ""}
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Request
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                              className={actionMode === "preview" ? "bg-accent" : ""}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
 
@@ -2268,36 +3712,96 @@ const ApiTester = () => {
                 /* OpenAPI Mode */
                 <div className="space-y-4">
                   {/* URL Bar - Same layout as standard mode */}
-                  <div className="flex gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <Select value={openAPIOperation?.method || ""} disabled>
-                            <SelectTrigger className="w-[120px] bg-background opacity-70 cursor-not-allowed">
-                              <SelectValue placeholder="Method">
-                                {openAPIOperation?.method ? (
-                                  <span className={
-                                    openAPIOperation.method === "GET" ? "text-green-500" :
-                                    openAPIOperation.method === "POST" ? "text-yellow-500" :
-                                    openAPIOperation.method === "PUT" ? "text-blue-500" :
-                                    openAPIOperation.method === "PATCH" ? "text-purple-500" :
-                                    openAPIOperation.method === "DELETE" ? "text-red-500" :
-                                    "text-muted-foreground"
-                                  }>
-                                    {openAPIOperation.method}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">Method</span>
-                                )}
-                              </SelectValue>
-                            </SelectTrigger>
-                          </Select>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p>Select an operation below to set the method</p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <div className="flex flex-col gap-2">
+                    {/* Mobile/tablet layout - method and button on same row, URL below */}
+                    <div className="flex gap-2 items-center justify-between xl:hidden">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Select value={openAPIOperation?.method || ""} disabled>
+                              <SelectTrigger className="w-[100px] bg-background opacity-70 cursor-not-allowed">
+                                <SelectValue placeholder="Method">
+                                  {openAPIOperation?.method ? (
+                                    <span className={
+                                      openAPIOperation.method === "GET" ? "text-green-500" :
+                                      openAPIOperation.method === "POST" ? "text-yellow-500" :
+                                      openAPIOperation.method === "PUT" ? "text-blue-500" :
+                                      openAPIOperation.method === "PATCH" ? "text-purple-500" :
+                                      openAPIOperation.method === "DELETE" ? "text-red-500" :
+                                      "text-muted-foreground"
+                                    }>
+                                      {openAPIOperation.method}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">Method</span>
+                                  )}
+                                </SelectValue>
+                              </SelectTrigger>
+                            </Select>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p>Select an operation below to set the method</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <div className="flex">
+                        <Button 
+                          onClick={handleActionButton} 
+                          disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                          className={`rounded-r-none border-r-0 relative min-w-[110px] ${actionMode === "request" && openAPIMissingRequiredParams ? "opacity-50" : ""}`}
+                        >
+                          <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                            {actionMode === "analyze" ? (
+                              <Search className="h-4 w-4 mr-2 inline" />
+                            ) : actionMode === "preview" ? (
+                              <Eye className="h-4 w-4 mr-2 inline" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2 inline" />
+                            )}
+                            {actionMode === "analyze" ? "Match" : actionMode === "preview" ? "Preview" : "Request"}
+                          </span>
+                          {(isAnalyzing || isSendingRequest) && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                            </div>
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="default" 
+                              className={`rounded-l-none px-2 ${actionMode === "request" && openAPIMissingRequiredParams ? "opacity-50" : ""}`}
+                              disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover z-50">
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                              className={actionMode === "analyze" ? "bg-accent" : ""}
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              Match
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                              className={actionMode === "request" ? "bg-accent" : ""}
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Request
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                              className={actionMode === "preview" ? "bg-accent" : ""}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
                     <Input
                       placeholder={!openAPIServiceId ? "Select an API Service to build the request URL" : "Select an operation to build the request URL"}
                       value={openAPIOperation && openAPIServerUrl ? (() => {
@@ -2321,64 +3825,121 @@ const ApiTester = () => {
                       })() : ""}
                       readOnly
                       disabled={!openAPIServiceId}
-                      className="flex-1 bg-background"
+                      className="bg-background xl:hidden"
                     />
-                    <div className="flex">
-                      <Button 
-                        onClick={handleActionButton} 
-                        disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey || (actionMode === "request" && openAPIMissingRequiredParams)}
-                        className="rounded-r-none border-r-0 relative min-w-[110px]"
-                      >
-                        <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
-                          {actionMode === "analyze" ? (
-                            <Search className="h-4 w-4 mr-2 inline" />
-                          ) : actionMode === "preview" ? (
-                            <Eye className="h-4 w-4 mr-2 inline" />
-                          ) : (
-                            <Send className="h-4 w-4 mr-2 inline" />
-                          )}
-                          {actionMode === "analyze" ? "Analyze" : actionMode === "preview" ? "Preview" : "Request"}
-                        </span>
-                        {(isAnalyzing || isSendingRequest) && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                    {/* Desktop layout - all on one row */}
+                    <div className="hidden xl:flex gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Select value={openAPIOperation?.method || ""} disabled>
+                              <SelectTrigger className="w-[120px] bg-background opacity-70 cursor-not-allowed">
+                                <SelectValue placeholder="Method">
+                                  {openAPIOperation?.method ? (
+                                    <span className={
+                                      openAPIOperation.method === "GET" ? "text-green-500" :
+                                      openAPIOperation.method === "POST" ? "text-yellow-500" :
+                                      openAPIOperation.method === "PUT" ? "text-blue-500" :
+                                      openAPIOperation.method === "PATCH" ? "text-purple-500" :
+                                      openAPIOperation.method === "DELETE" ? "text-red-500" :
+                                      "text-muted-foreground"
+                                    }>
+                                      {openAPIOperation.method}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">Method</span>
+                                  )}
+                                </SelectValue>
+                              </SelectTrigger>
+                            </Select>
                           </div>
-                        )}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="default" 
-                            className="rounded-l-none px-2"
-                            disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey || (actionMode === "request" && openAPIMissingRequiredParams)}
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover z-50">
-                          <DropdownMenuItem 
-                            onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
-                            className={actionMode === "analyze" ? "bg-accent" : ""}
-                          >
-                            <Search className="h-4 w-4 mr-2" />
-                            Analyze
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
-                            className={actionMode === "request" ? "bg-accent" : ""}
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            Request
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
-                            className={actionMode === "preview" ? "bg-accent" : ""}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p>Select an operation below to set the method</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Input
+                        placeholder={!openAPIServiceId ? "Select an API Service to build the request URL" : "Select an operation to build the request URL"}
+                        value={openAPIOperation && openAPIServerUrl ? (() => {
+                          let fullPath = openAPIOperation.path;
+                          if (openAPIFormValues.pathParams) {
+                            Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
+                              fullPath = fullPath.replace(`{${key}}`, String(value || `{${key}}`));
+                            });
+                          }
+                          const queryParts: string[] = [];
+                          if (openAPIFormValues.queryParams) {
+                            Object.entries(openAPIFormValues.queryParams).forEach(([key, value]) => {
+                              if (value !== undefined && value !== null && value !== "") {
+                                queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+                              }
+                            });
+                          }
+                          const baseUrl = openAPIServerUrl.replace(/\/$/, "");
+                          const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+                          return `${baseUrl}${fullPath}${queryString}`;
+                        })() : ""}
+                        readOnly
+                        disabled={!openAPIServiceId}
+                        className="flex-1 bg-background"
+                      />
+                      <div className="flex">
+                        <Button 
+                          onClick={handleActionButton} 
+                          disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                          className={`rounded-r-none border-r-0 relative min-w-[110px] ${actionMode === "request" && openAPIMissingRequiredParams ? "opacity-50" : ""}`}
+                        >
+                          <span className={isAnalyzing || isSendingRequest ? "invisible" : ""}>
+                            {actionMode === "analyze" ? (
+                              <Search className="h-4 w-4 mr-2 inline" />
+                            ) : actionMode === "preview" ? (
+                              <Eye className="h-4 w-4 mr-2 inline" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2 inline" />
+                            )}
+                            {actionMode === "analyze" ? "Match" : actionMode === "preview" ? "Preview" : "Request"}
+                          </span>
+                          {(isAnalyzing || isSendingRequest) && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                            </div>
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="default" 
+                              className={`rounded-l-none px-2 ${actionMode === "request" && openAPIMissingRequiredParams ? "opacity-50" : ""}`}
+                              disabled={isAnalyzing || isSendingRequest || !openAPIServiceId || !openAPIOperationKey}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover z-50">
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("analyze"); setRightPanelTab("match"); }}
+                              className={actionMode === "analyze" ? "bg-accent" : ""}
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              Match
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("request"); setRightPanelTab("response"); }}
+                              className={actionMode === "request" ? "bg-accent" : ""}
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Request
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => { setActionMode("preview"); setRightPanelTab("preview"); }}
+                              className={actionMode === "preview" ? "bg-accent" : ""}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
 
@@ -2409,214 +3970,395 @@ const ApiTester = () => {
             <Card className="border-0 bg-card/50 h-full rounded-none overflow-auto">
               <CardHeader className="pb-4">
                 <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as "match" | "response")}>
-                  <div className="flex items-center justify-between mb-4">
-                    <TabsList className="bg-muted/50">
-                      <TabsTrigger value="match" className="flex items-center gap-2">
-                        <FileCode className="h-4 w-4" />
-                        OpenAPI Match Results
-                        {matchResult?.operation && (() => {
-                          const invalidCount = [
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4" style={{ containerType: 'inline-size' }}>
+                    {/* Narrow container: Select dropdown + lock button */}
+                    <div className="@[400px]:hidden w-full flex items-center gap-2">
+                      <Select value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as "match" | "response")}>
+                        <SelectTrigger className="flex-1 bg-muted/50">
+                          <SelectValue>
+                            <span className="flex items-center gap-2">
+                              {rightPanelTab === "match" && (() => {
+                                const errorCount = matchResult?.validationErrors?.length || 0;
+                                const warningCount = matchResult?.validationWarnings?.length || 0;
+                                const invalidCount = matchResult?.operation ? [
+                                  ...(matchResult.operation.pathParameters || []),
+                                  ...(matchResult.operation.queryParameters || []),
+                                  ...(matchResult.operation.headerParameters || []),
+                                  ...(matchResult.operation.bodyProperties || []),
+                                ].filter(p => !p.isValid).length : 0;
+                                
+                                if (matchResult && (errorCount > 0 || invalidCount > 0)) {
+                                  return (
+                                    <span className="flex items-center gap-2 text-destructive">
+                                      <FileCode className="h-4 w-4" />
+                                      <span>Match</span>
+                                      <Badge variant="destructive" className="ml-1 text-xs">
+                                        {errorCount + invalidCount}
+                                      </Badge>
+                                    </span>
+                                  );
+                                } else if (matchResult && warningCount > 0) {
+                                  return (
+                                    <span className="flex items-center gap-2 text-orange-500">
+                                      <FileCode className="h-4 w-4" />
+                                      <span>Match</span>
+                                      <Badge className="ml-1 text-xs bg-orange-500 hover:bg-orange-600">
+                                        {warningCount}
+                                      </Badge>
+                                    </span>
+                                  );
+                                } else if (matchResult) {
+                                  return (
+                                    <span className="flex items-center gap-2 text-green-500">
+                                      <FileCode className="h-4 w-4" />
+                                      <span>Match</span>
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <>
+                                      <FileCode className="h-4 w-4" />
+                                      <span>Match</span>
+                                    </>
+                                  );
+                                }
+                              })()}
+                              {rightPanelTab === "response" && (
+                                <>
+                                  <Send className="h-4 w-4" />
+                                  Response
+                                  {requestResponse && (
+                                    <Badge 
+                                      variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
+                                      className={`ml-1 text-xs ${requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                    >
+                                      {requestResponse.status}
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                              {rightPanelTab === "preview" && <><Eye className="h-4 w-4" />Preview</>}
+                            </span>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="match">
+                            {(() => {
+                              const errorCount = matchResult?.validationErrors?.length || 0;
+                              const warningCount = matchResult?.validationWarnings?.length || 0;
+                              const invalidCount = matchResult?.operation ? [
+                                ...(matchResult.operation.pathParameters || []),
+                                ...(matchResult.operation.queryParameters || []),
+                                ...(matchResult.operation.headerParameters || []),
+                                ...(matchResult.operation.bodyProperties || []),
+                              ].filter(p => !p.isValid).length : 0;
+                              
+                              if (matchResult && (errorCount > 0 || invalidCount > 0)) {
+                                return (
+                                  <span className="flex items-center gap-2 text-destructive">
+                                    <FileCode className="h-4 w-4" />
+                                    <span>Match</span>
+                                    <Badge variant="destructive" className="ml-1 text-xs">
+                                      {errorCount + invalidCount}
+                                    </Badge>
+                                  </span>
+                                );
+                              } else if (matchResult && warningCount > 0) {
+                                return (
+                                  <span className="flex items-center gap-2 text-orange-500">
+                                    <FileCode className="h-4 w-4" />
+                                    <span>Match</span>
+                                    <Badge className="ml-1 text-xs bg-orange-500 hover:bg-orange-600">
+                                      {warningCount}
+                                    </Badge>
+                                  </span>
+                                );
+                              } else if (matchResult) {
+                                return (
+                                  <span className="flex items-center gap-2 text-green-500">
+                                    <FileCode className="h-4 w-4" />
+                                    <span>Match</span>
+                                  </span>
+                                );
+                              } else {
+                                return (
+                                  <span className="flex items-center gap-2">
+                                    <FileCode className="h-4 w-4" />
+                                    <span>Match</span>
+                                  </span>
+                                );
+                              }
+                            })()}
+                          </SelectItem>
+                          <SelectItem value="response">
+                            <span className="flex items-center gap-2">
+                              <Send className="h-4 w-4" />
+                              Response
+                              {requestResponse && (
+                                <Badge 
+                                  variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
+                                  className={`ml-1 text-xs ${requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                >
+                                  {requestResponse.status}
+                                </Badge>
+                              )}
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="preview">
+                            <span className="flex items-center gap-2">
+                              <Eye className="h-4 w-4" />
+                              Preview
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Wide container: Tabs */}
+                    <TabsList className="bg-muted/50 hidden @[400px]:grid grid-cols-3 w-full">
+                      <TabsTrigger value="match" className="w-full flex items-center justify-between gap-2">
+                        {matchResult ? (() => {
+                          const errorCount = matchResult.validationErrors?.length || 0;
+                          const warningCount = matchResult.validationWarnings?.length || 0;
+                          const invalidCount = matchResult.operation ? [
                             ...(matchResult.operation.pathParameters || []),
                             ...(matchResult.operation.queryParameters || []),
                             ...(matchResult.operation.headerParameters || []),
                             ...(matchResult.operation.bodyProperties || []),
-                          ].filter(p => !p.isValid).length;
-                          return (
-                            <Badge 
-                              variant={invalidCount > 0 ? "destructive" : "default"}
-                              className={`ml-1 text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
-                            >
-                              {invalidCount} invalid
-                            </Badge>
-                          );
-                        })()}
+                          ].filter(p => !p.isValid).length : 0;
+                          
+                          if (errorCount > 0 || invalidCount > 0) {
+                            return (
+                              <>
+                                <span className="flex items-center gap-2 text-destructive">
+                                  <FileCode className="h-4 w-4 shrink-0" />
+                                  <span>Match</span>
+                                </span>
+                                <Badge variant="destructive" className="ml-auto text-xs">
+                                  {errorCount + invalidCount} invalid
+                                </Badge>
+                              </>
+                            );
+                          } else if (warningCount > 0) {
+                            return (
+                              <>
+                                <span className="flex items-center gap-2 text-orange-500">
+                                  <FileCode className="h-4 w-4 shrink-0" />
+                                  <span>Match</span>
+                                </span>
+                                <Badge className="ml-auto text-xs bg-orange-500 hover:bg-orange-600">
+                                  {warningCount} warning{warningCount > 1 ? 's' : ''}
+                                </Badge>
+                              </>
+                            );
+                          } else {
+                            return (
+                              <span className="flex items-center gap-2 text-green-500">
+                                <FileCode className="h-4 w-4 shrink-0" />
+                                <span>Match</span>
+                              </span>
+                            );
+                          }
+                        })() : (
+                          <span className="flex items-center gap-2">
+                            <FileCode className="h-4 w-4 shrink-0" />
+                            <span>Match</span>
+                          </span>
+                        )}
                       </TabsTrigger>
-                      <TabsTrigger value="response" className="flex items-center gap-2">
-                        <Send className="h-4 w-4" />
-                        Response
+                      <TabsTrigger value="response" className="w-full flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2">
+                          <Send className="h-4 w-4 shrink-0" />
+                          <span>Response</span>
+                        </span>
                         {requestResponse && (
                           <Badge 
                             variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
-                            className="ml-1 text-xs"
+                            className={`ml-auto text-xs ${requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600 hover:bg-green-700" : ""}`}
                           >
                             {requestResponse.status}
                           </Badge>
                         )}
                       </TabsTrigger>
-                      <TabsTrigger value="preview" className="flex items-center gap-2">
-                        <Eye className="h-4 w-4" />
-                        Preview
+                      <TabsTrigger value="preview" className="w-full flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2">
+                          <Eye className="h-4 w-4 shrink-0" />
+                          <span>Preview</span>
+                        </span>
                       </TabsTrigger>
                     </TabsList>
-                    {rightPanelTab === "match" && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant={isLocked || builderMode === "openapi" ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => builderMode !== "openapi" && setIsLocked(!isLocked)}
-                            className="gap-2"
-                            disabled={builderMode === "openapi"}
-                          >
-                            {isLocked || builderMode === "openapi" ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                            {isLocked || builderMode === "openapi" ? "Locked" : "Auto"}
-                          </Button>
-                        </TooltipTrigger>
-                        {builderMode === "openapi" && (
-                          <TooltipContent>
-                            <p>Synced with OpenAPI Request Builder</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    )}
                   </div>
                   
                   <TabsContent value="match" className="mt-0">
-                    {/* API Match Section */}
-                    <Collapsible
-                      open={!collapsedSections.apiMatch}
-                      onOpenChange={() => toggleSection('apiMatch')}
-                    >
-                      <div className="flex items-center justify-between py-2 border-b border-border">
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            {collapsedSections.apiMatch ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                        <div className="flex-1 flex items-center gap-2 ml-2">
-                          <span className="text-sm font-medium">API Match</span>
-                          {builderMode === "openapi" && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Lock className="h-3 w-3 mr-1" />
-                              Synced
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <CollapsibleContent>
-                        <div className="space-y-3 py-3">
-                          <div className="space-y-1">
-                            <label className="text-sm text-muted-foreground">Select API Service</label>
-                            <Select 
-                              value={selectedServiceId || "__auto__"} 
-                              onValueChange={(value) => {
-                                setSelectedServiceId(value === "__auto__" ? null : value);
-                                setSelectedOperationKey(null);
-                              }}
-                              disabled={builderMode === "openapi"}
+                    {/* API Match Section - Only show in standard mode */}
+                    {builderMode === "standard" && (
+                      <Collapsible
+                        open={!collapsedSections.apiMatch}
+                        onOpenChange={() => toggleSection('apiMatch')}
+                      >
+                        <div className="flex items-center justify-between py-2 border-b border-border">
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
                             >
-                              <SelectTrigger className={`bg-background ${builderMode === "openapi" ? "opacity-70" : ""}`}>
-                                <SelectValue placeholder="Auto-detect from URL" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-popover z-50">
-                                <SelectItem value="__auto__">Auto-detect</SelectItem>
-                                {services.map((service) => (
-                                  <SelectItem key={service.id} value={service.id}>
-                                    {service.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              {collapsedSections.apiMatch ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <div className="flex-1 flex items-center gap-2 ml-2">
+                            <span className="text-sm font-medium">API Match</span>
+                            <ToggleGroup
+                              type="single"
+                              value={matchMode}
+                              onValueChange={(value) => {
+                                if (value) setMatchMode(value as "auto" | "manual");
+                              }}
+                              className="h-6"
+                            >
+                              <ToggleGroupItem value="auto" className="h-6 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                                Auto
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value="manual" className="h-6 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                                Manual
+                              </ToggleGroupItem>
+                            </ToggleGroup>
                           </div>
-                          
-                          {selectedServiceId && (
-                            <div className="space-y-1">
-                              <label className="text-sm text-muted-foreground">
-                                Select Operation
-                                {selectedOperationKey && (() => {
-                                  const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
-                                  return selectedOp?.operationId ? (
-                                    <span className="ml-2 font-mono text-foreground">{selectedOp.operationId}</span>
-                                  ) : null;
-                                })()}
-                              </label>
-                              <Select 
-                                value={selectedOperationKey || "__auto__"} 
-                                onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
-                                disabled={builderMode === "openapi"}
-                              >
-                                <SelectTrigger className={`bg-background ${builderMode === "openapi" ? "opacity-70" : ""}`}>
-                                  <SelectValue placeholder="Auto-detect from URL & method">
-                                    {selectedOperationKey ? (() => {
-                                      const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
-                                      return selectedOp ? (
-                                        <span>
-                                          <span className={`font-mono text-xs mr-2 ${
-                                            selectedOp.method === "GET" ? "text-green-500" :
-                                            selectedOp.method === "POST" ? "text-yellow-500" :
-                                            selectedOp.method === "PUT" ? "text-blue-500" :
-                                            selectedOp.method === "DELETE" ? "text-red-500" :
-                                            "text-muted-foreground"
-                                          }`}>
-                                            {selectedOp.method}
-                                          </span>
-                                          <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
-                                        </span>
-                                      ) : null;
-                                    })() : (
-                                      <span className="text-muted-foreground">Auto-detect</span>
-                                    )}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover z-50 max-h-[300px]">
-                                  <SelectItem value="__auto__">Auto-detect</SelectItem>
-                                  {availableOperations.map((op) => (
-                                    <SelectItem key={op.key} value={op.key}>
-                                      <span className={`font-mono text-xs mr-2 ${
-                                        op.method === "GET" ? "text-green-500" :
-                                        op.method === "POST" ? "text-yellow-500" :
-                                        op.method === "PUT" ? "text-blue-500" :
-                                        op.method === "DELETE" ? "text-red-500" :
-                                        "text-muted-foreground"
-                                      }`}>
-                                        {op.method}
-                                      </span>
-                                      {op.operationId && (
-                                        <span className="font-mono text-sm mr-2">{op.operationId}</span>
-                                      )}
-                                      <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
-                                      {op.summary && (
-                                        <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
-                                      )}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-
-                          {builderMode === "openapi" && selectedServiceId && selectedOperationKey && (
-                            <div className="flex items-center gap-2 text-xs text-primary">
-                              <Lock className="h-3 w-3" />
-                              <span>Synced with OpenAPI Request Builder</span>
-                            </div>
-                          )}
-
-                          {builderMode !== "openapi" && isLocked && selectedServiceId && selectedOperationKey && (
-                            <div className="flex items-center gap-2 text-xs text-primary">
-                              <Lock className="h-3 w-3" />
-                              <span>Validation locked to selected operation</span>
-                            </div>
-                          )}
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                        <CollapsibleContent>
+                          <div className="space-y-3 py-3">
+                            {matchMode === "auto" ? (
+                              <div className="text-sm text-muted-foreground">
+                                API service and operation will be automatically detected from the request URL.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="space-y-1">
+                                  <label className="text-sm text-muted-foreground">Select API Service</label>
+                                  <Select 
+                                    value={selectedServiceId || "__auto__"} 
+                                    onValueChange={(value) => {
+                                      setSelectedServiceId(value === "__auto__" ? null : value);
+                                      setSelectedOperationKey(null);
+                                    }}
+                                  >
+                                    <SelectTrigger className="bg-background">
+                                      <SelectValue placeholder="Select a service" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-popover z-50">
+                                      <SelectItem value="__auto__">Select a service</SelectItem>
+                                      {services.map((service) => (
+                                        <SelectItem key={service.id} value={service.id}>
+                                          {service.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {selectedServiceId && (
+                                  <div className="space-y-1">
+                                    <label className="text-sm text-muted-foreground flex items-center gap-1">
+                                      Select Operation
+                                      {selectedOperationKey && (() => {
+                                        const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                                        return (
+                                          <>
+                                            {selectedOp?.operationId && (
+                                              <span className="ml-1 font-mono text-foreground">{selectedOp.operationId}</span>
+                                            )}
+                                            {(selectedOp?.summary || selectedOp?.description) && (
+                                              <Popover>
+                                                <PopoverTrigger asChild>
+                                                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                </PopoverTrigger>
+                                                <PopoverContent side="top" className="max-w-xs text-sm p-3">
+                                                  {selectedOp.summary && <p className="font-medium">{selectedOp.summary}</p>}
+                                                  {selectedOp.summary && selectedOp.description && <br />}
+                                                  {selectedOp.description && <p>{selectedOp.description}</p>}
+                                                </PopoverContent>
+                                              </Popover>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </label>
+                                    <Select 
+                                      value={selectedOperationKey || "__auto__"} 
+                                      onValueChange={(value) => setSelectedOperationKey(value === "__auto__" ? null : value)}
+                                    >
+                                      <SelectTrigger className="bg-background">
+                                        <SelectValue placeholder="Select an operation">
+                                          {selectedOperationKey ? (() => {
+                                            const selectedOp = availableOperations.find(op => op.key === selectedOperationKey);
+                                            return selectedOp ? (
+                                              <span>
+                                                <span className={`font-mono text-xs mr-2 ${
+                                                  selectedOp.method === "GET" ? "text-green-500" :
+                                                  selectedOp.method === "POST" ? "text-yellow-500" :
+                                                  selectedOp.method === "PUT" ? "text-blue-500" :
+                                                  selectedOp.method === "DELETE" ? "text-red-500" :
+                                                  "text-muted-foreground"
+                                                }`}>
+                                                  {selectedOp.method}
+                                                </span>
+                                                <span className="font-mono text-sm text-foreground">{selectedOp.path}</span>
+                                              </span>
+                                            ) : null;
+                                          })() : (
+                                            <span className="text-muted-foreground">Select an operation</span>
+                                          )}
+                                        </SelectValue>
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-popover z-50 max-h-[300px]">
+                                        <SelectItem value="__auto__">Select an operation</SelectItem>
+                                        {availableOperations.map((op) => (
+                                          <SelectItem key={op.key} value={op.key}>
+                                            <span className={`font-mono text-xs mr-2 ${
+                                              op.method === "GET" ? "text-green-500" :
+                                              op.method === "POST" ? "text-yellow-500" :
+                                              op.method === "PUT" ? "text-blue-500" :
+                                              op.method === "DELETE" ? "text-red-500" :
+                                              "text-muted-foreground"
+                                            }`}>
+                                              {op.method}
+                                            </span>
+                                            {op.operationId && (
+                                              <span className="font-mono text-sm mr-2">{op.operationId}</span>
+                                            )}
+                                            <span className="font-mono text-sm text-muted-foreground">{op.path}</span>
+                                            {op.summary && (
+                                              <span className="text-muted-foreground text-xs ml-2">— {op.summary}</span>
+                                            )}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+
+                                {selectedServiceId && selectedOperationKey && (
+                                  <div className="flex items-center gap-2 text-xs text-primary">
+                                    <Lock className="h-3 w-3" />
+                                    <span>Validation locked to selected operation</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="response" className="mt-0">
                     {requestResponse && (
-                      <div className="flex items-center gap-4 text-sm">
-                        <Badge 
-                          variant={requestResponse.status >= 200 && requestResponse.status < 300 ? "default" : "destructive"}
-                          className={requestResponse.status >= 200 && requestResponse.status < 300 ? "bg-green-600 hover:bg-green-700" : ""}
-                        >
-                          {requestResponse.status} {requestResponse.statusText}
-                        </Badge>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-muted-foreground">{requestResponse.duration}ms</span>
+                        <span className="text-muted-foreground">
+                          {new Blob([requestResponse.body]).size >= 1024 
+                            ? `${(new Blob([requestResponse.body]).size / 1024).toFixed(1)} KB`
+                            : `${new Blob([requestResponse.body]).size} B`}
+                        </span>
                       </div>
                     )}
                   </TabsContent>
@@ -2640,33 +4382,6 @@ const ApiTester = () => {
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        {/* Matched Service */}
-                        <Collapsible
-                          open={!collapsedSections.service}
-                          onOpenChange={() => toggleSection('service')}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <CheckCircle className="h-4 w-4 text-success" />
-                              Matched Service
-                            </div>
-                            <CollapsibleTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                              >
-                                {collapsedSections.service ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                              </Button>
-                            </CollapsibleTrigger>
-                          </div>
-                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                            <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                              <p className="font-medium text-foreground">{matchResult.service?.name}</p>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-
                         {/* Server */}
                         <Collapsible
                           open={!collapsedSections.server}
@@ -2740,7 +4455,7 @@ const ApiTester = () => {
                           </CollapsibleContent>
                         </Collapsible>
 
-                        {/* Operation */}
+                        {/* Operation - minimized by default in OpenAPI mode */}
                         <Collapsible
                           open={!collapsedSections.operation}
                           onOpenChange={() => toggleSection('operation')}
@@ -2818,24 +4533,24 @@ const ApiTester = () => {
                             onOpenChange={() => toggleSection('pathParams')}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Route className="h-4 w-4" />
-                                Path Parameters
-                                <Badge variant="secondary" className="text-xs ml-1">
-                                  {matchResult.operation.pathParameters.length}
-                                </Badge>
-                                {(() => {
-                                  const invalidCount = matchResult.operation!.pathParameters.filter(p => !p.isValid).length;
-                                  return (
+                              {(() => {
+                                const invalidCount = matchResult.operation!.pathParameters.filter(p => !p.isValid).length;
+                                return (
+                                  <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                    <Route className="h-4 w-4" />
+                                    Path Parameters
+                                    <Badge variant="secondary" className="text-xs ml-1">
+                                      {matchResult.operation.pathParameters.length}
+                                    </Badge>
                                     <Badge 
                                       variant={invalidCount > 0 ? "destructive" : "default"} 
                                       className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
                                     >
                                       {invalidCount} invalid
                                     </Badge>
-                                  );
-                                })()}
-                              </div>
+                                  </div>
+                                );
+                              })()}
                               <CollapsibleTrigger asChild>
                                 <Button
                                   variant="ghost"
@@ -2916,24 +4631,24 @@ const ApiTester = () => {
                             onOpenChange={() => toggleSection('queryParams')}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <FileCode className="h-4 w-4" />
-                                Query Parameters
-                                <Badge variant="secondary" className="text-xs ml-1">
-                                  {matchResult.operation.queryParameters.length}
-                                </Badge>
-                                {(() => {
-                                  const invalidCount = matchResult.operation!.queryParameters.filter(p => !p.isValid).length;
-                                  return (
+                              {(() => {
+                                const invalidCount = matchResult.operation!.queryParameters.filter(p => !p.isValid).length;
+                                return (
+                                  <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                    <FileCode className="h-4 w-4" />
+                                    Query Parameters
+                                    <Badge variant="secondary" className="text-xs ml-1">
+                                      {matchResult.operation.queryParameters.length}
+                                    </Badge>
                                     <Badge 
                                       variant={invalidCount > 0 ? "destructive" : "default"} 
                                       className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
                                     >
                                       {invalidCount} invalid
                                     </Badge>
-                                  );
-                                })()}
-                              </div>
+                                  </div>
+                                );
+                              })()}
                               <CollapsibleTrigger asChild>
                                 <Button
                                   variant="ghost"
@@ -3014,24 +4729,24 @@ const ApiTester = () => {
                             onOpenChange={() => toggleSection('headerParams')}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <FileCode className="h-4 w-4" />
-                                Header Parameters
-                                <Badge variant="secondary" className="text-xs ml-1">
-                                  {matchResult.operation.headerParameters.length}
-                                </Badge>
-                                {(() => {
-                                  const invalidCount = matchResult.operation!.headerParameters.filter(p => !p.isValid).length;
-                                  return (
+                              {(() => {
+                                const invalidCount = matchResult.operation!.headerParameters.filter(p => !p.isValid).length;
+                                return (
+                                  <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                    <FileCode className="h-4 w-4" />
+                                    Header Parameters
+                                    <Badge variant="secondary" className="text-xs ml-1">
+                                      {matchResult.operation.headerParameters.length}
+                                    </Badge>
                                     <Badge 
                                       variant={invalidCount > 0 ? "destructive" : "default"} 
                                       className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
                                     >
                                       {invalidCount} invalid
                                     </Badge>
-                                  );
-                                })()}
-                              </div>
+                                  </div>
+                                );
+                              })()}
                               <CollapsibleTrigger asChild>
                                 <Button
                                   variant="ghost"
@@ -3112,29 +4827,29 @@ const ApiTester = () => {
                             onOpenChange={() => toggleSection('bodyParams')}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <FileCode className="h-4 w-4" />
-                                Body Properties
-                                {matchResult.operation.bodyContentType && (
-                                  <Badge variant="outline" className="text-xs ml-1">
-                                    {matchResult.operation.bodyContentType}
-                                  </Badge>
-                                )}
-                                <Badge variant="secondary" className="text-xs ml-1">
-                                  {matchResult.operation.bodyProperties.length}
-                                </Badge>
-                                {(() => {
-                                  const invalidCount = matchResult.operation!.bodyProperties.filter(p => !p.isValid).length;
-                                  return (
+                              {(() => {
+                                const invalidCount = matchResult.operation!.bodyProperties.filter(p => !p.isValid).length;
+                                return (
+                                  <div className={`flex items-center gap-2 text-sm ${invalidCount > 0 ? "text-destructive" : "text-green-500"}`}>
+                                    <FileCode className="h-4 w-4" />
+                                    Body Properties
+                                    {matchResult.operation.bodyContentType && (
+                                      <Badge variant="outline" className="text-xs ml-1">
+                                        {matchResult.operation.bodyContentType}
+                                      </Badge>
+                                    )}
+                                    <Badge variant="secondary" className="text-xs ml-1">
+                                      {matchResult.operation.bodyProperties.length}
+                                    </Badge>
                                     <Badge 
                                       variant={invalidCount > 0 ? "destructive" : "default"} 
                                       className={`text-xs ${invalidCount === 0 ? "bg-green-600 hover:bg-green-700" : ""}`}
                                     >
                                       {invalidCount} invalid
                                     </Badge>
-                                  );
-                                })()}
-                              </div>
+                                  </div>
+                                );
+                              })()}
                               <CollapsibleTrigger asChild>
                                 <Button
                                   variant="ghost"
@@ -3218,7 +4933,13 @@ const ApiTester = () => {
                           onOpenChange={() => toggleSection('validation')}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className={`flex items-center gap-2 text-sm ${
+                              matchResult.validationErrors.length > 0 
+                                ? "text-destructive" 
+                                : matchResult.validationWarnings.length > 0 
+                                  ? "text-orange-500" 
+                                  : "text-green-500"
+                            }`}>
                               <AlertCircle className="h-4 w-4" />
                               Validation
                             </div>
@@ -3244,9 +4965,9 @@ const ApiTester = () => {
                                   {matchResult.validationErrors.length > 0 && (
                                     <ul className="space-y-2">
                                       {matchResult.validationErrors.map((error, index) => (
-                                        <li key={index} className="flex items-start gap-2 text-destructive text-sm">
+                                        <li key={index} className="flex items-start gap-2 text-destructive text-sm min-w-0">
                                           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                          {error}
+                                          <span className="flex-1 min-w-0 break-words">{error}</span>
                                         </li>
                                       ))}
                                     </ul>
@@ -3254,9 +4975,9 @@ const ApiTester = () => {
                                   {matchResult.validationWarnings.length > 0 && (
                                     <ul className="space-y-2">
                                       {matchResult.validationWarnings.map((warning, index) => (
-                                        <li key={index} className="flex items-start gap-2 text-orange-500 text-sm">
+                                        <li key={index} className="flex items-start gap-2 text-orange-500 text-sm min-w-0">
                                           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                          {warning}
+                                          <span className="flex-1 min-w-0 break-words">{warning}</span>
                                         </li>
                                       ))}
                                     </ul>
@@ -3272,7 +4993,12 @@ const ApiTester = () => {
                 ) : rightPanelTab === "response" ? (
                   /* Response Tab Content */
                   <>
-                    {!requestResponse ? (
+                    {isSendingRequest ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+                        <p>Sending request...</p>
+                      </div>
+                    ) : !requestResponse ? (
                       <div className="text-center py-12 text-muted-foreground">
                         <Send className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>Send a request to see the response</p>
@@ -3328,57 +5054,28 @@ const ApiTester = () => {
                         </Collapsible>
 
                         {/* Response Body */}
-                        <Collapsible defaultOpen>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <FileCode className="h-4 w-4" />
-                              Body
-                              <Badge variant="secondary" className="text-xs ml-1">
-                                {requestResponse.body.length} chars
-                              </Badge>
-                            </div>
-                            <CollapsibleTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                            </CollapsibleTrigger>
-                          </div>
-                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                            <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                              <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all max-h-[400px] overflow-auto">
-                                <code>
-                                  {(() => {
-                                    const contentType = requestResponse.headers['content-type'] || requestResponse.headers['Content-Type'] || '';
-                                    const isJson = contentType.includes('application/json');
-
-                                    if (isJson) {
-                                      try {
-                                        JSON.parse(requestResponse.body); // Validate JSON
-                                        const validationErrors = extractValidationErrors(matchResult);
-                                        // Get response schema based on actual status code
-                                        const responseSchema = getResponseSchemaForStatus(matchResult, requestResponse.status);
-                                        return (
-                                          <JsonResponseViewer
-                                            jsonString={requestResponse.body}
-                                            responseSchema={responseSchema}
-                                            validationErrors={validationErrors}
-                                          />
-                                        );
-                                      } catch {
-                                        return requestResponse.body;
-                                      }
-                                    }
-                                    return requestResponse.body;
-                                  })()}
-                                </code>
-                              </pre>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
+                        <MaximizableCodeViewer
+                          title="Response Body"
+                          content={requestResponse.body}
+                          contentType={requestResponse.headers['content-type'] || requestResponse.headers['Content-Type'] || ''}
+                          responseSchema={getResponseSchemaForStatus(matchResult, requestResponse.status)}
+                          validationErrors={extractValidationErrors(matchResult)}
+                          jmespathState={jmespathState}
+                          onJMESPathStateChange={setJmespathState}
+                          onFormat={() => {
+                            try {
+                              const parsed = JSON.parse(requestResponse.body);
+                              const formatted = JSON.stringify(parsed, null, 2);
+                              setRequestResponse({
+                                ...requestResponse,
+                                body: formatted
+                              });
+                              toast.success("Response formatted");
+                            } catch {
+                              toast.error("Invalid JSON - cannot format");
+                            }
+                          }}
+                        />
                       </div>
                     )}
                   </>
@@ -3519,6 +5216,7 @@ const ApiTester = () => {
             </Card>
           </ResizablePanel>
         </ResizablePanelGroup>
+        )}
       </main>
     </div>
   );

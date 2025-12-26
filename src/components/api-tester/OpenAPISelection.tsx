@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, FileCode } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertCircle, FileCode, HelpCircle } from "lucide-react";
 import { OpenAPIParameterForm, OpenAPIFormValues } from "./OpenAPIParameterForm";
 import yaml from "js-yaml";
 
@@ -20,6 +21,7 @@ interface OperationOption {
   path: string;
   operationId?: string;
   summary?: string;
+  description?: string;
 }
 
 interface OpenAPISelectionProps {
@@ -294,6 +296,7 @@ export function OpenAPISelection({
             path,
             operationId: operation.operationId,
             summary: operation.summary,
+            description: operation.description,
           });
         }
       });
@@ -406,7 +409,24 @@ export function OpenAPISelection({
 
           {/* Operation Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Operation</label>
+            <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              Operation
+              {selectedOperationKey && (() => {
+                const op = operations.find((o) => o.key === selectedOperationKey);
+                return (op?.summary || op?.description) ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </PopoverTrigger>
+                    <PopoverContent side="top" className="max-w-xs text-sm p-3">
+                      {op.summary && <p className="font-medium">{op.summary}</p>}
+                      {op.summary && op.description && <br />}
+                      {op.description && <p>{op.description}</p>}
+                    </PopoverContent>
+                  </Popover>
+                ) : null;
+              })()}
+            </label>
             <Select value={selectedOperationKey || ""} onValueChange={(v) => onOperationChange(v || null)}>
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select an operation...">
