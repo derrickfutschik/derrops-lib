@@ -212,91 +212,236 @@ export function MaximizableCodeViewer({
     }
   }, [content, jmespathQuery, jmespathEnabled, jmespathMode, isJson]);
 
-  const renderHighlightedJson = (jsonStr: string, matchedResult: any) => {
-    try {
-      const parsed = JSON.parse(jsonStr);
-      const matchedValues = new Set<any>();
-      
-      // Collect all matched values (primitives)
-      const collectValues = (obj: any) => {
-        if (obj === null || obj === undefined) return;
-        if (typeof obj !== 'object') {
-          matchedValues.add(JSON.stringify(obj));
-        } else if (Array.isArray(obj)) {
-          obj.forEach(collectValues);
-        } else {
-          Object.values(obj).forEach(collectValues);
-        }
-      };
-      collectValues(matchedResult);
+  /**
+   * Helper function to check deep structural equality between two values
+   */
+  const deepEqual = (a: any, b: any): boolean => {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    if (typeof a !== typeof b) return false;
 
-      // Render with highlighting
-      const renderValue = (value: any, indent: number = 0): React.ReactNode => {
-        const indentStr = "  ".repeat(indent);
-        
-        if (value === null) {
-          const isMatch = matchedValues.has("null");
-          return <span className={isMatch ? "text-primary font-semibold" : "text-muted-foreground/50"}>null</span>;
+    if (typeof a === 'object') {
+      if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+      if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        return a.every((item, idx) => deepEqual(item, b[idx]));
+      } else {
+        const aKeys = Object.keys(a).sort();
+        const bKeys = Object.keys(b).sort();
+        if (aKeys.length !== bKeys.length) return false;
+        if (!aKeys.every((key, idx) => key === bKeys[idx])) return false;
+        return aKeys.every(key => deepEqual(a[key], b[key]));
+      }
+    }
+
+    return false;
+  };
+
+  /**
+   * Stage 1: Find character locations in JSON string that match the JMESPath result.
+   * Returns a Set of JSON paths (e.g., "a", "items[0].name") that should be highlighted.
+   */
+  const findJmespathJsonLocations = (
+    original: any,
+    result: any,
+    query: string
+  ): Set<string> => {
+    const matchedPaths = new Set<string>();
+
+    // Helper to recursively add a path and all its children
+    const addPathAndChildren = (obj: any, currentPath: string): void => {
+      matchedPaths.add(currentPath);
+
+      if (obj && typeof obj === 'object') {
+        if (Array.isArray(obj)) {
+          obj.forEach((item, idx) => {
+            addPathAndChildren(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`);
+          });
+        } else {
+          Object.keys(obj).forEach(key => {
+            addPathAndChildren(obj[key], currentPath ? `${currentPath}.${key}` : key);
+          });
         }
-        
-        if (typeof value === "boolean") {
-          const isMatch = matchedValues.has(JSON.stringify(value));
-          return <span className={isMatch ? "text-primary font-semibold" : "text-muted-foreground/50"}>{String(value)}</span>;
+      }
+    };
+
+    // Try to handle simple field access queries (e.g., "a", "a.b.c", "items[0]", "a.b[1].c")
+    // This regex matches simple path expressions
+    const simplePathRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\])*$/;
+
+    if (simplePathRegex.test(query.trim())) {
+      // Convert JMESPath notation to our path notation
+      // e.g., "a.b[0].c" stays as "a.b[0].c"
+      const path = query.trim();
+
+      // Navigate to the value at this path
+      const pathParts = path.match(/[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\]/g) || [];
+      let current = original;
+      let valid = true;
+
+      for (const part of pathParts) {
+        if (part.startsWith('[')) {
+          // Array index
+          const index = parseInt(part.slice(1, -1), 10);
+          if (Array.isArray(current) && index >= 0 && index < current.length) {
+            current = current[index];
+          } else {
+            valid = false;
+            break;
+          }
+        } else {
+          // Object key
+          if (current && typeof current === 'object' && part in current) {
+            current = current[part];
+          } else {
+            valid = false;
+            break;
+          }
         }
-        
-        if (typeof value === "number") {
-          const isMatch = matchedValues.has(JSON.stringify(value));
-          return <span className={isMatch ? "text-primary font-semibold" : "text-muted-foreground/50"}>{value}</span>;
+      }
+
+      // If we successfully navigated to the path and it matches the result, highlight it
+      if (valid && deepEqual(current, result)) {
+        addPathAndChildren(current, path);
+        return matchedPaths;
+      }
+    }
+
+    // For complex queries, use structural matching
+    // Helper to check if a value is structurally contained in the result
+    const isInResult = (value: any, result: any, checkPartial: boolean = true): boolean => {
+      // Exact structural match
+      if (deepEqual(value, result)) return true;
+
+      if (!checkPartial) return false;
+
+      // Check if value is contained within result structure
+      if (Array.isArray(result)) {
+        return result.some(item => isInResult(value, item, true));
+      }
+
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        return Object.values(result).some(v => isInResult(value, v, true));
+      }
+
+      return false;
+    };
+
+    // Traverse the original object and mark paths that are in the result
+    const traverse = (obj: any, currentPath: string): void => {
+      // Check if this value is in the result
+      if (isInResult(obj, result, true)) {
+        matchedPaths.add(currentPath);
+      }
+
+      // Continue traversing children
+      if (obj && typeof obj === 'object') {
+        if (Array.isArray(obj)) {
+          obj.forEach((item, idx) => {
+            traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`);
+          });
+        } else {
+          Object.keys(obj).forEach(key => {
+            traverse(obj[key], currentPath ? `${currentPath}.${key}` : key);
+          });
         }
-        
-        if (typeof value === "string") {
-          const isMatch = matchedValues.has(JSON.stringify(value));
-          return <span className={isMatch ? "text-primary font-semibold" : "text-muted-foreground/50"}>"{value}"</span>;
-        }
-        
-        if (Array.isArray(value)) {
-          if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>;
-          return (
-            <>
-              <span className="text-muted-foreground/50">[</span>
-              {"\n"}
-              {value.map((item, idx) => (
+      }
+    };
+
+    traverse(original, "");
+    return matchedPaths;
+  };
+
+  /**
+   * Stage 2: Render JSON with highlighting based on matched paths.
+   * Takes the parsed JSON object and a Set of paths to highlight.
+   */
+  const highlightJson = (
+    parsed: any,
+    matchedPaths: Set<string>
+  ): React.ReactNode => {
+    const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
+      const indentStr = "  ".repeat(indent);
+      const isHighlighted = matchedPaths.has(currentPath);
+      const className = isHighlighted ? "text-primary font-semibold" : "text-muted-foreground/50";
+
+      if (value === null) {
+        return <span className={className}>null</span>;
+      }
+
+      if (typeof value === "boolean") {
+        return <span className={className}>{String(value)}</span>;
+      }
+
+      if (typeof value === "number") {
+        return <span className={className}>{value}</span>;
+      }
+
+      if (typeof value === "string") {
+        return <span className={className}>"{value}"</span>;
+      }
+
+      if (Array.isArray(value)) {
+        if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>;
+        return (
+          <>
+            <span className="text-muted-foreground/50">[</span>
+            {"\n"}
+            {value.map((item, idx) => {
+              const itemPath = currentPath ? `${currentPath}[${idx}]` : `[${idx}]`;
+              return (
                 <React.Fragment key={idx}>
-                  {indentStr}{"  "}{renderValue(item, indent + 1)}
+                  {indentStr}{"  "}{renderValue(item, itemPath, indent + 1)}
                   {idx < value.length - 1 && <span className="text-muted-foreground/50">,</span>}
                   {"\n"}
                 </React.Fragment>
-              ))}
-              {indentStr}<span className="text-muted-foreground/50">]</span>
-            </>
-          );
-        }
-        
-        if (typeof value === "object") {
-          const keys = Object.keys(value);
-          if (keys.length === 0) return <span className="text-muted-foreground/50">{"{}"}</span>;
-          return (
-            <>
-              <span className="text-muted-foreground/50">{"{"}</span>
-              {"\n"}
-              {keys.map((key, idx) => (
+              );
+            })}
+            {indentStr}<span className="text-muted-foreground/50">]</span>
+          </>
+        );
+      }
+
+      if (typeof value === "object") {
+        const keys = Object.keys(value);
+        if (keys.length === 0) return <span className="text-muted-foreground/50">{"{}"}</span>;
+        return (
+          <>
+            <span className="text-muted-foreground/50">{"{"}</span>
+            {"\n"}
+            {keys.map((key, idx) => {
+              const keyPath = currentPath ? `${currentPath}.${key}` : key;
+              return (
                 <React.Fragment key={key}>
                   {indentStr}{"  "}<span className="text-muted-foreground/50">"{key}"</span>
                   <span className="text-muted-foreground/50">: </span>
-                  {renderValue(value[key], indent + 1)}
+                  {renderValue(value[key], keyPath, indent + 1)}
                   {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
                   {"\n"}
                 </React.Fragment>
-              ))}
-              {indentStr}<span className="text-muted-foreground/50">{"}"}</span>
-            </>
-          );
-        }
-        
-        return String(value);
-      };
+              );
+            })}
+            {indentStr}<span className="text-muted-foreground/50">{"}"}</span>
+          </>
+        );
+      }
 
-      return renderValue(parsed);
+      return String(value);
+    };
+
+    return renderValue(parsed, "", 0);
+  };
+
+  const renderHighlightedJson = (jsonStr: string, matchedResult: any, query: string) => {
+    try {
+      const parsed = JSON.parse(jsonStr);
+
+      // Stage 1: Find the paths in the JSON that match the JMESPath result
+      const matchedPaths = findJmespathJsonLocations(parsed, matchedResult, query);
+
+      // Stage 2: Render the JSON with highlighting applied to matched paths
+      return highlightJson(parsed, matchedPaths);
     } catch {
       return jsonStr;
     }
@@ -313,7 +458,7 @@ export function MaximizableCodeViewer({
       try {
         const parsed = JSON.parse(content);
         const result = jmespath.search(parsed, jmespathQuery);
-        return renderHighlightedJson(content, result);
+        return renderHighlightedJson(content, result, jmespathQuery);
       } catch {
         // Fall through to normal rendering
       }

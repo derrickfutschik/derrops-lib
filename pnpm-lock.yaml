@@ -188,9 +188,15 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.80.0
         version: 2.80.0
+      '@tailwindcss/container-queries':
+        specifier: ^0.1.1
+        version: 0.1.1(tailwindcss@3.4.18)
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.90.7(react@18.3.1)
+      '@types/jmespath':
+        specifier: ^0.15.2
+        version: 0.15.2
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -209,6 +215,9 @@ importers:
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@18.3.1)(react@18.3.1)
+      jmespath:
+        specifier: ^0.16.0
+        version: 0.16.0
       js-yaml:
         specifier: '>=4.1.1'
         version: 4.1.1
@@ -8444,6 +8453,14 @@ packages:
       defer-to-connect: 2.0.1
     dev: false
 
+  /@tailwindcss/container-queries@0.1.1(tailwindcss@3.4.18):
+    resolution: {integrity: sha512-p18dswChx6WnTSaJCSGx6lTmrGzNNvm2FtXmiO6AuA1V4U5REyoqwmT6kgAsIMdjo07QdAfYXHJ4hnMtfHzWgA==}
+    peerDependencies:
+      tailwindcss: '>=3.2.0'
+    dependencies:
+      tailwindcss: 3.4.18
+    dev: false
+
   /@tailwindcss/typography@0.5.19(tailwindcss@3.4.18):
     resolution: {integrity: sha512-w31dd8HOx3k9vPtcQh5QHP9GwKcgbMp87j58qi6xgiBnFFtKEAgCWnDw4qUT8aHwkCp8bKvb/KGKWWHedP0AAg==}
     peerDependencies:
@@ -8837,6 +8854,10 @@ packages:
       expect: 30.2.0
       pretty-format: 30.2.0
     dev: true
+
+  /@types/jmespath@0.15.2:
+    resolution: {integrity: sha512-pegh49FtNsC389Flyo9y8AfkVIZn9MMPE9yJrO9svhq6Fks2MwymULWjZqySuxmctd3ZH4/n7Mr98D+1Qo5vGA==}
+    dev: false
 
   /@types/js-yaml@4.0.9:
     resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
@@ -14192,6 +14213,11 @@ packages:
   /jiti@1.21.7:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
+
+  /jmespath@0.16.0:
+    resolution: {integrity: sha512-9FzQjJ7MATs1tSpnco1K6ayiYE3figslrXA72G2HQ/n76RzvYlofyi5QM+iX4YRs/pu3yzxlVQSST23+dMDknw==}
+    engines: {node: '>= 0.6.0'}
+    dev: false
 
   /joi@17.13.3:
     resolution: {integrity: sha512-otDA4ldcIx+ZXsKHWmp0YizCweVRZG96J10b0FevjfuncLO1oX59THoAmHkNubYJ+9gWsYsp5k8v4ib6oDv1fA==}
