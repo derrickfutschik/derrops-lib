@@ -56,7 +56,7 @@ This component sits between the log ingestion pipeline and the dashboard/API lay
 
 ```mermaid
 graph TD
-    A[Client Apps] --> B[@slaops/client-*]
+    A[Client Apps] --> B["@slaops/client-*"]
     B --> C[Log Ingestion API]
     C --> D[Raw Logs Database]
     C --> E[Metrics Aggregator]
@@ -65,6 +65,7 @@ graph TD
     F --> H[Alerts Engine]
 
     style E fill:#ff6b6b,stroke:#333,stroke-width:3px
+
 ```
 
 ## Type Definitions
