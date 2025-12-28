@@ -2082,7 +2082,7 @@ const ApiTester = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-[2200px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -2098,7 +2098,7 @@ const ApiTester = () => {
         </div>
       </header>
 
-      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-[2200px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {isMobile ? (
           /* Mobile View - Tabs for Request/Response */
           <Tabs value={mobilePanelTab} onValueChange={(v) => setMobilePanelTab(v as "request" | "response")} className="w-full">
