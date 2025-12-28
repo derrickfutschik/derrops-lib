@@ -17,6 +17,13 @@ pre_window: |
 
 windows:
 
+  - root:
+      root: .
+      layout: even-vertical
+      panes:
+        - echo "Root directory - use this for git, builds, etc."
+        - claude
+
   # TODO - need to support 2 versions, one where opensearch runs locally, vs one vs runs on local server to save resources
   # - slaops-opensearch:
   #     root: .
@@ -55,9 +62,3 @@ windows:
         - pnpm run test:watch:notify
         #- ssh -t derrick@192.168.7.224 "source ~/.nvm/nvm.sh && cd /home/derrick/slaops/slaops-platform && pnpm run test:watch:notify"
 
-  - root:
-      root: .
-      layout: even-vertical
-      panes:
-        - echo "Root directory - use this for git, builds, etc."
-        - claude
