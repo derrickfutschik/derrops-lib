@@ -11,28 +11,32 @@ This document outlines the key personas who interact with the SLAOps platform, t
 
 ## Persona Overview
 
-| Persona | Primary Goals | Key Metrics | Platform Priorities |
-|---------|--------------|-------------|---------------------|
-| **User** | Access platform dashboards and monitoring data | Dashboard visibility, Data accessibility | Login functionality, Intuitive dashboards, Real-time data visualization |
-| **Developer** | Instrument applications with SDK, Track API performance | API usage, Latency, Throughput, Availability, Consistency, Reliability, Security, Compliance, Performance, Scalability | Multi-language SDK support (Node.js, Python, Ruby, Go, Java, C#), Easy integration, Proactive error notifications, Deprecation warnings, Validation error guidance |
-| **Software Manager** | Conduct QBRs and oversee team performance | Usage trends, Error rates, Latency, Throughput, Availability, Consistency, Reliability, Security, Compliance, Performance, Scalability | Comprehensive reporting, Historical trend analysis, Executive dashboards, QBR-ready metrics |
-| **CFO** | Calculate and forecast API costs, Control spending | Current usage costs, Forecasted costs, Usage trends, Cost patterns, Budget adherence | Cost calculation tools, Usage forecasting, Cost trend analysis, Anomaly detection, Budget alerts, Usage plan enforcement |
-| **Business Owner** | Monitor service health and business continuity | Service availability, Usage patterns, Business impact metrics | Real-time service status, Usage notifications, Business impact analysis, Service health alerts, Usage trend monitoring |
-| **SRE Engineer** | Ensure system reliability and performance | Vendor API performance, System availability, Error rates, Latency spikes, Incident detection | Vendor API monitoring, Performance testing tools (load/stress), Alerting configuration, AI-powered incident investigation, Real-time performance metrics |
+| Persona              | Primary Goals                                           | Key Metrics                                                                                                                            | Platform Priorities                                                                                                                                                |
+| -------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **User**             | Access platform dashboards and monitoring data          | Dashboard visibility, Data accessibility                                                                                               | Login functionality, Intuitive dashboards, Real-time data visualization                                                                                            |
+| **Developer**        | Instrument applications with SDK, Track API performance | API usage, Latency, Throughput, Availability, Consistency, Reliability, Security, Compliance, Performance, Scalability                 | Multi-language SDK support (Node.js, Python, Ruby, Go, Java, C#), Easy integration, Proactive error notifications, Deprecation warnings, Validation error guidance |
+| **Software Manager** | Conduct QBRs and oversee team performance               | Usage trends, Error rates, Latency, Throughput, Availability, Consistency, Reliability, Security, Compliance, Performance, Scalability | Comprehensive reporting, Historical trend analysis, Executive dashboards, QBR-ready metrics                                                                        |
+| **CFO**              | Calculate and forecast API costs, Control spending      | Current usage costs, Forecasted costs, Usage trends, Cost patterns, Budget adherence                                                   | Cost calculation tools, Usage forecasting, Cost trend analysis, Anomaly detection, Budget alerts, Usage plan enforcement                                           |
+| **Business Owner**   | Monitor service health and business continuity          | Service availability, Usage patterns, Business impact metrics                                                                          | Real-time service status, Usage notifications, Business impact analysis, Service health alerts, Usage trend monitoring                                             |
+| **SRE Engineer**     | Ensure system reliability and performance               | Vendor API performance, System availability, Error rates, Latency spikes, Incident detection                                           | Vendor API monitoring, Performance testing tools (load/stress), Alerting configuration, AI-powered incident investigation, Real-time performance metrics           |
+| **Client Requester** | Use the client requester for a variety of purposes      | Useability                                                                                                                             | Explore, develop and test against APIs and API specs which Vendors provide                                                                                         |
 
 ## Detailed Persona Profiles
 
 ### User
+
 **Role**: General platform user
 **Primary Need**: Access to monitoring dashboards and data
 
 **What They Care About**:
+
 - Simple, secure login process
 - Clear, intuitive dashboards
 - Easy navigation
 - Real-time data visibility
 
 **Platform Features**:
+
 - Authentication and authorization
 - Dashboard views
 - Data visualization
@@ -41,10 +45,12 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ---
 
 ### Developer
+
 **Role**: Software engineer building and maintaining applications
 **Primary Need**: Easy instrumentation and proactive issue detection
 
 **What They Care About**:
+
 - SDK availability in their programming language (Node.js, Python, Ruby, Go, Java, C#)
 - Simple SDK integration
 - Comprehensive tracking capabilities (usage, latency, throughput, availability, consistency, reliability, security, compliance, performance, scalability)
@@ -55,6 +61,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
   - API deprecations affecting their code
 
 **Platform Features**:
+
 - Multi-language SDK support
 - Request/response tracking
 - Error detection and guidance
@@ -66,10 +73,12 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ---
 
 ### Software Manager
+
 **Role**: Engineering team leader conducting QBRs and managing team performance
 **Primary Need**: Comprehensive metrics for quarterly business reviews
 
 **What They Care About**:
+
 - Usage statistics and trends
 - Error rates across services
 - Latency measurements
@@ -82,6 +91,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
 - Scalability insights
 
 **Platform Features**:
+
 - Executive dashboards
 - QBR reporting tools
 - Historical trend analysis
@@ -93,10 +103,12 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ---
 
 ### CFO
+
 **Role**: Chief Financial Officer managing technology spending
 **Primary Need**: Cost visibility, forecasting, and control
 
 **What They Care About**:
+
 - **Cost Calculation**:
   - Current API usage costs
   - Historical cost data
@@ -112,6 +124,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
   - Spending threshold notifications
 
 **Platform Features**:
+
 - Real-time cost tracking
 - Cost forecasting models
 - Usage pattern analysis
@@ -124,10 +137,12 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ---
 
 ### Business Owner
+
 **Role**: Service owner responsible for business continuity
 **Primary Need**: Service health monitoring and business impact visibility
 
 **What They Care About**:
+
 - Service availability and uptime
 - Usage patterns affecting business
 - Immediate notification when:
@@ -143,6 +158,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
   - Service usage normalizes
 
 **Platform Features**:
+
 - Real-time service monitoring
 - Usage-based alerting
 - Service health dashboards
@@ -154,10 +170,12 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ---
 
 ### SRE Engineer
+
 **Role**: Site Reliability Engineer ensuring system reliability and performance
 **Primary Need**: Proactive monitoring, alerting, and performance testing
 
 **What They Care About**:
+
 - **Vendor API Monitoring**:
   - API response times (slow performance)
   - API capacity (overload detection)
@@ -182,6 +200,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
   - Stress testing tools
 
 **Platform Features**:
+
 - Vendor API health monitoring
 - Advanced alerting system
 - AI-powered incident investigation
@@ -196,20 +215,21 @@ This document outlines the key personas who interact with the SLAOps platform, t
 
 ## Persona Interaction Matrix
 
-| Feature Area | User | Developer | Software Manager | CFO | Business Owner | SRE Engineer |
-|-------------|------|-----------|------------------|-----|----------------|--------------|
-| **Dashboards** |  |  |  |  |  |  |
-| **SDK Integration** | - |  | - | - | - |  |
-| **Alerting** |  |  |  |  |  |  |
-| **Cost Analysis** | - | - |  |  |  | - |
-| **Performance Testing** | - |  |  | - | - |  |
-| **Reporting** |  |  |  |  |  |  |
-| **AI Investigation** | - |  |  | - |  |  |
+| Feature Area            | User | Developer | Software Manager | CFO | Business Owner | SRE Engineer |
+| ----------------------- | ---- | --------- | ---------------- | --- | -------------- | ------------ |
+| **Dashboards**          | ✓✓✓  | ✓         | ✓✓✓              | ✓✓  | ✓✓✓            | ✓✓✓          |
+| **SDK Integration**     | -    | ✓✓✓       | -                | -   | -              | ✓            |
+| **Alerting**            | ✓    | ✓✓        | ✓                | ✓✓✓ | ✓✓✓            | ✓✓✓          |
+| **Cost Analysis**       | -    | -         | ✓                | ✓✓✓ | ✓✓             | -            |
+| **Performance Testing** | -    | ✓         | ✓                | -   | -              | ✓✓✓          |
+| **Reporting**           | ✓    | ✓         | ✓✓✓              | ✓✓✓ | ✓✓             | ✓✓           |
+| **AI Investigation**    | -    | ✓✓        | ✓                | -   | ✓              | ✓✓✓          |
 
 **Legend**:
--  = Critical priority
--  = High priority
--  = Medium priority
+
+- ✓✓✓ = Critical priority
+- ✓✓ = High priority
+- ✓ = Medium priority
 - \- = Not applicable
 
 ---
@@ -217,6 +237,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ## Design Implications
 
 ### For Product Development
+
 - **Multi-persona dashboards**: Different views for different roles
 - **Role-based access control**: Appropriate permissions per persona
 - **Configurable alerting**: Each persona needs different alert types
@@ -225,6 +246,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
 - **AI-powered insights**: Automated investigation for SRE and developer efficiency
 
 ### For Documentation
+
 - Persona-specific guides and tutorials
 - Role-based getting started flows
 - Use case examples for each persona
@@ -233,6 +255,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
 - Runbook examples for SRE engineers
 
 ### For Feature Prioritization
+
 1. **Phase 1**: User authentication, Developer SDKs, Basic dashboards
 2. **Phase 2**: SRE alerting, Business Owner notifications, Cost tracking
 3. **Phase 3**: AI investigation, Advanced reporting, Performance testing
@@ -241,6 +264,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
 ---
 
 **Related Documents**:
+
 - [User Stories](user-stories.md)
 - [Configuration Guide](configuration.md)
 - [Client Controller](client-controller.md)
