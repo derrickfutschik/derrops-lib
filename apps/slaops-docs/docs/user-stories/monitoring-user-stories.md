@@ -1,8 +1,8 @@
 ---
-slug: user-stories
-title: User Stores
+slug: monitoring-stories
+title: Monitoring User Stories
 authors: [derrops]
-tags: [user-stories]
+tags: [monitoring, user-stories]
 ---
 
 # User Stories
