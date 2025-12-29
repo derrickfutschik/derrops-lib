@@ -1,0 +1,39 @@
+# Build outputs
+dist/
+build/
+.turbo/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# CDK
+cdk.out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+
+# Amplify
+.amplify/
+amplify_outputs.json
+amplifyconfiguration.json
+build/
+.turbo/

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedModules": false
+  },
+  "include": ["amplify/**/*"],
+  "exclude": ["node_modules", "dist", ".amplify"]
+}

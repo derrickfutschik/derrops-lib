@@ -10,7 +10,5 @@ export const auth = defineAuth({
       mutable: false,
     },
   },
-  accountRecovery: {
-    passwordRecovery: 'email',
-  },
+  accountRecovery: 'EMAIL_ONLY',
 });

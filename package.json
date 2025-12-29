@@ -23,7 +23,10 @@
     "clean:modules": "rm -rf node_modules packages/*/node_modules apps/*/node_modules test-resources/node_modules",
     "commit": "bash scripts/ai-commit.sh",
     "commit:ai": "bash scripts/ai-commit.sh",
-    "setup:test-resources": "git clone git@github.com:APIs-guru/openapi-directory.git test-resources/openapi-directory"
+    "setup:test-resources": "git clone git@github.com:APIs-guru/openapi-directory.git test-resources/openapi-directory",
+    "amplify:sandbox": "pnpm -C packages/slaops-backend run sandbox",
+    "amplify:deploy": "pnpm -C packages/slaops-backend run deploy",
+    "amplify:clean": "rm -rf packages/slaops-backend/.amplify packages/slaops-backend/build"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
