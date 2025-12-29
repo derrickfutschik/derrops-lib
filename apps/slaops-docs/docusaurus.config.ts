@@ -122,6 +122,27 @@ const config: Config = {
         },
       },
     ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'notes',
+        path: 'notes',
+        routeBasePath: 'notes',
+        sidebarPath: './sidebars.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH;
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '');
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/notes/${cleanPath}`;
+          }
+          const cleanPath = docPath.replace(/^\//, '');
+          const pathToFile = `${process.cwd()}/notes/${cleanPath}`;
+          return `cursor://file${pathToFile}`;
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
   ],
 
   stylesheets: [
@@ -152,6 +173,12 @@ const config: Config = {
           sidebarId: 'tutorialSidebar',
           position: 'left',
           label: 'Docs',
+        },
+        {
+          to: '/notes/intro',
+          label: 'Notes',
+          position: 'left',
+          activeBaseRegex: `/notes/`,
         },
         { to: '/blog', label: 'Blog', position: 'left' },
         { to: '/changelog', label: 'Changelog', position: 'left' },
