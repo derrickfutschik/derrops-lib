@@ -1,4 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
+import { withAuthenticator } from "@aws-amplify/ui-react";
+import { Amplify } from 'aws-amplify';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,7 +14,7 @@ import ApiTester from "./pages/ApiTester";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
+import '@aws-amplify/ui-react/styles.css';
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -34,4 +36,4 @@ const App = () => (
   </QueryClientProvider>
 );
 
-export default App;
+export default withAuthenticator(App);
