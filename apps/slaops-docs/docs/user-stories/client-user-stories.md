@@ -9,7 +9,8 @@ tags: [requester, user-stories]
 
 As a Requester
 
-- [ ] I want to be able to sign in with AWS Cognito
+- [x] I want to be able to sign in with AWS Cognito
+- [ ] I want to be able to sign out with AWS Cognito
 - [ ] I want to be able save secrets in a secure way
 
 ## OpenAPI Functionality

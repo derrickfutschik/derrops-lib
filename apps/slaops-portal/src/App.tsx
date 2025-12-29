@@ -80,14 +80,32 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Authenticator>
-        {({ signOut, user }) => {
-          console.log('Authenticator render - user:', user);
-          // This will only render if user is authenticated
-          return null;
-        }}
-      </Authenticator>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            SLA<span className="text-primary">Ops</span>
+          </h1>
+          <p className="text-muted-foreground">Monitor Your SaaS Stack</p>
+        </div>
+
+        <Authenticator>
+          {({ signOut, user }) => {
+            console.log('Authenticator render - user:', user);
+            // This will only render if user is authenticated
+            return null;
+          }}
+        </Authenticator>
+
+        <div className="text-center mt-6">
+          <button
+            onClick={() => window.location.href = '/'}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Back to Home
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
