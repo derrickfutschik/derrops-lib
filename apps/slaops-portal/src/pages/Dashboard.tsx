@@ -8,6 +8,7 @@ import { Activity, TrendingUp, AlertTriangle, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ServicesList from "@/components/dashboard/ServicesList";
+import { signOut } from 'aws-amplify/auth';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -41,8 +42,10 @@ const Dashboard = () => {
   }, [navigate]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.success("Signed out successfully");
+
+    // await supabase.auth.signOut();
+    // toast.success("Signed out successfully");
+    await signOut({ global: true });
     navigate("/");
   };
 

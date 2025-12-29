@@ -56,11 +56,12 @@ const AuthPage = () => {
           if (!hasRedirected.current) {
             hasRedirected.current = true;
             console.log('Redirecting to dashboard...');
-            navigate('/dashboard', { replace: true });
+            navigate('/api-tester', { replace: true });
           }
           break;
         case 'signInWithRedirect':
           console.log('Sign in with redirect');
+          navigate("/api-tester");
           break;
         case 'signInWithRedirect_failure':
           console.log('Sign in with redirect failed');
