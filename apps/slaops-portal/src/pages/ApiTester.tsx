@@ -929,10 +929,10 @@ const ApiTester = () => {
 
   const fetchServices = async () => {
     const { data: session } = await supabase.auth.getSession();
-    if (!session.session) {
-      navigate("/auth");
-      return;
-    }
+    // if (!session.session) {
+    //   navigate("/auth");
+    //   return;
+    // }
 
     const { data, error } = await supabase
       .from("services")

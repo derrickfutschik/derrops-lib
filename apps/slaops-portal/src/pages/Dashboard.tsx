@@ -21,9 +21,9 @@ const Dashboard = () => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (!session) {
-          navigate("/auth");
-        }
+        // if (!session) {
+        //   navigate("/auth");
+        // }
       }
     );
 
@@ -32,9 +32,9 @@ const Dashboard = () => {
       setUser(session?.user ?? null);
       setIsLoading(false);
       
-      if (!session) {
-        navigate("/auth");
-      }
+      // if (!session) {
+      //   navigate("/auth");
+      // }
     });
 
     return () => subscription.unsubscribe();
