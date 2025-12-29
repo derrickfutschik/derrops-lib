@@ -24,6 +24,7 @@ slaops-platform/
 │   ├── slaops-public/             # @slaops/public - Shared utilities
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
 │   ├── slaops-client-nodejs-axios/  # Axios-specific client implementation
+│   ├── slaops-backend/         # @slaops/backend - AWS Amplify infrastructure
 │   └── slaops-test/            # @slaops/test - Integration tests (dev dependencies on all packages)
 │
 ├── apps/                        # Platform applications
@@ -61,6 +62,12 @@ slaops-platform/
 - **Dependency graph**: core → lib → client → client-nodejs-axios
 
 See [TURBO.md](TURBO.md) for detailed Turborepo documentation.
+
+### Backend Infrastructure
+
+- **AWS Amplify Gen 2** - TypeScript-based Infrastructure as Code
+- **AWS CDK 2.130.0** - Cloud Development Kit for AWS resources
+- **AWS Cognito** - Authentication and user management
 
 ## Getting Started
 
@@ -321,6 +328,129 @@ pnpm run test       # Run tests
 pnpm run dev        # Watch mode
 ```
 
+### @slaops/backend (packages/slaops-backend/)
+
+**AWS Amplify Infrastructure for SLA Ops Platform**
+
+- **Status**: Private (not published to npm)
+- **Purpose**: Infrastructure as Code definitions for AWS cloud resources
+- **Technology**: AWS Amplify Gen 2 with TypeScript
+- **AWS Region**: ap-southeast-2 (Sydney)
+- **Dependencies**: @aws-amplify/backend, aws-cdk-lib, constructs
+
+Key features:
+
+- Type-safe infrastructure definitions in TypeScript
+- AWS Cognito authentication with email-based login
+- Local sandbox environment for testing
+- GitOps-friendly deployment workflow
+- CloudFormation-based resource provisioning
+
+**Current Resources**:
+
+- **Authentication** (AWS Cognito):
+  - Email-based login
+  - Required attributes: Email (immutable)
+  - Account recovery: Email only
+  - Password policy: Min 8 chars, requires lowercase, numbers, symbols, uppercase
+  - Unauthenticated identities enabled
+
+**File Structure**:
+
+```
+slaops-backend/
+├── amplify/
+│   ├── auth/
+│   │   └── resource.ts      # Cognito authentication configuration
+│   └── backend.ts           # Main backend definition
+├── .amplify/                # Build artifacts (gitignored)
+├── amplify_outputs.json     # Generated configuration
+├── package.json
+└── tsconfig.json
+```
+
+**Commands**:
+
+```bash
+cd packages/slaops-backend
+
+# Type-check backend configuration
+pnpm run build
+
+# Type-check in watch mode
+pnpm run dev
+
+# Run local sandbox environment (creates temporary AWS resources)
+pnpm run sandbox
+
+# Deploy to AWS
+pnpm run deploy
+
+# Pull backend configuration from cloud
+pnpm run pull
+
+# Clean build artifacts
+pnpm run clean
+```
+
+**Root-level convenience scripts**:
+
+```bash
+# From monorepo root
+pnpm amplify:sandbox    # Run backend in sandbox mode
+pnpm amplify:deploy     # Deploy backend to AWS
+pnpm amplify:clean      # Clean .amplify artifacts
+```
+
+**Adding Resources**:
+
+To add new AWS resources (GraphQL APIs, storage, Lambda functions):
+
+1. Create directory under `amplify/` (e.g., `amplify/data/`)
+2. Define resource in `resource.ts` using Amplify's `define*` functions
+3. Import and add to `amplify/backend.ts`
+
+Example:
+
+```typescript
+// amplify/data/resource.ts
+import { defineData } from '@aws-amplify/backend';
+
+export const data = defineData({
+  // ... configuration
+});
+
+// amplify/backend.ts
+import { defineBackend } from '@aws-amplify/backend';
+import { auth } from './auth/resource';
+import { data } from './data/resource';
+
+const backend = defineBackend({
+  auth,
+  data,
+});
+```
+
+**Integration with Frontend**:
+
+Frontend apps integrate with the backend using `amplify_outputs.json`:
+
+```typescript
+import { Amplify } from 'aws-amplify';
+import outputs from './amplify_outputs.json';
+
+Amplify.configure(outputs);
+```
+
+See [packages/slaops-backend/README.md](packages/slaops-backend/README.md) for detailed documentation.
+
+```bash
+cd packages/slaops-backend
+pnpm run build      # Type-check
+pnpm run sandbox    # Local development
+pnpm run deploy     # Production deployment
+```
+
 ### slaops-docs (apps/slaops-docs/)
 
 **Docusaurus documentation site**
@@ -353,7 +483,9 @@ pnpm run serve      # Preview production build
 
 - **Status**: Private
 - **Purpose**: Dashboard for viewing metrics, logs, and alerts
-- **Technology**: React 18 + Vite + TypeScript + Supabase
+- **Technology**: React 18 + Vite + TypeScript + AWS Amplify + Supabase
+- **Authentication**: AWS Cognito (via @slaops/backend)
+- **Backend Integration**: AWS Amplify outputs from amplify_outputs.json
 - **Port**: 8080 (development)
 
 Key features:
@@ -363,6 +495,8 @@ Key features:
 - Cost analysis and tracking
 - Alert management
 - Service configuration
+- AWS Amplify authentication integration
+- Cognito user management
 - shadcn/ui component library
 
 See [apps/slaops-portal/CLAUDE.md](apps/slaops-portal/CLAUDE.md) for detailed documentation.
@@ -465,23 +599,6 @@ pnpm update --filter @slaops/private
 ### Branches
 
 - `main` - Primary development branch
-- Feature branches - For new features and bug fixes
-
-### Git Status (Current)
-
-```
-Current branch: main
-Untracked files:
-  apps/slaops-docs/CLAUDE.md
-  apps/slaops-portal/CLAUDE.md
-```
-
-### Recent Commits
-
-- `128abad` - CI: Only run slaops-docs if apps/slaops-docs/ changes
-- `cb4a190` - CI: Do not run slaops-portal if no changes in that dir
-- `76d57e9` - Fix build with new types
-- `ef5246b` - Proper types
 
 ## CI/CD
 
@@ -495,11 +612,19 @@ Located in `.github/workflows/`:
 
 ### AWS Amplify
 
-Both apps are configured for AWS Amplify deployment:
+**Backend Infrastructure** (`packages/slaops-backend/`):
+- Infrastructure as Code using AWS Amplify Gen 2
+- TypeScript-based resource definitions
+- Sandbox environments for local development
+- Production deployments via `pnpm amplify:deploy`
+- CloudFormation stack management via AWS CDK
 
+**Frontend Apps** (`apps/slaops-docs/` and `apps/slaops-portal/`):
 - `amplify.yml` - Build specification
 - `amplify-prebuild.sh` - Environment setup
 - `amplify-build.sh` - Build execution
+- Conditional builds based on file changes
+- Caching: NVM, pnpm store, Turbo cache
 
 ## Scripts Reference
 
@@ -513,6 +638,11 @@ pnpm run test:watch   # Run all tests in watch mode
 pnpm run clean        # Remove all build artifacts and node_modules
 pnpm run commit       # AI-powered git commit with generated message
 pnpm run commit:ai    # Alias for commit
+
+# AWS Amplify Backend
+pnpm amplify:sandbox  # Run backend in sandbox mode
+pnpm amplify:deploy   # Deploy backend to AWS
+pnpm amplify:clean    # Clean Amplify artifacts
 ```
 
 ### Utility Scripts
@@ -525,7 +655,6 @@ An AI-powered git commit helper that generates meaningful commit messages based 
 
 - Analyzes git diff and changed files
 - Generates contextual commit messages
-- References recent commits for style consistency
 - Interactive editor for review and editing
 - Confirms before committing
 
