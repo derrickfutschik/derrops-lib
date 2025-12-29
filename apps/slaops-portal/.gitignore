@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Amplify
+.amplify/
+amplify_outputs.json
+amplifyconfiguration.json
+build/
+.turbo/
