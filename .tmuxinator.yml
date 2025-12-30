@@ -22,7 +22,6 @@ windows:
       layout: even-vertical
       panes:
         - echo "Root directory - use this for git, builds, etc."
-        - claude
 
   # TODO - need to support 2 versions, one where opensearch runs locally, vs one vs runs on local server to save resources
   # - slaops-opensearch:
