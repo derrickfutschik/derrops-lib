@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface Service {
@@ -27,9 +27,9 @@ const ServicesList = () => {
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await api
         .from("services")
-        .select("id, name, endpoint, availability, response_time")
+        .select("id,name,endpoint,availability,response_time")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

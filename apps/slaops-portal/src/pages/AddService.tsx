@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Zap } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { servicesApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const exampleServices = [
@@ -79,19 +79,12 @@ const AddService = () => {
     setIsSubmitting(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to add a service",
-          variant: "destructive",
-        });
-        return;
-      }
+      // TODO: Replace with actual user authentication
+      // For now, using a hardcoded user_id
+      const user_id = "5c963787-d89d-4260-adaf-6541c41cb982";
 
-      const { error } = await supabase.from("services").insert({
-        user_id: user.id,
+      const { data, error } = await servicesApi.create({
+        user_id,
         name: formData.name,
         openapi_doc_url: formData.openapi_doc_url || null,
         openapi_doc_content: formData.openapi_doc_content || null,
@@ -100,13 +93,13 @@ const AddService = () => {
         response_time: formData.response_time ? parseInt(formData.response_time) : null,
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       toast({
         title: "Success",
         description: "Service added successfully",
       });
-      
+
       navigate("/dashboard");
     } catch (error: any) {
       toast({

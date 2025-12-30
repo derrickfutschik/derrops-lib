@@ -37,6 +37,13 @@ windows:
         - echo "Starting slaops-portal on port 8080..." && pnpm run dev
         - claude
 
+  - slaops-cloud:
+      root: apps/slaops-cloud
+      layout: even-vertical
+      panes:
+        - echo "Starting slaops-cloud on port 8083..." && pnpm --filter slaops-cloud run start:dev
+        - claude
+
   - slaops-tests:
       root: .
       layout: even-vertical

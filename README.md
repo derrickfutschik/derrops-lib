@@ -114,6 +114,12 @@ The fastest way to get the entire platform running in local development is using
 tmuxinator start -p .tmuxinator.yml
 ```
 
+Or alternatively, run:
+
+```bash
+./quick-start.sh
+```
+
 This will automatically:
 
 - Start OpenSearch (Docker) on window `slaops-opensearch`
@@ -470,16 +476,8 @@ See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
 - [Docusaurus Documentation](https://docusaurus.io/)
 - [Tmuxinator Documentation](https://github.com/tmuxinator/tmuxinator)
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Author
-
-SLAOps@SLAOps.com
-
 ---
 
-**Last Updated:** November 2024
+## TODO
 
-For detailed development documentation, see [CLAUDE.md](CLAUDE.md).
+- [ ] Add a way to configure where the docker-compose bootstrap environment is located, or to run against another environment if needed. Preferably via a .env file.

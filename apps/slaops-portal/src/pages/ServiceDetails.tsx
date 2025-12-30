@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { servicesApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import SwaggerUI from "swagger-ui-react";
 import "swagger-ui-react/swagger-ui.css";
@@ -37,13 +37,13 @@ const ServiceDetails = () => {
 
   const fetchService = async () => {
     try {
-      const { data, error } = await supabase
-        .from("services")
-        .select("*")
-        .eq("id", id)
-        .single();
+      if (!id) {
+        throw new Error("Service ID is required");
+      }
 
-      if (error) throw error;
+      const { data, error } = await servicesApi.findOne(id);
+
+      if (error) throw new Error(error.message);
 
       setService(data);
 
