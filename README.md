@@ -475,6 +475,15 @@ See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
 - [Vitest Documentation](https://vitest.dev/)
 - [Docusaurus Documentation](https://docusaurus.io/)
 - [Tmuxinator Documentation](https://github.com/tmuxinator/tmuxinator)
+- [NestJS Documentation](https://docs.nestjs.com/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [OpenSearch Documentation](https://opensearch.org/docs/)
+- [OpenSearch Dashboards Documentation](https://opensearch.org/docs/latest/dashboards/index/)
+- [LocalStack Documentation](https://localstack.cloud/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Tmuxinator Documentation](https://github.com/tmuxinator/tmuxinator)
+- [Tmux Documentation](https://github.com/tmux/tmux/wiki)
 
 ---
 
@@ -484,7 +493,7 @@ A Dev server can be used to run the docker-compose bootstrap environment which c
 
 To shutdown the dev server and bring down the docker-compose environment:
 
-```
+```bash
 sudo shutdown +5
 docker compose down
 ```
