@@ -23,23 +23,6 @@ windows:
       panes:
         - echo "Root directory - use this for git, builds, etc."
 
-  # TODO - need to support 2 versions, one where opensearch runs locally, vs one vs runs on local server to save resources
-  # - slaops-opensearch:
-  #     root: .
-  #     layout: tiled
-  #     panes:
-  #       - docker-compose up
-  #       - echo "Waiting for containers to start..." && sleep 5 && docker logs -f opensearch
-  #       - echo "Waiting for containers to start..." && sleep 5 && docker logs -f opensearch-dashboards
-
-  - derrops-server:
-      root: .
-      layout: even-vertical
-      panes:
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose up -d && sleep 5 && docker compose logs -f opensearch"
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f opensearch-dashboards"
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f localstack"
-
   - slaops-docs:
       root: apps/slaops-docs
       layout: even-vertical
@@ -61,3 +44,32 @@ windows:
         - pnpm run test:watch:notify
         #- ssh -t derrick@192.168.7.224 "source ~/.nvm/nvm.sh && cd /home/derrick/slaops/slaops-platform && pnpm run test:watch:notify"
 
+  - syncthing:
+      root: .
+      layout: even-vertical
+      panes:
+        - echo "Sync Thing for syncing to the remote server" && syncthing
+
+  - opensearch:
+      root: .
+      layout: even-vertical
+      panes:
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose up -d && sleep 5 && docker compose logs -f opensearch"
+
+  - opensearch-dashboards:
+      root: .
+      layout: even-vertical
+      panes:
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f opensearch-dashboards"
+
+  - localstack:
+      root: .
+      layout: even-vertical
+      panes:
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f localstack"
+
+  - postgres:
+      root: .
+      layout: even-vertical
+      panes:
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f postgres"
