@@ -16,6 +16,9 @@ open -a Safarihttp://192.168.7.224:8384/#
 # Open Syncthing Local Host
 open -a Safari http://localhost:8384/#
 
+# Open PG Admin
+open -a Safari http://192.168.7.224:5050
+
 # Open the Tmuxinator session
 tmuxinator start -p .tmuxinator.yml
 

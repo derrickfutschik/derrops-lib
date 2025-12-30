@@ -478,6 +478,17 @@ See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
 
 ---
 
+## Dev Server
+
+A Dev server can be used to run the docker-compose bootstrap environment which can greatly reduce the load on the main platform.
+
+To shutdown the dev server and bring down the docker-compose environment:
+
+```
+sudo shutdown +5
+docker compose down
+```
+
 ## TODO
 
 - [ ] Add a way to configure where the docker-compose bootstrap environment is located, or to run against another environment if needed. Preferably via a .env file.
