@@ -25,7 +25,7 @@ services:
       - 0.0.0.0:9200:9200
       - 0.0.0.0:9600:9600
     networks:
-      - opensearch-net
+      - slaops-network
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:latest
@@ -39,7 +39,7 @@ services:
     depends_on:
       - opensearch
     networks:
-      - opensearch-net
+      - slaops-network
 
   localstack:
     image: localstack/localstack:latest
@@ -63,11 +63,23 @@ services:
       # Docker socket (required for some LocalStack features)
       - /var/run/docker.sock:/var/run/docker.sock
 
+  postgres:
+    image: postgres:18.1
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=slaops
+    ports:
+      - 0.0.0.0:5432:5432
+    networks:
+      - slaops-network
+
 
 volumes:
   opensearch-data:
 
 networks:
-  opensearch-net:
+  slaops-network:
     driver: bridge
 
