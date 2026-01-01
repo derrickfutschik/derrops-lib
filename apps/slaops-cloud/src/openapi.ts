@@ -7,9 +7,9 @@ import { AppModule } from './app.module';
 
 async function generateOpenApi() {
 
-    console.log(`Creating Application (without database connection)`);
+    console.log(`Creating Application`);
 
-    const app = await NestFactory.create(AppModule.forRoot({ skipDatabase: true }), {
+    const app = await NestFactory.create(AppModule, {
         logger: false
     });
 
