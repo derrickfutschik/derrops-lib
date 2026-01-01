@@ -27,22 +27,22 @@ windows:
       root: apps/slaops-docs
       layout: even-vertical
       panes:
-        - echo "Starting slaops-docs on port 3000..." && pnpm start
-        - claude
+        - pnpm start
+        - echo "Starting slaops-docs on port 3000..."
 
   - slaops-portal:
       root: apps/slaops-portal
       layout: even-vertical
       panes:
-        - echo "Starting slaops-portal on port 8080..." && pnpm run dev
-        - claude
+        - pnpm run dev
+        - echo "Starting slaops-portal on port 8080..."
 
   - slaops-cloud:
       root: apps/slaops-cloud
       layout: even-vertical
       panes:
-        - echo "Starting slaops-cloud on port 8083..." && pnpm --filter slaops-cloud run start:dev
-        - claude
+        - pnpm --filter slaops-cloud run start:dev
+        - echo "Starting slaops-cloud on port 8083..."
 
   - slaops-tests:
       root: .
@@ -66,22 +66,22 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose up -d && sleep 5 && docker compose logs -f opensearch"
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch"
 
   - opensearch-dashboards:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f opensearch-dashboards"
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch-dashboards"
 
   - localstack:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f localstack"
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f localstack"
 
   - postgres:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && sleep 5 && docker compose logs -f postgres"
+        - ssh -t derrick@192.168.7.224 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f postgres"
