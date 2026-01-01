@@ -5,7 +5,7 @@ open -a Safari http://192.168.7.224:5601
 open -a Safari http://localhost:8080
 
 # Open the Docs
-open -a Safari http://localhost:3000
+open -a Safari http://localhost:8081
 
 # Open the SLAOPs Cloud
 open -a Safari http://localhost:3001/api

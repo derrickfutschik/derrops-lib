@@ -27,21 +27,21 @@ windows:
       root: apps/slaops-docs
       layout: even-vertical
       panes:
-        - pnpm start
+        - PORT=8081 NODE_ENV=dev pnpm start
         - echo "Starting slaops-docs on port 3000..."
 
   - slaops-portal:
       root: apps/slaops-portal
       layout: even-vertical
       panes:
-        - pnpm run dev
+        - PORT=8080 NODE_ENV=dev pnpm run dev
         - echo "Starting slaops-portal on port 8080..."
 
   - slaops-cloud:
       root: apps/slaops-cloud
       layout: even-vertical
       panes:
-        - pnpm --filter slaops-cloud run start:dev
+        - PORT=8083 NODE_ENV=dev pnpm --filter slaops-cloud run start:dev
         - echo "Starting slaops-cloud on port 8083..."
 
   - slaops-tests:
