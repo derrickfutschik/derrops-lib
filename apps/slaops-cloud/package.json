@@ -16,7 +16,8 @@
     "test:watch": "dotenv -e ../../.env -- jest --watch",
     "test:cov": "dotenv -e ../../.env -- jest --coverage",
     "test:debug": "dotenv -e ../../.env -- node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "dotenv -e ../../.env -- jest --config ./test/jest-e2e.json"
+    "test:e2e": "dotenv -e ../../.env -- jest --config ./test/jest-e2e.json",
+    "generate:openapi": "pnpm build && node dist/openapi.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
