@@ -9,6 +9,9 @@ async function generateOpenApi() {
 
     console.log(`Creating Application`);
 
+    // TODO - set the environment variables for the postgresql docker container
+    // TODO - start postgresql docker container
+
     const app = await NestFactory.create(AppModule, {
         logger: false
     });
@@ -30,6 +33,8 @@ async function generateOpenApi() {
     await app.close();
 
     console.log(`OpenAPI written to ${outputPath}`);
+
+    // kill docker container
 }
 
 generateOpenApi();

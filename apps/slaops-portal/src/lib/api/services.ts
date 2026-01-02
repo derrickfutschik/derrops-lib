@@ -1,17 +1,22 @@
+import { ServicesApi, Configuration } from '@/client/slaops-cloud';
 import type { Service, CreateServiceDto, UpdateServiceDto, ApiResponse } from './types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083'; // TODO remove these and support a VPC mesh with local traefic setup for local development
 
 /**
  * Services API Client
  *
  * Provides Supabase-compatible API methods for managing services
+ * Now uses the generated TypeScript Axios client
  */
-class ServicesApi {
-  private baseUrl: string;
+class ServicesApiWrapper {
+  private client: ServicesApi;
 
   constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
+    const config = new Configuration({
+      basePath: baseUrl,
+    });
+    this.client = new ServicesApi(config);
   }
 
   /**
@@ -20,34 +25,15 @@ class ServicesApi {
    */
   async select(fields?: string): Promise<ApiResponse<Service[]>> {
     try {
-      const url = new URL(`${this.baseUrl}/services`);
-      if (fields) {
-        url.searchParams.set('select', fields);
-      }
-
-      const response = await fetch(url.toString());
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: `HTTP error! status: ${response.status}`,
-        }));
-        return {
-          data: null,
-          error: {
-            message: error.message || 'Failed to fetch services',
-            statusCode: response.status,
-            error: error.error,
-          },
-        };
-      }
-
-      const data = await response.json();
-      return { data, error: null };
+      const response = await this.client.servicesControllerFindAll();
+      return { data: response.data as Service[], error: null };
     } catch (error: any) {
       return {
         data: null,
         error: {
-          message: error.message || 'Network error',
+          message: error.response?.data?.message || error.message || 'Failed to fetch services',
+          statusCode: error.response?.status,
+          error: error.response?.data?.error,
         },
       };
     }
@@ -58,34 +44,15 @@ class ServicesApi {
    */
   async findOne(id: string, fields?: string): Promise<ApiResponse<Service>> {
     try {
-      const url = new URL(`${this.baseUrl}/services/${id}`);
-      if (fields) {
-        url.searchParams.set('select', fields);
-      }
-
-      const response = await fetch(url.toString());
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: `HTTP error! status: ${response.status}`,
-        }));
-        return {
-          data: null,
-          error: {
-            message: error.message || 'Failed to fetch service',
-            statusCode: response.status,
-            error: error.error,
-          },
-        };
-      }
-
-      const data = await response.json();
-      return { data, error: null };
+      const response = await this.client.servicesControllerFindOne(id);
+      return { data: response.data as Service, error: null };
     } catch (error: any) {
       return {
         data: null,
         error: {
-          message: error.message || 'Network error',
+          message: error.response?.data?.message || error.message || 'Failed to fetch service',
+          statusCode: error.response?.status,
+          error: error.response?.data?.error,
         },
       };
     }
@@ -96,35 +63,15 @@ class ServicesApi {
    */
   async create(service: CreateServiceDto): Promise<ApiResponse<Service>> {
     try {
-      const response = await fetch(`${this.baseUrl}/services`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(service),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: `HTTP error! status: ${response.status}`,
-        }));
-        return {
-          data: null,
-          error: {
-            message: error.message || 'Failed to create service',
-            statusCode: response.status,
-            error: error.error,
-          },
-        };
-      }
-
-      const data = await response.json();
-      return { data, error: null };
+      const response = await this.client.servicesControllerCreate(service as any);
+      return { data: response.data as Service, error: null };
     } catch (error: any) {
       return {
         data: null,
         error: {
-          message: error.message || 'Network error',
+          message: error.response?.data?.message || error.message || 'Failed to create service',
+          statusCode: error.response?.status,
+          error: error.response?.data?.error,
         },
       };
     }
@@ -135,35 +82,15 @@ class ServicesApi {
    */
   async update(id: string, updates: UpdateServiceDto): Promise<ApiResponse<Service>> {
     try {
-      const response = await fetch(`${this.baseUrl}/services/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: `HTTP error! status: ${response.status}`,
-        }));
-        return {
-          data: null,
-          error: {
-            message: error.message || 'Failed to update service',
-            statusCode: response.status,
-            error: error.error,
-          },
-        };
-      }
-
-      const data = await response.json();
-      return { data, error: null };
+      const response = await this.client.servicesControllerUpdate(id, updates as any);
+      return { data: response.data as Service, error: null };
     } catch (error: any) {
       return {
         data: null,
         error: {
-          message: error.message || 'Network error',
+          message: error.response?.data?.message || error.message || 'Failed to update service',
+          statusCode: error.response?.status,
+          error: error.response?.data?.error,
         },
       };
     }
@@ -174,31 +101,15 @@ class ServicesApi {
    */
   async delete(id: string): Promise<ApiResponse<{ message: string }>> {
     try {
-      const response = await fetch(`${this.baseUrl}/services/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: `HTTP error! status: ${response.status}`,
-        }));
-        return {
-          data: null,
-          error: {
-            message: error.message || 'Failed to delete service',
-            statusCode: response.status,
-            error: error.error,
-          },
-        };
-      }
-
-      const data = await response.json();
-      return { data, error: null };
+      const response = await this.client.servicesControllerRemove(id);
+      return { data: response.data as any, error: null };
     } catch (error: any) {
       return {
         data: null,
         error: {
-          message: error.message || 'Network error',
+          message: error.response?.data?.message || error.message || 'Failed to delete service',
+          statusCode: error.response?.status,
+          error: error.response?.data?.error,
         },
       };
     }
@@ -206,4 +117,4 @@ class ServicesApi {
 }
 
 // Export a singleton instance
-export const servicesApi = new ServicesApi();
+export const servicesApi = new ServicesApiWrapper();

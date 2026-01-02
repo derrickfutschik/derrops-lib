@@ -29,3 +29,6 @@ amplify_outputs.json
 amplifyconfiguration.json
 build/
 .turbo/
+
+# Generated API client
+# src/client/slaops-cloud/

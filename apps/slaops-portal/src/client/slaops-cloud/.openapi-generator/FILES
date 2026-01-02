@@ -1,0 +1,16 @@
+.gitignore
+.npmignore
+.openapi-generator-ignore
+api.ts
+api/services-api.ts
+base.ts
+common.ts
+configuration.ts
+docs/CreateServiceDto.md
+docs/ServicesApi.md
+docs/UpdateServiceDto.md
+git_push.sh
+index.ts
+models/create-service-dto.ts
+models/index.ts
+models/update-service-dto.ts
