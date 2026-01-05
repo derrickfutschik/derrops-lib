@@ -3,11 +3,11 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { VpcStack } from '../lib/stack/vpc';
 import { AuthStack } from '../lib/stack/userpool';
-import { DatabaseStack } from '../lib/stack/database';
+import { AppDatabaseStack } from '../lib/stack/app-database';
 import { ApiStack } from '../lib/stack/apigateway';
 import { SecurityGroupStack } from '../lib/stack/security-group';
 import { HostedZoneStack } from '../lib/stack/private-hosted-zone';
-import { OpenSearchStack } from '../lib/stack/opensearch';
+import { OpenSearchStack } from '../lib/stack/app-opensearch';
 
 const app = new cdk.App();
 
@@ -16,6 +16,7 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-2',
 };
 
+// common tags for the environment
 const tags = {
   Project: 'SLAOps',
   Environment: process.env.ENVIRONMENT || 'production',
@@ -43,7 +44,7 @@ new AuthStack(app, 'SlaOpsAuthStack', {
 
 // Database infrastructure stack
 // Contains Aurora Serverless v2 PostgreSQL cluster (imports VPC from VPC stack)
-const databaseStack = new DatabaseStack(app, 'SlaOpsDatabaseStack', {
+const databaseStack = new AppDatabaseStack(app, 'SlaOpsDatabaseStack', {
   stackName: 'slaops-database-infrastructure',
   description: 'SLAOps Database Infrastructure - Aurora Serverless v2 PostgreSQL',
   env,
@@ -80,7 +81,7 @@ hostedZoneStack.addDependency(vpcStack);
 // OpenSearch infrastructure stack
 // Contains OpenSearch domain with configurable node count (imports VPC and security group)
 const opensearchStack = new OpenSearchStack(app, 'SlaOpsOpenSearchStack', {
-  stackName: 'slaops-opensearch-infrastructure',
+  stackName: 'slaops-opensearch',
   description: 'SLAOps OpenSearch Infrastructure - OpenSearch domain cluster',
   env,
   tags,

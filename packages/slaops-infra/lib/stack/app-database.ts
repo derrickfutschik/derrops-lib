@@ -18,7 +18,7 @@ import { Construct } from 'constructs';
  * These resources are exported via CloudFormation outputs and can be
  * referenced by other stacks (like the Amplify backend).
  */
-export class DatabaseStack extends Stack {
+export class AppDatabaseStack extends Stack {
   public readonly vpc: ec2.IVpc;
   public readonly cluster: rds.DatabaseCluster;
   public readonly databaseCredentials: secretsmanager.Secret;
