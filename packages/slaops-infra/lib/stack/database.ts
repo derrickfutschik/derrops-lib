@@ -28,26 +28,15 @@ export class DatabaseStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // Import VPC from the VPC stack using CloudFormation exports
+    // Import VPC attributes from the VPC stack using CloudFormation exports
     const vpcId = Fn.importValue('slaops-vpc-id');
     const vpcCidrBlock = Fn.importValue('slaops-vpc-cidr-block');
-    const availabilityZones = [
-      Fn.importValue('slaops-availability-zone-1'),
-      Fn.importValue('slaops-availability-zone-2'),
-      Fn.importValue('slaops-availability-zone-3'),
-    ];
 
-    // Import subnet IDs from VPC stack
+    // Import only the subnet IDs we need
     const publicSubnetIds = [
       Fn.importValue('slaops-vpc-subnet-public-a'),
       Fn.importValue('slaops-vpc-subnet-public-b'),
       Fn.importValue('slaops-vpc-subnet-public-c'),
-    ];
-
-    const privateSubnetIds = [
-      Fn.importValue('slaops-vpc-subnet-private-a'),
-      Fn.importValue('slaops-vpc-subnet-private-b'),
-      Fn.importValue('slaops-vpc-subnet-private-c'),
     ];
 
     const isolatedSubnetIds = [
@@ -56,15 +45,20 @@ export class DatabaseStack extends Stack {
       Fn.importValue('slaops-vpc-subnet-isolated-c'),
     ];
 
-    // Reconstruct VPC from imported attributes
+    // Create minimal VPC reference - only VPC ID is needed for security groups
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
       vpcId,
-      vpcCidrBlock,
-      availabilityZones,
-      publicSubnetIds,
-      privateSubnetIds,
-      isolatedSubnetIds,
+      availabilityZones: Fn.getAzs(),
     });
+
+    // Create subnet references for direct use (avoids needing full VPC reconstruction)
+    const publicSubnets = publicSubnetIds.map((subnetId, index) =>
+      ec2.Subnet.fromSubnetId(this, `PublicSubnet${index}`, subnetId)
+    );
+
+    const isolatedSubnets = isolatedSubnetIds.map((subnetId, index) =>
+      ec2.Subnet.fromSubnetId(this, `IsolatedSubnet${index}`, subnetId)
+    );
 
     // Security group for the database
     this.dbSecurityGroup = new ec2.SecurityGroup(this, 'SlaOpsDbSecurityGroup', {
@@ -75,7 +69,7 @@ export class DatabaseStack extends Stack {
 
     // Allow inbound PostgreSQL traffic from within VPC
     this.dbSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
+      ec2.Peer.ipv4(vpcCidrBlock),
       ec2.Port.tcp(5432),
       'Allow PostgreSQL access from VPC',
     );
@@ -113,7 +107,7 @@ export class DatabaseStack extends Stack {
       ],
       vpc: this.vpc,
       vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        subnets: isolatedSubnets,
       },
       securityGroups: [this.dbSecurityGroup],
       serverlessV2MinCapacity: 0.5,
@@ -137,7 +131,7 @@ export class DatabaseStack extends Stack {
       vpc: this.vpc,
       securityGroup: bastionSecurityGroup,
       subnetSelection: {
-        subnetType: ec2.SubnetType.PUBLIC,
+        subnets: publicSubnets,
       },
       instanceName: 'slaops-bastion',
     });

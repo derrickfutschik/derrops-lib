@@ -6,7 +6,19 @@ AWS CDK Infrastructure Stacks for SLA Ops Platform
 
 This package contains the infrastructure-as-code definitions for long-lived AWS resources that persist across feature deployments. These resources are managed separately from the Amplify backend to ensure stability and prevent accidental destruction during feature updates.
 
+The infrastructure is organized into separate, focused stacks that can be deployed and managed independently.
+
 ## What's Included
+
+### VPC Stack
+
+The `VpcStack` includes:
+
+- **VPC**: Multi-AZ VPC with 3 availability zones
+- **Subnets**: Public, private (with NAT egress), and isolated subnets (one per AZ)
+- **NAT Gateways**: Configurable 1-3 NAT gateways for internet access
+- **VPC Endpoints**: Optional S3, DynamoDB, Secrets Manager, CloudWatch Logs, EC2, ECR endpoints
+- **Flow Logs**: Optional VPC flow logs for network monitoring
 
 ### Auth Stack
 
@@ -23,11 +35,28 @@ The `AuthStack` includes:
 
 The `DatabaseStack` includes:
 
-- **VPC**: Multi-AZ VPC with public, private, and isolated subnets
 - **Aurora Serverless v2**: PostgreSQL 15.5 cluster with writer and reader instances
 - **Secrets Manager**: Secure database credentials storage
 - **Bastion Host**: EC2 instance for secure database access
-- **Security Groups**: Network access control
+- **Security Groups**: Database network access control
+
+Note: The Database Stack imports VPC resources from the VPC Stack.
+
+### Security Group Stack
+
+The `SecurityGroupStack` includes:
+
+- **OpenSearch Security Group**: For OpenSearch domain access
+- **RDS Security Group**: For PostgreSQL database access
+- **Backend Security Group**: For Lambda backend function
+- **Inter-service Rules**: Pre-configured access between services
+
+### Hosted Zone Stack
+
+The `HostedZoneStack` includes:
+
+- **Private Hosted Zone**: Route53 private DNS for VPC resources
+- **Environment-based Naming**: `${env}.internal.slaops.com`
 
 ### API Stack
 
@@ -40,6 +69,13 @@ The `ApiStack` includes:
 - **Stage**: Production stage with deployment options
 
 ### Key Features
+
+**VPC & Networking:**
+- **Multi-AZ**: 3 availability zones for high availability
+- **Subnet Tiers**: Public, private, and isolated subnet layers
+- **NAT Gateways**: Configurable 1-3 NAT gateways
+- **VPC Endpoints**: Optional endpoints to reduce NAT costs
+- **Flow Logs**: Optional network traffic monitoring
 
 **Authentication:**
 - **Email Login**: Sign in with email and password
@@ -55,6 +91,11 @@ The `ApiStack` includes:
 - **Backup & Recovery**: 7-day backup retention with automated backups
 - **Encryption**: Storage encryption enabled
 - **Network Isolation**: Database in isolated subnets, no public access
+
+**Security:**
+- **Centralized Security Groups**: Reusable security groups for all services
+- **Least Privilege**: Only required traffic permitted between services
+- **Service Isolation**: Separate security boundaries for each service
 
 **API:**
 - **REST API**: Regional API Gateway endpoint
@@ -132,6 +173,22 @@ pnpm run destroy
 
 The stacks export the following CloudFormation outputs that can be referenced by other stacks:
 
+### VPC Stack Exports
+
+| Export Name | Description |
+|------------|-------------|
+| `slaops-vpc-id` | VPC ID |
+| `slaops-vpc-cidr-block` | VPC CIDR block |
+| `slaops-vpc-subnet-public-a` | Public subnet A ID |
+| `slaops-vpc-subnet-public-b` | Public subnet B ID |
+| `slaops-vpc-subnet-public-c` | Public subnet C ID |
+| `slaops-vpc-subnet-private-a` | Private subnet A ID |
+| `slaops-vpc-subnet-private-b` | Private subnet B ID |
+| `slaops-vpc-subnet-private-c` | Private subnet C ID |
+| `slaops-vpc-subnet-isolated-a` | Isolated subnet A ID |
+| `slaops-vpc-subnet-isolated-b` | Isolated subnet B ID |
+| `slaops-vpc-subnet-isolated-c` | Isolated subnet C ID |
+
 ### Auth Stack Exports
 
 | Export Name | Description |
@@ -152,7 +209,21 @@ The stacks export the following CloudFormation outputs that can be referenced by
 | `SlaOpsDbSecretArn` | ARN of database credentials secret |
 | `SlaOpsDbPort` | Database port (5432) |
 | `SlaOpsBastionHostId` | Bastion host instance ID |
-| `SlaOpsVpcId` | VPC ID |
+
+### Security Group Stack Exports
+
+| Export Name | Description |
+|------------|-------------|
+| `slaops-opensearch-sg` | OpenSearch security group ID |
+| `slaops-rds-sg` | RDS security group ID |
+| `slaops-backend-sg` | Lambda backend security group ID |
+
+### Hosted Zone Stack Exports
+
+| Export Name | Description |
+|------------|-------------|
+| `slaops-hosted-zone-id` | Private hosted zone ID |
+| `slaops-hosted-zone-name` | Private hosted zone name |
 
 ### API Stack Exports
 
@@ -167,6 +238,24 @@ The stacks export the following CloudFormation outputs that can be referenced by
 
 ```typescript
 import * as cdk from 'aws-cdk-lib';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+
+// Import VPC resources
+const vpcId = cdk.Fn.importValue('slaops-vpc-id');
+const vpcCidrBlock = cdk.Fn.importValue('slaops-vpc-cidr-block');
+
+// Create minimal VPC reference (only VPC ID needed for security groups)
+const vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
+  vpcId,
+  availabilityZones: cdk.Fn.getAzs(), // Automatically uses first 3 AZs
+});
+
+// Import specific subnets if needed
+const publicSubnetIds = [
+  cdk.Fn.importValue('slaops-vpc-subnet-public-a'),
+  cdk.Fn.importValue('slaops-vpc-subnet-public-b'),
+  cdk.Fn.importValue('slaops-vpc-subnet-public-c'),
+];
 
 // Import auth resources
 const userPoolId = cdk.Fn.importValue('SlaOpsUserPoolId');
@@ -175,6 +264,9 @@ const userPoolClientId = cdk.Fn.importValue('SlaOpsUserPoolClientId');
 // Import database resources
 const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint');
 const secretArn = cdk.Fn.importValue('SlaOpsDbSecretArn');
+
+// Import security groups
+const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
 ```
 
 ## Accessing the Database
@@ -223,17 +315,80 @@ const secretArn = cdk.Fn.importValue('SlaOpsDbSecretArn');
 
 ### Customization
 
-Edit `lib/database-stack.ts` to customize:
+**VPC Stack** (`lib/stack/vpc.ts`):
+- Number of NAT Gateways (1-3)
+- VPC CIDR block
+- Subnet CIDR masks
+- Enable/disable VPC endpoints
+- Enable/disable flow logs
 
-- VPC configuration (CIDR blocks, subnet layout)
+**Database Stack** (`lib/stack/database.ts`):
 - Aurora capacity (min/max ACU)
 - Backup retention period
 - PostgreSQL version
-- Instance types
+- Bastion instance type
+
+**Auth Stack** (`lib/stack/userpool.ts`):
+- Password policy
+- MFA requirements
+- Token validity periods
+- OAuth flows
+
+**Security Group Stack** (`lib/stack/security-group.ts`):
+- Security group rules
+- Port configurations
+- CIDR ranges
+
+**Hosted Zone Stack** (`lib/stack/hosted-zone.ts`):
+- Zone name (defaults to `${env}.internal.slaops.com`)
+
+**API Stack** (`lib/stack/apigateway.ts`):
+- Rate limits
+- CORS origins
+- Logging levels
+- Stage names
 
 ## Stack Architecture
 
 ```
+┌────────────────────────────────────────────┐
+│     VPC Stack                              │
+│  ┌──────────────────────────────────────┐ │
+│  │       VPC (Multi-AZ - 3 AZs)         │ │
+│  │  ┌────────────────────────────────┐  │ │
+│  │  │   Public Subnets (3)           │  │ │
+│  │  │   └─ NAT Gateways              │  │ │
+│  │  └────────────────────────────────┘  │ │
+│  │  ┌────────────────────────────────┐  │ │
+│  │  │   Private Subnets (3)          │  │ │
+│  │  │   └─ With NAT egress           │  │ │
+│  │  └────────────────────────────────┘  │ │
+│  │  ┌────────────────────────────────┐  │ │
+│  │  │   Isolated Subnets (3)         │  │ │
+│  │  │   └─ No internet access        │  │ │
+│  │  └────────────────────────────────┘  │ │
+│  └──────────────────────────────────────┘ │
+└────────────────────────────────────────────┘
+                    ↓ (imports VPC)
+┌────────────────────────────────────────────┐
+│     Security Group Stack                   │
+│  ┌──────────────────────────────────────┐ │
+│  │  OpenSearch Security Group           │ │
+│  │  RDS Security Group                  │ │
+│  │  Backend Lambda Security Group       │ │
+│  │  └─ Pre-configured inter-service     │ │
+│  │     access rules                     │ │
+│  └──────────────────────────────────────┘ │
+└────────────────────────────────────────────┘
+                    ↓ (imports VPC)
+┌────────────────────────────────────────────┐
+│     Hosted Zone Stack                      │
+│  ┌──────────────────────────────────────┐ │
+│  │  Route53 Private Hosted Zone         │ │
+│  │  └─ ${env}.internal.slaops.com       │ │
+│  └──────────────────────────────────────┘ │
+└────────────────────────────────────────────┘
+
 ┌─────────────────────────────────────┐
 │     Auth Stack                      │
 │  ┌───────────────────────────────┐  │
@@ -241,43 +396,38 @@ Edit `lib/database-stack.ts` to customize:
 │  │  └─ User Pool Client          │  │
 │  └───────────────────────────────┘  │
 └─────────────────────────────────────┘
-
-┌─────────────────────────────────────────┐
-│     Database Stack                      │
-│  ┌─────────────────────────────────┐   │
-│  │         VPC (Multi-AZ)          │   │
-│  │  ┌──────────────────────────┐   │   │
-│  │  │   Public Subnets         │   │   │
-│  │  │   └─ Bastion Host (EC2)  │   │   │
-│  │  └──────────────────────────┘   │   │
-│  │  ┌──────────────────────────┐   │   │
-│  │  │   Private Subnets        │   │   │
-│  │  │   └─ (Lambda, ECS)       │   │   │
-│  │  └──────────────────────────┘   │   │
-│  │  ┌──────────────────────────┐   │   │
-│  │  │   Isolated Subnets       │   │   │
-│  │  │   └─ Aurora Serverless   │   │   │
-│  │  │      ├─ Writer           │   │   │
-│  │  │      └─ Reader           │   │   │
-│  │  └──────────────────────────┘   │   │
-│  └─────────────────────────────────┘   │
-│                                         │
-│  ┌─────────────────────┐               │
-│  │  Secrets Manager    │               │
-│  │  └─ DB Credentials  │               │
-│  └─────────────────────┘               │
-└─────────────────────────────────────────┘
-
+                    ↓ (imports VPC)
+┌────────────────────────────────────────────┐
+│     Database Stack                         │
+│  ┌──────────────────────────────────────┐ │
+│  │  Aurora Serverless v2 PostgreSQL     │ │
+│  │  ├─ Writer Instance (isolated)       │ │
+│  │  └─ Reader Instance (isolated)       │ │
+│  └──────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────┐ │
+│  │  Bastion Host (public subnet)        │ │
+│  └──────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────┐ │
+│  │  Secrets Manager                     │ │
+│  │  └─ DB Credentials                   │ │
+│  └──────────────────────────────────────┘ │
+└────────────────────────────────────────────┘
+                    ↓ (Lambda deployed separately)
 ┌─────────────────────────────────────┐
 │     API Stack                       │
 │  ┌───────────────────────────────┐  │
 │  │  API Gateway REST API         │  │
-│  │  └─ /prod/* → Lambda (Amplify)  │
+│  │  └─ /prod/* → Lambda (Amplify)│  │
 │  └───────────────────────────────┘  │
 └─────────────────────────────────────┘
 ```
 
 ## Cost Considerations
+
+**VPC Stack:**
+- **NAT Gateway**: ~$0.045/hour (~$33/month per gateway) + data transfer ($0.045/GB)
+- **VPC Endpoints**: Interface endpoints ~$0.01/hour (~$7.20/month each)
+- **VPC Flow Logs**: CloudWatch Logs ingestion costs (if enabled)
 
 **Auth Stack:**
 - **Cognito**: Free tier covers 50,000 MAU, then $0.0055/MAU
@@ -285,17 +435,33 @@ Edit `lib/database-stack.ts` to customize:
 
 **Database Stack:**
 - **Aurora Serverless v2**: ~$0.12/ACU-hour (scales 0.5-2 ACU)
-- **NAT Gateway**: ~$0.045/hour + data transfer
 - **Bastion Host**: ~$0.0116/hour (t3.micro)
 - **Backups**: First 100GB free, then $0.021/GB-month
 
-**Estimated monthly cost**: $60-180 depending on usage and MAU
+**Security Group Stack:**
+- **No cost**: Security groups are free
+
+**Hosted Zone Stack:**
+- **Private Hosted Zone**: $0.50/month
+
+**API Stack:**
+- **API Gateway**: $3.50 per million requests + data transfer
+
+**Estimated monthly cost**: $100-250 depending on:
+- Number of NAT Gateways (1-3)
+- VPC endpoints enabled
+- Database utilization
+- API traffic
+- Active users (MAU)
 
 ### Cost Optimization
 
-- Bastion host can be stopped when not in use
-- Consider removing NAT Gateway for production (use VPC endpoints)
-- Adjust Aurora capacity based on workload
+- **Use 1 NAT Gateway** for dev/staging (instead of 3)
+- **Enable VPC Endpoints** for S3, DynamoDB (free) to reduce NAT costs
+- **Stop Bastion Host** when not in use (~$8/month savings)
+- **Disable VPC Flow Logs** in non-production environments
+- **Adjust Aurora capacity** (min/max ACU) based on workload
+- **Use security groups** instead of NACLs (no additional cost)
 
 ## Troubleshooting
 
@@ -339,28 +505,51 @@ pnpm run deploy
 
 Due to stack dependencies, deploy in this order:
 
-### 1. Deploy Auth and Database Stacks
+### 1. Deploy VPC Stack (First - Required by All)
 
 ```bash
-# Deploy infrastructure (Auth + Database only, API stack skipped)
-pnpm infra:deploy
+# Deploy VPC infrastructure first
+pnpm --filter @slaops/infra run cdk deploy SlaOpsVpcStack
 
 # This deploys:
-# - AuthStack (Cognito User Pool)
-# - DatabaseStack (Aurora + VPC)
-# API stack is skipped because Lambda ARN is not yet available
+# - VPC with 3 AZs
+# - Public, private, and isolated subnets
+# - NAT gateways
+# - VPC endpoints (if configured)
 ```
 
-### 2. Deploy Amplify Backend (Lambda Function)
+### 2. Deploy Security Group and Hosted Zone Stacks
+
+```bash
+# Deploy security groups and hosted zone (both depend on VPC)
+pnpm --filter @slaops/infra run cdk deploy SlaOpsSecurityGroupStack
+pnpm --filter @slaops/infra run cdk deploy SlaOpsHostedZoneStack
+```
+
+### 3. Deploy Auth and Database Stacks
+
+```bash
+# Deploy auth and database infrastructure
+pnpm --filter @slaops/infra run cdk deploy SlaOpsAuthStack
+pnpm --filter @slaops/infra run cdk deploy SlaOpsDatabaseStack
+
+# Or deploy all at once (skips API stack if Lambda ARN not set)
+pnpm infra:deploy:all
+```
+
+### 4. Deploy Amplify Backend (Lambda Function)
 
 ```bash
 # Deploy Amplify backend with Lambda function
 pnpm amplify:deploy
 
-# This creates the Lambda function and exports its ARN
+# This creates the Lambda function that references:
+# - UserPoolId (from AuthStack)
+# - DB endpoint (from DatabaseStack)
+# - Security groups (from SecurityGroupStack)
 ```
 
-### 3. Deploy API Stack
+### 5. Deploy API Stack (Last)
 
 ```bash
 # Get the Lambda ARN from Amplify outputs
@@ -380,25 +569,55 @@ pnpm --filter @slaops/infra run cdk deploy SlaOpsApiStack \
 ### Stack Dependencies
 
 ```
-1. Infrastructure (Auth + Database)
-   └─ Exports: UserPoolId, DB endpoint, Secret ARN
+1. VPC Stack (no dependencies)
+   └─ Exports: VPC ID, subnet IDs, CIDR block
 
-2. Amplify Backend (Lambda)
-   ├─ Imports: UserPoolId, DB endpoint, Secret ARN
+2. Security Group Stack (depends on VPC)
+   ├─ Imports: VPC ID
+   └─ Exports: Security group IDs
+
+3. Hosted Zone Stack (depends on VPC)
+   ├─ Imports: VPC ID
+   └─ Exports: Hosted zone ID
+
+4. Auth Stack (no dependencies)
+   └─ Exports: User Pool ID, Client ID
+
+5. Database Stack (depends on VPC)
+   ├─ Imports: VPC ID, CIDR, subnet IDs
+   └─ Exports: DB endpoint, Secret ARN
+
+6. Amplify Backend (Lambda)
+   ├─ Imports: User Pool ID, DB endpoint, Security groups
    └─ Exports: Lambda ARN
 
-3. Infrastructure (API Gateway)
+7. API Gateway Stack (depends on Lambda)
    └─ Imports: Lambda ARN
 ```
 
 ## Integration with Amplify Backend
 
-The Amplify backend (in `packages/slaops-backend`) references these infrastructure resources via CloudFormation exports. The API Gateway (in this package) references the Lambda function deployed by Amplify. This separation allows:
+The infrastructure stacks export resources via CloudFormation that are imported by:
+1. **Amplify Backend** (`packages/slaops-backend`) - imports VPC, Auth, Database, Security Groups
+2. **API Gateway Stack** - imports Lambda ARN from Amplify
+
+This separation provides:
 
 - **Independent deployment cycles**: Infrastructure changes don't require Amplify redeployment
-- **Stability**: Database and API Gateway persist across Lambda updates
+- **Stability**: VPC, Database, and API Gateway persist across Lambda updates
 - **Rollback safety**: Lambda rollbacks don't affect infrastructure
 - **Clear separation**: Infrastructure (stable) vs application code (frequently updated)
+- **Modular architecture**: Each stack has a single responsibility
+- **Flexible scaling**: Add new stacks without modifying existing ones
+
+### Optimization: Minimal VPC Imports
+
+The stacks are optimized to import only what they need:
+- **Security groups**: Only VPC ID
+- **Hosted zones**: Only VPC ID
+- **Database**: VPC ID + specific subnet IDs (no full VPC reconstruction)
+
+This reduces CloudFormation complexity and improves deployment speed.
 
 ## Development Workflow
 

@@ -32,42 +32,14 @@ export class HostedZoneStack extends Stack {
     constructor(scope: Construct, id: string, props?: HostedZoneStackProps) {
         super(scope, id, props);
 
-        // Import VPC from the VPC stack using CloudFormation exports
+        // Import VPC ID from the VPC stack using CloudFormation exports
+        // Only VPC ID is needed for creating a private hosted zone
         const vpcId = Fn.importValue('slaops-vpc-id');
-        const vpcCidrBlock = Fn.importValue('slaops-vpc-cidr-block');
-        const availabilityZones = [
-            Fn.importValue('slaops-availability-zone-1'),
-            Fn.importValue('slaops-availability-zone-2'),
-            Fn.importValue('slaops-availability-zone-3'),
-        ];
 
-        // Import subnet IDs from VPC stack
-        const publicSubnetIds = [
-            Fn.importValue('slaops-vpc-subnet-public-a'),
-            Fn.importValue('slaops-vpc-subnet-public-b'),
-            Fn.importValue('slaops-vpc-subnet-public-c'),
-        ];
-
-        const privateSubnetIds = [
-            Fn.importValue('slaops-vpc-subnet-private-a'),
-            Fn.importValue('slaops-vpc-subnet-private-b'),
-            Fn.importValue('slaops-vpc-subnet-private-c'),
-        ];
-
-        const isolatedSubnetIds = [
-            Fn.importValue('slaops-vpc-subnet-isolated-a'),
-            Fn.importValue('slaops-vpc-subnet-isolated-b'),
-            Fn.importValue('slaops-vpc-subnet-isolated-c'),
-        ];
-
-        // Reconstruct VPC from imported attributes
+        // Create a minimal VPC reference - only VPC ID is needed for hosted zone
         const vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
             vpcId,
-            vpcCidrBlock,
-            availabilityZones,
-            publicSubnetIds,
-            privateSubnetIds,
-            isolatedSubnetIds,
+            availabilityZones: Fn.getAzs(), // Required by fromVpcAttributes
         });
 
         // Get environment from ENVIRONMENT env var or default to 'production'

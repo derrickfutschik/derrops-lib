@@ -264,14 +264,6 @@ export class VpcStack extends Stack {
             });
         });
 
-        // Export availability zones
-        this.vpc.availabilityZones.forEach((az, index) => {
-            new CfnOutput(this, `AvailabilityZone${index + 1}`, {
-                value: az,
-                description: `Availability zone ${index + 1}`,
-                exportName: `slaops-availability-zone-${index + 1}`,
-            });
-        });
     }
 }
 
