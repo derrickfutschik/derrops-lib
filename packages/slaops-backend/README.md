@@ -1,19 +1,29 @@
 # @slaops/backend
 
-AWS Amplify Infrastructure for SLA Ops Platform
+AWS Amplify Backend for SLA Ops Platform
 
 ## Overview
 
-This package contains the AWS Amplify backend infrastructure definitions for the SLAOps platform. It uses AWS Amplify Gen 2 with TypeScript to define cloud resources including authentication, APIs, storage, and more.
+This package contains the AWS Amplify Gen 2 backend configuration for the SLAOps platform. It integrates the NestJS API from `apps/slaops-cloud` and deploys it as a serverless Lambda function with API Gateway, connecting to infrastructure resources (Auth, Database) from `@slaops/infra`.
+
+## Architecture
+
+- **NestJS API as Lambda**: The `slaops-cloud` NestJS app runs in AWS Lambda
+- **Infrastructure Integration**: References Cognito and Aurora from `@slaops/infra` via CloudFormation exports
+- **No Database Definition**: Database is managed entirely in `@slaops/infra` package
+- **No API Gateway**: API Gateway is managed in `@slaops/infra` package, Lambda ARN is exported for reference
 
 ## Structure
 
 ```
 slaops-backend/
 ├── amplify/
-│   ├── auth/
-│   │   └── resource.ts      # Cognito authentication configuration
-│   └── backend.ts           # Main backend definition
+│   ├── functions/
+│   │   └── api/
+│   │       └── resource.ts  # Lambda function definition
+│   └── backend.ts           # Main backend configuration
+├── .amplify/                # Build artifacts (gitignored)
+├── amplify_outputs.json     # Generated configuration
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -59,16 +69,40 @@ pnpm run clean
 
 ## Backend Resources
 
-### Authentication
+### Lambda Function (NestJS API)
 
-Email-based authentication with the following configuration:
+The NestJS application from `apps/slaops-cloud` is deployed as a Lambda function:
 
-- **Login method**: Email
-- **Required attributes**: Email (immutable)
-- **Account recovery**: Email only
-- **Provider**: AWS Cognito
+- **Entry point**: `apps/slaops-cloud/src/lambda.ts`
+- **Runtime**: Node.js 20
+- **Memory**: 512MB
+- **Timeout**: 30 seconds
+- **Integration**: API Gateway proxy integration
 
-Configuration: `amplify/auth/resource.ts`
+Configuration: `amplify/functions/api/resource.ts`
+
+### Infrastructure References
+
+The backend imports resources from `@slaops/infra`:
+
+- **Database**: Aurora Serverless v2 endpoint and credentials
+- **Authentication**: Cognito User Pool
+- **Secrets**: Database credentials from Secrets Manager
+
+**Prerequisites**: Deploy infrastructure first:
+```bash
+# Deploy Auth and Database stacks
+pnpm infra:deploy
+
+# Then deploy this Amplify backend (Lambda)
+pnpm amplify:deploy
+
+# Finally deploy API Gateway (in infra package)
+LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks \
+  --stack-name <amplify-stack-name> \
+  --query 'Stacks[0].Outputs[?ExportName==`SlaOpsLambdaFunctionArn`].OutputValue' \
+  --output text) pnpm infra:deploy
+```
 
 ## Local Development
 
@@ -126,34 +160,83 @@ This project uses AWS Amplify Gen 2, which provides:
 4. **defineStorage()** - Configure S3 storage (add as needed)
 5. **defineFunction()** - Create Lambda functions (add as needed)
 
+## Exported Outputs
+
+The Amplify backend exports:
+
+- `SlaOpsLambdaFunctionArn` - Lambda function ARN (for API Gateway integration)
+- `SlaOpsLambdaFunctionName` - Lambda function name
+
+## API Endpoints
+
+The API Gateway is managed in `@slaops/infra` package. Once deployed, the API is available at:
+
+```bash
+# Get API URL from infrastructure stack
+aws cloudformation describe-stacks \
+  --stack-name slaops-api-infrastructure \
+  --query 'Stacks[0].Outputs[?ExportName==`SlaOpsApiEndpoint`].OutputValue' \
+  --output text
+```
+
+### NestJS REST API
+
+All requests to the API Gateway are proxied to this Lambda function:
+
+```
+GET    /prod/services           # List all services
+POST   /prod/services           # Create service
+GET    /prod/services/:id       # Get service by ID
+PATCH  /prod/services/:id       # Update service
+DELETE /prod/services/:id       # Delete service
+GET    /prod/api                # Swagger documentation
+```
+
+
+## Environment Variables
+
+The Lambda function has access to:
+
+- `DB_HOST` - Database endpoint (from infrastructure stack)
+- `DB_SECRET_ARN` - Secrets Manager ARN for database credentials
+- `USER_POOL_ID` - Cognito User Pool ID
+- `NODE_ENV` - Set to 'production'
+- `DB_PORT` - PostgreSQL port (5432)
+- `DB_NAME` - Database name (slaops)
+- `DB_SSL` - Enable SSL (true)
+
+Database credentials are automatically retrieved from Secrets Manager at runtime.
+
 ## Adding Resources
 
 To add new resources:
 
-1. Create a new directory under `amplify/` (e.g., `amplify/data/`)
+1. Create a new directory under `amplify/` (e.g., `amplify/storage/`)
 2. Define the resource in `resource.ts`
 3. Import and add to `amplify/backend.ts`
 
 Example:
 
 ```typescript
-// amplify/data/resource.ts
-import { defineData } from '@aws-amplify/backend';
+// amplify/storage/resource.ts
+import { defineStorage } from '@aws-amplify/backend';
 
-export const data = defineData({
+export const storage = defineStorage({
   // ... configuration
 });
 
 // amplify/backend.ts
 import { defineBackend } from '@aws-amplify/backend';
-import { auth } from './auth/resource';
-import { data } from './data/resource';
+import { api } from './functions/api/resource';
+import { storage } from './storage/resource';
 
 const backend = defineBackend({
-  auth,
-  data,
+  api,
+  storage,
 });
 ```
+
+**Important**: Do NOT define database resources here. All database resources (Aurora, VPC, networking) are managed in the `@slaops/infra` package and referenced via CloudFormation exports.
 
 ## Environment Variables
 

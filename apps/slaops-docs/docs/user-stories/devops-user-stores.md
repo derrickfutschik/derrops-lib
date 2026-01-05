@@ -6,6 +6,12 @@ authors: [derrops]
 
 ## Infrastructure
 
+### Folder Structure
+
+- [ ] separate infrastructure folder from the backend folder
+- [ ] backend folder to contain only the amplify/cdk code needed for the lambda function
+- [ ] infrastructure folder to contain the code needed for various stacks (api gateway, rds, cognito, etc):
+
 ### Requester Deploys
 
 - [ ] Deploy requester to AWS

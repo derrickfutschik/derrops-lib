@@ -26,7 +26,15 @@
     "setup:test-resources": "git clone git@github.com:APIs-guru/openapi-directory.git test-resources/openapi-directory",
     "amplify:sandbox": "pnpm -C packages/slaops-backend run sandbox",
     "amplify:deploy": "pnpm -C packages/slaops-backend run deploy",
-    "amplify:clean": "rm -rf packages/slaops-backend/.amplify packages/slaops-backend/build"
+    "amplify:clean": "rm -rf packages/slaops-backend/.amplify packages/slaops-backend/build",
+    "infra:build": "pnpm -C packages/slaops-infra run build",
+    "infra:synth": "pnpm -C packages/slaops-infra run synth",
+    "infra:diff": "pnpm -C packages/slaops-infra run diff",
+    "infra:deploy": "pnpm -C packages/slaops-infra run deploy",
+    "infra:deploy:all": "pnpm -C packages/slaops-infra run deploy:all",
+    "infra:destroy": "pnpm -C packages/slaops-infra run destroy",
+    "infra:bootstrap": "pnpm -C packages/slaops-infra run bootstrap",
+    "infra:clean": "rm -rf packages/slaops-infra/cdk.out"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

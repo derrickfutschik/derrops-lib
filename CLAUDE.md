@@ -24,7 +24,8 @@ slaops-platform/
 │   ├── slaops-public/             # @slaops/public - Shared utilities
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
 │   ├── slaops-client-nodejs-axios/  # Axios-specific client implementation
-│   ├── slaops-backend/         # @slaops/backend - AWS Amplify infrastructure
+│   ├── slaops-infra/           # @slaops/infra - CDK infrastructure stacks (databases, VPC)
+│   ├── slaops-backend/         # @slaops/backend - AWS Amplify infrastructure for the lambda function only
 │   └── slaops-test/            # @slaops/test - Integration tests (dev dependencies on all packages)
 │
 ├── apps/                        # Platform applications
@@ -328,12 +329,163 @@ pnpm run test       # Run tests
 pnpm run dev        # Watch mode
 ```
 
+### @slaops/infra (packages/slaops-infra/)
+
+**AWS CDK Infrastructure Stacks for SLA Ops Platform**
+
+- **Status**: Private (not published to npm)
+- **Purpose**: Long-lived infrastructure resources (databases, VPC, networking) separate from feature deployments
+- **Technology**: AWS CDK 2.130.0 with TypeScript
+- **AWS Region**: ap-southeast-2 (Sydney) or configurable via environment
+- **Dependencies**: aws-cdk-lib, constructs, source-map-support
+
+Key features:
+
+- **Separation of Concerns**: Infrastructure separated from Amplify feature deployments
+- **Aurora Serverless v2**: PostgreSQL 15.5 with auto-scaling (0.5-2 ACU)
+- **High Availability**: Multi-AZ VPC with public, private, and isolated subnets
+- **Security**: Database in isolated subnets, credentials in Secrets Manager
+- **Bastion Host**: Secure database access for development and debugging
+- **CloudFormation Exports**: Stack outputs available to other stacks (including Amplify)
+
+**Current Resources**:
+
+**AuthStack** - Authentication infrastructure:
+- **Cognito User Pool**: Email-based authentication with password policy
+- **User Pool Client**: OAuth client for web applications
+- **MFA Support**: Optional TOTP-based MFA
+- **Advanced Security**: AWS threat detection enabled
+
+**DatabaseStack** - Database infrastructure:
+- **VPC**: Multi-AZ with NAT Gateway, 3-tier subnet architecture
+- **Aurora Serverless v2**: PostgreSQL cluster with writer and reader instances
+- **Secrets Manager**: Database credentials
+- **Security Groups**: Network access control
+- **Bastion Host**: EC2 instance for SSH tunneling to database
+
+**ApiStack** - API Gateway infrastructure:
+- **API Gateway REST API**: Regional endpoint with CORS
+- **Lambda Proxy Integration**: Routes to Amplify-deployed Lambda
+- **Rate Limiting**: 50 req/sec with 100 burst
+- **CloudWatch Logging**: Request/response logging
+
+**Exported CloudFormation Outputs**:
+
+Auth Stack:
+- `SlaOpsUserPoolId` - Cognito User Pool ID
+- `SlaOpsUserPoolArn` - User Pool ARN
+- `SlaOpsUserPoolClientId` - Client ID for web apps
+- `SlaOpsUserPoolProviderName` - Provider name
+- `SlaOpsUserPoolProviderUrl` - Provider URL
+
+Database Stack:
+- `SlaOpsDbClusterEndpoint` - Writer endpoint
+- `SlaOpsDbClusterReadEndpoint` - Reader endpoint
+- `SlaOpsDbName` - Database name (slaops)
+- `SlaOpsDbSecretArn` - Credentials ARN
+- `SlaOpsDbPort` - Port (5432)
+- `SlaOpsBastionHostId` - Bastion instance ID
+- `SlaOpsVpcId` - VPC ID
+
+API Stack:
+- `SlaOpsApiUrl` - API Gateway base URL
+- `SlaOpsApiId` - API Gateway ID
+- `SlaOpsApiArn` - API Gateway ARN
+- `SlaOpsApiEndpoint` - API endpoint with stage (/prod)
+
+**Commands**:
+
+```bash
+cd packages/slaops-infra
+
+# Type-check infrastructure code
+pnpm run build
+
+# Type-check in watch mode
+pnpm run dev
+
+# Synthesize CloudFormation template
+pnpm run synth
+
+# View changes before deploying
+pnpm run diff
+
+# Deploy infrastructure
+pnpm run deploy
+
+# Bootstrap CDK (one-time setup)
+pnpm run bootstrap
+
+# Destroy infrastructure (creates snapshot)
+pnpm run destroy
+
+# Clean build artifacts
+pnpm run clean
+```
+
+**Root-level convenience scripts**:
+
+```bash
+# From monorepo root
+pnpm infra:build       # Type-check infrastructure
+pnpm infra:synth       # Synthesize CloudFormation
+pnpm infra:diff        # View changes
+pnpm infra:deploy      # Deploy infrastructure
+pnpm infra:deploy:all  # Deploy all stacks
+pnpm infra:destroy     # Destroy infrastructure
+pnpm infra:bootstrap   # Bootstrap CDK
+pnpm infra:clean       # Clean artifacts
+```
+
+**Architecture**:
+
+The infrastructure package uses standard CDK patterns:
+
+```
+packages/slaops-infra/
+├── bin/
+│   └── cdk.ts              # CDK app entry point
+├── lib/
+│   └── database-stack.ts   # Database infrastructure stack
+├── cdk.json                # CDK configuration
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+**Integration with Amplify**:
+
+The Amplify backend (packages/slaops-backend) can reference infrastructure outputs:
+
+```typescript
+import * as cdk from 'aws-cdk-lib'
+
+// Import database endpoint from infra stack
+const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint')
+const secretArn = cdk.Fn.importValue('SlaOpsDbSecretArn')
+```
+
+This separation allows:
+
+- Independent deployment cycles for infrastructure and features
+- Database persists across feature deployments and rollbacks
+- Stable infrastructure foundation for multiple Amplify stacks
+- Reduced risk of accidental infrastructure changes during feature updates
+
+See [packages/slaops-infra/README.md](packages/slaops-infra/README.md) for detailed documentation.
+
+```bash
+cd packages/slaops-infra
+pnpm run build      # Type-check
+pnpm run deploy     # Deploy infrastructure
+```
+
 ### @slaops/backend (packages/slaops-backend/)
 
 **AWS Amplify Infrastructure for SLA Ops Platform**
 
 - **Status**: Private (not published to npm)
-- **Purpose**: Infrastructure as Code definitions for AWS cloud resources
+- **Purpose**: Feature-based infrastructure (authentication, APIs, functions) that deploys frequently
 - **Technology**: AWS Amplify Gen 2 with TypeScript
 - **AWS Region**: ap-southeast-2 (Sydney)
 - **Dependencies**: @aws-amplify/backend, aws-cdk-lib, constructs
@@ -345,24 +497,25 @@ Key features:
 - Local sandbox environment for testing
 - GitOps-friendly deployment workflow
 - CloudFormation-based resource provisioning
+- References long-lived infrastructure from @slaops/infra
 
 **Current Resources**:
 
-- **Authentication** (AWS Cognito):
-  - Email-based login
-  - Required attributes: Email (immutable)
-  - Account recovery: Email only
-  - Password policy: Min 8 chars, requires lowercase, numbers, symbols, uppercase
-  - Unauthenticated identities enabled
+- **Lambda Function**: NestJS API from `apps/slaops-cloud` deployed as serverless function
+- **Infrastructure References**: Imports database and auth from `@slaops/infra` via CloudFormation
+- **Exports**: Lambda function ARN for API Gateway integration
+
+All infrastructure resources (authentication, database, VPC, API Gateway) are managed in @slaops/infra. This package only contains the Lambda function deployment.
 
 **File Structure**:
 
 ```
 slaops-backend/
 ├── amplify/
-│   ├── auth/
-│   │   └── resource.ts      # Cognito authentication configuration
-│   └── backend.ts           # Main backend definition
+│   ├── functions/
+│   │   └── api/
+│   │       └── resource.ts  # Lambda function definition
+│   └── backend.ts           # Main backend (imports infra exports)
 ├── .amplify/                # Build artifacts (gitignored)
 ├── amplify_outputs.json     # Generated configuration
 ├── package.json
@@ -402,33 +555,37 @@ pnpm amplify:deploy     # Deploy backend to AWS
 pnpm amplify:clean      # Clean .amplify artifacts
 ```
 
-**Adding Resources**:
+**Adding Feature Resources**:
 
-To add new AWS resources (GraphQL APIs, storage, Lambda functions):
+To add new feature-specific AWS resources (GraphQL APIs, storage, Lambda functions):
 
-1. Create directory under `amplify/` (e.g., `amplify/data/`)
+1. Create directory under `amplify/` (e.g., `amplify/data/`, `amplify/functions/`)
 2. Define resource in `resource.ts` using Amplify's `define*` functions
 3. Import and add to `amplify/backend.ts`
+4. Reference infrastructure stack outputs if needed
 
 Example:
 
 ```typescript
 // amplify/data/resource.ts
-import { defineData } from '@aws-amplify/backend';
+import { defineData } from '@aws-amplify/backend'
 
 export const data = defineData({
   // ... configuration
-});
+})
 
 // amplify/backend.ts
-import { defineBackend } from '@aws-amplify/backend';
-import { auth } from './auth/resource';
-import { data } from './data/resource';
+import { defineBackend } from '@aws-amplify/backend'
+import { data } from './data/resource'
+import * as cdk from 'aws-cdk-lib'
 
 const backend = defineBackend({
-  auth,
   data,
-});
+})
+
+// Reference infrastructure resources if needed
+const userPoolId = cdk.Fn.importValue('SlaOpsUserPoolId')
+const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint')
 ```
 
 **Integration with Frontend**:
@@ -436,10 +593,10 @@ const backend = defineBackend({
 Frontend apps integrate with the backend using `amplify_outputs.json`:
 
 ```typescript
-import { Amplify } from 'aws-amplify';
-import outputs from './amplify_outputs.json';
+import { Amplify } from 'aws-amplify'
+import outputs from './amplify_outputs.json'
 
-Amplify.configure(outputs);
+Amplify.configure(outputs)
 ```
 
 See [packages/slaops-backend/README.md](packages/slaops-backend/README.md) for detailed documentation.
@@ -613,6 +770,7 @@ Located in `.github/workflows/`:
 ### AWS Amplify
 
 **Backend Infrastructure** (`packages/slaops-backend/`):
+
 - Infrastructure as Code using AWS Amplify Gen 2
 - TypeScript-based resource definitions
 - Sandbox environments for local development
@@ -620,6 +778,7 @@ Located in `.github/workflows/`:
 - CloudFormation stack management via AWS CDK
 
 **Frontend Apps** (`apps/slaops-docs/` and `apps/slaops-portal/`):
+
 - `amplify.yml` - Build specification
 - `amplify-prebuild.sh` - Environment setup
 - `amplify-build.sh` - Build execution
@@ -638,6 +797,16 @@ pnpm run test:watch   # Run all tests in watch mode
 pnpm run clean        # Remove all build artifacts and node_modules
 pnpm run commit       # AI-powered git commit with generated message
 pnpm run commit:ai    # Alias for commit
+
+# AWS Infrastructure (CDK)
+pnpm infra:build       # Type-check infrastructure
+pnpm infra:synth       # Synthesize CloudFormation
+pnpm infra:diff        # View changes before deploy
+pnpm infra:deploy      # Deploy infrastructure
+pnpm infra:deploy:all  # Deploy all stacks
+pnpm infra:destroy     # Destroy infrastructure
+pnpm infra:bootstrap   # Bootstrap CDK (one-time)
+pnpm infra:clean       # Clean CDK artifacts
 
 # AWS Amplify Backend
 pnpm amplify:sandbox  # Run backend in sandbox mode
