@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps, CfnOutput, Fn } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -9,16 +9,17 @@ import { Construct } from 'constructs';
  *
  * This stack contains long-lived infrastructure that should persist across
  * feature deployments. It includes:
- * - VPC with public, private, and isolated subnets
  * - Aurora Serverless v2 PostgreSQL cluster
  * - Database credentials in Secrets Manager
  * - Bastion host for database access
+ *
+ * VPC and networking resources are imported from the VPC stack.
  *
  * These resources are exported via CloudFormation outputs and can be
  * referenced by other stacks (like the Amplify backend).
  */
 export class DatabaseStack extends Stack {
-  public readonly vpc: ec2.Vpc;
+  public readonly vpc: ec2.IVpc;
   public readonly cluster: rds.DatabaseCluster;
   public readonly databaseCredentials: secretsmanager.Secret;
   public readonly bastionHost: ec2.BastionHostLinux;
@@ -27,27 +28,42 @@ export class DatabaseStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // Create VPC for the database
-    this.vpc = new ec2.Vpc(this, 'SlaOpsVpc', {
-      maxAzs: 2,
-      natGateways: 1,
-      subnetConfiguration: [
-        {
-          cidrMask: 24,
-          name: 'Public',
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-        {
-          cidrMask: 24,
-          name: 'Private',
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        },
-        {
-          cidrMask: 28,
-          name: 'Database',
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-        },
-      ],
+    // Import VPC from the VPC stack using CloudFormation exports
+    const vpcId = Fn.importValue('slaops-vpc-id');
+    const vpcCidrBlock = Fn.importValue('slaops-vpc-cidr-block');
+    const availabilityZones = [
+      Fn.importValue('slaops-availability-zone-1'),
+      Fn.importValue('slaops-availability-zone-2'),
+      Fn.importValue('slaops-availability-zone-3'),
+    ];
+
+    // Import subnet IDs from VPC stack
+    const publicSubnetIds = [
+      Fn.importValue('slaops-vpc-subnet-public-a'),
+      Fn.importValue('slaops-vpc-subnet-public-b'),
+      Fn.importValue('slaops-vpc-subnet-public-c'),
+    ];
+
+    const privateSubnetIds = [
+      Fn.importValue('slaops-vpc-subnet-private-a'),
+      Fn.importValue('slaops-vpc-subnet-private-b'),
+      Fn.importValue('slaops-vpc-subnet-private-c'),
+    ];
+
+    const isolatedSubnetIds = [
+      Fn.importValue('slaops-vpc-subnet-isolated-a'),
+      Fn.importValue('slaops-vpc-subnet-isolated-b'),
+      Fn.importValue('slaops-vpc-subnet-isolated-c'),
+    ];
+
+    // Reconstruct VPC from imported attributes
+    this.vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
+      vpcId,
+      vpcCidrBlock,
+      availabilityZones,
+      publicSubnetIds,
+      privateSubnetIds,
+      isolatedSubnetIds,
     });
 
     // Security group for the database
@@ -169,12 +185,6 @@ export class DatabaseStack extends Stack {
       value: this.bastionHost.instanceId,
       description: 'Bastion host instance ID for SSH tunneling',
       exportName: 'SlaOpsBastionHostId',
-    });
-
-    new CfnOutput(this, 'VpcId', {
-      value: this.vpc.vpcId,
-      description: 'VPC ID',
-      exportName: 'SlaOpsVpcId',
     });
   }
 }

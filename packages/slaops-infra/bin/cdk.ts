@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
+import { VpcStack } from '../lib/stack/vpc';
 import { AuthStack } from '../lib/stack/userpool';
 import { DatabaseStack } from '../lib/stack/database';
 import { ApiStack } from '../lib/stack/apigateway';
 import { SecurityGroupStack } from '../lib/stack/security-group';
+import { HostedZoneStack } from '../lib/stack/hosted-zone';
 
 const app = new cdk.App();
 
@@ -20,6 +22,15 @@ const tags = {
   Stack: 'Infrastructure',
 };
 
+// VPC infrastructure stack (deployed first, exports used by other stacks)
+// Contains VPC, subnets, NAT gateways, and VPC endpoints
+const vpcStack = new VpcStack(app, 'SlaOpsVpcStack', {
+  stackName: 'slaops-vpc-infrastructure',
+  description: 'SLAOps VPC Infrastructure - Networking resources',
+  env,
+  tags,
+});
+
 // Authentication infrastructure stack
 // Contains Cognito User Pool and related auth resources
 new AuthStack(app, 'SlaOpsAuthStack', {
@@ -30,26 +41,28 @@ new AuthStack(app, 'SlaOpsAuthStack', {
 });
 
 // Database infrastructure stack
-// Contains Aurora Serverless v2, VPC, and networking resources
+// Contains Aurora Serverless v2 PostgreSQL cluster (imports VPC from VPC stack)
 const databaseStack = new DatabaseStack(app, 'SlaOpsDatabaseStack', {
   stackName: 'slaops-database-infrastructure',
-  description: 'SLAOps Database Infrastructure - Aurora Serverless v2 PostgreSQL with VPC',
+  description: 'SLAOps Database Infrastructure - Aurora Serverless v2 PostgreSQL',
   env,
   tags,
 });
+
+// Database stack depends on VPC stack (for VPC exports)
+databaseStack.addDependency(vpcStack);
 
 // Security Group infrastructure stack
 // Contains centralized security groups for OpenSearch, RDS, and Lambda backend
 const securityGroupStack = new SecurityGroupStack(app, 'SlaOpsSecurityGroupStack', {
   stackName: 'slaops-security-group-infrastructure',
   description: 'SLAOps Security Group Infrastructure - Centralized security groups',
-  vpc: databaseStack.vpc,
   env,
   tags,
 });
 
-// Security group stack depends on database stack (for VPC)
-securityGroupStack.addDependency(databaseStack);
+// Security group stack depends on VPC stack (for VPC exports)
+securityGroupStack.addDependency(vpcStack);
 
 // API Gateway infrastructure stack
 // Contains REST API that proxies to the Lambda function deployed by Amplify

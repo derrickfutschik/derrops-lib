@@ -231,7 +231,7 @@ export class VpcStack extends Stack {
         new CfnOutput(this, 'VpcCidrBlock', {
             value: this.vpc.vpcCidrBlock,
             description: 'VPC CIDR block',
-            exportName: 'SlaOpsVpcCidrBlock',
+            exportName: 'slaops-vpc-cidr-block',
         });
 
         // Export public subnet IDs with AZ-specific naming
@@ -269,7 +269,7 @@ export class VpcStack extends Stack {
             new CfnOutput(this, `AvailabilityZone${index + 1}`, {
                 value: az,
                 description: `Availability zone ${index + 1}`,
-                exportName: `SlaOpsAvailabilityZone${index + 1}`,
+                exportName: `slaops-availability-zone-${index + 1}`,
             });
         });
     }
