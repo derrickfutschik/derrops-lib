@@ -6,7 +6,7 @@ import { AuthStack } from '../lib/stack/userpool';
 import { DatabaseStack } from '../lib/stack/database';
 import { ApiStack } from '../lib/stack/apigateway';
 import { SecurityGroupStack } from '../lib/stack/security-group';
-import { HostedZoneStack } from '../lib/stack/hosted-zone';
+import { HostedZoneStack } from '../lib/stack/private-hosted-zone';
 
 const app = new cdk.App();
 
@@ -63,6 +63,18 @@ const securityGroupStack = new SecurityGroupStack(app, 'SlaOpsSecurityGroupStack
 
 // Security group stack depends on VPC stack (for VPC exports)
 securityGroupStack.addDependency(vpcStack);
+
+// Private Hosted Zone infrastructure stack
+// Contains Route53 private hosted zone associated with the VPC
+const hostedZoneStack = new HostedZoneStack(app, 'SlaOpsHostedZoneStack', {
+  stackName: 'slaops-hosted-zone-infrastructure',
+  description: 'SLAOps Private Hosted Zone Infrastructure - Route53 private hosted zone',
+  env,
+  tags,
+});
+
+// Hosted zone stack depends on VPC stack (for VPC exports)
+hostedZoneStack.addDependency(vpcStack);
 
 // API Gateway infrastructure stack
 // Contains REST API that proxies to the Lambda function deployed by Amplify
