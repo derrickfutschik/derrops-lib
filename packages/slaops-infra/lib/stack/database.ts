@@ -23,14 +23,13 @@ export class DatabaseStack extends Stack {
   public readonly cluster: rds.DatabaseCluster;
   public readonly databaseCredentials: secretsmanager.Secret;
   public readonly bastionHost: ec2.BastionHostLinux;
-  public readonly dbSecurityGroup: ec2.SecurityGroup;
+  public readonly dbSecurityGroup: ec2.ISecurityGroup;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     // Import VPC attributes from the VPC stack using CloudFormation exports
     const vpcId = Fn.importValue('slaops-vpc-id');
-    const vpcCidrBlock = Fn.importValue('slaops-vpc-cidr-block');
 
     // Import only the subnet IDs we need
     const publicSubnetIds = [
@@ -60,18 +59,12 @@ export class DatabaseStack extends Stack {
       ec2.Subnet.fromSubnetId(this, `IsolatedSubnet${index}`, subnetId)
     );
 
-    // Security group for the database
-    this.dbSecurityGroup = new ec2.SecurityGroup(this, 'SlaOpsDbSecurityGroup', {
-      vpc: this.vpc,
-      description: 'Security group for SLAOps Aurora Serverless database',
-      allowAllOutbound: true,
-    });
-
-    // Allow inbound PostgreSQL traffic from within VPC
-    this.dbSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(vpcCidrBlock),
-      ec2.Port.tcp(5432),
-      'Allow PostgreSQL access from VPC',
+    // Import security group from the SecurityGroup stack
+    const dbSecurityGroupId = Fn.importValue('slaops-rds-sg-id');
+    this.dbSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      'ImportedDbSecurityGroup',
+      dbSecurityGroupId,
     );
 
     // Create database credentials secret
@@ -92,7 +85,7 @@ export class DatabaseStack extends Stack {
     // Create Aurora Serverless v2 PostgreSQL cluster
     this.cluster = new rds.DatabaseCluster(this, 'SlaOpsAuroraCluster', {
       engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_15_5,
+        version: rds.AuroraPostgresEngineVersion.VER_17_6, // TODO: use environment variables
       }),
       credentials: rds.Credentials.fromSecret(this.databaseCredentials),
       defaultDatabaseName: 'slaops',

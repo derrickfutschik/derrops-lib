@@ -7,6 +7,7 @@ import { DatabaseStack } from '../lib/stack/database';
 import { ApiStack } from '../lib/stack/apigateway';
 import { SecurityGroupStack } from '../lib/stack/security-group';
 import { HostedZoneStack } from '../lib/stack/private-hosted-zone';
+import { OpenSearchStack } from '../lib/stack/opensearch';
 
 const app = new cdk.App();
 
@@ -75,6 +76,20 @@ const hostedZoneStack = new HostedZoneStack(app, 'SlaOpsHostedZoneStack', {
 
 // Hosted zone stack depends on VPC stack (for VPC exports)
 hostedZoneStack.addDependency(vpcStack);
+
+// OpenSearch infrastructure stack
+// Contains OpenSearch domain with configurable node count (imports VPC and security group)
+const opensearchStack = new OpenSearchStack(app, 'SlaOpsOpenSearchStack', {
+  stackName: 'slaops-opensearch-infrastructure',
+  description: 'SLAOps OpenSearch Infrastructure - OpenSearch domain cluster',
+  env,
+  tags,
+  singleNodeMode: process.env.ENVIRONMENT === 'development' || process.env.ENVIRONMENT === 'dev',
+});
+
+// OpenSearch stack depends on VPC stack and Security Group stack
+opensearchStack.addDependency(vpcStack);
+opensearchStack.addDependency(securityGroupStack);
 
 // API Gateway infrastructure stack
 // Contains REST API that proxies to the Lambda function deployed by Amplify
