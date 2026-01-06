@@ -1,8 +1,16 @@
-import { loadConfig } from "@slaops/slaops-config";
+import { configFromEnv, setConfigForProcess } from "@slaops/slaops-config";
 
 export function nestConfigOptions() {
   return {
     isGlobal: true,
-    validate: (env: Record<string, any>) => loadConfig(env as any),
+    validate: (env: Record<string, any>) => {
+      // parse once using the same logic
+      const cfg = configFromEnv(env as any);
+
+      // if this is process.env, ensure everyone else sees the same instance
+      if (env === process.env) setConfigForProcess(cfg);
+
+      return cfg; // Nest stores this in its config store
+    },
   };
 }

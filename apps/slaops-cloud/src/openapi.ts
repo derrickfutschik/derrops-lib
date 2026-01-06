@@ -2,19 +2,23 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
 
-import { AppModule } from './app.module';
+// Load environment variables from root .env file BEFORE importing AppModule
+const envPath = resolve(__dirname, '../../../.env');
+dotenv.config({ path: envPath });
 
 async function generateOpenApi() {
+    try {
+        console.log(`Creating Application`);
 
-    console.log(`Creating Application`);
+        // Dynamically import AppModule AFTER env vars are loaded
+        const { AppModule } = await import('./app.module');
 
-    // TODO - set the environment variables for the postgresql docker container
-    // TODO - start postgresql docker container
-
-    const app = await NestFactory.create(AppModule, {
-        logger: false
-    });
+        const app = await NestFactory.create(AppModule, {
+            logger: ['error', 'warn']
+        });
 
     const config = new DocumentBuilder()
         .setTitle('SLAOps API')
@@ -27,14 +31,19 @@ async function generateOpenApi() {
 
     const document = SwaggerModule.createDocument(app, config);
 
-    const outputPath = join(process.cwd(), 'dist', 'openapi.json');
-    writeFileSync(outputPath, JSON.stringify(document, null, 2));
+        const outputPath = join(process.cwd(), 'dist', 'openapi.json');
+        writeFileSync(outputPath, JSON.stringify(document, null, 2));
 
-    await app.close();
+        await app.close();
 
-    console.log(`OpenAPI written to ${outputPath}`);
+        console.log(`OpenAPI written to ${outputPath}`);
 
-    // kill docker container
+        // kill docker container
+    } catch (error) {
+        console.error('Failed to generate OpenAPI specification:');
+        console.error(error);
+        process.exit(1);
+    }
 }
 
 generateOpenApi();

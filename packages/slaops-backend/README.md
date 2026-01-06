@@ -90,6 +90,7 @@ The backend imports resources from `@slaops/infra`:
 - **Secrets**: Database credentials from Secrets Manager
 
 **Prerequisites**: Deploy infrastructure first:
+
 ```bash
 # Deploy Auth and Database stacks
 pnpm infra:deploy
@@ -113,6 +114,7 @@ pnpm run sandbox
 ```
 
 This will:
+
 - Deploy a sandbox environment to AWS
 - Watch for changes and hot-reload
 - Provide local endpoints for testing
@@ -192,7 +194,6 @@ DELETE /prod/services/:id       # Delete service
 GET    /prod/api                # Swagger documentation
 ```
 
-
 ## Environment Variables
 
 The Lambda function has access to:
@@ -219,21 +220,21 @@ Example:
 
 ```typescript
 // amplify/storage/resource.ts
-import { defineStorage } from '@aws-amplify/backend';
+import { defineStorage } from '@aws-amplify/backend'
 
 export const storage = defineStorage({
   // ... configuration
-});
+})
 
 // amplify/backend.ts
-import { defineBackend } from '@aws-amplify/backend';
-import { api } from './functions/api/resource';
-import { storage } from './storage/resource';
+import { defineBackend } from '@aws-amplify/backend'
+import { api } from './functions/api/resource'
+import { storage } from './storage/resource'
 
 const backend = defineBackend({
   api,
   storage,
-});
+})
 ```
 
 **Important**: Do NOT define database resources here. All database resources (Aurora, VPC, networking) are managed in the `@slaops/infra` package and referenced via CloudFormation exports.
@@ -243,10 +244,10 @@ const backend = defineBackend({
 Amplify Gen 2 automatically manages environment variables. Access them in your app using:
 
 ```typescript
-import { Amplify } from 'aws-amplify';
-import outputs from './amplify_outputs.json';
+import { Amplify } from 'aws-amplify'
+import outputs from './amplify_outputs.json'
 
-Amplify.configure(outputs);
+Amplify.configure(outputs)
 ```
 
 ## CI/CD
@@ -262,6 +263,7 @@ This package is configured to work with AWS Amplify Hosting:
 ### Type Errors
 
 Run type checking:
+
 ```bash
 pnpm run typecheck
 ```
@@ -269,6 +271,7 @@ pnpm run typecheck
 ### Clean Build
 
 If you encounter issues:
+
 ```bash
 pnpm run clean
 pnpm install
@@ -277,6 +280,7 @@ pnpm install
 ### Sandbox Issues
 
 Reset the sandbox:
+
 ```bash
 amplify sandbox delete
 pnpm run sandbox

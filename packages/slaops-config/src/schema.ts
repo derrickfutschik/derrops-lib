@@ -11,6 +11,9 @@ export const ConfigSchema = z.object({
   DB_NAME: z.string().min(1),
   DB_SSL: z.string().optional(),
   DB_LOGGING: z.string().optional(),
+
+  APP_VERSION: z.string().min(1),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
+

@@ -1,13 +1,29 @@
 import { ConfigSchema, type AppConfig } from "./schema";
-import type { ZodIssue } from "zod";
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+/**
+ * Pure function.
+ * - No side effects
+ * - No caching
+ * - No globals
+ * - Deterministic
+ */
+export function loadConfig(
+  env: NodeJS.ProcessEnv,
+): AppConfig {
   const parsed = ConfigSchema.safeParse(env);
+
   if (!parsed.success) {
     const issues = parsed.error.issues
-      .map((i: ZodIssue) => `${i.path.join(".")}: ${i.message}`)
+      .map(issue => `${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
-    throw new Error(`Invalid environment variables:\n${issues}`);
+
+    throw new Error(
+      `Invalid environment variables:\n${issues}`,
+    );
   }
+
   return parsed.data;
 }
+
+
+// export const load = (env: NodeJS.ProcessEnv = process.env) => makeConfig(loadEnv(env))

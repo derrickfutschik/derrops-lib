@@ -70,6 +70,9 @@ importers:
       '@nestjs/typeorm':
         specifier: ^10.0.2
         version: 10.0.2(@nestjs/common@10.4.20)(@nestjs/core@10.4.20)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28)
+      '@slaops/slaops-config':
+        specifier: workspace:*
+        version: link:../../packages/slaops-config
       '@slaops/slaops-config-nestjs':
         specifier: workspace:*
         version: link:../../packages/slaops-config-nestjs
@@ -82,6 +85,9 @@ importers:
       class-validator:
         specifier: ^0.14.1
         version: 0.14.3
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       pg:
         specifier: ^8.13.1
         version: 8.16.3
@@ -17063,7 +17069,6 @@ packages:
   /dotenv@17.2.3:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
-    dev: true
 
   /drange@1.1.1:
     resolution: {integrity: sha512-pYxfDYpued//QpnLIm4Avk7rsNtAtQkUES2cwAYSvD/wd2pKD71gN2Ebj3e7klzXwjocvE8c5vx/1fxwpqmSxA==}
