@@ -9,7 +9,8 @@
         ".next/**",
         "!.next/cache/**",
         "build/**",
-        ".docusaurus/**"
+        ".docusaurus/**",
+        "../slaops-portal/src/client/slaops-cloud/**"
       ],
       "env": [
         "NODE_ENV",

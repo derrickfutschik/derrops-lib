@@ -5,7 +5,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && pnpm generate:openapi && pnpm generate:client",
     "build:backend": "nest build",
     "postbuild": "pnpm generate:openapi && pnpm generate:client",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
