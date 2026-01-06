@@ -5,8 +5,9 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build": "nest build && node dist/openapi.js && pnpm exec openapi-generator-cli generate -i dist/openapi.json -g typescript-axios -o ../slaops-portal/src/client/slaops-cloud --additional-properties=withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models",
+    "build": "nest build",
     "build:backend": "nest build",
+    "postbuild": "pnpm generate:openapi && pnpm generate:client",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "dotenv -e ../../.env -- nest start",
     "start:dev": "dotenv -e ../../.env -- nest start --watch",
@@ -18,8 +19,8 @@
     "test:cov": "dotenv -e ../../.env -- jest --coverage",
     "test:debug": "dotenv -e ../../.env -- node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "dotenv -e ../../.env -- jest --config ./test/jest-e2e.json",
-    "generate:openapi": "pnpm build && node dist/openapi.js",
-    "generate:client": "pnpm generate:openapi && pnpm exec openapi-generator-cli generate -i dist/openapi.json -g typescript-axios -o ../slaops-portal/src/client/slaops-cloud --additional-properties=withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models"
+    "generate:openapi": "node dist/openapi.js",
+    "generate:client": "pnpm exec openapi-generator-cli generate -i dist/openapi.json -g typescript-axios -o ../slaops-portal/src/client/slaops-cloud --additional-properties=withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.958.0",
