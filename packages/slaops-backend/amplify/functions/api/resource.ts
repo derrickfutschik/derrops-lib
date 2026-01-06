@@ -1,5 +1,4 @@
 import { defineFunction } from '@aws-amplify/backend';
-import * as cdk from 'aws-cdk-lib';
 
 export const api = defineFunction({
   name: 'slaops-api',
@@ -16,16 +15,5 @@ export const api = defineFunction({
     DB_NAME: 'slaops',
     DB_SSL: 'true',
     DB_LOGGING: 'false',
-  },
-  vpc: {
-    // TODO 
-    subnetIds: [
-      cdk.Fn.importValue('slaops-dev-vpc-subnet-a'),
-      cdk.Fn.importValue('slaops-dev-vpc-subnet-a'),
-      cdk.Fn.importValue('slaops-dev-vpc-subnet-a'),
-    ],
-    securityGroupIds: [
-      cdk.Fn.importValue('SlaOpsDBAccess'),
-    ],
   },
 });
