@@ -11,7 +11,7 @@ All URIs are relative to *http://localhost*
 |[**servicesControllerUpdate**](#servicescontrollerupdate) | **PATCH** /services/{id} | Update a service|
 
 # **servicesControllerCreate**
-> object servicesControllerCreate(createServiceDto)
+> Service servicesControllerCreate(createServiceDto)
 
 
 ### Example
@@ -42,7 +42,7 @@ const { status, data } = await apiInstance.servicesControllerCreate(
 
 ### Return type
 
-**object**
+**Service**
 
 ### Authorization
 
@@ -63,7 +63,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **servicesControllerFindAll**
-> Array<object> servicesControllerFindAll()
+> Array<Service> servicesControllerFindAll()
 
 
 ### Example
@@ -93,7 +93,7 @@ const { status, data } = await apiInstance.servicesControllerFindAll(
 
 ### Return type
 
-**Array<object>**
+**Array<Service>**
 
 ### Authorization
 
@@ -113,7 +113,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **servicesControllerFindOne**
-> object servicesControllerFindOne()
+> Service servicesControllerFindOne()
 
 
 ### Example
@@ -127,7 +127,7 @@ import {
 const configuration = new Configuration();
 const apiInstance = new ServicesApi(configuration);
 
-let id: string; // (default to undefined)
+let id: string; //Service UUID (default to undefined)
 let select: string; //Comma-separated list of fields to select (optional) (default to undefined)
 
 const { status, data } = await apiInstance.servicesControllerFindOne(
@@ -140,13 +140,13 @@ const { status, data } = await apiInstance.servicesControllerFindOne(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] |  | defaults to undefined|
+| **id** | [**string**] | Service UUID | defaults to undefined|
 | **select** | [**string**] | Comma-separated list of fields to select | (optional) defaults to undefined|
 
 
 ### Return type
 
-**object**
+**Service**
 
 ### Authorization
 
@@ -167,7 +167,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **servicesControllerRemove**
-> servicesControllerRemove()
+> ServicesControllerRemove200Response servicesControllerRemove()
 
 
 ### Example
@@ -181,7 +181,7 @@ import {
 const configuration = new Configuration();
 const apiInstance = new ServicesApi(configuration);
 
-let id: string; // (default to undefined)
+let id: string; //Service UUID (default to undefined)
 
 const { status, data } = await apiInstance.servicesControllerRemove(
     id
@@ -192,12 +192,12 @@ const { status, data } = await apiInstance.servicesControllerRemove(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] |  | defaults to undefined|
+| **id** | [**string**] | Service UUID | defaults to undefined|
 
 
 ### Return type
 
-void (empty response body)
+**ServicesControllerRemove200Response**
 
 ### Authorization
 
@@ -206,7 +206,7 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 
 ### HTTP response details
@@ -218,7 +218,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **servicesControllerUpdate**
-> object servicesControllerUpdate(updateServiceDto)
+> Service servicesControllerUpdate(updateServiceDto)
 
 
 ### Example
@@ -233,7 +233,7 @@ import {
 const configuration = new Configuration();
 const apiInstance = new ServicesApi(configuration);
 
-let id: string; // (default to undefined)
+let id: string; //Service UUID (default to undefined)
 let updateServiceDto: UpdateServiceDto; //
 
 const { status, data } = await apiInstance.servicesControllerUpdate(
@@ -247,12 +247,12 @@ const { status, data } = await apiInstance.servicesControllerUpdate(
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
 | **updateServiceDto** | **UpdateServiceDto**|  | |
-| **id** | [**string**] |  | defaults to undefined|
+| **id** | [**string**] | Service UUID | defaults to undefined|
 
 
 ### Return type
 
-**object**
+**Service**
 
 ### Authorization
 
@@ -268,6 +268,7 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 |**200** | Service updated successfully |  -  |
+|**400** | Bad request |  -  |
 |**404** | Service not found |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

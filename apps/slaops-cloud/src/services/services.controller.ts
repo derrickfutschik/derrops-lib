@@ -9,7 +9,7 @@ import {
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiOkResponse } from '@nestjs/swagger';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
@@ -18,7 +18,7 @@ import { Service } from './entities/service.entity';
 @ApiTags('services')
 @Controller('services')
 export class ServicesController {
-  constructor(private readonly servicesService: ServicesService) {}
+  constructor(private readonly servicesService: ServicesService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new service' })
@@ -44,6 +44,11 @@ export class ServicesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a service by ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'Service UUID',
+    example: '5c963787-d89d-4260-adaf-6541c41cb982',
+  })
   @ApiQuery({
     name: 'select',
     required: false,
@@ -61,7 +66,13 @@ export class ServicesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a service' })
+  @ApiParam({
+    name: 'id',
+    description: 'Service UUID',
+    example: '5c963787-d89d-4260-adaf-6541c41cb982',
+  })
   @ApiResponse({ status: 200, description: 'Service updated successfully', type: Service })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 404, description: 'Service not found' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -72,7 +83,23 @@ export class ServicesController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a service' })
-  @ApiResponse({ status: 200, description: 'Service deleted successfully' })
+  @ApiParam({
+    name: 'id',
+    description: 'Service UUID',
+    example: '5c963787-d89d-4260-adaf-6541c41cb982',
+  })
+  @ApiOkResponse({
+    description: 'Service deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Service deleted successfully',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 404, description: 'Service not found' })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<{ message: string }> {
     await this.servicesService.remove(id);

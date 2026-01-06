@@ -936,20 +936,15 @@ const ApiTester = () => {
       const servicesApi = new ServicesApi(config);
       
       const response = await servicesApi.servicesControllerFindAll();
-      const data = response.data as any[];
+      const data = response.data
 
       // Map API Service to local Service format
-      const mappedServices: Service[] = (data || []).map((apiService): Service => ({
-        id: apiService.id,
-        name: apiService.name,
-        endpoint: apiService.endpoint || null,
-        openapi_doc_url: apiService.openapi_doc_url ?? null,
-        openapi_doc_content: apiService.openapi_doc_content ?? null,
-      }));
+      const mappedServices: Service[] = data.map(s => s as Service)
 
       setServices(mappedServices);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Failed to fetch services";
+    } catch (error) {
+      const errorObj = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = errorObj?.response?.data?.message || errorObj?.message || "Failed to fetch services";
       toast.error(errorMessage);
     }
   };
