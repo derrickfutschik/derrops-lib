@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Zap } from "lucide-react";
-import { servicesApi } from "@/lib/api";
+import { ServicesApi, Configuration } from "@/client/slaops-cloud";
+import type { CreateServiceDto } from "@/client/slaops-cloud";
 import { useToast } from "@/hooks/use-toast";
 
 const exampleServices = [
@@ -83,17 +84,23 @@ const AddService = () => {
       // For now, using a hardcoded user_id
       const user_id = "5c963787-d89d-4260-adaf-6541c41cb982";
 
-      const { data, error } = await servicesApi.create({
+      const API_BASE_URL = 'http://localhost:8083';
+      const config = new Configuration({
+        basePath: API_BASE_URL,
+      });
+      const servicesApi = new ServicesApi(config);
+
+      const createDto: CreateServiceDto = {
         user_id,
         name: formData.name,
-        openapi_doc_url: formData.openapi_doc_url || null,
-        openapi_doc_content: formData.openapi_doc_content || null,
-        endpoint: formData.endpoint || null,
-        availability: formData.availability ? parseFloat(formData.availability) : null,
-        response_time: formData.response_time ? parseInt(formData.response_time) : null,
-      });
+        endpoint: formData.endpoint || '',
+        openapi_doc_url: formData.openapi_doc_url || undefined,
+        openapi_doc_content: formData.openapi_doc_content || undefined,
+        availability: formData.availability ? parseFloat(formData.availability) : undefined,
+        response_time: formData.response_time ? parseInt(formData.response_time) : undefined,
+      };
 
-      if (error) throw new Error(error.message);
+      await servicesApi.servicesControllerCreate(createDto);
 
       toast({
         title: "Success",

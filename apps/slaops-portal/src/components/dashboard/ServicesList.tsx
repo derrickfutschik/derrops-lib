@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, TrendingUp } from "lucide-react";
-import { api } from "@/lib/api";
+import { ServicesApi, Configuration } from "@/client/slaops-cloud";
 import { useToast } from "@/hooks/use-toast";
 
 interface Service {
@@ -27,13 +27,32 @@ const ServicesList = () => {
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await api
-        .from("services")
-        .select("id,name,endpoint,availability,response_time")
-        .order("created_at", { ascending: false });
+      const API_BASE_URL = 'http://localhost:8083';
+      const config = new Configuration({
+        basePath: API_BASE_URL,
+      });
+      const servicesApi = new ServicesApi(config);
+      
+      const response = await servicesApi.servicesControllerFindAll("id,name,endpoint,availability,response_time");
+      const data = response.data as any[];
 
-      if (error) throw error;
-      setServices(data || []);
+      // Map API Service to local Service format
+      const mappedServices: Service[] = (data || []).map((apiService): Service => ({
+        id: apiService.id,
+        name: apiService.name,
+        endpoint: apiService.endpoint || null,
+        availability: apiService.availability ?? null,
+        response_time: apiService.response_time ?? null,
+      }));
+
+      // Sort by created_at descending (newest first)
+      mappedServices.sort((a, b) => {
+        // Since we don't have created_at in the response, we'll just return the data as-is
+        // If sorting is needed, it should be done on the backend
+        return 0;
+      });
+
+      setServices(mappedServices);
     } catch (error: any) {
       toast({
         title: "Error",

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { servicesApi } from "@/lib/api";
+import { ServicesApi, Configuration } from "@/client/slaops-cloud";
 import { useToast } from "@/hooks/use-toast";
 import SwaggerUI from "swagger-ui-react";
 import "swagger-ui-react/swagger-ui.css";
@@ -41,11 +41,26 @@ const ServiceDetails = () => {
         throw new Error("Service ID is required");
       }
 
-      const { data, error } = await servicesApi.findOne(id);
+      const API_BASE_URL = 'http://localhost:8083';
+      const config = new Configuration({
+        basePath: API_BASE_URL,
+      });
+      const servicesApi = new ServicesApi(config);
+      
+      const response = await servicesApi.servicesControllerFindOne(id);
+      const data = response.data as any;
 
-      if (error) throw new Error(error.message);
-
-      setService(data);
+      setService({
+        id: data.id,
+        name: data.name,
+        endpoint: data.endpoint || null,
+        availability: data.availability ?? null,
+        response_time: data.response_time ?? null,
+        openapi_doc_url: data.openapi_doc_url ?? null,
+        openapi_doc_content: data.openapi_doc_content ?? null,
+        created_at: data.created_at || '',
+        updated_at: data.updated_at || '',
+      });
 
       // Parse OpenAPI spec
       if (data.openapi_doc_content) {

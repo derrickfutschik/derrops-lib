@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { ServicesApi, Configuration } from "@/client/slaops-cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -928,22 +928,30 @@ const ApiTester = () => {
   }, [builderMode, openAPIServiceId, openAPIOperationKey, selectedServiceId, selectedOperationKey]);
 
   const fetchServices = async () => {
-    const { data: session } = await supabase.auth.getSession();
-    // if (!session.session) {
-    //   navigate("/auth");
-    //   return;
-    // }
+    try {
+      const API_BASE_URL = 'http://localhost:8083';
+      const config = new Configuration({
+        basePath: API_BASE_URL,
+      });
+      const servicesApi = new ServicesApi(config);
+      
+      const response = await servicesApi.servicesControllerFindAll();
+      const data = response.data as any[];
 
-    const { data, error } = await supabase
-      .from("services")
-      .select("id, name, endpoint, openapi_doc_url, openapi_doc_content");
+      // Map API Service to local Service format
+      const mappedServices: Service[] = (data || []).map((apiService): Service => ({
+        id: apiService.id,
+        name: apiService.name,
+        endpoint: apiService.endpoint || null,
+        openapi_doc_url: apiService.openapi_doc_url ?? null,
+        openapi_doc_content: apiService.openapi_doc_content ?? null,
+      }));
 
-    if (error) {
-      toast.error("Failed to fetch services");
-      return;
+      setServices(mappedServices);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || "Failed to fetch services";
+      toast.error(errorMessage);
     }
-
-    setServices(data || []);
   };
 
   const addHeader = () => {
