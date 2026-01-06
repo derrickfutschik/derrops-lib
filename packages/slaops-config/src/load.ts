@@ -1,4 +1,4 @@
-import { ConfigSchema, type AppConfig } from "./schema";
+import { ConfigSchema, type AppConfigEnv } from "./schema";
 
 /**
  * Pure function.
@@ -9,7 +9,7 @@ import { ConfigSchema, type AppConfig } from "./schema";
  */
 export function loadConfig(
   env: NodeJS.ProcessEnv,
-): AppConfig {
+): AppConfigEnv {
   const parsed = ConfigSchema.safeParse(env);
 
   if (!parsed.success) {

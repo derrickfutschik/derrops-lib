@@ -1,10 +1,10 @@
 // packages/config/src/from-env.ts
-import type { AppConfig } from "./schema";
+import type { AppConfigEnv } from "./schema";
 import { loadConfig } from "./load";
 
-let cached: AppConfig | undefined;
+let cached: AppConfigEnv | undefined;
 
-export function configFromEnv(env: NodeJS.ProcessEnv = process.env): AppConfig {
+export function configFromEnv(env: NodeJS.ProcessEnv = process.env): AppConfigEnv {
     // cache only when using the real process.env
     if (env === process.env) {
         if (!cached) cached = loadConfig(env);
@@ -15,7 +15,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): AppConfig {
     return loadConfig(env);
 }
 
-export function setConfigForProcess(config: AppConfig) {
+export function setConfigForProcess(config: AppConfigEnv) {
     cached = config;
 }
 

@@ -2,10 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { makeConfig } from '@slaops/slaops-config';
+import { AppConfig, makeConfig } from '@slaops/slaops-config';
 
 async function bootstrap() {
-  const appConfig = makeConfig(process.env);
+  const config: AppConfig = makeConfig(process.env);
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS for frontend integration
@@ -24,18 +24,18 @@ async function bootstrap() {
   );
 
   // Swagger documentation setup
-  const config = new DocumentBuilder()
-    .setTitle('SLAOps Cloud API')
-    .setDescription('API for managing services and monitoring SLA compliance')
-    .setVersion('1.0')
+  const docConfig = new DocumentBuilder()
+    .setTitle(config["app.title"])
+    .setDescription(config["app.description"])
+    .setVersion(config["app.version"])
     .addTag('services')
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, docConfig);
   SwaggerModule.setup('api', app, document);
 
-  const port = process.env.PORT || 3001;
+  const port = config["app.port"]
   await app.listen(port);
 
   console.log(`\n🚀 SLAOps Cloud API is running on: http://localhost:${port}`);

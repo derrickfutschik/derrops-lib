@@ -7,6 +7,7 @@ export const makeConfig = (env: NodeJS.ProcessEnv = process.env) => {
         "app.env": cfg.NODE_ENV,
         "app.name": "SLAOps",
         "app.version": cfg.APP_VERSION,
+        "app.title": "SLAOps Cloud API",
         "app.description": "SLAOps is a platform for managing and monitoring SLA metrics",
         "app.author": "Derrops",
         "app.license": "MIT",
@@ -16,3 +17,5 @@ export const makeConfig = (env: NodeJS.ProcessEnv = process.env) => {
         "app.address": "123 Main St, Anytown, USA",
     }
 }
+
+export type AppConfig = ReturnType<typeof makeConfig>;

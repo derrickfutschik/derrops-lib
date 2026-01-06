@@ -15,5 +15,5 @@ export const ConfigSchema = z.object({
   APP_VERSION: z.string().min(1),
 });
 
-export type AppConfig = z.infer<typeof ConfigSchema>;
+export type AppConfigEnv = z.infer<typeof ConfigSchema>;
 
