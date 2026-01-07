@@ -203,11 +203,11 @@ export function MaximizableCodeViewer({
         findPaths(parsed, jmespathQuery);
         return { filteredContent: null, matchedPaths: paths, jmespathError: null };
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       return { 
         filteredContent: null, 
         matchedPaths: new Set<string>(), 
-        jmespathError: e.message || "Invalid JMESPath query" 
+        jmespathError: e instanceof Error ? e.message : "Invalid JMESPath query" 
       };
     }
   }, [content, jmespathQuery, jmespathEnabled, jmespathMode, isJson]);

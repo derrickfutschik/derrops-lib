@@ -6,15 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { OpenAPIParameterForm, OpenAPIFormValues } from "./OpenAPIParameterForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, FileCode } from "lucide-react";
+import { Service } from "@/client/slaops-cloud/models/service";
 import yaml from "js-yaml";
-
-interface Service {
-  id: string;
-  name: string;
-  endpoint: string | null;
-  openapi_doc_url: string | null;
-  openapi_doc_content: string | null;
-}
 
 interface OperationOption {
   key: string; // "method:path"
@@ -106,8 +99,8 @@ export function OpenAPIRequestTab({
         // Extract operations
         const ops = extractOperations(parsedSpec);
         setOperations(ops);
-      } catch (err: any) {
-        setError(err.message || "Failed to load OpenAPI spec");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load OpenAPI spec");
         setSpec(null);
         setOperations([]);
       } finally {

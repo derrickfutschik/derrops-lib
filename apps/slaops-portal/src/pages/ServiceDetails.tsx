@@ -6,22 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServicesApi, Configuration } from "@/client/slaops-cloud";
+import { Service } from "@/client/slaops-cloud/models/service";
 import { useToast } from "@/hooks/use-toast";
 import SwaggerUI from "swagger-ui-react";
 import "swagger-ui-react/swagger-ui.css";
 import yaml from "js-yaml";
-
-interface Service {
-  id: string;
-  name: string;
-  endpoint: string | null;
-  availability: number | null;
-  response_time: number | null;
-  openapi_doc_url: string | null;
-  openapi_doc_content: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 const ServiceDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +18,7 @@ const ServiceDetails = () => {
   const { toast } = useToast();
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
-  const [openapiSpec, setOpenapiSpec] = useState<any>(null);
+  const [openapiSpec, setOpenapiSpec] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     fetchService();
@@ -48,19 +37,9 @@ const ServiceDetails = () => {
       const servicesApi = new ServicesApi(config);
       
       const response = await servicesApi.servicesControllerFindOne(id);
-      const data = response.data as any;
+      const data = response.data;
 
-      setService({
-        id: data.id,
-        name: data.name,
-        endpoint: data.endpoint || null,
-        availability: data.availability ?? null,
-        response_time: data.response_time ?? null,
-        openapi_doc_url: data.openapi_doc_url ?? null,
-        openapi_doc_content: data.openapi_doc_content ?? null,
-        created_at: data.created_at || '',
-        updated_at: data.updated_at || '',
-      });
+      setService(data);
 
       // Parse OpenAPI spec
       if (data.openapi_doc_content) {
@@ -98,10 +77,10 @@ const ServiceDetails = () => {
           });
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load service",
+        description: error instanceof Error ? error.message : "Failed to load service",
         variant: "destructive",
       });
     } finally {

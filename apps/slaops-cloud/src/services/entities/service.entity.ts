@@ -13,7 +13,7 @@ export class Service {
   @ApiProperty({
     description: 'Primary key in database',
     example: '5c963787-d89d-4260-adaf-6541c41cb982',
-    required: false,
+    required: true,
   })
   @PrimaryGeneratedColumn('uuid')
   id: string;

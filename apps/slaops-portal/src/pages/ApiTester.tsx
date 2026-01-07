@@ -27,19 +27,12 @@ import { MaximizableCodeViewer, JMESPathState } from "@/components/api-tester/Ma
 import { OpenAPIRequestTab } from "@/components/api-tester/OpenAPIRequestTab";
 import { OpenAPISelection } from "@/components/api-tester/OpenAPISelection";
 import { OpenAPIFormValues } from "@/components/api-tester/OpenAPIParameterForm";
+import { Service } from "@/client/slaops-cloud/models/service";
 
 interface KeyValuePair {
   key: string;
   value: string;
   enabled: boolean;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  endpoint: string | null;
-  openapi_doc_url: string | null;
-  openapi_doc_content: string | null;
 }
 
 interface ParameterInfo {
@@ -939,7 +932,7 @@ const ApiTester = () => {
       const data = response.data
 
       // Map API Service to local Service format
-      const mappedServices: Service[] = data.map(s => s as Service)
+      const mappedServices: Service[] = data
 
       setServices(mappedServices);
     } catch (error) {

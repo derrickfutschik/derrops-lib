@@ -5,15 +5,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertCircle, FileCode, HelpCircle } from "lucide-react";
 import { OpenAPIParameterForm, OpenAPIFormValues } from "./OpenAPIParameterForm";
+import { Service } from "@/client/slaops-cloud/models/service";
 import yaml from "js-yaml";
-
-interface Service {
-  id: string;
-  name: string;
-  endpoint: string | null;
-  openapi_doc_url: string | null;
-  openapi_doc_content: string | null;
-}
 
 interface OperationOption {
   key: string; // "method:path"
@@ -194,8 +187,8 @@ export function OpenAPISelection({
         if (ops.length === 1 && isServiceSwitch) {
           onOperationChange(ops[0].key);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load OpenAPI spec");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load OpenAPI spec");
         setSpec(null);
         setOperations([]);
         setServers([]);

@@ -5,15 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, TrendingUp } from "lucide-react";
 import { ServicesApi, Configuration } from "@/client/slaops-cloud";
+import { Service } from "@/client/slaops-cloud/models/service";
 import { useToast } from "@/hooks/use-toast";
-
-interface Service {
-  id: string;
-  name: string;
-  endpoint: string | null;
-  availability: number | null;
-  response_time: number | null;
-}
 
 const ServicesList = () => {
   const navigate = useNavigate();
@@ -34,29 +27,20 @@ const ServicesList = () => {
       const servicesApi = new ServicesApi(config);
       
       const response = await servicesApi.servicesControllerFindAll("id,name,endpoint,availability,response_time");
-      const data = response.data as any[];
-
-      // Map API Service to local Service format
-      const mappedServices: Service[] = (data || []).map((apiService): Service => ({
-        id: apiService.id,
-        name: apiService.name,
-        endpoint: apiService.endpoint || null,
-        availability: apiService.availability ?? null,
-        response_time: apiService.response_time ?? null,
-      }));
+      const data = response.data;
 
       // Sort by created_at descending (newest first)
-      mappedServices.sort((a, b) => {
+      const mappedServices: Service[] = [...data].sort((a, b) => {
         // Since we don't have created_at in the response, we'll just return the data as-is
         // If sorting is needed, it should be done on the backend
         return 0;
       });
 
       setServices(mappedServices);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load services",
+        description: error instanceof Error ? error.message : "Failed to load services",
         variant: "destructive",
       });
     } finally {
