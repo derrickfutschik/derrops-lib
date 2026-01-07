@@ -88,7 +88,7 @@ services:
       - PGADMIN_DEFAULT_USER=postgres
       - PGADMIN_CONFIG_SERVER_MODE=False
     volumes:
-      - pgadmin-data:/data/pgadmin
+      - pgadmin-data:/var/lib/pgadmin
     ports:
       - 0.0.0.0:5050:80
     depends_on:
