@@ -16,9 +16,10 @@ describe('AppController (e2e)', () => {
         await app.close();
     });
 
-    it('/openapi.json (GET)', async () => {
+    it('/api-json (GET)', async () => {
+
         const res = await request(app.getHttpServer())
-            .get('/openapi.json')
+            .get('/api-json')
             .expect('Content-Type', /json/)
             .expect(200);
 
@@ -30,9 +31,9 @@ describe('AppController (e2e)', () => {
 
     });
 
-    it('/openapi.yaml (GET)', async () => {
+    it('/api-yaml (GET)', async () => {
         const res = await request(app.getHttpServer())
-            .get('/openapi.yaml')
+            .get('/api-yaml')
             .expect('Content-Type', /yaml/)
             .expect(200);
 

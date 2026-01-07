@@ -12,7 +12,7 @@ export const ConfigSchema = z.object({
   DB_SSL: z.string().optional(),
   DB_LOGGING: z.string().optional(),
 
-  APP_VERSION: z.string().min(1),
+  APP_VERSION: z.string().min(1).default("0.0.1"),
 });
 
 export type AppConfigEnv = z.infer<typeof ConfigSchema>;
