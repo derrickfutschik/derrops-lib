@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**id** | **string** | Primary key in database | [optional] [default to undefined]
+**id** | **string** | Primary key in database | [default to undefined]
 **user_id** | **string** | User ID who owns this service | [default to undefined]
 **name** | **string** | Service name | [default to undefined]
 **endpoint** | **string** | Service endpoint URL | [default to undefined]

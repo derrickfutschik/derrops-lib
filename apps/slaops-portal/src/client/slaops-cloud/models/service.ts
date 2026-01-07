@@ -18,7 +18,7 @@ export interface Service {
     /**
      * Primary key in database
      */
-    'id'?: string;
+    'id': string;
     /**
      * User ID who owns this service
      */
