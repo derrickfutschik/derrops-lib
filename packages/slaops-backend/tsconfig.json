@@ -8,7 +8,11 @@
     "lib": ["ES2022"],
     "declaration": false,
     "declarationMap": false,
-    "isolatedModules": false
+    "isolatedModules": false,
+    "baseUrl": "./",
+    "paths": {
+      "@slaops/backend/*": ["./amplify/*"]
+    }
   },
   "include": ["amplify/**/*"],
   "exclude": ["node_modules", "dist", ".amplify"]
