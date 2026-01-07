@@ -30,6 +30,16 @@ const config: Config = {
     '**/test/**/*.e2e-spec.ts',
     '**/test/**/*.e2e-spec.test.ts',
   ],
+  reporters: [
+    'default',
+    [
+      'jest-md-dashboard',
+      {
+        title: 'Tests for @slaops/slaops-cloud',
+        outputPath: '../slaops-docs/docs/tests/slaops-cloud.md', // where to write the markdown
+      },
+    ],
+  ],
 };
 
 export default config;
