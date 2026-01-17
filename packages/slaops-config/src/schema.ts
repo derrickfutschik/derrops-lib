@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+
+// TODO - do not have the schema on the environment variables, but rather on the AppConfig interface.
 export const ConfigSchema = z.object({
   NODE_ENV: z.enum(["dev", "test", "prod"]).default("dev"),
   PORT: z.coerce.number().default(3000),
@@ -12,7 +14,7 @@ export const ConfigSchema = z.object({
   DB_SSL: z.string().optional(),
   DB_LOGGING: z.string().optional(),
 
-  APP_VERSION: z.string().min(1).default("0.0.1"),
+  APP_VERSION: z.string().min(1).default("0.0.1"), // should come from package.json
 });
 
 export type AppConfigEnv = z.infer<typeof ConfigSchema>;
