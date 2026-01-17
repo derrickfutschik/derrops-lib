@@ -1,8 +1,6 @@
 ---
 slug: personas
 title: Platform Personas
-authors: [derrops]
-tags: [personas, user-roles]
 ---
 
 # Platform Personas
