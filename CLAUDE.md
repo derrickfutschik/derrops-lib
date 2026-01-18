@@ -1090,3 +1090,7 @@ This file provides guidance for working with the SLAOps monorepo. For app-specif
 - [apps/slaops-portal/CLAUDE.md](apps/slaops-portal/CLAUDE.md) - Web portal
 
 For package-specific details, see the README.md in each package directory.
+
+
+
+## Conventions can be found at [CONVENTIONS.md](CONVENTIONS.md)

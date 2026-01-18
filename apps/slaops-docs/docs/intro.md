@@ -4,6 +4,7 @@ sidebar_position: 1
 
 # Docs
 
-Welcome to the SLAOps Docs section.
+SLOps is a platform for monitoring and managing your SaaS applications.
 
-This section contains the main documentation for the SLAOps platform.
+  1. Monitor SLAs
+  2. Troubleshoot issues
