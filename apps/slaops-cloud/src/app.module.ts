@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { nestConfigOptions } from "@slaops/slaops-config-nestjs";
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ServicesModule } from './services/services.module';
+import { ServiceModule } from './service/service.module';
 
 @Module({
   imports: [
@@ -52,7 +52,7 @@ import { ServicesModule } from './services/services.module';
         };
       },
     }),
-    ServicesModule,
+    ServiceModule,
   ],
   controllers: [],
   providers: [],

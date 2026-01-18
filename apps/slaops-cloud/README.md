@@ -62,11 +62,11 @@ The API will be available at:
 
 ### Services
 
-All endpoints are prefixed with `/services`
+All endpoints are prefixed with `/service`
 
 #### Create Service
 ```http
-POST /services
+POST /service
 Content-Type: application/json
 
 {
@@ -82,21 +82,21 @@ Content-Type: application/json
 
 #### Get All Services
 ```http
-GET /services
-GET /services?select=id,name,endpoint,openapi_doc_url,openapi_doc_content
+GET /service
+GET /service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content
 ```
 
 The `select` query parameter allows you to specify which fields to return (comma-separated).
 
 #### Get Service by ID
 ```http
-GET /services/:id
-GET /services/:id?select=id,name,endpoint
+GET /service/:id
+GET /service/:id?select=id,name,endpoint
 ```
 
 #### Update Service
 ```http
-PATCH /services/:id
+PATCH /service/:id
 Content-Type: application/json
 
 {
@@ -107,15 +107,15 @@ Content-Type: application/json
 
 #### Delete Service
 ```http
-DELETE /services/:id
+DELETE /service/:id
 ```
 
 ## Database Schema
 
-### Services Table
+### Service Table
 
 ```sql
-CREATE TABLE services (
+CREATE TABLE service (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -201,7 +201,7 @@ const { data, error } = await supabase
   .select("id, name, endpoint, openapi_doc_url, openapi_doc_content");
 
 // After (NestJS API)
-const response = await fetch('http://localhost:3001/services?select=id,name,endpoint,openapi_doc_url,openapi_doc_content');
+const response = await fetch('http://localhost:3001/service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content');
 const data = await response.json();
 ```
 

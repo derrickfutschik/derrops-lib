@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('services')
+@Entity('service')
 export class Service {
 
   @ApiProperty({

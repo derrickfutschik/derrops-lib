@@ -47,7 +47,7 @@ async function bootstrapServer(): Promise<any> {
       .setTitle('SLAOps Cloud API')
       .setDescription('API for managing services and monitoring SLA compliance')
       .setVersion('1.0')
-      .addTag('services')
+      .addTag('service')
       .addBearerAuth()
       .build();
 

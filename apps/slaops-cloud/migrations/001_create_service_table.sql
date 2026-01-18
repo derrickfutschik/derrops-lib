@@ -1,12 +1,12 @@
--- Migration: Create services table
+-- Migration: Create service table
 -- Description: Initial schema for storing service configurations and monitoring data
 -- Date: 2025-12-30
 
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create services table
-CREATE TABLE IF NOT EXISTS services (
+-- Create service table
+CREATE TABLE IF NOT EXISTS service (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS services (
 );
 
 -- Create indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_services_user_id ON services(user_id);
-CREATE INDEX IF NOT EXISTS idx_services_name ON services(name);
-CREATE INDEX IF NOT EXISTS idx_services_created_at ON services(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_service_user_id ON service(user_id);
+CREATE INDEX IF NOT EXISTS idx_service_name ON service(name);
+CREATE INDEX IF NOT EXISTS idx_service_created_at ON service(created_at DESC);
 
 -- Create trigger to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -33,13 +33,13 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_services_updated_at
-    BEFORE UPDATE ON services
+CREATE TRIGGER update_service_updated_at
+    BEFORE UPDATE ON service
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert sample data (optional, for testing)
-INSERT INTO services (user_id, name, endpoint, openapi_doc_url, availability, response_time)
+INSERT INTO service (user_id, name, endpoint, openapi_doc_url, availability, response_time)
 VALUES
     ('345abe58-176a-4aea-8215-32f59a4bdead', 'AWS S3', 'https://s3.amazonaws.com', 'https://raw.githubusercontent.com/APIs-guru/openapi-directory/main/APIs/amazonaws.com/s3/2006-03-01/openapi.yaml', 99.99, 45),
     ('47e69e73-fc2f-4b70-ae25-30da001ed6fb', 'GitHub API', 'https://api.github.com', 'https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json', 99.95, 120),

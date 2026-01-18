@@ -26,7 +26,7 @@ export const setupE2EApp = async (): Promise<INestApplication> => {
         .setTitle(config["app.title"])
         .setDescription(config["app.description"])
         .setVersion(config["app.version"])
-        .addTag('services')
+        .addTag('service')
         .addBearerAuth()
         .build();
 

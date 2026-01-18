@@ -4,7 +4,7 @@ This directory contains SQL migration scripts for the SLAOps Cloud database.
 
 ## Migration Files
 
-- `001_create_services_table.sql` - Initial schema creation for the services table
+- `001_create_service_table.sql` - Initial schema creation for the service table
 
 ## Running Migrations
 
@@ -26,7 +26,7 @@ For production deployments, you should:
 psql -h <db-host> -U <username> -d slaops
 
 # Run the migration
-\i migrations/001_create_services_table.sql
+\i migrations/001_create_service_table.sql
 ```
 
 #### Option 2: Using AWS RDS Data API
@@ -36,7 +36,7 @@ aws rds-data execute-statement \
   --resource-arn <cluster-arn> \
   --secret-arn <secret-arn> \
   --database slaops \
-  --sql "$(cat migrations/001_create_services_table.sql)"
+  --sql "$(cat migrations/001_create_service_table.sql)"
 ```
 
 #### Option 3: SSH Tunnel via Bastion Host
@@ -53,7 +53,7 @@ ssh -i ~/.ssh/id_rsa -L 5432:<db-endpoint>:5432 ec2-user@<bastion-public-ip>
 
 # In another terminal, connect via tunnel
 psql -h localhost -p 5432 -U slaops_admin -d slaops
-\i migrations/001_create_services_table.sql
+\i migrations/001_create_service_table.sql
 ```
 
 ## Migration Naming Convention
@@ -64,7 +64,7 @@ Migrations should follow this naming pattern:
 ```
 
 Examples:
-- `001_create_services_table.sql`
+- `001_create_service_table.sql`
 - `002_add_api_keys_table.sql`
 - `003_add_service_metrics.sql`
 
@@ -82,8 +82,8 @@ To rollback a migration, you'll need to manually write and execute the reverse S
 
 Example:
 ```sql
--- Rollback for 001_create_services_table.sql
--- DROP TRIGGER IF EXISTS update_services_updated_at ON services;
+-- Rollback for 001_create_service_table.sql
+-- DROP TRIGGER IF EXISTS update_service_updated_at ON service;
 -- DROP FUNCTION IF EXISTS update_updated_at_column();
--- DROP TABLE IF EXISTS services;
+-- DROP TABLE IF EXISTS service;
 ```
