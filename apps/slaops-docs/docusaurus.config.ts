@@ -176,11 +176,12 @@ const config: Config = {
         },
         {
           to: '/notes/intro',
-          label: 'Notes',
+          label: 'Drafts',
           position: 'left',
           activeBaseRegex: `/notes/`,
         },
         { to: '/blog', label: 'Blog', position: 'left' },
+        { to: '/devops', label: 'Devops', position: 'right' },
         { to: '/changelog', label: 'Changelog', position: 'left' },
         {
           href: 'https://github.com/derrickfutschik/slaops-platform',

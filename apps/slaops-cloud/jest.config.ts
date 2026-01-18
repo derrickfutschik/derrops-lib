@@ -36,7 +36,7 @@ const config: Config = {
       'jest-md-dashboard',
       {
         title: 'Tests for @slaops/slaops-cloud',
-        outputPath: '../slaops-docs/docs/tests/slaops-cloud.md', // where to write the markdown
+        outputPath: '../slaops-docs/devops/tests/slaops-cloud.md', // where to write the markdown
       },
     ],
   ],

@@ -24,7 +24,7 @@ export default {
       'jest-md-dashboard',
       {
         title: 'Tests for @slaops/client-nodejs-axios',
-        outputPath: '../../apps/slaops-docs/docs/tests/slaops-client-nodejs-axios.md', // where to write the markdown
+        outputPath: '../../apps/slaops-docs/devops/tests/slaops-client-nodejs-axios.md', // where to write the markdown
       },
     ],
   ],

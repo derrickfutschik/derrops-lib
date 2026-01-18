@@ -23,7 +23,7 @@ export default {
       'jest-md-dashboard',
       {
         title: 'Tests for @slaops/public',
-        outputPath: '../../apps/slaops-docs/docs/tests/slaops-public.md', // where to write the markdown
+        outputPath: '../../apps/slaops-docs/devops/tests/slaops-public.md', // where to write the markdown
       },
     ],
   ],
