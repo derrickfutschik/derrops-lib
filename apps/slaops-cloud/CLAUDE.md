@@ -85,7 +85,7 @@ Key variables:
 
 ## API
 
-- Swagger UI: `http://localhost:3001/api`
-- OpenAPI JSON: `http://localhost:3001/api-json`
+- Swagger UI: `/api`
+- OpenAPI JSON: `/api-json`
 - All service endpoints prefixed with `/service` (singular)
 - Supports `?select=field1,field2` query parameter for field selection (Supabase-compatible)
