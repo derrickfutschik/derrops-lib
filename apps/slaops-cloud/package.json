@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.958.0",
+    "@aws-sdk/credential-provider-node": "^3.958.0",
+    "@opensearch-project/opensearch": "^2.12.0",
     "@codegenie/serverless-express": "^4.17.1",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.2.3",

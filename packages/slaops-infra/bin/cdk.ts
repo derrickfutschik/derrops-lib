@@ -8,6 +8,7 @@ import { ApiStack } from '../lib/stack/apigateway';
 import { SecurityGroupStack } from '../lib/stack/security-group';
 import { HostedZoneStack } from '../lib/stack/private-hosted-zone';
 import { OpenSearchStack } from '../lib/stack/app-opensearch';
+import { OpenApiBucketStack } from '../lib/stack/app-openapi-bucket';
 
 const app = new cdk.App();
 
@@ -91,6 +92,15 @@ const opensearchStack = new OpenSearchStack(app, 'SlaOpsOpenSearchStack', {
 // OpenSearch stack depends on VPC stack and Security Group stack
 opensearchStack.addDependency(vpcStack);
 opensearchStack.addDependency(securityGroupStack);
+
+// OpenAPI Bucket infrastructure stack
+// Contains S3 bucket for storing OpenAPI specifications (APIs-guru format)
+new OpenApiBucketStack(app, 'SlaOpsOpenApiBucketStack', {
+  stackName: 'slaops-openapi-bucket',
+  description: 'SLAOps OpenAPI Bucket - S3 bucket for OpenAPI specifications',
+  env,
+  tags,
+});
 
 // API Gateway infrastructure stack
 // Contains REST API that proxies to the Lambda function deployed by Amplify

@@ -1,14 +1,19 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { api } from './functions/api/resource';
+import { openapiIndexer } from './functions/openapi-indexer/resource';
 import * as cdk from 'aws-cdk-lib';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
-// Define backend with only the Lambda function
+// Define backend with the API Lambda and OpenAPI Indexer Lambda
 // Database, auth, and API Gateway are managed in @slaops/infra package
 const backend = defineBackend({
   api,
+  openapiIndexer,
 });
 
 // Access the Lambda function's underlying stack and the Lambda function itself
@@ -49,10 +54,25 @@ cfnFunction.vpcConfig = {
   securityGroupIds: [cloudSecurityGroupId],
 };
 
+// Import OpenSearch endpoint for the API Lambda (search service)
+const opensearchEndpointForApi = cdk.Fn.importValue('slaops-opensearch-collection-endpoint');
+const opensearchCollectionArnForApi = cdk.Fn.importValue('slaops-opensearch-collection-arn');
+
 // Add environment variables using the addEnvironment method from Amplify backend
 backend.api.addEnvironment('DB_HOST', dbEndpoint);
 backend.api.addEnvironment('DB_SECRET_ARN', dbSecretArn);
 backend.api.addEnvironment('USER_POOL_ID', userPoolId);
+backend.api.addEnvironment('OPENSEARCH_ENDPOINT', opensearchEndpointForApi);
+backend.api.addEnvironment('OPENSEARCH_INDEX_NAME', 'slaops-openapis');
+
+// Grant the API Lambda access to OpenSearch Serverless (for search service)
+backend.api.resources.lambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    actions: ['aoss:APIAccessAll'],
+    resources: [opensearchCollectionArnForApi],
+  }),
+);
 
 // Export the Lambda function ARN so the API Gateway in @slaops/infra can reference it
 new cdk.CfnOutput(lambdaStack, 'LambdaFunctionArn', {
@@ -65,6 +85,72 @@ new cdk.CfnOutput(lambdaStack, 'LambdaFunctionName', {
   value: backend.api.resources.lambda.functionName,
   description: 'Name of the NestJS API Lambda function',
   exportName: 'SlaOpsLambdaFunctionName',
+});
+
+// ============================================================================
+// OpenAPI Indexer Lambda Configuration
+// ============================================================================
+
+// Access the indexer Lambda's stack and function
+const indexerStack = backend.openapiIndexer.resources.lambda.stack;
+const indexerFunction = backend.openapiIndexer.resources.lambda;
+
+// Import infrastructure stack outputs
+const opensearchEndpoint = cdk.Fn.importValue('slaops-opensearch-collection-endpoint');
+const opensearchCollectionArn = cdk.Fn.importValue('slaops-opensearch-collection-arn');
+const openapiBucketArn = cdk.Fn.importValue('slaops-openapi-bucket-arn');
+const openapiBucketName = cdk.Fn.importValue('slaops-openapi-bucket-name');
+
+// Reference the S3 bucket from the infra stack
+const openapiBucket = s3.Bucket.fromBucketAttributes(indexerStack, 'OpenApiBucket', {
+  bucketArn: openapiBucketArn,
+  bucketName: openapiBucketName,
+});
+
+// Grant the indexer Lambda read access to the S3 bucket
+openapiBucket.grantRead(indexerFunction);
+
+// Grant the indexer Lambda access to OpenSearch Serverless
+indexerFunction.addToRolePolicy(
+  new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    actions: [
+      'aoss:APIAccessAll',
+    ],
+    resources: [opensearchCollectionArn],
+  }),
+);
+
+// Add environment variables for the indexer Lambda
+backend.openapiIndexer.addEnvironment('OPENSEARCH_ENDPOINT', opensearchEndpoint);
+backend.openapiIndexer.addEnvironment('OPENSEARCH_INDEX_NAME', 'slaops-openapis');
+
+// Configure the indexer Lambda to run in the VPC (for OpenSearch Serverless access)
+const indexerCfnFunction = indexerFunction.node.defaultChild as lambda.CfnFunction;
+indexerCfnFunction.vpcConfig = {
+  subnetIds: privateSubnetIds,
+  securityGroupIds: [cloudSecurityGroupId],
+};
+
+// Add S3 event notification to trigger the Lambda on object creation
+openapiBucket.addEventNotification(
+  s3.EventType.OBJECT_CREATED,
+  new s3n.LambdaDestination(indexerFunction),
+  { prefix: 'APIs/' }, // Only trigger for objects in APIs/ prefix
+);
+
+// Add S3 event notification for object deletion
+openapiBucket.addEventNotification(
+  s3.EventType.OBJECT_REMOVED,
+  new s3n.LambdaDestination(indexerFunction),
+  { prefix: 'APIs/' },
+);
+
+// Export indexer Lambda function ARN
+new cdk.CfnOutput(indexerStack, 'IndexerLambdaFunctionArn', {
+  value: indexerFunction.functionArn,
+  description: 'ARN of the OpenAPI Indexer Lambda function',
+  exportName: 'SlaOpsIndexerLambdaFunctionArn',
 });
 
 export { backend };

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { nestConfigOptions } from "@slaops/slaops-config-nestjs";
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServiceModule } from './service/service.module';
+import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { ServiceModule } from './service/service.module';
       },
     }),
     ServiceModule,
+    OpenApiSearchModule,
   ],
   controllers: [],
   providers: [],
