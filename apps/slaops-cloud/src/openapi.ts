@@ -20,23 +20,29 @@ async function generateOpenApi() {
             logger: ['error', 'warn']
         });
 
-    const config = new DocumentBuilder()
-        .setTitle('SLAOps API')
-        .setDescription('Internal API')
-        .setVersion('1.0.0')
-        .addBearerAuth()
-        .build();
+        const config = new DocumentBuilder()
+            .setTitle('SLAOps API')
+            .setDescription('Internal API')
+            .setVersion('1.0.0')
+            .addBearerAuth()
+            .build();
 
-    console.log(`Generating OpenAPI Document`);
+        console.log(`Generating OpenAPI Document`);
 
-    const document = SwaggerModule.createDocument(app, config);
+        const document = SwaggerModule.createDocument(app, config);
 
-        const outputPath = join(process.cwd(), 'dist', 'openapi.json');
-        writeFileSync(outputPath, JSON.stringify(document, null, 2));
+        const outputFiles = [
+            join(process.cwd(), 'dist', 'openapi.json'),
+            join(process.cwd(), 'src', 'openapi.json')
+        ]
+
+
+        outputFiles.forEach(outputPath => {
+            writeFileSync(outputPath, JSON.stringify(document, null, 2));
+            console.log(`OpenAPI written to ${outputPath}`);
+        });
 
         await app.close();
-
-        console.log(`OpenAPI written to ${outputPath}`);
 
         // kill docker container
     } catch (error) {

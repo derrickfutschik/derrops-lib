@@ -1,4 +1,14 @@
-# Welcome to your Lovable project
+# SLAOps Portal
+
+ - This app contains the frontend to the SLAOps platform. It is a React application that uses the Vite framework.
+ - It contains all of the frontend code for the SLAOps platform.
+ - apps/slaops-portal/src/client/slaops-cloud/ is the client for the SLAOps platform.
+
+
+
+
+
+# Loveable content: Welcome to your Lovable project
 
 ## Project info
 

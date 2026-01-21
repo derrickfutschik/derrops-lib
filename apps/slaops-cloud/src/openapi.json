@@ -1,0 +1,383 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/service": {
+      "post": {
+        "operationId": "ServiceController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          }
+        },
+        "summary": "Create a new service",
+        "tags": [
+          "service"
+        ]
+      },
+      "get": {
+        "operationId": "ServiceController_findAll",
+        "parameters": [
+          {
+            "name": "select",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated list of fields to select (e.g., id,name,endpoint)",
+            "schema": {
+              "example": "id,name,endpoint,openapi_doc_url,openapi_doc_content",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Service"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get all services",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/service/{id}": {
+      "get": {
+        "operationId": "ServiceController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Service UUID",
+            "schema": {
+              "example": "5c963787-d89d-4260-adaf-6541c41cb982",
+              "type": "string"
+            }
+          },
+          {
+            "name": "select",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated list of fields to select",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found"
+          }
+        },
+        "summary": "Get a service by ID",
+        "tags": [
+          "service"
+        ]
+      },
+      "patch": {
+        "operationId": "ServiceController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Service UUID",
+            "schema": {
+              "example": "5c963787-d89d-4260-adaf-6541c41cb982",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "404": {
+            "description": "Service not found"
+          }
+        },
+        "summary": "Update a service",
+        "tags": [
+          "service"
+        ]
+      },
+      "delete": {
+        "operationId": "ServiceController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Service UUID",
+            "schema": {
+              "example": "5c963787-d89d-4260-adaf-6541c41cb982",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Service deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found"
+          }
+        },
+        "summary": "Delete a service",
+        "tags": [
+          "service"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "SLAOps API",
+    "description": "Internal API",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "CreateServiceDto": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID who owns this service",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "name": {
+            "type": "string",
+            "description": "Service name",
+            "example": "SendGrid API"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Service endpoint URL",
+            "example": "https://api.sendgrid.com/v3"
+          },
+          "openapi_doc_url": {
+            "type": "string",
+            "description": "OpenAPI document URL",
+            "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json"
+          },
+          "openapi_doc_content": {
+            "type": "string",
+            "description": "OpenAPI document content (stored as text)"
+          },
+          "availability": {
+            "type": "number",
+            "description": "Service availability percentage",
+            "example": 99.98,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "response_time": {
+            "type": "number",
+            "description": "Average response time in milliseconds",
+            "example": 80
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "endpoint"
+        ]
+      },
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Primary key in database",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "User ID who owns this service",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "name": {
+            "type": "string",
+            "description": "Service name",
+            "example": "SendGrid API"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Service endpoint URL",
+            "example": "https://api.sendgrid.com/v3"
+          },
+          "openapi_doc_url": {
+            "type": "string",
+            "description": "OpenAPI document URL",
+            "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json",
+            "nullable": true
+          },
+          "openapi_doc_content": {
+            "type": "string",
+            "description": "OpenAPI document content (stored as text)",
+            "nullable": true
+          },
+          "availability": {
+            "type": "number",
+            "description": "Service availability percentage",
+            "example": 99.98,
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "response_time": {
+            "type": "number",
+            "description": "Average response time in milliseconds",
+            "example": 80,
+            "nullable": true,
+            "minimum": 0
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Date when the service was created",
+            "example": "2024-01-15T10:30:00.000Z"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Date when the service was last updated",
+            "example": "2024-01-15T10:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "name",
+          "endpoint",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "UpdateServiceDto": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID who owns this service",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "name": {
+            "type": "string",
+            "description": "Service name",
+            "example": "SendGrid API"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Service endpoint URL",
+            "example": "https://api.sendgrid.com/v3"
+          },
+          "openapi_doc_url": {
+            "type": "string",
+            "description": "OpenAPI document URL",
+            "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json"
+          },
+          "openapi_doc_content": {
+            "type": "string",
+            "description": "OpenAPI document content (stored as text)"
+          },
+          "availability": {
+            "type": "number",
+            "description": "Service availability percentage",
+            "example": 99.98,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "response_time": {
+            "type": "number",
+            "description": "Average response time in milliseconds",
+            "example": 80
+          }
+        }
+      }
+    }
+  }
+}

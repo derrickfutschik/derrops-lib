@@ -1,6 +1,6 @@
 # SLAOps Cloud Backend
 
-NestJS backend API for the SLAOps platform, replacing Supabase with a custom backend.
+NestJS backend API for the SLAOps platform.
 
 ## Features
 
@@ -54,80 +54,20 @@ pnpm --filter slaops-cloud run start:dev
 pnpm --filter slaops-cloud run start:prod
 ```
 
-The API will be available at:
-- API: `http://localhost:3001`
-- Swagger docs: `http://localhost:3001/api`
+### OpenAPI Spec and Client Generation
 
-## API Endpoints
-
-### Services
-
-All endpoints are prefixed with `/service`
-
-#### Create Service
-```http
-POST /service
-Content-Type: application/json
-
-{
-  "user_id": "5c963787-d89d-4260-adaf-6541c41cb982",
-  "name": "SendGrid API",
-  "endpoint": "https://api.sendgrid.com/v3",
-  "openapi_doc_url": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json",
-  "openapi_doc_content": null,
-  "availability": 99.98,
-  "response_time": 80
-}
+```bash
+pnpm --filter slaops-cloud run generate:openapi
 ```
 
-#### Get All Services
-```http
-GET /service
-GET /service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content
+Will generate the OpenAPI spec in `dist/openapi.json` and `src/openapi.json`
+
+```bash
+pnpm --filter slaops-cloud run generate:client
 ```
 
-The `select` query parameter allows you to specify which fields to return (comma-separated).
+Will generate the client in  `<root>/apps/slaops-portal/src/client/slaops-cloud` for use the slaops-portal app to type-safely interact with the slaops-cloud API.
 
-#### Get Service by ID
-```http
-GET /service/:id
-GET /service/:id?select=id,name,endpoint
-```
-
-#### Update Service
-```http
-PATCH /service/:id
-Content-Type: application/json
-
-{
-  "name": "Updated Service Name",
-  "availability": 99.99
-}
-```
-
-#### Delete Service
-```http
-DELETE /service/:id
-```
-
-## Database Schema
-
-### Service Table
-
-```sql
-CREATE TABLE service (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  endpoint VARCHAR(500) NOT NULL,
-  openapi_doc_url VARCHAR(500),
-  openapi_doc_content TEXT,
-  availability DECIMAL(5,2),
-  response_time INTEGER,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
 
 ## Development
 
@@ -205,6 +145,3 @@ const response = await fetch('http://localhost:3001/service?select=id,name,endpo
 const data = await response.json();
 ```
 
-## License
-
-MIT
