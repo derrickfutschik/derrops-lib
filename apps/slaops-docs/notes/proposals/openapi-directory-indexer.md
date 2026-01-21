@@ -1073,7 +1073,7 @@ export class AppModule {}
 | Parse valid OpenAPI 3.0 | Valid YAML spec | Parsed document | High |
 | Reject non-3.x spec | Swagger 2.0 or invalid spec | IndexingError | High |
 | Aggregate operations | Spec with 100 endpoints | operationStats.total=100, methods, prefixes | High |
-| Truncate large specs | Spec with 1000 operations | sampleOperations.length=20, paths.length<=100 | High |
+| Truncate large specs | Spec with 1000 operations | sampleOperations.length=20, paths.length&lt;=100 | High |
 | Build search text | Spec with operation summaries | Concatenated operationSearchText | High |
 | Extract unique tags | Spec with duplicate tags | Deduplicated tags | Medium |
 | Build search query | Search params | Valid DSL query (no nested) | High |
