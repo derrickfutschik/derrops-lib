@@ -6,6 +6,8 @@ AWS Amplify Backend for SLA Ops Platform
 
 This package contains the AWS Amplify Gen 2 backend configuration for the SLAOps platform. It integrates the NestJS API from `apps/slaops-cloud` and deploys it as a serverless Lambda function with API Gateway, connecting to infrastructure resources (Auth, Database) from `@slaops/infra`.
 
+The actual code for the backend is in the `apps/slaops-cloud` directory. No Application code is in this package, only the infrastructure code for the App Layer.
+
 ## Architecture
 
 - **NestJS API as Lambda**: The `slaops-cloud` NestJS app runs in AWS Lambda
