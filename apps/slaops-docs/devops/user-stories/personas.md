@@ -263,7 +263,7 @@ This document outlines the key personas who interact with the SLAOps platform, t
 
 **Related Documents**:
 
-- [Monitoring User Stories](monitoring-user-stories.md)
-- [Client User Stories](client-user-stories.md)
-- [Cloud Requester User Stories](cloud-requester-user-stories.md)
-- [SaaS Management](saas-management.md)
+- [Monitoring User Stories](./monitoring-stories)
+- [Client User Stories](./requester-stories)
+- [Cloud Requester User Stories](./cloud-request-stories)
+- [SaaS Management](./saas-management-stories)

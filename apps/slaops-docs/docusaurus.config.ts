@@ -143,6 +143,27 @@ const config: Config = {
         rehypePlugins: [rehypeKatex],
       },
     ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'devops',
+        path: 'devops',
+        routeBasePath: 'devops',
+        sidebarPath: './sidebars-devops.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH;
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '');
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/devops/${cleanPath}`;
+          }
+          const cleanPath = docPath.replace(/^\//, '');
+          const pathToFile = `${process.cwd()}/devops/${cleanPath}`;
+          return `cursor://file${pathToFile}`;
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
   ],
 
   stylesheets: [
@@ -175,13 +196,20 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: '/notes/intro',
-          label: 'Drafts',
+          type: 'docSidebar',
+          sidebarId: 'notes',
+          docsPluginId: 'notes',
           position: 'left',
-          activeBaseRegex: `/notes/`,
+          label: 'Drafts',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
-        { to: '/devops', label: 'Devops', position: 'right' },
+        {
+          type: 'docSidebar',
+          sidebarId: 'devops',
+          docsPluginId: 'devops',
+          position: 'right',
+          label: 'Devops',
+        },
         { to: '/changelog', label: 'Changelog', position: 'left' },
         {
           href: 'https://github.com/derrickfutschik/slaops-platform',
