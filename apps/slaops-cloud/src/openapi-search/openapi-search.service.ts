@@ -14,6 +14,8 @@ import {
 import { OpenApiIndexDocument } from './types';
 import { Search, SearchResponse, TypescriptOSProxyClient } from 'opensearch-ts';
 
+import { config } from '@slaops/slaops-config';
+
 type OpenAPISearch = Search<OpenApiIndexDocument,
   {
 
@@ -72,7 +74,7 @@ export class OpenApiSearchService implements OnModuleInit {
   private tsClient: TypescriptOSProxyClient
 
   constructor(private readonly configService: ConfigService) {
-    this.indexName = this.configService.get<string>('OPENSEARCH_INDEX_NAME', 'slaops-openapis');
+    this.indexName = config['opensearch.index']('openapis');
   }
 
   async onModuleInit() {

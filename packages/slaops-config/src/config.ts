@@ -42,10 +42,10 @@ export const makeConfig = (cfg: AppConfigEnv = configFromEnv(process.env)) => {
         "opensearch.endpoint": cfg.OPENSEARCH_ENDPOINT,
 
         /** The index prefix */
-        "opensearch.index.prefix": `${cfg.APP_NAME}-`.toLowerCase(),
+        "opensearch.index.prefix": cfg.OPENSEARCH_INDEX_PREFIX ?? `${cfg.APP_NAME}-`.toLowerCase(),
 
         /** The suffix for the index */
-        "opensearch.index.suffix": `-${cfg.NODE_ENV}`.toLowerCase(),
+        "opensearch.index.suffix": cfg.OPENSEARCH_INDEX_SUFFIX ?? `-${cfg.NODE_ENV}`.toLowerCase(),
 
         /** Find the name of an index */
         "opensearch.index": (entity: string) => `${cfg.APP_NAME}-${entity}-${cfg.NODE_ENV}`.toLowerCase(),

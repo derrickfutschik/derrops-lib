@@ -23,8 +23,9 @@ export const ConfigSchema = z.object({
 
   AWS_REGION: z.string().min(1).default("ap-southeast-2"),
 
-  OPENSEARCH_INDEX_PREFIX: z.string().min(1).default("slaops-"),
-  OPENSEARCH_INDEX_NAME: z.string().min(1).default("opensearch-index"),
+  OPENSEARCH_INDEX_PREFIX: z.string().min(1),
+  OPENSEARCH_INDEX_SUFFIX: z.string().min(1),
+
   OPENSEARCH_ENDPOINT: z.string().min(1).default("http://192.168.7.224:9200"),
 
 });
