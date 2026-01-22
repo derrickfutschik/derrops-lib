@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/service": {
+    "/services": {
       "post": {
         "operationId": "ServiceController_create",
         "parameters": [],
@@ -32,7 +32,7 @@
         },
         "summary": "Create a new service",
         "tags": [
-          "service"
+          "Service"
         ]
       },
       "get": {
@@ -66,11 +66,11 @@
         },
         "summary": "Get all services",
         "tags": [
-          "service"
+          "Service"
         ]
       }
     },
-    "/service/{id}": {
+    "/services/{id}": {
       "get": {
         "operationId": "ServiceController_findOne",
         "parameters": [
@@ -111,7 +111,7 @@
         },
         "summary": "Get a service by ID",
         "tags": [
-          "service"
+          "Service"
         ]
       },
       "patch": {
@@ -158,7 +158,7 @@
         },
         "summary": "Update a service",
         "tags": [
-          "service"
+          "Service"
         ]
       },
       "delete": {
@@ -198,7 +198,246 @@
         },
         "summary": "Delete a service",
         "tags": [
-          "service"
+          "Service"
+        ]
+      }
+    },
+    "/openapi-search": {
+      "get": {
+        "description": "Search indexed OpenAPI specs by title, description, operations, tags, and more. Supports full-text search and filtering.",
+        "operationId": "OpenApiSearchController_search",
+        "parameters": [
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "description": "Free-text search across title, description, and operation text",
+            "schema": {
+              "example": "user authentication",
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "required": false,
+            "in": "query",
+            "description": "Filter by provider/domain",
+            "schema": {
+              "example": "github.com",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "required": false,
+            "in": "query",
+            "description": "Filter by tags (comma-separated)",
+            "schema": {
+              "example": "payments,billing",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "method",
+            "required": false,
+            "in": "query",
+            "description": "Filter by HTTP method",
+            "schema": {
+              "example": "POST",
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "HEAD",
+                "OPTIONS"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "pathPrefix",
+            "required": false,
+            "in": "query",
+            "description": "Filter by path prefix (from operationStats.pathPrefixes)",
+            "schema": {
+              "example": "/users",
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by exact operationId",
+            "schema": {
+              "example": "getUser",
+              "type": "string"
+            }
+          },
+          {
+            "name": "serverPattern",
+            "required": false,
+            "in": "query",
+            "description": "Filter by server URL pattern",
+            "schema": {
+              "example": "api.github.com",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Pagination offset",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortField",
+            "required": false,
+            "in": "query",
+            "description": "Sort field",
+            "schema": {
+              "default": "_score",
+              "enum": [
+                "title",
+                "provider",
+                "indexedAt",
+                "operationStats.total",
+                "_score"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort order",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenApiSearchResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search OpenAPI specifications",
+        "tags": [
+          "OpenAPI Search"
+        ]
+      }
+    },
+    "/openapi-search/provider": {
+      "get": {
+        "description": "Returns a list of all unique providers/domains with the count of API specs for each.",
+        "operationId": "OpenApiSearchController_listProviders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderListResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List all API providers",
+        "tags": [
+          "OpenAPI Search"
+        ]
+      }
+    },
+    "/openapi-search/stats": {
+      "get": {
+        "description": "Returns aggregate statistics about the indexed OpenAPI specifications.",
+        "operationId": "OpenApiSearchController_getStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Index statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStatsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get index statistics",
+        "tags": [
+          "OpenAPI Search"
+        ]
+      }
+    },
+    "/openapi-search/{id}": {
+      "get": {
+        "description": "Retrieve a specific OpenAPI specification by its ID (format: provider/service/version).",
+        "operationId": "OpenApiSearchController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "OpenAPI spec ID (URL-encoded, e.g., github.com%2Fapi.github.com%2F1.1.4)",
+            "schema": {
+              "example": "github.com/api.github.com/1.1.4",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI specification document"
+          },
+          "404": {
+            "description": "OpenAPI spec not found"
+          }
+        },
+        "summary": "Get OpenAPI spec by ID",
+        "tags": [
+          "OpenAPI Search"
         ]
       }
     }
@@ -377,6 +616,164 @@
             "example": 80
           }
         }
+      },
+      "OpenApiSearchHit": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "type": "object",
+            "description": "The matched document"
+          },
+          "score": {
+            "type": "number",
+            "description": "Search relevance score"
+          },
+          "highlights": {
+            "type": "object",
+            "description": "Highlighted matches"
+          }
+        },
+        "required": [
+          "document",
+          "score"
+        ]
+      },
+      "AggregationBucket": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Aggregation key"
+          },
+          "count": {
+            "type": "number",
+            "description": "Document count"
+          }
+        },
+        "required": [
+          "key",
+          "count"
+        ]
+      },
+      "SearchAggregations": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "description": "Provider aggregations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AggregationBucket"
+            }
+          },
+          "tags": {
+            "description": "Tag aggregations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AggregationBucket"
+            }
+          },
+          "methods": {
+            "description": "HTTP method aggregations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AggregationBucket"
+            }
+          },
+          "pathPrefixes": {
+            "description": "Path prefix aggregations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AggregationBucket"
+            }
+          }
+        },
+        "required": [
+          "providers",
+          "tags",
+          "methods",
+          "pathPrefixes"
+        ]
+      },
+      "OpenApiSearchResponseDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total matching documents"
+          },
+          "hits": {
+            "description": "Search hits",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenApiSearchHit"
+            }
+          },
+          "aggregations": {
+            "description": "Aggregations/facets",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SearchAggregations"
+              }
+            ]
+          },
+          "took": {
+            "type": "number",
+            "description": "Query execution time in milliseconds"
+          }
+        },
+        "required": [
+          "total",
+          "hits",
+          "took"
+        ]
+      },
+      "ProviderListResponseDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Provider name"
+          },
+          "count": {
+            "type": "number",
+            "description": "Number of API specs"
+          }
+        },
+        "required": [
+          "provider",
+          "count"
+        ]
+      },
+      "IndexStatsResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalDocuments": {
+            "type": "number",
+            "description": "Total indexed documents"
+          },
+          "totalOperations": {
+            "type": "number",
+            "description": "Total operations across all specs"
+          },
+          "uniqueProviders": {
+            "type": "number",
+            "description": "Number of unique providers"
+          },
+          "uniqueTags": {
+            "type": "number",
+            "description": "Number of unique tags"
+          },
+          "lastIndexedAt": {
+            "type": "string",
+            "description": "Last indexed timestamp"
+          }
+        },
+        "required": [
+          "totalDocuments",
+          "totalOperations",
+          "uniqueProviders",
+          "uniqueTags"
+        ]
       }
     }
   }

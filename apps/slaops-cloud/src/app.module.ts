@@ -4,6 +4,7 @@ import { nestConfigOptions } from "@slaops/slaops-config-nestjs";
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServiceModule } from './service/service.module';
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
+import { config } from '@slaops/slaops-config';
 
 @Module({
   imports: [
@@ -13,8 +14,8 @@ import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
         // In Lambda, get credentials from Secrets Manager
-        let username = configService.get('DB_USERNAME');
-        let password = configService.get('DB_PASSWORD');
+        let username = config['db.username']
+        let password = config['db.password']
 
         // If running in AWS Lambda with DB_SECRET_ARN
         const secretArn = configService.get('DB_SECRET_ARN');

@@ -2,10 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { AppConfig, makeConfig } from '@slaops/slaops-config';
+import { config } from '@slaops/slaops-config';
 
 async function bootstrap() {
-  const config: AppConfig = makeConfig(process.env);
+
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS for frontend integration
