@@ -14,6 +14,18 @@
 
 
 
-export * from './api/open-apisearch-api';
-export * from './api/service-api';
+export interface OpenApiSearchHit {
+    /**
+     * The matched document
+     */
+    'document': object;
+    /**
+     * Search relevance score
+     */
+    'score': number;
+    /**
+     * Highlighted matches
+     */
+    'highlights'?: object;
+}
 

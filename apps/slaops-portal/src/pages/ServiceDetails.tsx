@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ServicesApi, Configuration } from "@/client/slaops-cloud";
+import { ServiceApi, Configuration } from "@/client/slaops-cloud";
 import { Service } from "@/client/slaops-cloud/models/service";
 import { useToast } from "@/hooks/use-toast";
 import SwaggerUI from "swagger-ui-react";
@@ -30,13 +30,13 @@ const ServiceDetails = () => {
         throw new Error("Service ID is required");
       }
 
-      const API_BASE_URL = 'http://localhost:8083';
+      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });
-      const servicesApi = new ServicesApi(config);
-      
-      const response = await servicesApi.servicesControllerFindOne(id);
+      const serviceApi = new ServiceApi(config);
+
+      const response = await serviceApi.serviceControllerFindOne(id);
       const data = response.data;
 
       setService(data);
@@ -54,19 +54,19 @@ const ServiceDetails = () => {
           const response = await fetch(data.openapi_doc_url);
           const contentType = response.headers.get("content-type") || "";
           const text = await response.text();
-          
+
           // Try to determine if it's YAML or JSON
           let spec;
-          if (contentType.includes("yaml") || contentType.includes("yml") || 
-              data.openapi_doc_url.endsWith(".yaml") || data.openapi_doc_url.endsWith(".yml") ||
-              text.trim().startsWith("openapi:")) {
+          if (contentType.includes("yaml") || contentType.includes("yml") ||
+            data.openapi_doc_url.endsWith(".yaml") || data.openapi_doc_url.endsWith(".yml") ||
+            text.trim().startsWith("openapi:")) {
             // Parse as YAML
             spec = yaml.load(text);
           } else {
             // Parse as JSON
             spec = JSON.parse(text);
           }
-          
+
           setOpenapiSpec(spec);
         } catch (e) {
           console.error("Failed to fetch OpenAPI spec from URL:", e);

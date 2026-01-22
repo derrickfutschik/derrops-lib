@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, TrendingUp } from "lucide-react";
-import { ServicesApi, Configuration } from "@/client/slaops-cloud";
+import { ServiceApi, Configuration } from "@/client/slaops-cloud";
 import { Service } from "@/client/slaops-cloud/models/service";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,13 +20,13 @@ const ServicesList = () => {
 
   const fetchServices = async () => {
     try {
-      const API_BASE_URL = 'http://localhost:8083';
+      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });
-      const servicesApi = new ServicesApi(config);
-      
-      const response = await servicesApi.servicesControllerFindAll("id,name,endpoint,availability,response_time");
+      const serviceApi = new ServiceApi(config);
+
+      const response = await serviceApi.serviceControllerFindAll("id,name,endpoint,availability,response_time");
       const data = response.data;
 
       // Sort by created_at descending (newest first)
@@ -96,7 +96,7 @@ const ServicesList = () => {
         <div className="space-y-4">
           {services.map((service) => {
             const status = getStatusFromAvailability(service.availability);
-            
+
             return (
               <div
                 key={service.id}
@@ -113,8 +113,8 @@ const ServicesList = () => {
                           status === "healthy"
                             ? "bg-success/20 text-success border-success/50"
                             : status === "warning"
-                            ? "bg-warning/20 text-warning border-warning/50"
-                            : "bg-destructive/20 text-destructive border-destructive/50"
+                              ? "bg-warning/20 text-warning border-warning/50"
+                              : "bg-destructive/20 text-destructive border-destructive/50"
                         }
                       >
                         <Activity className="h-3 w-3 mr-1" />
@@ -133,15 +133,15 @@ const ServicesList = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-success" />
                   </div>
                 </div>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="ml-4"
                   onClick={(e) => {
                     e.stopPropagation();

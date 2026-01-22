@@ -26,7 +26,7 @@ import type { CreateServiceDto } from '../models';
 // @ts-ignore
 import type { Service } from '../models';
 // @ts-ignore
-import type { ServicesControllerRemove200Response } from '../models';
+import type { ServiceControllerRemove200Response } from '../models';
 // @ts-ignore
 import type { UpdateServiceDto } from '../models';
 /**
@@ -41,9 +41,9 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerCreate: async (createServiceDto: CreateServiceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        serviceControllerCreate: async (createServiceDto: CreateServiceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'createServiceDto' is not null or undefined
-            assertParamExists('servicesControllerCreate', 'createServiceDto', createServiceDto)
+            assertParamExists('serviceControllerCreate', 'createServiceDto', createServiceDto)
             const localVarPath = `/services`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -52,7 +52,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options };
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -61,7 +61,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = { ...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers };
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(createServiceDto, localVarRequestOptions, configuration)
 
             return {
@@ -76,7 +76,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerFindAll: async (select?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        serviceControllerFindAll: async (select?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/services`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -85,7 +85,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options };
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -97,7 +97,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = { ...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers };
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -112,9 +112,9 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerFindOne: async (id: string, select?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        serviceControllerFindOne: async (id: string, select?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('servicesControllerFindOne', 'id', id)
+            assertParamExists('serviceControllerFindOne', 'id', id)
             const localVarPath = `/services/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
@@ -124,7 +124,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options };
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -136,7 +136,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = { ...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers };
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -150,9 +150,9 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerRemove: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        serviceControllerRemove: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('servicesControllerRemove', 'id', id)
+            assertParamExists('serviceControllerRemove', 'id', id)
             const localVarPath = `/services/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
@@ -162,7 +162,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options };
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -170,7 +170,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = { ...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers };
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -185,11 +185,11 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerUpdate: async (id: string, updateServiceDto: UpdateServiceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        serviceControllerUpdate: async (id: string, updateServiceDto: UpdateServiceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('servicesControllerUpdate', 'id', id)
+            assertParamExists('serviceControllerUpdate', 'id', id)
             // verify required parameter 'updateServiceDto' is not null or undefined
-            assertParamExists('servicesControllerUpdate', 'updateServiceDto', updateServiceDto)
+            assertParamExists('serviceControllerUpdate', 'updateServiceDto', updateServiceDto)
             const localVarPath = `/services/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
@@ -199,7 +199,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options };
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -208,7 +208,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = { ...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers };
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(updateServiceDto, localVarRequestOptions, configuration)
 
             return {
@@ -222,7 +222,7 @@ export const ServiceApiAxiosParamCreator = function (configuration?: Configurati
 /**
  * ServiceApi - functional programming interface
  */
-export const ServiceApiFp = function (configuration?: Configuration) {
+export const ServiceApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = ServiceApiAxiosParamCreator(configuration)
     return {
         /**
@@ -232,10 +232,10 @@ export const ServiceApiFp = function (configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async servicesControllerCreate(createServiceDto: CreateServiceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Service>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.servicesControllerCreate(createServiceDto, options);
+        async serviceControllerCreate(createServiceDto: CreateServiceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Service>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serviceControllerCreate(createServiceDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ServiceApi.servicesControllerCreate']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ServiceApi.serviceControllerCreate']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -245,10 +245,10 @@ export const ServiceApiFp = function (configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async servicesControllerFindAll(select?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Service>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.servicesControllerFindAll(select, options);
+        async serviceControllerFindAll(select?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Service>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serviceControllerFindAll(select, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ServiceApi.servicesControllerFindAll']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ServiceApi.serviceControllerFindAll']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -259,10 +259,10 @@ export const ServiceApiFp = function (configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async servicesControllerFindOne(id: string, select?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Service>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.servicesControllerFindOne(id, select, options);
+        async serviceControllerFindOne(id: string, select?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Service>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serviceControllerFindOne(id, select, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ServiceApi.servicesControllerFindOne']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ServiceApi.serviceControllerFindOne']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -272,10 +272,10 @@ export const ServiceApiFp = function (configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async servicesControllerRemove(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ServicesControllerRemove200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.servicesControllerRemove(id, options);
+        async serviceControllerRemove(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ServiceControllerRemove200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serviceControllerRemove(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ServiceApi.servicesControllerRemove']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ServiceApi.serviceControllerRemove']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -286,10 +286,10 @@ export const ServiceApiFp = function (configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async servicesControllerUpdate(id: string, updateServiceDto: UpdateServiceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Service>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.servicesControllerUpdate(id, updateServiceDto, options);
+        async serviceControllerUpdate(id: string, updateServiceDto: UpdateServiceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Service>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serviceControllerUpdate(id, updateServiceDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ServiceApi.servicesControllerUpdate']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ServiceApi.serviceControllerUpdate']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
@@ -308,8 +308,8 @@ export const ServiceApiFactory = function (configuration?: Configuration, basePa
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerCreate(createServiceDto: CreateServiceDto, options?: RawAxiosRequestConfig): AxiosPromise<Service> {
-            return localVarFp.servicesControllerCreate(createServiceDto, options).then((request) => request(axios, basePath));
+        serviceControllerCreate(createServiceDto: CreateServiceDto, options?: RawAxiosRequestConfig): AxiosPromise<Service> {
+            return localVarFp.serviceControllerCreate(createServiceDto, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -318,8 +318,8 @@ export const ServiceApiFactory = function (configuration?: Configuration, basePa
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerFindAll(select?: string, options?: RawAxiosRequestConfig): AxiosPromise<Array<Service>> {
-            return localVarFp.servicesControllerFindAll(select, options).then((request) => request(axios, basePath));
+        serviceControllerFindAll(select?: string, options?: RawAxiosRequestConfig): AxiosPromise<Array<Service>> {
+            return localVarFp.serviceControllerFindAll(select, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -329,8 +329,8 @@ export const ServiceApiFactory = function (configuration?: Configuration, basePa
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerFindOne(id: string, select?: string, options?: RawAxiosRequestConfig): AxiosPromise<Service> {
-            return localVarFp.servicesControllerFindOne(id, select, options).then((request) => request(axios, basePath));
+        serviceControllerFindOne(id: string, select?: string, options?: RawAxiosRequestConfig): AxiosPromise<Service> {
+            return localVarFp.serviceControllerFindOne(id, select, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -339,8 +339,8 @@ export const ServiceApiFactory = function (configuration?: Configuration, basePa
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerRemove(id: string, options?: RawAxiosRequestConfig): AxiosPromise<ServicesControllerRemove200Response> {
-            return localVarFp.servicesControllerRemove(id, options).then((request) => request(axios, basePath));
+        serviceControllerRemove(id: string, options?: RawAxiosRequestConfig): AxiosPromise<ServiceControllerRemove200Response> {
+            return localVarFp.serviceControllerRemove(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -350,8 +350,8 @@ export const ServiceApiFactory = function (configuration?: Configuration, basePa
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        servicesControllerUpdate(id: string, updateServiceDto: UpdateServiceDto, options?: RawAxiosRequestConfig): AxiosPromise<Service> {
-            return localVarFp.servicesControllerUpdate(id, updateServiceDto, options).then((request) => request(axios, basePath));
+        serviceControllerUpdate(id: string, updateServiceDto: UpdateServiceDto, options?: RawAxiosRequestConfig): AxiosPromise<Service> {
+            return localVarFp.serviceControllerUpdate(id, updateServiceDto, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -367,8 +367,8 @@ export class ServiceApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public servicesControllerCreate(createServiceDto: CreateServiceDto, options?: RawAxiosRequestConfig) {
-        return ServiceApiFp(this.configuration).servicesControllerCreate(createServiceDto, options).then((request) => request(this.axios, this.basePath));
+    public serviceControllerCreate(createServiceDto: CreateServiceDto, options?: RawAxiosRequestConfig) {
+        return ServiceApiFp(this.configuration).serviceControllerCreate(createServiceDto, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -378,8 +378,8 @@ export class ServiceApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public servicesControllerFindAll(select?: string, options?: RawAxiosRequestConfig) {
-        return ServiceApiFp(this.configuration).servicesControllerFindAll(select, options).then((request) => request(this.axios, this.basePath));
+    public serviceControllerFindAll(select?: string, options?: RawAxiosRequestConfig) {
+        return ServiceApiFp(this.configuration).serviceControllerFindAll(select, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -390,8 +390,8 @@ export class ServiceApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public servicesControllerFindOne(id: string, select?: string, options?: RawAxiosRequestConfig) {
-        return ServiceApiFp(this.configuration).servicesControllerFindOne(id, select, options).then((request) => request(this.axios, this.basePath));
+    public serviceControllerFindOne(id: string, select?: string, options?: RawAxiosRequestConfig) {
+        return ServiceApiFp(this.configuration).serviceControllerFindOne(id, select, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -401,8 +401,8 @@ export class ServiceApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public servicesControllerRemove(id: string, options?: RawAxiosRequestConfig) {
-        return ServiceApiFp(this.configuration).servicesControllerRemove(id, options).then((request) => request(this.axios, this.basePath));
+    public serviceControllerRemove(id: string, options?: RawAxiosRequestConfig) {
+        return ServiceApiFp(this.configuration).serviceControllerRemove(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -413,8 +413,8 @@ export class ServiceApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public servicesControllerUpdate(id: string, updateServiceDto: UpdateServiceDto, options?: RawAxiosRequestConfig) {
-        return ServiceApiFp(this.configuration).servicesControllerUpdate(id, updateServiceDto, options).then((request) => request(this.axios, this.basePath));
+    public serviceControllerUpdate(id: string, updateServiceDto: UpdateServiceDto, options?: RawAxiosRequestConfig) {
+        return ServiceApiFp(this.configuration).serviceControllerUpdate(id, updateServiceDto, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

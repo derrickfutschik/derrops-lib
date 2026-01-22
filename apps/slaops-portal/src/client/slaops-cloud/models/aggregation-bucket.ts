@@ -14,6 +14,14 @@
 
 
 
-export * from './api/open-apisearch-api';
-export * from './api/service-api';
+export interface AggregationBucket {
+    /**
+     * Aggregation key
+     */
+    'key': string;
+    /**
+     * Document count
+     */
+    'count': number;
+}
 

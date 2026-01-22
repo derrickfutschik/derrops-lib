@@ -14,6 +14,14 @@
 
 
 
-export * from './api/open-apisearch-api';
-export * from './api/service-api';
+export interface ProviderListResponseDto {
+    /**
+     * Provider name
+     */
+    'provider': string;
+    /**
+     * Number of API specs
+     */
+    'count': number;
+}
 

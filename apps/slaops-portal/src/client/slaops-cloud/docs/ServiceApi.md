@@ -1,34 +1,34 @@
-# serviceApi
+# ServiceApi
 
 All URIs are relative to *http://localhost*
 
 |Method | HTTP request | Description|
 |------------- | ------------- | -------------|
-|[**servicesControllerCreate**](#servicescontrollercreate) | **POST** /services | Create a new service|
-|[**servicesControllerFindAll**](#servicescontrollerfindall) | **GET** /services | Get all services|
-|[**servicesControllerFindOne**](#servicescontrollerfindone) | **GET** /services/{id} | Get a service by ID|
-|[**servicesControllerRemove**](#servicescontrollerremove) | **DELETE** /services/{id} | Delete a service|
-|[**servicesControllerUpdate**](#servicescontrollerupdate) | **PATCH** /services/{id} | Update a service|
+|[**serviceControllerCreate**](#servicecontrollercreate) | **POST** /services | Create a new service|
+|[**serviceControllerFindAll**](#servicecontrollerfindall) | **GET** /services | Get all services|
+|[**serviceControllerFindOne**](#servicecontrollerfindone) | **GET** /services/{id} | Get a service by ID|
+|[**serviceControllerRemove**](#servicecontrollerremove) | **DELETE** /services/{id} | Delete a service|
+|[**serviceControllerUpdate**](#servicecontrollerupdate) | **PATCH** /services/{id} | Update a service|
 
-# **servicesControllerCreate**
-> Service servicesControllerCreate(createServiceDto)
+# **serviceControllerCreate**
+> Service serviceControllerCreate(createServiceDto)
 
 
 ### Example
 
 ```typescript
 import {
-    serviceApi,
+    ServiceApi,
     Configuration,
     CreateServiceDto
 } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new serviceApi(configuration);
+const apiInstance = new ServiceApi(configuration);
 
 let createServiceDto: CreateServiceDto; //
 
-const { status, data } = await apiInstance.servicesControllerCreate(
+const { status, data } = await apiInstance.serviceControllerCreate(
     createServiceDto
 );
 ```
@@ -62,24 +62,24 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **servicesControllerFindAll**
-> Array<Service> servicesControllerFindAll()
+# **serviceControllerFindAll**
+> Array<Service> serviceControllerFindAll()
 
 
 ### Example
 
 ```typescript
 import {
-    serviceApi,
+    ServiceApi,
     Configuration
 } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new serviceApi(configuration);
+const apiInstance = new ServiceApi(configuration);
 
 let select: string; //Comma-separated list of fields to select (e.g., id,name,endpoint) (optional) (default to undefined)
 
-const { status, data } = await apiInstance.servicesControllerFindAll(
+const { status, data } = await apiInstance.serviceControllerFindAll(
     select
 );
 ```
@@ -112,25 +112,25 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **servicesControllerFindOne**
-> Service servicesControllerFindOne()
+# **serviceControllerFindOne**
+> Service serviceControllerFindOne()
 
 
 ### Example
 
 ```typescript
 import {
-    serviceApi,
+    ServiceApi,
     Configuration
 } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new serviceApi(configuration);
+const apiInstance = new ServiceApi(configuration);
 
 let id: string; //Service UUID (default to undefined)
 let select: string; //Comma-separated list of fields to select (optional) (default to undefined)
 
-const { status, data } = await apiInstance.servicesControllerFindOne(
+const { status, data } = await apiInstance.serviceControllerFindOne(
     id,
     select
 );
@@ -166,24 +166,24 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **servicesControllerRemove**
-> ServicesControllerRemove200Response servicesControllerRemove()
+# **serviceControllerRemove**
+> ServiceControllerRemove200Response serviceControllerRemove()
 
 
 ### Example
 
 ```typescript
 import {
-    serviceApi,
+    ServiceApi,
     Configuration
 } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new serviceApi(configuration);
+const apiInstance = new ServiceApi(configuration);
 
 let id: string; //Service UUID (default to undefined)
 
-const { status, data } = await apiInstance.servicesControllerRemove(
+const { status, data } = await apiInstance.serviceControllerRemove(
     id
 );
 ```
@@ -197,7 +197,7 @@ const { status, data } = await apiInstance.servicesControllerRemove(
 
 ### Return type
 
-**ServicesControllerRemove200Response**
+**ServiceControllerRemove200Response**
 
 ### Authorization
 
@@ -217,26 +217,26 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **servicesControllerUpdate**
-> Service servicesControllerUpdate(updateServiceDto)
+# **serviceControllerUpdate**
+> Service serviceControllerUpdate(updateServiceDto)
 
 
 ### Example
 
 ```typescript
 import {
-    serviceApi,
+    ServiceApi,
     Configuration,
     UpdateServiceDto
 } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new serviceApi(configuration);
+const apiInstance = new ServiceApi(configuration);
 
 let id: string; //Service UUID (default to undefined)
 let updateServiceDto: UpdateServiceDto; //
 
-const { status, data } = await apiInstance.servicesControllerUpdate(
+const { status, data } = await apiInstance.serviceControllerUpdate(
     id,
     updateServiceDto
 );

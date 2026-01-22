@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Zap } from "lucide-react";
-import { ServicesApi, Configuration } from "@/client/slaops-cloud";
+import { ServiceApi, Configuration } from "@/client/slaops-cloud";
 import type { CreateServiceDto } from "@/client/slaops-cloud";
 import { useToast } from "@/hooks/use-toast";
 
@@ -65,7 +65,7 @@ const AddService = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: "",
     openapi_doc_url: "",
@@ -84,11 +84,11 @@ const AddService = () => {
       // For now, using a hardcoded user_id
       const user_id = "5c963787-d89d-4260-adaf-6541c41cb982";
 
-      const API_BASE_URL = 'http://localhost:8083';
+      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });
-      const servicesApi = new ServicesApi(config);
+      const serviceApi = new ServiceApi(config);
 
       const createDto: CreateServiceDto = {
         user_id,
@@ -100,7 +100,7 @@ const AddService = () => {
         response_time: formData.response_time ? parseInt(formData.response_time) : undefined,
       };
 
-      await servicesApi.servicesControllerCreate(createDto);
+      await serviceApi.serviceControllerCreate(createDto);
 
       toast({
         title: "Success",

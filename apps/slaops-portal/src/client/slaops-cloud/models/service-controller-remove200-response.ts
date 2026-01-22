@@ -14,6 +14,7 @@
 
 
 
-export * from './api/open-apisearch-api';
-export * from './api/service-api';
+export interface ServiceControllerRemove200Response {
+    'message'?: string;
+}
 
