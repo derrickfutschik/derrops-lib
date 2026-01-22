@@ -22,6 +22,7 @@ slaops-platform/
 ├── packages/                    # Shared libraries and utilities
 │   ├── slaops-private/            # @slaops/private - Core types and utilities (private)
 │   ├── slaops-public/             # @slaops/public - Shared utilities
+│   ├── slaops-config/          # @slaops/config - Type-safe configuration management
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
 │   ├── slaops-client-nodejs-axios/  # Axios-specific client implementation
 │   ├── slaops-infra/           # @slaops/infra - CDK infrastructure stacks (databases, VPC)
@@ -114,6 +115,7 @@ pnpm run build
 # Build specific package
 pnpm --filter @slaops/private run build
 pnpm --filter @slaops/public run build
+pnpm --filter @slaops/config run build
 pnpm --filter @slaops/client run build
 pnpm --filter slaops-client-nodejs-axios run build
 
@@ -130,6 +132,7 @@ pnpm run dev
 
 # Run specific package
 pnpm --filter @slaops/private run dev
+pnpm --filter @slaops/config run dev
 pnpm --filter slaops-docs start
 pnpm --filter vite_react_shadcn_ts run dev
 ```
@@ -232,6 +235,73 @@ Key exports:
 cd packages/slaops-public
 pnpm run build      # Build with tsup
 pnpm run test       # Run tests
+pnpm run dev        # Watch mode
+```
+
+### @slaops/config (packages/slaops-config/)
+
+**Type-safe configuration management for SLA Ops**
+
+- **Status**: Private (not published to npm)
+- **Purpose**: Centralized, Zod-validated environment variable handling
+- **Output**: ESM + CJS with TypeScript declarations
+- **Dependencies**: Zod 3.23.0
+
+**IMPORTANT**: Always use the config module for accessing configuration values. Never reference `process.env` directly in application code.
+
+```typescript
+// ✅ Correct - use the config module
+import { config } from '@slaops/config';
+
+const port = config["app.port"];
+const dbHost = config["db.host"];
+
+// ❌ Wrong - do not access process.env directly
+const port = process.env.PORT;
+```
+
+Key exports:
+
+- `config` - Pre-built configuration singleton with dot-notation access
+- `ConfigSchema` - Zod schema for validating environment variables
+- `loadConfig(env)` - Pure function to load and validate config from env object
+- `configFromEnv(env?)` - Cached config loader (caches for `process.env`, not for custom env)
+- `makeConfig(cfg?)` - Transforms raw env config into structured `AppConfig` object
+- `setConfigForProcess(config)` - Override cached config (useful for testing)
+- `resetConfigForTests()` - Clear cached config for test isolation
+
+**Configuration access** (dot-notation keys):
+
+```typescript
+config["app.port"]              // Application settings
+config["db.host"]               // Database settings
+config["opensearch.endpoint"]   // OpenSearch settings
+config["opensearch.index"](entity)  // Function to generate index names
+```
+
+See `packages/slaops-config/src/schema.ts` for all available configuration keys.
+
+**Testing with custom config**:
+
+```typescript
+import { loadConfig, resetConfigForTests } from '@slaops/config';
+
+// In test setup - use custom env
+const testConfig = loadConfig({
+  NODE_ENV: 'test',
+  DB_NAME: 'test_db',
+  // ... other required vars
+});
+
+// In test teardown
+afterEach(() => {
+  resetConfigForTests();
+});
+```
+
+```bash
+cd packages/slaops-config
+pnpm run build      # Build with tsup
 pnpm run dev        # Watch mode
 ```
 
@@ -673,6 +743,7 @@ The packages have a specific dependency hierarchy that must be respected when bu
 @slaops/private (no dependencies)
     ↓
 @slaops/public (depends on private)
+@slaops/config (depends on zod - standalone)
     ↓
 @slaops/client (depends on public)
     ↓
@@ -686,6 +757,7 @@ The root `pnpm run build` script handles this order automatically:
 ```bash
 pnpm -r --filter @slaops/private run build &&
 pnpm -r --filter @slaops/public run build &&
+pnpm -r --filter @slaops/config run build &&
 pnpm -r --filter @slaops/client run build &&
 pnpm -r --filter @slaops/client-nodejs-axios run build &&
 pnpm -r --filter @slaops/test run build &&
@@ -978,6 +1050,26 @@ pnpm --filter @slaops/private update <dependency>
 - Specific implementations go in their own packages
 - Apps should depend on packages, not vice versa
 
+### Environment Variables & Configuration
+
+**IMPORTANT**: Never access `process.env` directly in application code. Always use the `@slaops/config` module:
+
+```typescript
+// ✅ Correct
+import { config } from '@slaops/config';
+const port = config["app.port"];
+
+// ❌ Wrong - do not do this
+const port = process.env.PORT;
+```
+
+Benefits of using `@slaops/config`:
+- Type-safe configuration with Zod validation
+- Runtime validation on application startup
+- Centralized configuration management
+- Consistent access patterns across the codebase
+- Easy testing with `resetConfigForTests()` and custom env objects
+
 ### TypeScript
 
 - Use strict mode
@@ -1082,7 +1174,7 @@ SLAOps@SLAOps.com
 
 ---
 
-**Last Updated**: November 2024
+**Last Updated**: January 2026
 
 This file provides guidance for working with the SLAOps monorepo. For app-specific details, see:
 
