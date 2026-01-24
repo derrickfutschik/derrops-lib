@@ -4,7 +4,7 @@ import { loadConfig } from "./load";
 
 let cached: AppConfigEnv | undefined;
 
-export function configFromEnv(env: NodeJS.ProcessEnv = process.env): AppConfigEnv {
+export function configFromEnv(env: Record<string, unknown> = process.env): AppConfigEnv {
     // cache only when using the real process.env
     if (env === process.env) {
         if (!cached) cached = loadConfig(env);

@@ -8,7 +8,7 @@ import { ConfigSchema, type AppConfigEnv } from "./schema";
  * - Deterministic
  */
 export function loadConfig(
-  env: NodeJS.ProcessEnv,
+  env: Record<string, unknown>,
 ): AppConfigEnv {
   const parsed = ConfigSchema.safeParse(env);
 
