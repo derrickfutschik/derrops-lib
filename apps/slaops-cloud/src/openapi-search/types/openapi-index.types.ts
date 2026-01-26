@@ -187,3 +187,14 @@ export class IndexingError extends Error {
     this.name = 'IndexingError';
   }
 }
+
+/**
+ * Limits for dimensionality reduction
+ */
+export const INDEXING_LIMITS = {
+  MAX_PATHS: 100,
+  MAX_SAMPLE_OPERATIONS: 20,
+  MAX_OPERATION_IDS: 500,
+  MAX_SEARCH_TEXT_LENGTH: 50000, // 50KB
+  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+} as const;

@@ -7,6 +7,8 @@ import { z } from "zod";
 
 export const ConfigSchema = z.object({
 
+  NODE_VERSION: z.number().optional(),
+
   NODE_ENV: z.enum(["local", "test", "dev", "staging", "prod"]),
   PORT: z.coerce.number().optional(),
 
@@ -26,12 +28,17 @@ export const ConfigSchema = z.object({
   AWS_REGION: z.string().min(1),
   AWS_ACCOUNT_ID: z.string().min(1),
 
+  AWS_LAMBDA_RUNTIME: z.string().min(1).optional(),
+  AWS_LAMBDA_MEMORY: z.number().min(1).optional(),
+
   OPENSEARCH_INDEX_PREFIX: z.string().min(1).optional(),
   OPENSEARCH_INDEX_SUFFIX: z.string().min(1).optional(),
 
   OPENSEARCH_ENDPOINT: z.string().min(1),
 
   AWS_S3_ENDPOINT: z.string().min(1).optional(),
+
+  APP_DEBUG: z.boolean().optional(),
 
 
 });

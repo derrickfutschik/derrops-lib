@@ -68,18 +68,15 @@ type StatsSearch = Search<OpenApiIndexDocument,
 @Injectable()
 export class OpenApiSearchService implements OnModuleInit {
   private readonly logger = new Logger(OpenApiSearchService.name);
-  private readonly indexName: string;
+  private readonly indexName = config['opensearch.index.openapis']
 
   private client: Client;
   private tsClient: TypescriptOSProxyClient
 
-  constructor(private readonly configService: ConfigService) {
-    this.indexName = config['opensearch.index']('openapis');
-  }
 
   async onModuleInit() {
-    const endpoint = this.configService.get<string>('OPENSEARCH_ENDPOINT');
-    const region = this.configService.get<string>('AWS_REGION', 'ap-southeast-2');
+    const endpoint = config['opensearch.endpoint'];
+    const region = config['aws.region'];
 
     if (!endpoint) {
       this.logger.warn('OPENSEARCH_ENDPOINT not configured, OpenAPI search will not be available');

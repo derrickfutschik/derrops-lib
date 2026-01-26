@@ -23,6 +23,7 @@
     "generate:client": "pnpm exec openapi-generator-cli generate -i dist/openapi.json -g typescript-axios -o ../slaops-portal/src/client/slaops-cloud --additional-properties=withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.972.0",
     "@aws-sdk/client-secrets-manager": "^3.958.0",
     "@aws-sdk/credential-provider-node": "^3.958.0",
     "@codegenie/serverless-express": "^4.17.1",
@@ -43,7 +44,8 @@
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.20"
+    "typeorm": "^0.3.20",
+    "yaml": "^2.3.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",

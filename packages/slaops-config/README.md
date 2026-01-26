@@ -240,6 +240,11 @@ This makes it easier to run these environments locally to speed up developer wor
  - It is type-safe and controls all configuration for the application
 
 
+## Prefer config.ts over nest config service
+ - Avoid using `configService: ConfigService` in the codebase, prefer using the config object directly.
+ - Use `config['key']` to access the config object.
+
+
 ## Summary
 
 This model ensures:
