@@ -350,8 +350,8 @@ export class OpenApiSearchService implements OnModuleInit {
 
     return {
       query,
-      from: params.from || 0,
-      size: params.size || 20,
+      from: params.from || config["app.pagination.default.from"],
+      size: params.size || config["app.pagination.default.size"],
       sort,
       aggs: {
         providers: { terms: { field: 'provider', size: 50 } },

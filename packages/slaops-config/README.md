@@ -244,6 +244,17 @@ This makes it easier to run these environments locally to speed up developer wor
  - Avoid using `configService: ConfigService` in the codebase, prefer using the config object directly.
  - Use `config['key']` to access the config object.
 
+ ## No Magic Numbers in Code
+ - Do not use magic numbers in the codebase, prefer using the config object to access the values. For example, defaults in pagination should be set in the config object:
+ ```typescript
+return {
+  query,
+  size: params.size ?? config['app.pagination.default.size'],
+  from: params.from ?? config['app.pagination.default.from'],
+ }
+ ```
+ This is better than using a magic number like 20, as it is more explicit and easier to understand. It also centralizes configuration of default values into the one place.
+
 
 ## Summary
 

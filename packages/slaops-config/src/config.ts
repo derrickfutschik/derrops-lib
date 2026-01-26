@@ -84,6 +84,12 @@ export const makeConfig = (cfg: ConfigInput = configFromEnv({
         /** Find the name of an index */
         "opensearch.index.openapis": getIndexName("openapis"),
 
+        "app.pagination.default.size": 20,
+
+        /** Defaults for pagination */
+        "app.pagination.default.from": 0,
+
+
         "openapi.s3.bucket": `${app}-openapis-${env}`,
 
 
