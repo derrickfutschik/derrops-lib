@@ -164,6 +164,27 @@ const config: Config = {
         rehypePlugins: [rehypeKatex],
       },
     ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'code',
+        path: 'code',
+        routeBasePath: 'code',
+        sidebarPath: './sidebars-code.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH;
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '');
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/code/${cleanPath}`;
+          }
+          const cleanPath = docPath.replace(/^\//, '');
+          const pathToFile = `${process.cwd()}/code/${cleanPath}`;
+          return `cursor://file${pathToFile}`;
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
   ],
 
   stylesheets: [
@@ -203,6 +224,13 @@ const config: Config = {
           label: 'Drafts',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
+        {
+          type: 'docSidebar',
+          sidebarId: 'code',
+          docsPluginId: 'code',
+          position: 'left',
+          label: 'Code',
+        },
         {
           type: 'docSidebar',
           sidebarId: 'devops',

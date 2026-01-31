@@ -1,5 +1,4 @@
-// TODO - use import { OpenAPIV3_1 } from "openapi-types";
-
+import type { OpenAPIV3_1 } from 'openapi-types';
 
 /**
  * Types for the OpenAPI Directory Indexer component
@@ -201,3 +200,34 @@ export const INDEXING_LIMITS = {
   MAX_SEARCH_TEXT_LENGTH: 50000, // 50KB
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
 } as const;
+
+/**
+ * S3 location of an OpenAPI specification
+ */
+export type S3Location = {
+  bucket: string;
+  key: string;
+};
+
+/**
+ * Service contract for operating on OpenAPI specs (fetch, update, index).
+ * Used by the OpenAPI Directory Indexer and search components.
+ */
+export interface OpenAPIService {
+  /** Derive the S3 key for an OpenAPI specification */
+  s3KeyFromSpec(spec: OpenAPIV3_1.Document): string;
+
+  getMetadata(spec: OpenAPIV3_1.Document): Promise<OpenApiIndexDocument>;
+
+  /** Get the current OpenAPI specification from S3 */
+  getSpecFromS3(s3Location: S3Location): Promise<OpenAPIV3_1.Document>;
+
+  /** Get the latest OpenAPI specification from the externalDocs URL */
+  getSpecFromExternalDocs(spec: OpenAPIV3_1.Document): Promise<OpenAPIV3_1.Document>;
+
+  /** Update the OpenAPI specification in S3 */
+  updateSpecInS3(spec: OpenAPIV3_1.Document): Promise<void>;
+
+  /** Index an OpenAPI spec */
+  indexSpec(params: { spec: OpenAPIV3_1.Document }): Promise<void>;
+}

@@ -31,7 +31,9 @@ pnpm --filter slaops-cloud run lint
 ## Conventions
 
 ### Singular Naming
+
 Use singular names for modules, folders, files, database tables, and API routes:
+
 - Folder: `service/` not `services/`
 - Files: `service.module.ts`, `service.controller.ts`, `service.service.ts`
 - Entity: `@Entity('service')` not `@Entity('services')`
@@ -41,12 +43,15 @@ Use singular names for modules, folders, files, database tables, and API routes:
 ## Architecture
 
 ### Entry Points
+
 - `src/main.ts` - Standalone server entry point (development)
 - `src/lambda.ts` - AWS Lambda handler with cached server instance
 - `src/openapi.ts` - OpenAPI spec generator (runs post-build)
 
 ### Module Structure
+
 NestJS modules follow the standard pattern with singular naming:
+
 ```
 src/
 ├── app.module.ts              # Root module, configures TypeORM
@@ -62,6 +67,7 @@ src/
 ```
 
 ### Database
+
 - TypeORM with PostgreSQL (Aurora Serverless in production)
 - Entities auto-discovered via `__dirname + '/**/*.entity{.ts,.js}'`
 - `synchronize: true` in development, disabled in production
@@ -69,7 +75,9 @@ src/
 - Credentials from env vars or AWS Secrets Manager (via `DB_SECRET_ARN`)
 
 ### Client Generation
+
 Build generates a TypeScript Axios client from OpenAPI spec:
+
 - Output: `../slaops-portal/src/client/slaops-cloud`
 - Uses `openapi-generator-cli`
 
@@ -78,6 +86,7 @@ Build generates a TypeScript Axios client from OpenAPI spec:
 Environment variables loaded from monorepo root `.env` file via `dotenv-cli`.
 
 Key variables:
+
 - `PORT` - Server port (default: 3001)
 - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` - Database connection
 - `DB_SECRET_ARN` - AWS Secrets Manager ARN (Lambda only)

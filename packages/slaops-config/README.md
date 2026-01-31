@@ -171,6 +171,7 @@ It answers _what is live right now_.
 - Defaults create environment ambiguity
 
 ### Exception
+
 Only well defined defaults should be used in the codebase, such as ports for databases (5432 for PostgreSQL, 6379 for Redis, etc.) or other well known values.
 
 ### Rule
@@ -187,16 +188,16 @@ The only acceptable “defaults” are:
 
 ## Where should configuration live?
 
-| Value type       | Where it lives      |
-| ---------------- | ------------------- |
-| Runtime behavior | SSM Parameter Store |
-| System shape     | Git (IaC / policy)  |
-| Secrets          | Secrets Manager     |
-| Feature flags    | SSM Parameter Store |
-| Ownership        | Tags                |
-| Constraints      | Git                 |
-| Validation       | Code (schemas only) |
-| Secrets for Development | .env file |
+| Value type              | Where it lives      |
+| ----------------------- | ------------------- |
+| Runtime behavior        | SSM Parameter Store |
+| System shape            | Git (IaC / policy)  |
+| Secrets                 | Secrets Manager     |
+| Feature flags           | SSM Parameter Store |
+| Ownership               | Tags                |
+| Constraints             | Git                 |
+| Validation              | Code (schemas only) |
+| Secrets for Development | .env file           |
 
 ---
 
@@ -213,7 +214,7 @@ The only acceptable “defaults” are:
 ## Environment Precedence
 
 1. System Environment Variables
-2. {stage}-env.ts file
+2. `{stage}-env.ts` file
 
 ## Test Environments
 
@@ -223,38 +224,41 @@ NEEDS UPDATING
 This means that the hook in testing: `beforeAll(() => setupTestConfig());` can be used to import test config which will take precedence over whatever else is called.
 
 ## Environments Defined in Code
+
 In general, the environment variables are defined in the CICD deploy pipeline for the project.
 However both test, and local, are defined in the corresponding files: `local-env.ts` and `test-env.ts` respectively.
 This makes it easier to run these environments locally to speed up developer workflows.
 
-
-
 ### Rules
- - Only secrets and endpoints should be required, all other variables should be optional.
- - All environment variables should not have defaults.
- - All environment variables should be validated against the schema.
+
+- Only secrets and endpoints should be required, all other variables should be optional.
+- All environment variables should not have defaults.
+- All environment variables should be validated against the schema.
 
 ### Config Object (config.ts)
- - The config object is calculated from the environment variables.
- - No environment variables should be referenced in the codebase, only the config object should be used.
- - It is type-safe and controls all configuration for the application
 
+- The config object is calculated from the environment variables.
+- No environment variables should be referenced in the codebase, only the config object should be used.
+- It is type-safe and controls all configuration for the application
 
 ## Prefer config.ts over nest config service
- - Avoid using `configService: ConfigService` in the codebase, prefer using the config object directly.
- - Use `config['key']` to access the config object.
 
- ## No Magic Numbers in Code
- - Do not use magic numbers in the codebase, prefer using the config object to access the values. For example, defaults in pagination should be set in the config object:
- ```typescript
+- Avoid using `configService: ConfigService` in the codebase, prefer using the config object directly.
+- Use `config['key']` to access the config object.
+
+## No Magic Numbers in Code
+
+- Do not use magic numbers in the codebase, prefer using the config object to access the values. For example, defaults in pagination should be set in the config object:
+
+```typescript
 return {
   query,
   size: params.size ?? config['app.pagination.default.size'],
   from: params.from ?? config['app.pagination.default.from'],
- }
- ```
- This is better than using a magic number like 20, as it is more explicit and easier to understand. It also centralizes configuration of default values into the one place.
+}
+```
 
+This is better than using a magic number like 20, as it is more explicit and easier to understand. It also centralizes configuration of default values into the one place.
 
 ## Summary
 
@@ -270,11 +274,10 @@ Configuration becomes **intentional**, not incidental.
 
 ## Summary Table
 
-
-  | Concern        | Test                     | Local Dev                     | Cloud                  |
-  | -------------- | ------------------------ | ----------------------------- | ---------------------- |
-  | Config source  | Explicit object in code  | .env file                     | SSM + Secrets Manager  |
-  | DB             | localhost / test DB      | Your server (192.168.7.224)   | Aurora endpoint        |
-  | Secrets        | Hardcoded test values    | .env file                     | Secrets Manager        |
-  | NODE_ENV       | test                     | dev                            | prod                   |
-  | Committed?     | Yes (in test code)       | No (.env gitignored)           | No (infra-managed)     |
+| Concern       | Test                    | Local Dev                   | Cloud                 |
+| ------------- | ----------------------- | --------------------------- | --------------------- |
+| Config source | Explicit object in code | .env file                   | SSM + Secrets Manager |
+| DB            | localhost / test DB     | Your server (192.168.7.224) | Aurora endpoint       |
+| Secrets       | Hardcoded test values   | .env file                   | Secrets Manager       |
+| NODE_ENV      | test                    | dev                         | prod                  |
+| Committed?    | Yes (in test code)      | No (.env gitignored)        | No (infra-managed)    |

@@ -139,6 +139,15 @@ Custom changelog plugin for release tracking:
 - Uses same format as blog posts
 - Configured with 5 recent releases in sidebar
 
+### Code (code/)
+
+README docs from apps and packages are copied into `code/` at build time so the **Code** tab can show them without manual duplication.
+
+- **Script**: `scripts/copy-code-readmes.mjs` — copies README.md from monorepo apps/packages into `code/apps/` and `code/packages/`.
+- **When**: Run automatically before `pnpm start` and `pnpm build`; or run `pnpm docs:prepare` to refresh only.
+- **Source of truth**: READMEs stay in each app/package; generated files under `code/apps/*.md` and `code/packages/*.md` are gitignored.
+- **Sidebar**: `sidebars-code.ts`. To add a new README, add its path to `COPY_LIST` in the script and the doc id to the sidebar.
+
 ## Deployment
 
 ### AWS Amplify
