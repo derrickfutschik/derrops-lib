@@ -4,7 +4,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@slaops/slaops-config-nestjs/*": ["./src/*"]
+      "@slaops/slaops-config-nestjs/*": ["./src/*"],
+      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["src"]

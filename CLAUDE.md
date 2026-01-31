@@ -1077,6 +1077,51 @@ Benefits of using `@slaops-config/config`:
 - Export only necessary types
 - Use consistent module resolution
 
+### TypeScript Path Mappings
+
+**Why paths can't be centralized in `tsconfig.base.json`:**
+
+TypeScript's `paths` are resolved relative to `baseUrl`. When a child config defines its own `baseUrl` (which most do), it overrides the parent's. Additionally, when a child defines `paths`, it completely **replaces** the parent's paths rather than merging them.
+
+**Convention for cross-module path mappings:**
+
+When you need to enable IDE navigation to source files in another module (e.g., importing from `apps/slaops-cloud`), you must add the path mapping to **each** tsconfig.json that needs it:
+
+```typescript
+// In packages/*/tsconfig.json (two levels deep from root):
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@slaops/package-name/*": ["./src/*"],
+      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
+    }
+  }
+}
+
+// In apps/*/tsconfig.json (sibling directories):
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@slaops/app-name/*": ["./src/*"],
+      "@slaops/slaops-cloud/*": ["../slaops-cloud/src/*"]
+    }
+  }
+}
+```
+
+**Current cross-module mappings:**
+
+- `@slaops/slaops-cloud/*` → Maps to `apps/slaops-cloud/src/*` for IDE navigation to the NestJS backend source
+
+**Adding a new cross-module path mapping:**
+
+1. Determine the relative path from each module to the target source
+2. Add the path mapping to each tsconfig.json that needs it
+3. Use `../../` for packages (two levels up to root, then down to apps/)
+4. Use `../` for apps (one level up, then to sibling app/)
+
 ### Testing
 
 - Write unit tests for all packages

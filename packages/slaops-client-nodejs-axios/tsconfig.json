@@ -4,7 +4,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@slaops/client-nodejs-axios/*": ["./src/*"]
+      "@slaops/client-nodejs-axios/*": ["./src/*"],
+      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["src"]

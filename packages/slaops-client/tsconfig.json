@@ -4,7 +4,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@slaops/client/*": ["./src/*"]
+      "@slaops/client/*": ["./src/*"],
+      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["src"]

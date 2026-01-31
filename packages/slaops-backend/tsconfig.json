@@ -11,7 +11,8 @@
     "isolatedModules": false,
     "baseUrl": "./",
     "paths": {
-      "@slaops/backend/*": ["./amplify/*"]
+      "@slaops/backend/*": ["./amplify/*"],
+      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["amplify/**/*"],

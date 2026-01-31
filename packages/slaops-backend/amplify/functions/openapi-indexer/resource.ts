@@ -1,4 +1,6 @@
 import { defineFunction } from '@aws-amplify/backend';
+// Type-only import for IDE navigation (doesn't trigger strict type-checking of slaops-cloud)
+import type { handler as _handler } from "@slaops/slaops-cloud/indexer-lambda";
 
 import { config } from '@slaops/slaops-config';
 

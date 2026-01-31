@@ -1,10 +1,17 @@
+import { createRequire } from 'node:module';
+import path from 'node:path';
+
 import { defineFunction } from '@aws-amplify/backend';
 
 import { config } from '@slaops/slaops-config';
 
+const require = createRequire(import.meta.url);
+const slaopsCloudRoot = path.dirname(require.resolve('slaops-cloud/package.json'));
+const apiLambdaEntry = path.join(slaopsCloudRoot, 'src', 'lambda.ts');
+
 export const api = defineFunction({
   name: config["app.api.name"],
-  entry: '../../../../apps/slaops-cloud/src/lambda.ts',
+  entry: apiLambdaEntry,
   timeoutSeconds: config["aws.lambda.timeout.seconds"],
   memoryMB: config["aws.lambda.memory"],
   runtime: config["node.version"] as 18 | 20 | 22,
