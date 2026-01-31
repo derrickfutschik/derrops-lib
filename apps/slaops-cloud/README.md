@@ -1,4 +1,4 @@
-# SLAOps Cloud Backend
+# @slaops/slaops-cloud
 
 NestJS backend API for the SLAOps platform.
 
@@ -31,6 +31,7 @@ pnpm --filter slaops-cloud install
 ### Configuration
 
 1. Copy `.env.example` to `.env`:
+
    ```bash
    cp .env.example .env
    ```
@@ -66,8 +67,7 @@ Will generate the OpenAPI spec in `dist/openapi.json` and `src/openapi.json`
 pnpm --filter slaops-cloud run generate:client
 ```
 
-Will generate the client in  `<root>/apps/slaops-portal/src/client/slaops-cloud` for use the slaops-portal app to type-safely interact with the slaops-cloud API.
-
+Will generate the client in `<root>/apps/slaops-portal/src/client/slaops-cloud` for use the slaops-portal app to type-safely interact with the slaops-cloud API.
 
 ## Development
 
@@ -137,11 +137,12 @@ Example migration:
 ```typescript
 // Before (Supabase)
 const { data, error } = await supabase
-  .from("services")
-  .select("id, name, endpoint, openapi_doc_url, openapi_doc_content");
+  .from('services')
+  .select('id, name, endpoint, openapi_doc_url, openapi_doc_content');
 
 // After (NestJS API)
-const response = await fetch('http://localhost:3001/service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content');
+const response = await fetch(
+  'http://localhost:3001/service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content',
+);
 const data = await response.json();
 ```
-
