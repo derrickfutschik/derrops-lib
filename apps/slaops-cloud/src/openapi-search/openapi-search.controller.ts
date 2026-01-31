@@ -7,12 +7,12 @@ import {
   ProviderListResponseDto,
   IndexStatsResponseDto,
 } from './dto/openapi-search-response.dto';
-import { OpenApiIndexDocument } from './types';
+import { OpenApiIndexDocument } from '@slaops/slaops-cloud/openapi-search/types/openapi-index.types';
 
 @ApiTags('OpenAPI Search')
 @Controller('openapi-search')
 export class OpenApiSearchController {
-  constructor(private readonly searchService: OpenApiSearchService) {}
+  constructor(private readonly searchService: OpenApiSearchService) { }
 
   /**
    * Search indexed OpenAPI specifications

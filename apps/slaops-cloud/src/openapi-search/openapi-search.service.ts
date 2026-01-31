@@ -11,7 +11,7 @@ import {
   IndexStatsResponseDto,
   SearchAggregations,
 } from './dto/openapi-search-response.dto';
-import { OpenApiIndexDocument } from './types';
+import { OpenApiIndexDocument } from '@slaops/slaops-cloud/openapi-search/types/openapi-index.types';
 import { Search, SearchResponse, TypescriptOSProxyClient } from 'opensearch-ts';
 
 import { config } from '@slaops/slaops-config';

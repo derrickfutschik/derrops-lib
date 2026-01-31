@@ -1,3 +1,6 @@
+// TODO - use import { OpenAPIV3_1 } from "openapi-types";
+
+
 /**
  * Types for the OpenAPI Directory Indexer component
  * These types define the document schema stored in OpenSearch
