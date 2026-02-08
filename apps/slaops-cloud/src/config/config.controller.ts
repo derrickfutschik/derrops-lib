@@ -11,6 +11,7 @@ const isSecret = (key: string) => {
         k.includes("password") ||
         k.includes("token") ||
         k.includes("email") ||
+        k.includes("account") ||
         k.includes("credentials") ||
         (k.includes("database") && k.includes("user")) ||
         (k.includes("db") && k.includes("user")) ||
