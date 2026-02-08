@@ -1,6 +1,6 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsArray, IsInt, Min, Max, IsIn } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger'
+import { IsOptional, IsString, IsArray, IsInt, Min, Max, IsIn } from 'class-validator'
+import { Transform, Type } from 'class-transformer'
 
 /**
  * DTO for OpenAPI search query parameters
@@ -12,7 +12,7 @@ export class OpenApiSearchQueryDto {
   })
   @IsOptional()
   @IsString()
-  query?: string;
+  query?: string
 
   @ApiPropertyOptional({
     description: 'Filter by provider/domain',
@@ -20,7 +20,7 @@ export class OpenApiSearchQueryDto {
   })
   @IsOptional()
   @IsString()
-  provider?: string;
+  provider?: string
 
   @ApiPropertyOptional({
     description: 'Filter by tags (comma-separated)',
@@ -30,8 +30,10 @@ export class OpenApiSearchQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').map((t) => t.trim()) : value))
-  tags?: string[];
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.split(',').map((t) => t.trim()) : value,
+  )
+  tags?: string[]
 
   @ApiPropertyOptional({
     description: 'Filter by HTTP method',
@@ -41,7 +43,7 @@ export class OpenApiSearchQueryDto {
   @IsOptional()
   @IsString()
   @IsIn(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
-  method?: string;
+  method?: string
 
   @ApiPropertyOptional({
     description: 'Filter by path prefix (from operationStats.pathPrefixes)',
@@ -49,7 +51,7 @@ export class OpenApiSearchQueryDto {
   })
   @IsOptional()
   @IsString()
-  pathPrefix?: string;
+  pathPrefix?: string
 
   @ApiPropertyOptional({
     description: 'Filter by exact operationId',
@@ -57,7 +59,7 @@ export class OpenApiSearchQueryDto {
   })
   @IsOptional()
   @IsString()
-  operationId?: string;
+  operationId?: string
 
   @ApiPropertyOptional({
     description: 'Filter by server URL pattern',
@@ -65,7 +67,7 @@ export class OpenApiSearchQueryDto {
   })
   @IsOptional()
   @IsString()
-  serverPattern?: string;
+  serverPattern?: string
 
   @ApiPropertyOptional({
     description: 'Pagination offset',
@@ -76,7 +78,7 @@ export class OpenApiSearchQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  from?: number = 0;
+  from?: number = 0
 
   @ApiPropertyOptional({
     description: 'Number of results to return',
@@ -89,7 +91,7 @@ export class OpenApiSearchQueryDto {
   @IsInt()
   @Min(1)
   @Max(100)
-  size?: number = 20;
+  size?: number = 20
 
   @ApiPropertyOptional({
     description: 'Sort field',
@@ -99,7 +101,7 @@ export class OpenApiSearchQueryDto {
   @IsOptional()
   @IsString()
   @IsIn(['title', 'provider', 'indexedAt', 'operationStats.total', '_score'])
-  sortField?: string = '_score';
+  sortField?: string = '_score'
 
   @ApiPropertyOptional({
     description: 'Sort order',
@@ -109,5 +111,5 @@ export class OpenApiSearchQueryDto {
   @IsOptional()
   @IsString()
   @IsIn(['asc', 'desc'])
-  sortOrder?: 'asc' | 'desc' = 'desc';
+  sortOrder?: 'asc' | 'desc' = 'desc'
 }

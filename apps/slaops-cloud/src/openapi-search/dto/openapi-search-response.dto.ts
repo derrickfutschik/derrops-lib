@@ -1,18 +1,18 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 
 /**
  * A single search hit with score and highlights
  */
 export class OpenApiSearchHit {
   @ApiProperty({ description: 'The matched document' })
-  document: OpenApiIndexDocument;
+  document: OpenApiIndexDocument
 
   @ApiProperty({ description: 'Search relevance score' })
-  score: number;
+  score: number
 
   @ApiPropertyOptional({ description: 'Highlighted matches' })
-  highlights?: Record<string, string[]>;
+  highlights?: Record<string, string[]>
 }
 
 /**
@@ -20,10 +20,10 @@ export class OpenApiSearchHit {
  */
 export class AggregationBucket {
   @ApiProperty({ description: 'Aggregation key' })
-  key: string;
+  key: string
 
   @ApiProperty({ description: 'Document count' })
-  count: number;
+  count: number
 }
 
 /**
@@ -31,16 +31,16 @@ export class AggregationBucket {
  */
 export class SearchAggregations {
   @ApiProperty({ description: 'Provider aggregations', type: [AggregationBucket] })
-  providers: AggregationBucket[];
+  providers: AggregationBucket[]
 
   @ApiProperty({ description: 'Tag aggregations', type: [AggregationBucket] })
-  tags: AggregationBucket[];
+  tags: AggregationBucket[]
 
   @ApiProperty({ description: 'HTTP method aggregations', type: [AggregationBucket] })
-  methods: AggregationBucket[];
+  methods: AggregationBucket[]
 
   @ApiProperty({ description: 'Path prefix aggregations', type: [AggregationBucket] })
-  pathPrefixes: AggregationBucket[];
+  pathPrefixes: AggregationBucket[]
 }
 
 /**
@@ -48,16 +48,16 @@ export class SearchAggregations {
  */
 export class OpenApiSearchResponseDto {
   @ApiProperty({ description: 'Total matching documents' })
-  total: number;
+  total: number
 
   @ApiProperty({ description: 'Search hits', type: [OpenApiSearchHit] })
-  hits: OpenApiSearchHit[];
+  hits: OpenApiSearchHit[]
 
   @ApiPropertyOptional({ description: 'Aggregations/facets' })
-  aggregations?: SearchAggregations;
+  aggregations?: SearchAggregations
 
   @ApiProperty({ description: 'Query execution time in milliseconds' })
-  took: number;
+  took: number
 }
 
 /**
@@ -65,10 +65,10 @@ export class OpenApiSearchResponseDto {
  */
 export class ProviderListResponseDto {
   @ApiProperty({ description: 'Provider name' })
-  provider: string;
+  provider: string
 
   @ApiProperty({ description: 'Number of API specs' })
-  count: number;
+  count: number
 }
 
 /**
@@ -76,17 +76,17 @@ export class ProviderListResponseDto {
  */
 export class IndexStatsResponseDto {
   @ApiProperty({ description: 'Total indexed documents' })
-  totalDocuments: number;
+  totalDocuments: number
 
   @ApiProperty({ description: 'Total operations across all specs' })
-  totalOperations: number;
+  totalOperations: number
 
   @ApiProperty({ description: 'Number of unique providers' })
-  uniqueProviders: number;
+  uniqueProviders: number
 
   @ApiProperty({ description: 'Number of unique tags' })
-  uniqueTags: number;
+  uniqueTags: number
 
   @ApiPropertyOptional({ description: 'Last indexed timestamp' })
-  lastIndexedAt?: string;
+  lastIndexedAt?: string
 }

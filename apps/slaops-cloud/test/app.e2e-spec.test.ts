@@ -1,47 +1,43 @@
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { setupE2EApp } from './common/setup-e2e';
+import { INestApplication } from '@nestjs/common'
+import request from 'supertest'
+import { setupE2EApp } from './common/setup-e2e'
 // import { seedData } from '../src/seed';
 
 describe('AppController (e2e)', () => {
+  let app: INestApplication
 
-    let app: INestApplication
+  beforeAll(async () => {
+    app = await setupE2EApp()
+    // await seedData(app)
+  })
 
-    beforeAll(async () => {
-        app = await setupE2EApp()
-        // await seedData(app)
-    });
+  afterAll(async () => {
+    await app.close()
+  })
 
-    afterAll(async () => {
-        await app.close();
-    });
+  it('/api-json (GET)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api-json')
+      .expect('Content-Type', /json/)
+      .expect(200)
 
-    it('/api-json (GET)', async () => {
+    const responseBody = JSON.parse(res.text)
 
-        const res = await request(app.getHttpServer())
-            .get('/api-json')
-            .expect('Content-Type', /json/)
-            .expect(200);
+    // Verify the basic structure
+    expect(responseBody).toHaveProperty('openapi')
+    expect(responseBody).toHaveProperty('components')
+  })
 
-        const responseBody = JSON.parse(res.text);
+  it('/api-yaml (GET)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api-yaml')
+      .expect('Content-Type', /yaml/)
+      .expect(200)
 
-        // Verify the basic structure
-        expect(responseBody).toHaveProperty('openapi');
-        expect(responseBody).toHaveProperty('components');
+    const responseText = res.text
 
-    });
-
-    it('/api-yaml (GET)', async () => {
-        const res = await request(app.getHttpServer())
-            .get('/api-yaml')
-            .expect('Content-Type', /yaml/)
-            .expect(200);
-
-        const responseText = res.text;
-
-        // Verify the basic structure
-        expect(responseText).toContain('openapi:');
-        expect(responseText).toContain('components:');
-
-    });
-});
+    // Verify the basic structure
+    expect(responseText).toContain('openapi:')
+    expect(responseText).toContain('components:')
+  })
+})

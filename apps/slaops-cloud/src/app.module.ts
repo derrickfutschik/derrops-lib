@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { nestConfigOptions } from "@slaops/config-nestjs";
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ServiceModule } from './service/service.module';
-import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
-import { config } from '@slaops/config';
-import { SLAConfigModule } from './config/config.module';
-import { OpenSearchModule } from './opensearch/opensearch.module';
+import { Module } from '@nestjs/common'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { nestConfigOptions } from '@slaops/config-nestjs'
+import { TypeOrmModule } from '@nestjs/typeorm'
+import { ServiceModule } from './service/service.module'
+import { OpenApiSearchModule } from './openapi-search/openapi-search.module'
+import { config } from '@slaops/config'
+import { SLAConfigModule } from './config/config.module'
+import { OpenSearchModule } from './opensearch/opensearch.module'
 
 @Module({
   imports: [
@@ -20,20 +20,20 @@ import { OpenSearchModule } from './opensearch/opensearch.module';
         let password = config['db.password']
 
         // If running in AWS Lambda with DB_SECRET_ARN
-        const secretArn = configService.get('DB_SECRET_ARN');
+        const secretArn = configService.get('DB_SECRET_ARN')
         if (secretArn && !username) {
           // Credentials will be injected via environment variables by Lambda
           // or retrieved from Secrets Manager at runtime
-          const { SecretsManagerClient, GetSecretValueCommand } = await import('@aws-sdk/client-secrets-manager');
-          const client = new SecretsManagerClient({});
-          const response = await client.send(
-            new GetSecretValueCommand({ SecretId: secretArn })
-          );
+          const { SecretsManagerClient, GetSecretValueCommand } = await import(
+            '@aws-sdk/client-secrets-manager'
+          )
+          const client = new SecretsManagerClient({})
+          const response = await client.send(new GetSecretValueCommand({ SecretId: secretArn }))
 
           if (response.SecretString) {
-            const secret = JSON.parse(response.SecretString);
-            username = secret.username;
-            password = secret.password;
+            const secret = JSON.parse(response.SecretString)
+            username = secret.username
+            password = secret.password
           }
         }
 
@@ -53,15 +53,15 @@ import { OpenSearchModule } from './opensearch/opensearch.module';
             max: 1, // Single connection for Lambda
             connectionTimeoutMillis: 5000,
           },
-        };
+        }
       },
     }),
     ServiceModule,
     OpenApiSearchModule,
-    SLAConfigModule,  // TODO - only import this in non prod environments
+    SLAConfigModule, // TODO - only import this in non prod environments
     OpenSearchModule, // TODO - only import this in non prod environments
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

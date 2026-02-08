@@ -1,14 +1,13 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import serverlessExpress from '@codegenie/serverless-express';
-import { Context, APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { AppModule } from './app.module';
-import express = require('express');
+import { NestFactory } from '@nestjs/core'
+import { ValidationPipe } from '@nestjs/common'
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
+import { ExpressAdapter } from '@nestjs/platform-express'
+import serverlessExpress from '@codegenie/serverless-express'
+import { Context, APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
+import { AppModule } from './app.module'
+import express = require('express')
 
-let cachedServer: any;
-
+let cachedServer: any
 
 /**
  * Bootstrap the NestJS application for AWS Lambda
@@ -16,22 +15,19 @@ let cachedServer: any;
  */
 async function bootstrapServer(): Promise<any> {
   if (!cachedServer) {
-    const expressApp = express();
-    const nestApp = await NestFactory.create(
-      AppModule,
-      new ExpressAdapter(expressApp),
-      {
-        logger: process.env.NODE_ENV === 'production'
+    const expressApp = express()
+    const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
+      logger:
+        process.env.NODE_ENV === 'production'
           ? ['error', 'warn']
           : ['log', 'error', 'warn', 'debug', 'verbose'],
-      },
-    );
+    })
 
     // Enable CORS for frontend integration
     nestApp.enableCors({
       origin: process.env.CORS_ORIGIN || '*',
       credentials: true,
-    });
+    })
 
     // Global validation pipe
     nestApp.useGlobalPipes(
@@ -40,7 +36,7 @@ async function bootstrapServer(): Promise<any> {
         transform: true,
         forbidNonWhitelisted: true,
       }),
-    );
+    )
 
     // Swagger documentation setup
     const config = new DocumentBuilder()
@@ -50,17 +46,17 @@ async function bootstrapServer(): Promise<any> {
       .addTag('service')
       .addTag('Config')
       .addBearerAuth()
-      .build();
+      .build()
 
-    const document = SwaggerModule.createDocument(nestApp, config);
-    SwaggerModule.setup('api', nestApp, document);
+    const document = SwaggerModule.createDocument(nestApp, config)
+    SwaggerModule.setup('api', nestApp, document)
 
-    await nestApp.init();
+    await nestApp.init()
 
-    cachedServer = serverlessExpress({ app: expressApp });
+    cachedServer = serverlessExpress({ app: expressApp })
   }
 
-  return cachedServer;
+  return cachedServer
 }
 
 /**
@@ -72,8 +68,8 @@ export const handler = async (
   context: Context,
 ): Promise<APIGatewayProxyResult> => {
   // AWS Lambda best practice: reuse connections
-  context.callbackWaitsForEmptyEventLoop = false;
+  context.callbackWaitsForEmptyEventLoop = false
 
-  const server = await bootstrapServer();
-  return server(event, context) as Promise<APIGatewayProxyResult>;
-};
+  const server = await bootstrapServer()
+  return server(event, context) as Promise<APIGatewayProxyResult>
+}

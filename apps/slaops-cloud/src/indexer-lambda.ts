@@ -8,12 +8,12 @@
  * application to use the OpenApiIndexerService.
  */
 
-import { NestFactory } from '@nestjs/core';
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import type { S3Event, Context } from 'aws-lambda';
-import { OpenApiIndexerModule, OpenApiIndexerService } from './openapi-indexer';
-import { IndexResult } from '@slaops/cloud/openapi-search/types/openapi-index.types';
+import { NestFactory } from '@nestjs/core'
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import type { S3Event, Context } from 'aws-lambda'
+import { OpenApiIndexerModule, OpenApiIndexerService } from './openapi-indexer'
+import { IndexResult } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 
 /**
  * Minimal module for the indexer Lambda
@@ -27,38 +27,39 @@ import { IndexResult } from '@slaops/cloud/openapi-search/types/openapi-index.ty
     OpenApiIndexerModule,
   ],
 })
-class IndexerLambdaModule { }
+class IndexerLambdaModule {}
 
 // Cache the service instance across Lambda invocations
-let cachedService: OpenApiIndexerService | null = null;
+let cachedService: OpenApiIndexerService | null = null
 
 /**
  * Bootstrap the NestJS application and get the indexer service
  */
 async function getIndexerService(): Promise<OpenApiIndexerService> {
   if (cachedService) {
-    return cachedService;
+    return cachedService
   }
   const app = await NestFactory.createApplicationContext(IndexerLambdaModule, {
-    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
-  });
-  const service = app.get(OpenApiIndexerService);
-  cachedService = service;
-  return service;
+    logger:
+      process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
+  })
+  const service = app.get(OpenApiIndexerService)
+  cachedService = service
+  return service
 }
 
 /**
  * Lambda handler for S3 events
  */
 export async function handler(event: S3Event, context: Context): Promise<IndexResult[]> {
-  console.log(`Processing ${event.Records.length} S3 event(s)`);
+  console.log(`Processing ${event.Records.length} S3 event(s)`)
 
   if (process.env.DEBUG === 'true') {
-    console.log('Event:', JSON.stringify(event, null, 2));
+    console.log('Event:', JSON.stringify(event, null, 2))
   }
 
-  const indexerService = await getIndexerService();
-  const results: IndexResult[] = [];
+  const indexerService = await getIndexerService()
+  const results: IndexResult[] = []
 
   // Process records sequentially to avoid overwhelming OpenSearch
   for (const record of event.Records) {
@@ -66,16 +67,16 @@ export async function handler(event: S3Event, context: Context): Promise<IndexRe
       bucket: record.s3.bucket.name,
       key: decodeURIComponent(record.s3.object.key.replace(/\+/g, ' ')),
       eventName: record.eventName,
-    };
+    }
 
-    const result = await indexerService.processRecord(s3Record);
-    results.push(result);
+    const result = await indexerService.processRecord(s3Record)
+    results.push(result)
   }
 
   // Log summary
-  const successful = results.filter((r) => r.success).length;
-  const failed = results.filter((r) => !r.success).length;
-  console.log(`Completed: ${successful} successful, ${failed} failed`);
+  const successful = results.filter((r) => r.success).length
+  const failed = results.filter((r) => !r.success).length
+  console.log(`Completed: ${successful} successful, ${failed} failed`)
 
-  return results;
+  return results
 }

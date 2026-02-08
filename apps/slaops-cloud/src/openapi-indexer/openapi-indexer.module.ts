@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { OpenApiIndexerService } from './openapi-indexer.service';
-import { OpenApiParserService } from './openapi-parser.service';
+import { Module } from '@nestjs/common'
+import { OpenApiIndexerService } from './openapi-indexer.service'
+import { OpenApiParserService } from './openapi-parser.service'
 
 @Module({
   providers: [OpenApiIndexerService, OpenApiParserService],

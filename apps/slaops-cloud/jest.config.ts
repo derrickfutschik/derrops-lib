@@ -1,25 +1,24 @@
-import type { Config } from 'jest';
+import type { Config } from 'jest'
 
 const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
   preset: 'ts-jest',
   transform: {
-    '^.+\\.(t|j)s$': ['ts-jest', {
-      tsconfig: {
-        experimentalDecorators: true,
-        emitDecoratorMetadata: true,
+    '^.+\\.(t|j)s$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+        },
       },
-    }],
+    ],
   },
   moduleNameMapper: {
     '^@slaops/cloud/(.*)$': '<rootDir>/src/$1',
   },
-  collectCoverageFrom: [
-    'src/**/*.(t|j)s',
-    '!src/main.ts',
-    '!src/**/*.module.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.(t|j)s', '!src/main.ts', '!src/**/*.module.ts'],
   coverageDirectory: './coverage',
   testEnvironment: 'node',
   testMatch: [
@@ -40,7 +39,6 @@ const config: Config = {
       },
     ],
   ],
-};
+}
 
-export default config;
-
+export default config

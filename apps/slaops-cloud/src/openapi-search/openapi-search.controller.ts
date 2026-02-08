@@ -1,18 +1,18 @@
-import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { OpenApiSearchService } from './openapi-search.service';
-import { OpenApiSearchQueryDto } from './dto/openapi-search-query.dto';
+import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger'
+import { OpenApiSearchService } from './openapi-search.service'
+import { OpenApiSearchQueryDto } from './dto/openapi-search-query.dto'
 import {
   OpenApiSearchResponseDto,
   ProviderListResponseDto,
   IndexStatsResponseDto,
-} from './dto/openapi-search-response.dto';
-import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types';
+} from './dto/openapi-search-response.dto'
+import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 
 @ApiTags('OpenAPI Search')
 @Controller('openapi-search')
 export class OpenApiSearchController {
-  constructor(private readonly searchService: OpenApiSearchService) { }
+  constructor(private readonly searchService: OpenApiSearchService) {}
 
   /**
    * Search indexed OpenAPI specifications
@@ -29,7 +29,7 @@ export class OpenApiSearchController {
     type: OpenApiSearchResponseDto,
   })
   async search(@Query() query: OpenApiSearchQueryDto): Promise<OpenApiSearchResponseDto> {
-    return this.searchService.search(query);
+    return this.searchService.search(query)
   }
 
   /**
@@ -38,7 +38,8 @@ export class OpenApiSearchController {
   @Get('provider')
   @ApiOperation({
     summary: 'List all API providers',
-    description: 'Returns a list of all unique providers/domains with the count of API specs for each.',
+    description:
+      'Returns a list of all unique providers/domains with the count of API specs for each.',
   })
   @ApiResponse({
     status: 200,
@@ -46,7 +47,7 @@ export class OpenApiSearchController {
     type: [ProviderListResponseDto],
   })
   async listProviders(): Promise<ProviderListResponseDto[]> {
-    return this.searchService.listProviders();
+    return this.searchService.listProviders()
   }
 
   /**
@@ -63,7 +64,7 @@ export class OpenApiSearchController {
     type: IndexStatsResponseDto,
   })
   async getStats(): Promise<IndexStatsResponseDto> {
-    return this.searchService.getStats();
+    return this.searchService.getStats()
   }
 
   /**
@@ -72,7 +73,8 @@ export class OpenApiSearchController {
   @Get(':id')
   @ApiOperation({
     summary: 'Get OpenAPI spec by ID',
-    description: 'Retrieve a specific OpenAPI specification by its ID (format: provider/service/version).',
+    description:
+      'Retrieve a specific OpenAPI specification by its ID (format: provider/service/version).',
   })
   @ApiParam({
     name: 'id',
@@ -89,13 +91,13 @@ export class OpenApiSearchController {
   })
   async getById(@Param('id') id: string): Promise<OpenApiIndexDocument> {
     // Decode the ID in case it was URL-encoded
-    const decodedId = decodeURIComponent(id);
-    const document = await this.searchService.getById(decodedId);
+    const decodedId = decodeURIComponent(id)
+    const document = await this.searchService.getById(decodedId)
 
     if (!document) {
-      throw new NotFoundException(`OpenAPI spec with ID '${decodedId}' not found`);
+      throw new NotFoundException(`OpenAPI spec with ID '${decodedId}' not found`)
     }
 
-    return document;
+    return document
   }
 }

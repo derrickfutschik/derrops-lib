@@ -1,4 +1,4 @@
-import type { OpenAPIV3_1 } from 'openapi-types';
+import type { OpenAPIV3_1 } from 'openapi-types'
 
 /**
  * Types for the OpenAPI Directory Indexer component
@@ -12,96 +12,96 @@ import type { OpenAPIV3_1 } from 'openapi-types';
  */
 export interface OpenApiIndexDocument {
   /** Unique identifier: {provider}/{service}/{version} */
-  id: string;
+  id: string
 
   /** Provider/domain name (e.g., 'github.com', 'stripe.com') */
-  provider: string;
+  provider: string
 
   /** Service name within the provider */
-  serviceName: string;
+  serviceName: string
 
   /** API version string */
-  version: string;
+  version: string
 
   /** OpenAPI specification version (e.g., '3.0.3', '3.1.0') */
-  specVersion: string;
+  specVersion: string
 
   /** API title from info.title */
-  title: string;
+  title: string
 
   /** API description from info.description */
-  description: string;
+  description: string
 
   /** Terms of service URL */
-  termsOfService?: string;
+  termsOfService?: string
 
   /** Contact information */
   contact?: {
-    name?: string;
-    email?: string;
-    url?: string;
-  };
+    name?: string
+    email?: string
+    url?: string
+  }
 
   /** License information */
   license?: {
-    name: string;
-    url?: string;
-  };
+    name: string
+    url?: string
+  }
 
   /** Server URLs and descriptions */
   servers: Array<{
-    url: string;
-    description?: string;
-  }>;
+    url: string
+    description?: string
+  }>
 
   /** All unique tags used in the spec (from top-level and operations) */
-  tags: string[];
+  tags: string[]
 
   /** Aggregated operation statistics (not full operation list) */
   operationStats: {
     /** Total number of operations */
-    total: number;
+    total: number
     /** Count by HTTP method */
-    byMethod: Record<string, number>;
+    byMethod: Record<string, number>
     /** Unique HTTP methods used */
-    methods: string[];
+    methods: string[]
     /** Unique path prefixes (first segment, e.g., '/users', '/orders') */
-    pathPrefixes: string[];
+    pathPrefixes: string[]
     /** All unique operationIds (for exact lookup, max 500) */
-    operationIds: string[];
-  };
+    operationIds: string[]
+  }
 
   /** Sample operations for display (max 20) */
   sampleOperations: Array<{
-    method: string;
-    path: string;
-    operationId?: string;
-    summary?: string;
-  }>;
+    method: string
+    path: string
+    operationId?: string
+    summary?: string
+  }>
 
   /** All unique top-level paths (max 100, truncated for large APIs) */
-  paths: string[];
+  paths: string[]
 
   /** Concatenated searchable text from all operation summaries/descriptions */
-  operationSearchText: string;
+  operationSearchText: string
 
   /** External documentation links */
   externalDocs?: {
-    url: string;
-    description?: string;
-  };
+    url: string
+    description?: string
+  }
 
   /** S3 location of the original spec file */
   s3Location: {
-    bucket: string;
-    key: string;
-  };
+    bucket: string
+    key: string
+  }
 
   /** Metadata */
-  indexedAt: string;
-  updatedAt: string;
-  fileSize: number;
-  fileFormat: 'yaml' | 'json';
+  indexedAt: string
+  updatedAt: string
+  fileSize: number
+  fileFormat: 'yaml' | 'json'
 }
 
 /**
@@ -109,55 +109,55 @@ export interface OpenApiIndexDocument {
  */
 export interface IndexerConfig {
   /** OpenSearch endpoint URL */
-  opensearchEndpoint: string;
+  opensearchEndpoint: string
 
   /** OpenSearch index name */
-  indexName: string;
+  indexName: string
 
   /** AWS region */
-  region: string;
+  region: string
 
   /** Maximum file size to process (bytes) */
-  maxFileSize?: number;
+  maxFileSize?: number
 
   /** Enable debug logging */
-  debug?: boolean;
+  debug?: boolean
 }
 
 /**
  * S3 event record for Lambda trigger
  */
 export interface S3EventRecord {
-  bucket: string;
-  key: string;
-  size: number;
-  etag: string;
-  eventType: 'ObjectCreated' | 'ObjectRemoved';
+  bucket: string
+  key: string
+  size: number
+  etag: string
+  eventType: 'ObjectCreated' | 'ObjectRemoved'
 }
 
 /**
  * Result of indexing a single OpenAPI spec
  */
 export interface IndexResult {
-  success: boolean;
-  documentId: string;
-  s3Key: string;
-  operationCount: number;
-  pathCount: number;
-  truncated: boolean;
-  error?: string;
-  duration: number;
+  success: boolean
+  documentId: string
+  s3Key: string
+  operationCount: number
+  pathCount: number
+  truncated: boolean
+  error?: string
+  duration: number
 }
 
 /**
  * Index statistics
  */
 export interface IndexStats {
-  totalDocuments: number;
-  totalOperations: number;
-  uniqueProviders: number;
-  uniqueTags: number;
-  lastIndexedAt?: string;
+  totalDocuments: number
+  totalOperations: number
+  uniqueProviders: number
+  uniqueTags: number
+  lastIndexedAt?: string
 }
 
 /**
@@ -171,9 +171,9 @@ export const IndexingErrorCode = {
   INVALID_PATH: 'INVALID_PATH',
   FILE_TOO_LARGE: 'FILE_TOO_LARGE',
   NOT_OPENAPI_3: 'NOT_OPENAPI_3',
-} as const;
+} as const
 
-export type IndexingErrorCode = (typeof IndexingErrorCode)[keyof typeof IndexingErrorCode];
+export type IndexingErrorCode = (typeof IndexingErrorCode)[keyof typeof IndexingErrorCode]
 
 /**
  * Custom error class for indexing failures
@@ -185,8 +185,8 @@ export class IndexingError extends Error {
     public readonly s3Key: string,
     public readonly details?: unknown,
   ) {
-    super(message);
-    this.name = 'IndexingError';
+    super(message)
+    this.name = 'IndexingError'
   }
 }
 
@@ -199,15 +199,15 @@ export const INDEXING_LIMITS = {
   MAX_OPERATION_IDS: 500,
   MAX_SEARCH_TEXT_LENGTH: 50000, // 50KB
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-} as const;
+} as const
 
 /**
  * S3 location of an OpenAPI specification
  */
 export type S3Location = {
-  bucket: string;
-  key: string;
-};
+  bucket: string
+  key: string
+}
 
 /**
  * Service contract for operating on OpenAPI specs (fetch, update, index).
@@ -215,19 +215,19 @@ export type S3Location = {
  */
 export interface OpenAPIService {
   /** Derive the S3 key for an OpenAPI specification */
-  s3KeyFromSpec(spec: OpenAPIV3_1.Document): string;
+  s3KeyFromSpec(spec: OpenAPIV3_1.Document): string
 
-  getMetadata(spec: OpenAPIV3_1.Document): Promise<OpenApiIndexDocument>;
+  getMetadata(spec: OpenAPIV3_1.Document): Promise<OpenApiIndexDocument>
 
   /** Get the current OpenAPI specification from S3 */
-  getSpecFromS3(s3Location: S3Location): Promise<OpenAPIV3_1.Document>;
+  getSpecFromS3(s3Location: S3Location): Promise<OpenAPIV3_1.Document>
 
   /** Get the latest OpenAPI specification from the externalDocs URL */
-  getSpecFromExternalDocs(spec: OpenAPIV3_1.Document): Promise<OpenAPIV3_1.Document>;
+  getSpecFromExternalDocs(spec: OpenAPIV3_1.Document): Promise<OpenAPIV3_1.Document>
 
   /** Update the OpenAPI specification in S3 */
-  updateSpecInS3(spec: OpenAPIV3_1.Document): Promise<void>;
+  updateSpecInS3(spec: OpenAPIV3_1.Document): Promise<void>
 
   /** Index an OpenAPI spec */
-  indexSpec(params: { spec: OpenAPIV3_1.Document }): Promise<void>;
+  indexSpec(params: { spec: OpenAPIV3_1.Document }): Promise<void>
 }

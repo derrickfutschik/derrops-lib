@@ -8,24 +8,31 @@ import {
   Delete,
   Query,
   ParseUUIDPipe,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiOkResponse } from '@nestjs/swagger';
-import { ServiceService } from './service.service';
-import { CreateServiceDto } from './dto/create-service.dto';
-import { UpdateServiceDto } from './dto/update-service.dto';
-import { Service } from './entities/service.entity';
+} from '@nestjs/common'
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiParam,
+  ApiOkResponse,
+} from '@nestjs/swagger'
+import { ServiceService } from './service.service'
+import { CreateServiceDto } from './dto/create-service.dto'
+import { UpdateServiceDto } from './dto/update-service.dto'
+import { Service } from './entities/service.entity'
 
 @ApiTags('Service')
 @Controller('services')
 export class ServiceController {
-  constructor(private readonly serviceService: ServiceService) { }
+  constructor(private readonly serviceService: ServiceService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new service' })
   @ApiResponse({ status: 201, description: 'Service created successfully', type: Service })
   @ApiResponse({ status: 400, description: 'Bad request' })
   create(@Body() createServiceDto: CreateServiceDto): Promise<Service> {
-    return this.serviceService.create(createServiceDto);
+    return this.serviceService.create(createServiceDto)
   }
 
   @Get()
@@ -38,8 +45,8 @@ export class ServiceController {
   })
   @ApiResponse({ status: 200, description: 'List of services', type: [Service] })
   findAll(@Query('select') select?: string): Promise<Service[]> {
-    const selectFields = select ? select.split(',').map((f) => f.trim()) : undefined;
-    return this.serviceService.findAll(selectFields);
+    const selectFields = select ? select.split(',').map((f) => f.trim()) : undefined
+    return this.serviceService.findAll(selectFields)
   }
 
   @Get(':id')
@@ -60,8 +67,8 @@ export class ServiceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('select') select?: string,
   ): Promise<Service> {
-    const selectFields = select ? select.split(',').map((f) => f.trim()) : undefined;
-    return this.serviceService.findOne(id, selectFields);
+    const selectFields = select ? select.split(',').map((f) => f.trim()) : undefined
+    return this.serviceService.findOne(id, selectFields)
   }
 
   @Patch(':id')
@@ -78,7 +85,7 @@ export class ServiceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateServiceDto: UpdateServiceDto,
   ): Promise<Service> {
-    return this.serviceService.update(id, updateServiceDto);
+    return this.serviceService.update(id, updateServiceDto)
   }
 
   @Delete(':id')
@@ -102,7 +109,7 @@ export class ServiceController {
   })
   @ApiResponse({ status: 404, description: 'Service not found' })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<{ message: string }> {
-    await this.serviceService.remove(id);
-    return { message: 'Service deleted successfully' };
+    await this.serviceService.remove(id)
+    return { message: 'Service deleted successfully' }
   }
 }
