@@ -38,6 +38,9 @@ windows:
       root: apps/slaops-cloud
       layout: even-vertical
       panes:
+        - echo "Migrating OpenSearch indices"
+        - PORT=8080 NODE_ENV=dev pnpm --filter @slaops/cloud run opensearch:migrate:dev
+        - echo "Starting SLAOps Cloud"
         - PORT=8080 NODE_ENV=dev pnpm --filter @slaops/cloud run start:dev
 
 

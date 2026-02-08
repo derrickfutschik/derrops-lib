@@ -14,21 +14,29 @@ export class OpenSearchService {
 
     async migrateOpenApiSearchResources(): Promise<void> {
 
+        this.logger.log('Migrating OpenSearch indices');
+
         // 1) Upsert template
-        await this.client.indices.putIndexTemplate(openapiOperationsTemplate);
+        this.logger.log('Upserting template');
+        await this.client.indices.putIndexTemplate(openapiOperationsTemplate)
+            .then(response => response.statusCode === 200 && this.logger.log('Template upserted successfully'))
+
 
         // 2) Upsert ingest pipeline
-        await this.client.ingest.putPipeline(openapiOperationPipeline);
+        this.logger.log('Upserting ingest pipeline');
+        await this.client.ingest.putPipeline(openapiOperationPipeline)
+            .then(response => response.statusCode === 200 && this.logger.log('Ingest pipeline upserted successfully'))
 
         // 3) Ensure alias exists pointing at some physical index (optional but recommended)
-        await this.ensureWriteAlias();
+        this.logger.log('Ensuring write alias exists');
+        await this.ensureWriteAlias()
     }
 
     /**
      * Creates a first index if alias doesn't exist (dev-friendly).
      * In mature setups you may handle index creation & alias swaps via explicit migrations.
      */
-    private async ensureWriteAlias(): Promise<void> {
+    private async ensureWriteAlias() {
         const alias = config['opensearch.index.openapi.operations'];
 
         // Check if alias exists
@@ -45,7 +53,7 @@ export class OpenSearchService {
         const indexExists = await this.client.indices.exists({ index: indexName });
         if (!indexExists.body) {
             this.logger.log(`Creating initial index: ${indexName}`);
-            await this.client.indices.create({
+            return this.client.indices.create({
                 index: indexName,
                 body: {
                     aliases: {
@@ -56,7 +64,7 @@ export class OpenSearchService {
         } else {
             // Ensure alias is attached if index exists
             this.logger.log(`Attaching alias ${alias} to existing index ${indexName}`);
-            await this.client.indices.updateAliases({
+            return this.client.indices.updateAliases({
                 body: {
                     actions: [{ add: { index: indexName, alias, is_write_index: true } }],
                 },
