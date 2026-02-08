@@ -254,7 +254,7 @@ File: `apps/slaops-desktop/.env.example`
 **6.3 Update .gitignore:**
 File: `apps/slaops-desktop/.gitignore`
 
-- Ignore: node_modules, dist, src-tauri/target, .env, _.dmg, _.msi
+- Ignore: node*modules, dist, src-tauri/target, .env, *.dmg, \_.msi
 
 ### Phase 7: Monorepo Integration
 
