@@ -110,8 +110,8 @@ rm -rf src/components src/pages src/hooks src/lib src/integrations
 **2.5 Test portal:**
 ```bash
 pnpm install
-pnpm --filter vite_react_shadcn_ts run build
-pnpm --filter vite_react_shadcn_ts run dev  # Verify at http://localhost:8080
+pnpm --filter @slaops/portal run build
+pnpm --filter @slaops/portal run dev  # Verify at http://localhost:8080
 ```
 
 ### Phase 3: Set Up Tauri Desktop App
@@ -277,8 +277,8 @@ pnpm --filter @slaops/ui run typecheck
 
 **9.2 Test portal:**
 ```bash
-pnpm --filter vite_react_shadcn_ts run build
-pnpm --filter vite_react_shadcn_ts run dev
+pnpm --filter @slaops/portal run build
+pnpm --filter @slaops/portal run dev
 ```
 - Verify at http://localhost:8080
 - Test navigation, authentication, all features

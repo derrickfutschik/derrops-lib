@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { nestConfigOptions } from "@slaops/slaops-config-nestjs";
+import { nestConfigOptions } from "@slaops/config-nestjs";
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServiceModule } from './service/service.module';
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
-import { config } from '@slaops/slaops-config';
+import { config } from '@slaops/config';
 
 @Module({
   imports: [

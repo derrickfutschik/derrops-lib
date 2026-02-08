@@ -1,4 +1,4 @@
-# @slaops/slaops-cloud
+# @slaops/cloud
 
 NestJS backend API for the SLAOps platform.
 
@@ -25,7 +25,7 @@ NestJS backend API for the SLAOps platform.
 pnpm install
 
 # Install dependencies for this app only
-pnpm --filter slaops-cloud install
+pnpm --filter @slaops/cloud install
 ```
 
 ### Configuration
@@ -49,22 +49,22 @@ pnpm --filter slaops-cloud install
 
 ```bash
 # Development mode with hot reload
-pnpm --filter slaops-cloud run start:dev
+pnpm --filter @slaops/cloud run start:dev
 
 # Production mode
-pnpm --filter slaops-cloud run start:prod
+pnpm --filter @slaops/cloud run start:prod
 ```
 
 ### OpenAPI Spec and Client Generation
 
 ```bash
-pnpm --filter slaops-cloud run generate:openapi
+pnpm --filter @slaops/cloud run generate:openapi
 ```
 
 Will generate the OpenAPI spec in `dist/openapi.json` and `src/openapi.json`
 
 ```bash
-pnpm --filter slaops-cloud run generate:client
+pnpm --filter @slaops/cloud run generate:client
 ```
 
 Will generate the client in `<root>/apps/slaops-portal/src/client/slaops-cloud` for use the slaops-portal app to type-safely interact with the slaops-cloud API.
@@ -74,26 +74,26 @@ Will generate the client in `<root>/apps/slaops-portal/src/client/slaops-cloud` 
 ### Building
 
 ```bash
-pnpm --filter slaops-cloud run build
+pnpm --filter @slaops/cloud run build
 ```
 
 ### Testing
 
 ```bash
 # Unit tests
-pnpm --filter slaops-cloud run test
+pnpm --filter @slaops/cloud run test
 
 # Watch mode
-pnpm --filter slaops-cloud run test:watch
+pnpm --filter @slaops/cloud run test:watch
 
 # Coverage
-pnpm --filter slaops-cloud run test:cov
+pnpm --filter @slaops/cloud run test:cov
 ```
 
 ### Linting
 
 ```bash
-pnpm --filter slaops-cloud run lint
+pnpm --filter @slaops/cloud run lint
 ```
 
 ## Deployment

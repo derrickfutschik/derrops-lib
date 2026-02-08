@@ -4,8 +4,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@slaops/slaops-docs/*": ["./src/*"],
-      "@slaops/slaops-cloud/*": ["../slaops-cloud/src/*"]
+      "@slaops/docs/*": ["./src/*"],
+      "@slaops/cloud/*": ["../slaops-cloud/src/*"]
     }
   },
   "exclude": [".docusaurus", "build"]

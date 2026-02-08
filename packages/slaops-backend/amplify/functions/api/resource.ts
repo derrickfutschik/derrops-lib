@@ -3,10 +3,10 @@ import path from 'node:path';
 
 import { defineFunction } from '@aws-amplify/backend';
 
-import { config } from '@slaops/slaops-config';
+import { config } from '@slaops/config';
 
 const require = createRequire(import.meta.url);
-const slaopsCloudRoot = path.dirname(require.resolve('slaops-cloud/package.json'));
+const slaopsCloudRoot = path.dirname(require.resolve('@slaops/cloud/package.json'));
 const apiLambdaEntry = path.join(slaopsCloudRoot, 'src', 'lambda.ts');
 
 export const api = defineFunction({

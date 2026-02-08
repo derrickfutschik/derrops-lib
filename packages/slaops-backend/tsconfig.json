@@ -12,7 +12,7 @@
     "baseUrl": "./",
     "paths": {
       "@slaops/backend/*": ["./amplify/*"],
-      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
+      "@slaops/cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["amplify/**/*"],

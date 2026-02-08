@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": "../",
     "paths": {
-      "@slaops/slaops-cloud/*": ["./src/*"]
+      "@slaops/cloud/*": ["./src/*"]
     }
   },
   "include": ["**/*"]

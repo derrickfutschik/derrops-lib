@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OpenApiIndexDocument } from '@slaops/slaops-cloud/openapi-search/types/openapi-index.types';
+import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types';
 
 /**
  * A single search hit with score and highlights

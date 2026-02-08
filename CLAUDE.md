@@ -22,7 +22,7 @@ slaops-platform/
 ├── packages/                    # Shared libraries and utilities
 │   ├── slaops-private/            # @slaops/private - Core types and utilities (private)
 │   ├── slaops-public/             # @slaops/public - Shared utilities
-│   ├── slaops-config/          # @slaops-config/config - Type-safe configuration management
+│   ├── slaops-config/          # @slaops/config - Type-safe configuration management
 │   ├── slaops-client/          # @slaops/client - Base HTTP client
 │   ├── slaops-client-nodejs-axios/  # Axios-specific client implementation
 │   ├── slaops-infra/           # @slaops/infra - CDK infrastructure stacks (databases, VPC)
@@ -115,13 +115,13 @@ pnpm run build
 # Build specific package
 pnpm --filter @slaops/private run build
 pnpm --filter @slaops/public run build
-pnpm --filter @slaops-config/config run build
+pnpm --filter @slaops/config run build
 pnpm --filter @slaops/client run build
 pnpm --filter slaops-client-nodejs-axios run build
 
 # Build specific app
-pnpm --filter slaops-docs run build
-pnpm --filter vite_react_shadcn_ts run build
+pnpm --filter @slaops/docs run build
+pnpm --filter @slaops/portal run build
 ```
 
 ### Running in Development
@@ -132,9 +132,9 @@ pnpm run dev
 
 # Run specific package
 pnpm --filter @slaops/private run dev
-pnpm --filter @slaops-config/config run dev
-pnpm --filter slaops-docs start
-pnpm --filter vite_react_shadcn_ts run dev
+pnpm --filter @slaops/config run dev
+pnpm --filter @slaops/docs start
+pnpm --filter @slaops/portal run dev
 ```
 
 ### Testing
@@ -238,7 +238,7 @@ pnpm run test       # Run tests
 pnpm run dev        # Watch mode
 ```
 
-### @slaops-config/config (packages/slaops-config/)
+### @slaops/config (packages/slaops-config/)
 
 **Type-safe configuration management for SLA Ops**
 
@@ -251,7 +251,7 @@ pnpm run dev        # Watch mode
 
 ```typescript
 // ✅ Correct - use the config module
-import { config } from '@slaops-config/config';
+import { config } from '@slaops/config';
 
 const port = config["app.port"];
 const dbHost = config["db.host"];
@@ -284,7 +284,7 @@ See `packages/slaops-config/src/schema.ts` for all available configuration keys.
 **Testing with custom config**:
 
 ```typescript
-import { loadConfig, resetConfigForTests } from '@slaops-config/config';
+import { loadConfig, resetConfigForTests } from '@slaops/config';
 
 // In test setup - use custom env
 const testConfig = loadConfig({
@@ -678,7 +678,7 @@ pnpm run sandbox    # Local development
 pnpm run deploy     # Production deployment
 ```
 
-### slaops-docs (apps/slaops-docs/)
+### @slaops/docs (apps/slaops-docs/)
 
 **Docusaurus documentation site**
 
@@ -704,7 +704,7 @@ pnpm run build      # Build for production
 pnpm run serve      # Preview production build
 ```
 
-### slaops-portal (apps/slaops-portal/)
+### @slaops/portal (apps/slaops-portal/)
 
 **React web portal for monitoring**
 
@@ -743,7 +743,7 @@ The packages have a specific dependency hierarchy that must be respected when bu
 @slaops/private (no dependencies)
     ↓
 @slaops/public (depends on private)
-@slaops-config/config (depends on zod - standalone)
+@slaops/config (depends on zod - standalone)
     ↓
 @slaops/client (depends on public)
     ↓
@@ -757,12 +757,12 @@ The root `pnpm run build` script handles this order automatically:
 ```bash
 pnpm -r --filter @slaops/private run build &&
 pnpm -r --filter @slaops/public run build &&
-pnpm -r --filter @slaops-config/config run build &&
+pnpm -r --filter @slaops/config run build &&
 pnpm -r --filter @slaops/client run build &&
 pnpm -r --filter @slaops/client-nodejs-axios run build &&
 pnpm -r --filter @slaops/test run build &&
-pnpm -r --filter slaops-docs run build &&
-pnpm -r --filter vite_react_shadcn_ts run build
+pnpm -r --filter @slaops/docs run build &&
+pnpm -r --filter @slaops/portal run build
 ```
 
 ## Working with the Monorepo
@@ -775,7 +775,7 @@ pnpm add -D -w <package>
 
 # Add to specific workspace
 pnpm --filter @slaops/private add <package>
-pnpm --filter slaops-docs add <package>
+pnpm --filter @slaops/docs add <package>
 
 # Add workspace dependency
 cd packages/slaops-public
@@ -932,7 +932,7 @@ pnpm run test:watch   # Run vitest in watch mode
 
 ### App Level Scripts
 
-**slaops-docs**:
+**@slaops/docs**:
 
 ```bash
 pnpm start            # Development server
@@ -942,7 +942,7 @@ pnpm run clear        # Clear cache
 pnpm run typecheck    # Type checking
 ```
 
-**slaops-portal**:
+**@slaops/portal**:
 
 ```bash
 pnpm run dev          # Development server
@@ -1038,8 +1038,8 @@ pnpm --filter @slaops/private update <dependency>
 
 ### Port conflicts (apps)
 
-- slaops-docs uses port 3000
-- slaops-portal uses port 8080
+- @slaops/docs uses port 3000
+- @slaops/portal uses port 8080
 - Change ports in respective configs if needed
 
 ## Best Practices
@@ -1052,18 +1052,18 @@ pnpm --filter @slaops/private update <dependency>
 
 ### Environment Variables & Configuration
 
-**IMPORTANT**: Never access `process.env` directly in application code. Always use the `@slaops-config/config` module:
+**IMPORTANT**: Never access `process.env` directly in application code. Always use the `@slaops/config` module:
 
 ```typescript
 // ✅ Correct
-import { config } from '@slaops-config/config';
+import { config } from '@slaops/config';
 const port = config["app.port"];
 
 // ❌ Wrong - do not do this
 const port = process.env.PORT;
 ```
 
-Benefits of using `@slaops-config/config`:
+Benefits of using `@slaops/config`:
 - Type-safe configuration with Zod validation
 - Runtime validation on application startup
 - Centralized configuration management
@@ -1094,7 +1094,7 @@ When you need to enable IDE navigation to source files in another module (e.g., 
     "baseUrl": "./",
     "paths": {
       "@slaops/package-name/*": ["./src/*"],
-      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
+      "@slaops/cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   }
 }
@@ -1105,7 +1105,7 @@ When you need to enable IDE navigation to source files in another module (e.g., 
     "baseUrl": ".",
     "paths": {
       "@slaops/app-name/*": ["./src/*"],
-      "@slaops/slaops-cloud/*": ["../slaops-cloud/src/*"]
+      "@slaops/cloud/*": ["../slaops-cloud/src/*"]
     }
   }
 }
@@ -1113,7 +1113,7 @@ When you need to enable IDE navigation to source files in another module (e.g., 
 
 **Current cross-module mappings:**
 
-- `@slaops/slaops-cloud/*` → Maps to `apps/slaops-cloud/src/*` for IDE navigation to the NestJS backend source
+- `@slaops/cloud/*` → Maps to `apps/slaops-cloud/src/*` for IDE navigation to the NestJS backend source
 
 **Adding a new cross-module path mapping:**
 

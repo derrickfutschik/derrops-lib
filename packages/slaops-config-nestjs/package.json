@@ -1,5 +1,5 @@
 {
-  "name": "@slaops/slaops-config-nestjs",
+  "name": "@slaops/config-nestjs",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -17,7 +17,7 @@
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
   },
   "dependencies": {
-    "@slaops/slaops-config": "workspace:*",
+    "@slaops/config": "workspace:*",
     "@nestjs/config": "^3.0.0"
   },
   "devDependencies": {

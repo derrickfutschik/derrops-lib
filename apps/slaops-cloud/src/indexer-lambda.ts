@@ -13,7 +13,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { S3Event, Context } from 'aws-lambda';
 import { OpenApiIndexerModule, OpenApiIndexerService } from './openapi-indexer';
-import { IndexResult } from '@slaops/slaops-cloud/openapi-search/types/openapi-index.types';
+import { IndexResult } from '@slaops/cloud/openapi-search/types/openapi-index.types';
 
 /**
  * Minimal module for the indexer Lambda

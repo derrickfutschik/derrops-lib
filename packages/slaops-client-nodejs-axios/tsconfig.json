@@ -5,7 +5,7 @@
     "baseUrl": "./",
     "paths": {
       "@slaops/client-nodejs-axios/*": ["./src/*"],
-      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
+      "@slaops/cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["src"]

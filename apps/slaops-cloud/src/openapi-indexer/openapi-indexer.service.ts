@@ -14,8 +14,8 @@ import {
   IndexingError,
   IndexingErrorCode,
   OpenApiIndexDocument,
-} from '@slaops/slaops-cloud/openapi-search/types/openapi-index.types';
-import { config } from '@slaops/slaops-config';
+} from '@slaops/cloud/openapi-search/types/openapi-index.types';
+import { config } from '@slaops/config';
 import { TypescriptOSProxyClient } from 'opensearch-ts';
 
 @Injectable()

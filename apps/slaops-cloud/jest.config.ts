@@ -13,7 +13,7 @@ const config: Config = {
     }],
   },
   moduleNameMapper: {
-    '^@slaops/slaops-cloud/(.*)$': '<rootDir>/src/$1',
+    '^@slaops/cloud/(.*)$': '<rootDir>/src/$1',
   },
   collectCoverageFrom: [
     'src/**/*.(t|j)s',
@@ -35,7 +35,7 @@ const config: Config = {
     [
       'jest-md-dashboard',
       {
-        title: 'Tests for @slaops/slaops-cloud',
+        title: 'Tests for @slaops/cloud',
         outputPath: '../slaops-docs/devops/tests/slaops-cloud.md', // where to write the markdown
       },
     ],

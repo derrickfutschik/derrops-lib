@@ -5,8 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@slaops/slaops-portal/*": ["./src/*"],
-      "@slaops/slaops-cloud/*": ["../slaops-cloud/src/*"]
+      "@slaops/portal/*": ["./src/*"],
+      "@slaops/cloud/*": ["../slaops-cloud/src/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

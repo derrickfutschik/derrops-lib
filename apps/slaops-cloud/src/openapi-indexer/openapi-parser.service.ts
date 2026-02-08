@@ -9,7 +9,7 @@ import {
   IndexingError,
   IndexingErrorCode,
   INDEXING_LIMITS,
-} from '@slaops/slaops-cloud/openapi-search/types/openapi-index.types';
+} from '@slaops/cloud/openapi-search/types/openapi-index.types';
 
 /**
  * OpenAPI 3.x specification (simplified type)

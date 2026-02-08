@@ -23,6 +23,6 @@ npm install -g pnpm@8.15.4
 
 echo "Building slaops-portal with Turbo (with caching)..."
 cd ../..
-pnpm exec turbo run build --filter=vite_react_shadcn_ts
+pnpm exec turbo run build --filter=@slaops/portal
 
 echo "=== Build completed successfully ==="

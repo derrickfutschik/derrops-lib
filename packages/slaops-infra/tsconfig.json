@@ -28,7 +28,7 @@
     "baseUrl": ".",
     "paths": {
       "@slaops/infra/*": ["./lib/*"],
-      "@slaops/slaops-cloud/*": ["../../apps/slaops-cloud/src/*"]
+      "@slaops/cloud/*": ["../../apps/slaops-cloud/src/*"]
     }
   },
   "include": ["bin/**/*", "lib/**/*"],

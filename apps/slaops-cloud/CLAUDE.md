@@ -10,22 +10,22 @@ SLAOps Cloud is a NestJS backend API for the SLAOps platform. It runs both as a 
 
 ```bash
 # Development server with hot reload (port 3001)
-pnpm --filter slaops-cloud run start:dev
+pnpm --filter @slaops/cloud run start:dev
 
 # Run unit tests
-pnpm --filter slaops-cloud run test
+pnpm --filter @slaops/cloud run test
 
 # Run a single test file
-pnpm --filter slaops-cloud run test -- path/to/file.spec.ts
+pnpm --filter @slaops/cloud run test -- path/to/file.spec.ts
 
 # Run e2e tests
-pnpm --filter slaops-cloud run test:e2e
+pnpm --filter @slaops/cloud run test:e2e
 
 # Build (also generates OpenAPI spec and TypeScript client)
-pnpm --filter slaops-cloud run build
+pnpm --filter @slaops/cloud run build
 
 # Lint and fix
-pnpm --filter slaops-cloud run lint
+pnpm --filter @slaops/cloud run lint
 ```
 
 ## Conventions

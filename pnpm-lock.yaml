@@ -79,15 +79,15 @@ importers:
       '@opensearch-project/opensearch':
         specifier: ^3.5.1
         version: 3.5.1
+      '@slaops/config':
+        specifier: workspace:*
+        version: link:../../packages/slaops-config
+      '@slaops/config-nestjs':
+        specifier: workspace:*
+        version: link:../../packages/slaops-config-nestjs
       '@slaops/private':
         specifier: workspace:*
         version: link:../../packages/slaops-private
-      '@slaops/slaops-config':
-        specifier: workspace:*
-        version: link:../../packages/slaops-config
-      '@slaops/slaops-config-nestjs':
-        specifier: workspace:*
-        version: link:../../packages/slaops-config-nestjs
       aws-lambda:
         specifier: ^1.0.7
         version: 1.0.7
@@ -499,7 +499,10 @@ importers:
       '@opensearch-project/opensearch':
         specifier: ^2.12.0
         version: 2.13.0
-      '@slaops/slaops-config':
+      '@slaops/cloud':
+        specifier: workspace:*
+        version: link:../../apps/slaops-cloud
+      '@slaops/config':
         specifier: workspace:*
         version: link:../slaops-config
       yaml:
@@ -617,7 +620,7 @@ importers:
       '@nestjs/config':
         specifier: ^3.0.0
         version: 3.3.0(@nestjs/common@10.4.20)(rxjs@7.8.2)
-      '@slaops/slaops-config':
+      '@slaops/config':
         specifier: workspace:*
         version: link:../slaops-config
     devDependencies:

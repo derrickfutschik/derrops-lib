@@ -206,8 +206,8 @@ pnpm --filter @slaops/client run build
 pnpm run dev
 
 # Run specific application
-pnpm --filter slaops-docs start        # Documentation site
-pnpm --filter vite_react_shadcn_ts run dev  # Web portal
+pnpm --filter @slaops/docs start        # Documentation site
+pnpm --filter @slaops/portal run dev  # Web portal
 ```
 
 ### Common Commands
@@ -352,7 +352,7 @@ pnpm add -D -w <package>
 
 # Add to specific workspace
 pnpm --filter @slaops/private add <package>
-pnpm --filter slaops-docs add <package>
+pnpm --filter @slaops/docs add <package>
 ```
 
 ### Workspace Commands

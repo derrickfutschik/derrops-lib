@@ -1,4 +1,4 @@
-import { configFromEnv, setConfigForProcess } from "@slaops/slaops-config";
+import { configFromEnv, setConfigForProcess } from "@slaops/config";
 
 export function nestConfigOptions() {
   return {

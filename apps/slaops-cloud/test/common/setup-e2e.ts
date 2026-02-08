@@ -1,8 +1,8 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { AppModule } from '@slaops/slaops-cloud/app.module';
-import { AppConfig, makeConfig } from '@slaops/slaops-config';
+import { AppModule } from '@slaops/cloud/app.module';
+import { AppConfig, makeConfig } from '@slaops/config';
 
 export const setupE2EApp = async (): Promise<INestApplication> => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

@@ -14,8 +14,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@slaops/slaops-cloud": "workspace:*",
-    "@slaops/slaops-config": "workspace:*",
+    "@slaops/cloud": "workspace:*",
+    "@slaops/config": "workspace:*",
     "@aws-amplify/backend": "^1.19.0",
     "@aws-sdk/client-s3": "^3.500.0",
     "@aws-sdk/credential-provider-node": "^3.500.0",
@@ -26,7 +26,6 @@
     "@types/aws-lambda": "^8.10.145",
     "aws-cdk-lib": "^2.130.0",
     "constructs": "^10.3.0",
-    "slaops-cloud": "workspace:*",
     "typescript": "^5.6.3"
   }
 }

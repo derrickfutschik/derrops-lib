@@ -15,6 +15,6 @@ npm install -g pnpm@8.15.4
 
 echo "Building slaops-docs with Turbo (with caching)..."
 cd ../..
-pnpm exec turbo run build --filter=slaops-docs
+pnpm exec turbo run build --filter=@slaops/docs
 
 echo "=== Build completed successfully ==="
