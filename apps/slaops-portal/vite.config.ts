@@ -1,22 +1,22 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
+import react from '@vitejs/plugin-react-swc'
+import { componentTagger } from 'lovable-tagger'
+import path from 'path'
+import { defineConfig } from 'vite'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: '::',
     port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mode === 'development' && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
   optimizeDeps: {
-    include: ["swagger-ui-react"],
+    include: ['swagger-ui-react'],
   },
   build: {
     // Disable source maps in production to reduce memory (Amplify 16GB build often OOMs with 5k+ modules)
@@ -31,10 +31,10 @@ export default defineConfig(({ mode }) => ({
       onwarn(warning, warn) {
         // Suppress certain warnings from swagger-ui-react
         if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
-          return;
+          return
         }
-        warn(warning);
+        warn(warning)
       },
     },
   },
-}));
+}))

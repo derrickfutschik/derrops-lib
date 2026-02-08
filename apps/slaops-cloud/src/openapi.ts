@@ -1,9 +1,8 @@
 import { NestFactory } from '@nestjs/core'
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
-import { writeFileSync } from 'fs'
-import { join } from 'path'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import * as dotenv from 'dotenv'
-import { resolve } from 'path'
+import { writeFileSync } from 'fs'
+import { join, resolve } from 'path'
 
 // Load environment variables from root .env file BEFORE importing AppModule
 const envPath = resolve(__dirname, '../../../.env')

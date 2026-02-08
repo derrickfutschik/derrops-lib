@@ -5,86 +5,81 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import fs from 'fs-extra';
-import path from 'path';
+import fs from 'fs-extra'
+import path from 'path'
 
-const publishTimes = new Set<string>();
+const publishTimes = new Set<string>()
 
-type Author = {name: string; url: string; alias: string; imageURL: string};
+type Author = { name: string; url: string; alias: string; imageURL: string }
 
-type AuthorsMap = Record<string, Author>;
+type AuthorsMap = Record<string, Author>
 
 type ChangelogEntry = {
-  title: string;
-  content: string;
-  authors: Author[];
-};
+  title: string
+  content: string
+  authors: Author[]
+}
 
 function parseAuthor(committerLine: string): Author {
-  const groups = committerLine.match(
-    /- (?:(?<name>.*?) \()?\[@(?<alias>.*)\]\((?<url>.*?)\)\)?/,
-  )!.groups as {name: string; alias: string; url: string};
+  const groups = committerLine.match(/- (?:(?<name>.*?) \()?\[@(?<alias>.*)\]\((?<url>.*?)\)\)?/)!
+    .groups as { name: string; alias: string; url: string }
 
   return {
     ...groups,
     name: groups.name ?? groups.alias,
     imageURL: `https://github.com/${groups.alias}.png`,
-  };
+  }
 }
 
 function parseAuthors(content: string): Author[] {
-  const committersContent = content.match(/## Committers: \d.*/s)?.[0];
+  const committersContent = content.match(/## Committers: \d.*/s)?.[0]
   if (!committersContent) {
-    return [];
+    return []
   }
-  const committersLines = committersContent.match(/- .*/g)!;
+  const committersLines = committersContent.match(/- .*/g)!
 
-  const authors = committersLines
-    .map(parseAuthor)
-    .sort((a, b) => a.url.localeCompare(b.url));
+  const authors = committersLines.map(parseAuthor).sort((a, b) => a.url.localeCompare(b.url))
 
-  return authors;
+  return authors
 }
 
-export function createAuthorsMap(
-  changelogEntries: ChangelogEntry[],
-): AuthorsMap {
-  const allAuthors = changelogEntries.flatMap((entry) => entry.authors);
-  const authorsMap: AuthorsMap = {};
+export function createAuthorsMap(changelogEntries: ChangelogEntry[]): AuthorsMap {
+  const allAuthors = changelogEntries.flatMap((entry) => entry.authors)
+  const authorsMap: AuthorsMap = {}
   allAuthors?.forEach((author) => {
-    authorsMap[author.alias] = author;
-  });
-  return authorsMap;
+    authorsMap[author.alias] = author
+  })
+  return authorsMap
 }
 
 function toChangelogEntry(sectionContent: string): ChangelogEntry | null {
   const title = sectionContent
     .match(/\n## .*/)?.[0]
     .trim()
-    .replace('## ', '');
+    .replace('## ', '')
   if (!title) {
-    return null;
+    return null
   }
 
   // Skip sections that don't have a version number (like "Committers:")
-  const dateMatch = title.match(/ \((?<date>.*)\)/);
+  const dateMatch = title.match(/ \((?<date>.*)\)/)
   if (!dateMatch?.groups?.date) {
-    return null;
+    return null
   }
 
   const content = sectionContent
     .replace(/\n## .*/, '')
     .trim()
-    .replace('running_woman', 'running');
+    .replace('running_woman', 'running')
 
-  const authors = parseAuthors(content);
+  const authors = parseAuthors(content)
 
-  let hour = 20;
-  const date = dateMatch.groups.date;
+  let hour = 20
+  const date = dateMatch.groups.date
   while (publishTimes.has(`${date}T${hour}:00`)) {
-    hour -= 1;
+    hour -= 1
   }
-  publishTimes.add(`${date}T${hour}:00`);
+  publishTimes.add(`${date}T${hour}:00`)
 
   return {
     authors,
@@ -106,14 +101,14 @@ ${authors.map((author) => `  - '${author.alias}'`).join('\n')}`
 <!-- truncate -->
 
 ${content.replace(/####/g, '##')}`,
-  };
+  }
 }
 
 export function toChangelogEntries(filesContent: string[]): ChangelogEntry[] {
   return filesContent
     .flatMap((content) => content.split(/(?=\n## )/))
     .map(toChangelogEntry)
-    .filter((s): s is ChangelogEntry => s !== null);
+    .filter((s): s is ChangelogEntry => s !== null)
 }
 
 export async function createBlogFiles(
@@ -122,15 +117,12 @@ export async function createBlogFiles(
 ): Promise<void> {
   await Promise.all(
     changelogEntries.map((changelogEntry) =>
-      fs.outputFile(
-        path.join(generateDir, `${changelogEntry.title}.md`),
-        changelogEntry.content,
-      ),
+      fs.outputFile(path.join(generateDir, `${changelogEntry.title}.md`), changelogEntry.content),
     ),
-  );
+  )
 
   await fs.outputFile(
     path.join(generateDir, 'authors.json'),
     JSON.stringify(createAuthorsMap(changelogEntries), null, 2),
-  );
+  )
 }

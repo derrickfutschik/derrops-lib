@@ -1,129 +1,120 @@
-import { configFromEnv } from "./from-env";
-import { AppConfigEnv, ConfigInput } from "./schema";
+import { configFromEnv } from './from-env'
+import { ConfigInput } from './schema'
 
-const env = process.env.STAGE ?? process.env.NODE_ENV ?? "dev"
+const env = process.env.STAGE ?? process.env.NODE_ENV ?? 'dev'
 
-import local from "./local-env";
-import test from "./test-env";
+import local from './local-env'
+import test from './test-env'
 
 const configs: { [env: string]: ConfigInput } = {
-    local,
-    test,
+  local,
+  test,
 }
 
+export const makeConfig = (
+  cfg: ConfigInput = configFromEnv({
+    ...(configs[process.env.NODE_ENV ?? process.env.STAGE ?? 'local'] ?? {}),
+    ...process.env,
+  }),
+) => {
+  // const cfg = configFromEnv(env);
 
+  const appName = (cfg.APP_NAME ?? 'SLAOps') + ''
+  const app = appName.toLowerCase()
+  const env = (cfg.NODE_ENV ?? 'dev').toLowerCase()
 
+  const opensearchPrefix = cfg.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase()
+  const opensearchSuffix = cfg.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
 
+  const opensearchName = (entity: string) =>
+    `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
 
-export const makeConfig = (cfg: ConfigInput = configFromEnv({
-    ...(configs[process.env.NODE_ENV ?? process.env.STAGE ?? "local"] ?? {}),
-    ...process.env
-})) => {
-    // const cfg = configFromEnv(env);
+  return {
+    /** The version of NodeJS the application uses*/
+    'node.version': cfg.NODE_VERSION ?? 22,
+    'node.env': cfg.NODE_ENV ?? 'dev',
 
-    const appName = (cfg.APP_NAME ?? "SLAOps") + "";
-    const app = appName.toLowerCase();
-    const env = (cfg.NODE_ENV ?? "dev").toLowerCase();
+    'aws.region': cfg.AWS_REGION,
+    'aws.accountId': cfg.AWS_ACCOUNT_ID,
 
+    'aws.lambda.runtime': cfg.AWS_LAMBDA_RUNTIME ?? 'nodejs22.x',
+    'aws.lambda.memory': cfg.AWS_LAMBDA_MEMORY ?? 2048,
+    'aws.lambda.timeout.seconds': 20,
 
-    const opensearchPrefix = cfg.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase();
-    const opensearchSuffix = cfg.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase();
+    // Application properties, properties regarding the actual application
+    'app.port': cfg.PORT,
+    'app.env': cfg.NODE_ENV,
+    'app.name': cfg.APP_NAME,
+    'app.version': cfg.APP_VERSION ?? '0.0.1',
+    'app.debug': cfg.APP_DEBUG ?? false,
 
-    const opensearchName = (entity: string) => `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
+    // Open API properties
+    'openapi.version': cfg.APP_VERSION,
+    'openapi.title': `${cfg.APP_NAME} Cloud API`,
+    'openapi.description': `${cfg.APP_NAME} is a platform for managing and monitoring SLA metrics of SAAS applications`,
+    'openapi.author': 'Derrops',
+    'openapi.license': 'MIT',
+    'openapi.url': `https://${app}.com`,
+    'openapi.email': 'derrickfutschik@hotmail.com',
+    'openapi.phone': '+1234567890',
+    'openapi.address': '123 Main St, Anytown, USA',
 
-    return {
+    // Database properties
+    'db.username': cfg.DB_USERNAME,
+    'db.password': cfg.DB_PASSWORD,
+    'db.host': cfg.DB_HOST,
+    'db.port': cfg.DB_PORT ?? 5432,
+    'db.database': cfg.DB_DATABASE ?? `${appName}-${env}`,
+    'db.ssl': cfg.DB_SSL ?? 'false',
+    'db.logging': cfg.DB_LOGGING ?? 'false',
+    'db.schema': cfg.DB_SCHEMA ?? 'public',
 
-        /** The version of NodeJS the application uses*/
-        "node.version": cfg.NODE_VERSION ?? 22,
-        "node.env": cfg.NODE_ENV ?? "dev",
+    //opensearch properties
 
-        "aws.region": cfg.AWS_REGION,
-        "aws.accountId": cfg.AWS_ACCOUNT_ID,
+    /** The region opensearch is deployed in  */
+    'opensearch.region': cfg.AWS_REGION,
 
-        "aws.lambda.runtime": cfg.AWS_LAMBDA_RUNTIME ?? "nodejs22.x",
-        "aws.lambda.memory": cfg.AWS_LAMBDA_MEMORY ?? 2048,
-        "aws.lambda.timeout.seconds": 20,
+    /** The endpoint to access opensearch */
+    'opensearch.endpoint': cfg.OPENSEARCH_ENDPOINT,
 
-        // Application properties, properties regarding the actual application
-        "app.port": cfg.PORT,
-        "app.env": cfg.NODE_ENV,
-        "app.name": cfg.APP_NAME,
-        "app.version": cfg.APP_VERSION ?? "0.0.1",
-        "app.debug": cfg.APP_DEBUG ?? false,
+    /** The index prefix */
+    'opensearch.index.prefix': opensearchPrefix,
 
-        // Open API properties
-        "openapi.version": cfg.APP_VERSION,
-        "openapi.title": `${cfg.APP_NAME} Cloud API`,
-        "openapi.description": `${cfg.APP_NAME} is a platform for managing and monitoring SLA metrics of SAAS applications`,
-        "openapi.author": "Derrops",
-        "openapi.license": "MIT",
-        "openapi.url": `https://${app}.com`,
-        "openapi.email": "derrickfutschik@hotmail.com",
-        "openapi.phone": "+1234567890",
-        "openapi.address": "123 Main St, Anytown, USA",
+    /** The suffix for the index */
+    'opensearch.index.suffix': opensearchSuffix,
 
-        // Database properties
-        "db.username": cfg.DB_USERNAME,
-        "db.password": cfg.DB_PASSWORD,
-        "db.host": cfg.DB_HOST,
-        "db.port": cfg.DB_PORT ?? 5432,
-        "db.database": cfg.DB_DATABASE ?? `${appName}-${env}`,
-        "db.ssl": cfg.DB_SSL ?? "false",
-        "db.logging": cfg.DB_LOGGING ?? "false",
-        "db.schema": cfg.DB_SCHEMA ?? "public",
+    /** Index of the OpenAPI APIs */
+    'opensearch.index.openapi.apis': opensearchName('openapi-apis'),
 
-        //opensearch properties
+    /** Index of the OpenAPI Operations */
+    'opensearch.index.openapi.operations': opensearchName('openapi-operations'),
 
-        /** The region opensearch is deployed in  */
-        "opensearch.region": cfg.AWS_REGION,
+    /** Template of the OpenAPI APIs */
+    'opensearch.template.openapi.apis': opensearchName('openapi-apis'),
 
-        /** The endpoint to access opensearch */
-        "opensearch.endpoint": cfg.OPENSEARCH_ENDPOINT,
+    /** Template of the OpenAPI Operations */
+    'opensearch.template.openapi.operations': opensearchName('openapi-operations'),
 
-        /** The index prefix */
-        "opensearch.index.prefix": opensearchPrefix,
+    /** Pipeline of the OpenAPI APIs */
+    'opensearch.pipeline.openapi.apis': opensearchName('openapi-apis'),
 
-        /** The suffix for the index */
-        "opensearch.index.suffix": opensearchSuffix,
+    /** Pipeline of the OpenAPI Operations */
+    'opensearch.pipeline.openapi.operations': opensearchName('openapi-operations'),
 
-        /** Index of the OpenAPI APIs */
-        "opensearch.index.openapi.apis": opensearchName("openapi-apis"),
+    'app.pagination.default.size': 20,
 
-        /** Index of the OpenAPI Operations */
-        "opensearch.index.openapi.operations": opensearchName("openapi-operations"),
+    /** Defaults for pagination */
+    'app.pagination.default.from': 0,
 
-        /** Template of the OpenAPI APIs */
-        "opensearch.template.openapi.apis": opensearchName("openapi-apis"),
+    'openapi.s3.bucket': `${app}-openapis-${env}`,
 
-        /** Template of the OpenAPI Operations */
-        "opensearch.template.openapi.operations": opensearchName("openapi-operations"),
+    'aws.s3.endpoint': cfg.AWS_S3_ENDPOINT,
 
-        /** Pipeline of the OpenAPI APIs */
-        "opensearch.pipeline.openapi.apis": opensearchName("openapi-apis"),
-
-        /** Pipeline of the OpenAPI Operations */
-        "opensearch.pipeline.openapi.operations": opensearchName("openapi-operations"),
-
-
-        "app.pagination.default.size": 20,
-
-        /** Defaults for pagination */
-        "app.pagination.default.from": 0,
-
-
-        "openapi.s3.bucket": `${app}-openapis-${env}`,
-
-
-        "aws.s3.endpoint": cfg.AWS_S3_ENDPOINT,
-
-        "app.opneapi-indexer.name": "openapi-indexer",
-        "app.api.name": `${appName}-api`,
-
-
-    }
+    'app.opneapi-indexer.name': 'openapi-indexer',
+    'app.api.name': `${appName}-api`,
+  }
 }
 
-export type AppConfig = ReturnType<typeof makeConfig>;
+export type AppConfig = ReturnType<typeof makeConfig>
 
-
-export const config = makeConfig();
+export const config = makeConfig()

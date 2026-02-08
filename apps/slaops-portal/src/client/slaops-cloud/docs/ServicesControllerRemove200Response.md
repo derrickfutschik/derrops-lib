@@ -1,20 +1,19 @@
 # ServicesControllerRemove200Response
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**message** | **string** |  | [optional] [default to undefined]
+| Name        | Type       | Description | Notes                             |
+| ----------- | ---------- | ----------- | --------------------------------- |
+| **message** | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
 ```typescript
-import { ServicesControllerRemove200Response } from './api';
+import { ServicesControllerRemove200Response } from './api'
 
 const instance: ServicesControllerRemove200Response = {
-    message,
-};
+  message,
+}
 ```
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

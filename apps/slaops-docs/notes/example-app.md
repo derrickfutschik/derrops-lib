@@ -1,5 +1,3 @@
-
-
 https://swapi.dev/
 
 ## Functionality

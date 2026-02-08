@@ -1,7 +1,7 @@
-import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
-import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib'
+import * as apigateway from 'aws-cdk-lib/aws-apigateway'
+import * as lambda from 'aws-cdk-lib/aws-lambda'
+import { Construct } from 'constructs'
 
 /**
  * Infrastructure stack for SLAOps API Gateway
@@ -20,30 +20,26 @@ import { Construct } from 'constructs';
  * here via CloudFormation import.
  */
 export class ApiStack extends Stack {
-  public readonly restApi: apigateway.RestApi;
+  public readonly restApi: apigateway.RestApi
 
   constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+    super(scope, id, props)
 
     // Import the Lambda function ARN from Amplify backend stack
     // This will be set after the Amplify backend is deployed
-    const lambdaFunctionArn = this.node.tryGetContext('lambdaFunctionArn') ||
-      process.env.LAMBDA_FUNCTION_ARN;
+    const lambdaFunctionArn =
+      this.node.tryGetContext('lambdaFunctionArn') || process.env.LAMBDA_FUNCTION_ARN
 
     if (!lambdaFunctionArn) {
       throw new Error(
         'Lambda function ARN not provided. ' +
-        'Deploy Amplify backend first, then set LAMBDA_FUNCTION_ARN env variable ' +
-        'or pass lambdaFunctionArn context parameter.'
-      );
+          'Deploy Amplify backend first, then set LAMBDA_FUNCTION_ARN env variable ' +
+          'or pass lambdaFunctionArn context parameter.',
+      )
     }
 
     // Import the Lambda function by ARN
-    const apiFunction = lambda.Function.fromFunctionArn(
-      this,
-      'ApiFunction',
-      lambdaFunctionArn,
-    );
+    const apiFunction = lambda.Function.fromFunctionArn(this, 'ApiFunction', lambdaFunctionArn)
 
     // Create API Gateway REST API
     this.restApi = new apigateway.RestApi(this, 'SlaOpsRestApi', {
@@ -74,7 +70,7 @@ export class ApiStack extends Stack {
       endpointConfiguration: {
         types: [apigateway.EndpointType.REGIONAL],
       },
-    });
+    })
 
     // Create Lambda integration
     const lambdaIntegration = new apigateway.LambdaIntegration(apiFunction, {
@@ -85,40 +81,40 @@ export class ApiStack extends Stack {
           statusCode: '200',
         },
       ],
-    });
+    })
 
     // Add proxy resource to handle all paths
     this.restApi.root.addProxy({
       defaultIntegration: lambdaIntegration,
       anyMethod: true,
-    });
+    })
 
     // Also add root endpoint
-    this.restApi.root.addMethod('ANY', lambdaIntegration);
+    this.restApi.root.addMethod('ANY', lambdaIntegration)
 
     // Export API outputs
     new CfnOutput(this, 'ApiUrl', {
       value: this.restApi.url,
       description: 'SLAOps REST API URL',
       exportName: 'SlaOpsApiUrl',
-    });
+    })
 
     new CfnOutput(this, 'ApiId', {
       value: this.restApi.restApiId,
       description: 'SLAOps REST API ID',
       exportName: 'SlaOpsApiId',
-    });
+    })
 
     new CfnOutput(this, 'ApiArn', {
       value: this.restApi.arnForExecuteApi(),
       description: 'SLAOps REST API ARN',
       exportName: 'SlaOpsApiArn',
-    });
+    })
 
     new CfnOutput(this, 'ApiEndpoint', {
       value: `${this.restApi.url}prod`,
       description: 'SLAOps REST API Endpoint (with stage)',
       exportName: 'SlaOpsApiEndpoint',
-    });
+    })
   }
 }

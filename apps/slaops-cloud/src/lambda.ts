@@ -1,9 +1,9 @@
-import { NestFactory } from '@nestjs/core'
-import { ValidationPipe } from '@nestjs/common'
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
-import { ExpressAdapter } from '@nestjs/platform-express'
 import serverlessExpress from '@codegenie/serverless-express'
-import { Context, APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
+import { ValidationPipe } from '@nestjs/common'
+import { NestFactory } from '@nestjs/core'
+import { ExpressAdapter } from '@nestjs/platform-express'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda'
 import { AppModule } from './app.module'
 import express = require('express')
 

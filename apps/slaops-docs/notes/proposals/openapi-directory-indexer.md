@@ -1247,10 +1247,10 @@ No new package.json changes needed - add files to existing structure.
 
 ## Approval
 
-- [ ] Technical Lead: ****\_\_\_\_****
-- [ ] Architect: ****\_\_\_\_****
-- [ ] Product Owner: ****\_\_\_\_****
-- [ ] Date Approved: ****\_\_\_\_****
+- [ ] Technical Lead: \***\*\_\_\_\_\*\***
+- [ ] Architect: \***\*\_\_\_\_\*\***
+- [ ] Product Owner: \***\*\_\_\_\_\*\***
+- [ ] Date Approved: \***\*\_\_\_\_\*\***
 
 ---
 

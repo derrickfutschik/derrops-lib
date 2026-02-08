@@ -1,15 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { Client } from '@opensearch-project/opensearch'
-import { OpenApiSearchQueryDto } from './dto/openapi-search-query.dto'
-import {
-  OpenApiSearchResponseDto,
-  OpenApiSearchHit,
-  ProviderListResponseDto,
-  IndexStatsResponseDto,
-  SearchAggregations,
-} from './dto/openapi-search-response.dto'
 import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { Search, SearchResponse, TypescriptOSProxyClient } from 'opensearch-ts'
+import { OpenApiSearchQueryDto } from './dto/openapi-search-query.dto'
+import {
+  IndexStatsResponseDto,
+  OpenApiSearchHit,
+  OpenApiSearchResponseDto,
+  ProviderListResponseDto,
+  SearchAggregations,
+} from './dto/openapi-search-response.dto'
 
 import { config } from '@slaops/config'
 

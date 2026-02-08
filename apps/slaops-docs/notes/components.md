@@ -5,15 +5,12 @@ authors: [derrops]
 tags: [components]
 ---
 
-
-
 The following diagram shows the components of the SLAOps platform. Logs flow from the customer app to the SLAOps platform and then to the Opensearch database.
-
 
 ```mermaid Flowchart
 
 flowchart LR
-    
+
      App[SLAOpsApp]
      --> |Manage| Lambda[Lambda Log Ingestion]
      OS --> |Query| App
@@ -27,26 +24,27 @@ CustomerApp --> |Read Configuration| App
     Lambda --> OS
 
     Lambda --> S3Raw[Request & Response S3]
-     S3Raw--> |Download Full Requests| App 
+     S3Raw--> |Download Full Requests| App
 
 
 
 ```
 
-
-
 ### SLAOps SDK
-- Code to log request and response into S3 bucket. 
+
+- Code to log request and response into S3 bucket.
 - Read the configuration from the `SLAOpsApp`.
 - Configured with permissions to read the configuration.
 
 ### Lambda Log Ingestion
+
 - Read Configuration from the `SLAOpsApp`.
 - Read the logs from the S3 bucket.
 - Parse the logs into the OpenAPI Intelligence format.
 - Store the logs in the Opensearch database.
 
 ### Opensearch Database
+
 - Store the logs in the Opensearch database.
 - Store the configuration in the Opensearch database.
 - Store the metrics in the Opensearch database.

@@ -10,6 +10,7 @@ This directory contains component proposals for the SLAOps platform. Each propos
 ## Purpose
 
 Component proposals serve to:
+
 - Document the design and architecture of new components before implementation
 - Facilitate team review and discussion
 - Capture decisions and trade-offs
@@ -19,11 +20,13 @@ Component proposals serve to:
 ## Creating a New Proposal
 
 1. Copy the template from the repository root:
+
    ```bash
    cp COMPONENT_PROPOSAL_TEMPLATE.md apps/slaops-docs/docs/proposals/my-component-name.md
    ```
 
 2. Add Docusaurus frontmatter at the top:
+
    ```yaml
    ---
    sidebar_position: [number]

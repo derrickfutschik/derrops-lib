@@ -5,9 +5,7 @@ authors: [derrops]
 tags: [sdk]
 ---
 
-
 # Axios SDK
-
 
 ## Flowchart of the Axios SDK
 
@@ -41,4 +39,3 @@ flowchart TD
   M --> O["Caller receives error"]
 
 ```
-

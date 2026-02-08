@@ -3,13 +3,13 @@
  */
 
 import { Injectable } from '@nestjs/common'
-import * as yaml from 'yaml'
 import {
-  OpenApiIndexDocument,
+  INDEXING_LIMITS,
   IndexingError,
   IndexingErrorCode,
-  INDEXING_LIMITS,
+  OpenApiIndexDocument,
 } from '@slaops/cloud/openapi-search/types/openapi-index.types'
+import * as yaml from 'yaml'
 
 /**
  * OpenAPI 3.x specification (simplified type)

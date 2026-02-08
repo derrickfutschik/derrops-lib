@@ -1,24 +1,30 @@
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { HelpCircle, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { HelpCircle, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface ParameterInputProps {
-  name: string;
-  schema: any; // OpenAPI schema object
-  value: any;
-  required: boolean;
-  description?: string;
-  onChange: (value: any) => void;
-  defaultValue?: any;
-  isValid?: boolean; // Validation state for error highlighting (red)
-  isUnspecified?: boolean; // Warning state for unspecified parameters (orange)
-  validationReason?: string; // Optional tooltip text for validation
+  name: string
+  schema: any // OpenAPI schema object
+  value: any
+  required: boolean
+  description?: string
+  onChange: (value: any) => void
+  defaultValue?: any
+  isValid?: boolean // Validation state for error highlighting (red)
+  isUnspecified?: boolean // Warning state for unspecified parameters (orange)
+  validationReason?: string // Optional tooltip text for validation
 }
 
 /**
@@ -37,34 +43,34 @@ export function ParameterInput({
   validationReason,
 }: ParameterInputProps) {
   const [arrayItems, setArrayItems] = useState<any[]>(
-    Array.isArray(value) ? value : defaultValue && Array.isArray(defaultValue) ? defaultValue : []
-  );
+    Array.isArray(value) ? value : defaultValue && Array.isArray(defaultValue) ? defaultValue : [],
+  )
 
   // Sync arrayItems when value prop changes (e.g., when switching tabs)
   useEffect(() => {
-    if (schema?.type === "array") {
+    if (schema?.type === 'array') {
       if (Array.isArray(value)) {
-        setArrayItems(value);
+        setArrayItems(value)
       } else if (value === undefined && Array.isArray(defaultValue)) {
-        setArrayItems(defaultValue);
+        setArrayItems(defaultValue)
       }
     }
-  }, [value, defaultValue, schema?.type]);
+  }, [value, defaultValue, schema?.type])
 
   // Determine the type from schema
-  const type = schema?.type || "string";
-  const format = schema?.format;
-  const enumValues = schema?.enum;
+  const type = schema?.type || 'string'
+  const format = schema?.format
+  const enumValues = schema?.enum
 
   // Check if value is using default
   // For enums, we don't auto-fill with defaultValue - user must explicitly select
-  const isUsingDefault = value === undefined && defaultValue !== undefined;
-  const displayValue = value !== undefined ? value : (enumValues ? undefined : defaultValue);
+  const isUsingDefault = value === undefined && defaultValue !== undefined
+  const displayValue = value !== undefined ? value : enumValues ? undefined : defaultValue
 
   // Handle different input types based on schema
   const renderInput = () => {
     // Boolean type - render switch
-    if (type === "boolean") {
+    if (type === 'boolean') {
       return (
         <div className="flex items-center gap-2">
           <Switch
@@ -72,10 +78,10 @@ export function ParameterInput({
             onCheckedChange={(checked) => onChange(checked)}
           />
           <span className="text-sm text-muted-foreground">
-            {displayValue === true ? "true" : "false"}
+            {displayValue === true ? 'true' : 'false'}
           </span>
         </div>
-      );
+      )
     }
 
     // Enum type - render select dropdown
@@ -85,19 +91,19 @@ export function ParameterInput({
           value={displayValue !== undefined ? String(displayValue) : undefined}
           onValueChange={(val) => {
             // Special value for clearing selection
-            if (val === "__NONE__") {
-              onChange(undefined);
-              return;
+            if (val === '__NONE__') {
+              onChange(undefined)
+              return
             }
             // Convert to appropriate type
-            if (type === "number" || type === "integer") {
-              onChange(Number(val));
+            if (type === 'number' || type === 'integer') {
+              onChange(Number(val))
             } else {
-              onChange(val);
+              onChange(val)
             }
           }}
         >
-          <SelectTrigger className={isUsingDefault ? "italic text-muted-foreground" : ""}>
+          <SelectTrigger className={isUsingDefault ? 'italic text-muted-foreground' : ''}>
             <SelectValue placeholder={`Select ${name}...`} />
           </SelectTrigger>
           <SelectContent>
@@ -111,39 +117,39 @@ export function ParameterInput({
             ))}
           </SelectContent>
         </Select>
-      );
+      )
     }
 
     // Number or Integer type - render number input
-    if (type === "number" || type === "integer") {
+    if (type === 'number' || type === 'integer') {
       return (
         <Input
           type="number"
-          value={displayValue !== undefined ? displayValue : ""}
+          value={displayValue !== undefined ? displayValue : ''}
           onChange={(e) => {
-            const val = e.target.value;
-            if (val === "") {
-              onChange(undefined);
+            const val = e.target.value
+            if (val === '') {
+              onChange(undefined)
             } else {
-              onChange(type === "integer" ? parseInt(val, 10) : parseFloat(val));
+              onChange(type === 'integer' ? parseInt(val, 10) : parseFloat(val))
             }
           }}
-          placeholder={defaultValue !== undefined ? String(defaultValue) : ""}
-          className={isUsingDefault ? "italic text-muted-foreground" : ""}
-          step={type === "integer" ? 1 : "any"}
+          placeholder={defaultValue !== undefined ? String(defaultValue) : ''}
+          className={isUsingDefault ? 'italic text-muted-foreground' : ''}
+          step={type === 'integer' ? 1 : 'any'}
         />
-      );
+      )
     }
 
     // File/Binary type - render file input
-    if (format === "binary" || format === "byte") {
+    if (format === 'binary' || format === 'byte') {
       return (
         <div className="space-y-2">
           <Input
             type="file"
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              onChange(file);
+              const file = e.target.files?.[0]
+              onChange(file)
             }}
           />
           {displayValue instanceof File && (
@@ -152,46 +158,46 @@ export function ParameterInput({
             </div>
           )}
         </div>
-      );
+      )
     }
 
     // Array type - render multiple inputs
-    if (type === "array") {
-      const itemSchema = schema?.items || { type: "string" };
-      const itemType = itemSchema.type || "string";
-      const itemEnum = itemSchema.enum;
+    if (type === 'array') {
+      const itemSchema = schema?.items || { type: 'string' }
+      const itemType = itemSchema.type || 'string'
+      const itemEnum = itemSchema.enum
 
       const getDefaultItemValue = () => {
-        if (itemType === "boolean") return false;
-        if (itemType === "number" || itemType === "integer") return 0;
-        if (itemType === "object") return {};
-        if (itemEnum && itemEnum.length > 0) return undefined; // Start with no selection for enums
-        return "";
-      };
+        if (itemType === 'boolean') return false
+        if (itemType === 'number' || itemType === 'integer') return 0
+        if (itemType === 'object') return {}
+        if (itemEnum && itemEnum.length > 0) return undefined // Start with no selection for enums
+        return ''
+      }
 
       const handleAddItem = () => {
-        const newItems = [...arrayItems, getDefaultItemValue()];
-        setArrayItems(newItems);
-        onChange(newItems);
-      };
+        const newItems = [...arrayItems, getDefaultItemValue()]
+        setArrayItems(newItems)
+        onChange(newItems)
+      }
 
       const handleRemoveItem = (index: number) => {
-        const newItems = arrayItems.filter((_, i) => i !== index);
-        setArrayItems(newItems);
-        onChange(newItems);
-      };
+        const newItems = arrayItems.filter((_, i) => i !== index)
+        setArrayItems(newItems)
+        onChange(newItems)
+      }
 
       const handleUpdateItem = (index: number, val: any) => {
-        const newItems = [...arrayItems];
-        newItems[index] = val;
-        setArrayItems(newItems);
-        onChange(newItems);
-      };
+        const newItems = [...arrayItems]
+        newItems[index] = val
+        setArrayItems(newItems)
+        onChange(newItems)
+      }
 
       // Render individual array item based on schema type
       const renderArrayItem = (item: any, index: number) => {
         // Boolean type - render switch
-        if (itemType === "boolean") {
+        if (itemType === 'boolean') {
           return (
             <div className="flex items-center gap-2">
               <Switch
@@ -199,10 +205,10 @@ export function ParameterInput({
                 onCheckedChange={(checked) => handleUpdateItem(index, checked)}
               />
               <span className="text-sm text-muted-foreground">
-                {item === true ? "true" : "false"}
+                {item === true ? 'true' : 'false'}
               </span>
             </div>
-          );
+          )
         }
 
         // Enum type - render select
@@ -212,14 +218,14 @@ export function ParameterInput({
               value={item !== undefined ? String(item) : undefined}
               onValueChange={(val) => {
                 // Special value for clearing selection
-                if (val === "__NONE__") {
-                  handleUpdateItem(index, undefined);
-                  return;
+                if (val === '__NONE__') {
+                  handleUpdateItem(index, undefined)
+                  return
                 }
-                if (itemType === "number" || itemType === "integer") {
-                  handleUpdateItem(index, Number(val));
+                if (itemType === 'number' || itemType === 'integer') {
+                  handleUpdateItem(index, Number(val))
                 } else {
-                  handleUpdateItem(index, val);
+                  handleUpdateItem(index, val)
                 }
               }}
             >
@@ -237,39 +243,39 @@ export function ParameterInput({
                 ))}
               </SelectContent>
             </Select>
-          );
+          )
         }
 
         // Number or Integer type
-        if (itemType === "number" || itemType === "integer") {
+        if (itemType === 'number' || itemType === 'integer') {
           return (
             <Input
               type="number"
-              value={item !== undefined ? item : ""}
+              value={item !== undefined ? item : ''}
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "") {
-                  handleUpdateItem(index, itemType === "integer" ? 0 : 0.0);
+                const val = e.target.value
+                if (val === '') {
+                  handleUpdateItem(index, itemType === 'integer' ? 0 : 0.0)
                 } else {
                   handleUpdateItem(
                     index,
-                    itemType === "integer" ? parseInt(val, 10) : parseFloat(val)
-                  );
+                    itemType === 'integer' ? parseInt(val, 10) : parseFloat(val),
+                  )
                 }
               }}
               placeholder={`Item ${index + 1}`}
-              step={itemType === "integer" ? 1 : "any"}
+              step={itemType === 'integer' ? 1 : 'any'}
             />
-          );
+          )
         }
 
         // Object type - render JSON textarea
-        if (itemType === "object") {
-          let jsonValue = "";
+        if (itemType === 'object') {
+          let jsonValue = ''
           try {
-            jsonValue = item !== undefined ? JSON.stringify(item, null, 2) : "";
+            jsonValue = item !== undefined ? JSON.stringify(item, null, 2) : ''
           } catch (e) {
-            jsonValue = "";
+            jsonValue = ''
           }
 
           return (
@@ -277,8 +283,8 @@ export function ParameterInput({
               value={jsonValue}
               onChange={(e) => {
                 try {
-                  const parsed = JSON.parse(e.target.value);
-                  handleUpdateItem(index, parsed);
+                  const parsed = JSON.parse(e.target.value)
+                  handleUpdateItem(index, parsed)
                 } catch (err) {
                   // Allow invalid JSON while typing
                 }
@@ -287,27 +293,25 @@ export function ParameterInput({
               className="font-mono text-sm"
               rows={3}
             />
-          );
+          )
         }
 
         // Default: String type
         return (
           <Input
             type="text"
-            value={item !== undefined ? item : ""}
+            value={item !== undefined ? item : ''}
             onChange={(e) => handleUpdateItem(index, e.target.value)}
             placeholder={`Item ${index + 1}`}
           />
-        );
-      };
+        )
+      }
 
       return (
         <div className="space-y-2">
           {arrayItems.map((item, index) => (
             <div key={index} className="flex items-start gap-2">
-              <div className="flex-1">
-                {renderArrayItem(item, index)}
-              </div>
+              <div className="flex-1">{renderArrayItem(item, index)}</div>
               <Button
                 type="button"
                 variant="ghost"
@@ -330,16 +334,16 @@ export function ParameterInput({
             Add Item
           </Button>
         </div>
-      );
+      )
     }
 
     // Object type or complex schema - render JSON textarea
-    if (type === "object" || schema?.allOf || schema?.anyOf || schema?.oneOf) {
-      let jsonValue = "";
+    if (type === 'object' || schema?.allOf || schema?.anyOf || schema?.oneOf) {
+      let jsonValue = ''
       try {
-        jsonValue = displayValue !== undefined ? JSON.stringify(displayValue, null, 2) : "";
+        jsonValue = displayValue !== undefined ? JSON.stringify(displayValue, null, 2) : ''
       } catch (e) {
-        jsonValue = "";
+        jsonValue = ''
       }
 
       return (
@@ -348,46 +352,42 @@ export function ParameterInput({
             value={jsonValue}
             onChange={(e) => {
               try {
-                const parsed = JSON.parse(e.target.value);
-                onChange(parsed);
+                const parsed = JSON.parse(e.target.value)
+                onChange(parsed)
               } catch (err) {
                 // Allow invalid JSON while typing
                 // Could add validation feedback here
               }
             }}
             placeholder='{"key": "value"}'
-            className={`font-mono text-sm ${isUsingDefault ? "italic text-muted-foreground" : ""}`}
+            className={`font-mono text-sm ${isUsingDefault ? 'italic text-muted-foreground' : ''}`}
             rows={5}
           />
-          <div className="text-xs text-muted-foreground">
-            Enter valid JSON object
-          </div>
+          <div className="text-xs text-muted-foreground">Enter valid JSON object</div>
         </div>
-      );
+      )
     }
 
     // Default: String type - render text input
     // Use param name as placeholder if no default value
-    const placeholderText = defaultValue !== undefined 
-      ? String(defaultValue) 
-      : `Enter ${name}`;
+    const placeholderText = defaultValue !== undefined ? String(defaultValue) : `Enter ${name}`
     return (
       <Input
         type="text"
-        value={displayValue !== undefined ? displayValue : ""}
+        value={displayValue !== undefined ? displayValue : ''}
         onChange={(e) => onChange(e.target.value || undefined)}
         placeholder={placeholderText}
-        className={isUsingDefault ? "italic text-muted-foreground" : ""}
+        className={isUsingDefault ? 'italic text-muted-foreground' : ''}
       />
-    );
-  };
+    )
+  }
 
   // Determine the styling based on validation state (matching ExpandableParameterRow)
   const getNameClassName = () => {
-    if (isUnspecified) return 'text-orange-500';
-    if (!isValid) return 'text-destructive';
-    return 'text-foreground';
-  };
+    if (isUnspecified) return 'text-orange-500'
+    if (!isValid) return 'text-destructive'
+    return 'text-foreground'
+  }
 
   return (
     <div className="space-y-2">
@@ -411,12 +411,8 @@ export function ParameterInput({
                 <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
                   <div>Type: {type}</div>
                   {format && <div>Format: {format}</div>}
-                  {defaultValue !== undefined && (
-                    <div>Default: {JSON.stringify(defaultValue)}</div>
-                  )}
-                  {enumValues && (
-                    <div>Options: {enumValues.join(", ")}</div>
-                  )}
+                  {defaultValue !== undefined && <div>Default: {JSON.stringify(defaultValue)}</div>}
+                  {enumValues && <div>Options: {enumValues.join(', ')}</div>}
                 </div>
               </div>
             </PopoverContent>
@@ -432,5 +428,5 @@ export function ParameterInput({
         </div>
       )}
     </div>
-  );
+  )
 }

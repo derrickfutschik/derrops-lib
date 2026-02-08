@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Client } from '@opensearch-project/opensearch'
 import { config } from '@slaops/config'
 import {
-  openapiOperationsTemplate,
   openapiOperationPipeline,
+  openapiOperationsTemplate,
 } from './resource/openapi.operations.resources'
 
 @Injectable()

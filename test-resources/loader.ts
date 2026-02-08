@@ -1,16 +1,15 @@
-import { dirname, resolve } from 'node:path';
-import { existsSync } from 'node:fs';
-import { expect } from '@jest/globals';
-
+import { expect } from '@jest/globals'
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 
 export function resolveTestResource(relativePath: string): string {
-  const state = expect.getState();
+  const state = expect.getState()
   if (!state.testPath) {
-    throw new Error('resolveTestResource: testPath not available from Jest state');
+    throw new Error('resolveTestResource: testPath not available from Jest state')
   }
 
-  const testDir = dirname(state.testPath);
-  return resolve(testDir, relativePath);
+  const testDir = dirname(state.testPath)
+  return resolve(testDir, relativePath)
 }
 
 /**
@@ -18,35 +17,44 @@ export function resolveTestResource(relativePath: string): string {
  * until we find the directory containing 'test-resources/'
  */
 function findMonorepoRoot(): string {
-  const state = expect.getState();
+  const state = expect.getState()
   if (!state.testPath) {
-    throw new Error('findMonorepoRoot: testPath not available from Jest state');
+    throw new Error('findMonorepoRoot: testPath not available from Jest state')
   }
 
-  let currentDir = dirname(state.testPath);
+  let currentDir = dirname(state.testPath)
 
   // Navigate up until we find the directory containing 'test-resources'
   // Max depth of 10 to avoid infinite loops
   for (let i = 0; i < 10; i++) {
-    const testResourcesPath = resolve(currentDir, 'test-resources');
+    const testResourcesPath = resolve(currentDir, 'test-resources')
     if (existsSync(testResourcesPath)) {
-      return currentDir;
+      return currentDir
     }
 
-    const parentDir = dirname(currentDir);
+    const parentDir = dirname(currentDir)
     if (parentDir === currentDir) {
       // Reached filesystem root
-      break;
+      break
     }
-    currentDir = parentDir;
+    currentDir = parentDir
   }
 
-  throw new Error('Could not find monorepo root (directory containing test-resources/)');
+  throw new Error('Could not find monorepo root (directory containing test-resources/)')
 }
 
 export function resolveOpenApiSpec(host: string, path: string, version: string): string {
-  const monorepoRoot = findMonorepoRoot();
-  return resolve(monorepoRoot, 'test-resources', 'openapi-directory', 'APIs', host, path, version, 'openapi.yaml');
+  const monorepoRoot = findMonorepoRoot()
+  return resolve(
+    monorepoRoot,
+    'test-resources',
+    'openapi-directory',
+    'APIs',
+    host,
+    path,
+    version,
+    'openapi.yaml',
+  )
 }
 
 export const TEST_API_SPECS = {
@@ -74,6 +82,4 @@ export const TEST_API_SPECS = {
    * Get an AWS CloudTrail API spec
    */
   awsCloudTrail: () => resolveOpenApiSpec('amazonaws.com', 'cloudtrail', '2013-11-01'),
-
-
 }

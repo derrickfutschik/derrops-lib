@@ -1,6 +1,6 @@
-import { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { HttpHandler, HttpRequest, HttpResponse } from '@aws-sdk/protocol-http'
 import { HttpHandlerOptions } from '@aws-sdk/types'
+import { AxiosInstance, AxiosRequestConfig } from 'axios'
 
 export class AxiosHttpHandler implements HttpHandler {
   // You can pass in a pre-configured Axios instance

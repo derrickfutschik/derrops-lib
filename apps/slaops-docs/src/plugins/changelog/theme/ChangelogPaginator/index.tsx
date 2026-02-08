@@ -7,13 +7,13 @@
 
 // Changed the text labels.
 
-import React, {type ReactNode} from 'react';
-import Translate, {translate} from '@docusaurus/Translate';
-import PaginatorNavLink from '@theme/PaginatorNavLink';
-import type {Props} from '@theme/BlogPostPaginator';
+import Translate, { translate } from '@docusaurus/Translate'
+import type { Props } from '@theme/BlogPostPaginator'
+import PaginatorNavLink from '@theme/PaginatorNavLink'
+import { type ReactNode } from 'react'
 
 export default function ChangelogPaginator(props: Props): ReactNode {
-  const {nextItem, prevItem} = props;
+  const { nextItem, prevItem } = props
 
   return (
     <nav
@@ -22,14 +22,16 @@ export default function ChangelogPaginator(props: Props): ReactNode {
         id: 'theme.changelog.post.paginator.navAriaLabel',
         message: 'Changelog item navigation',
         description: 'The ARIA label for the changelog pagination',
-      })}>
+      })}
+    >
       {prevItem && (
         <PaginatorNavLink
           {...prevItem}
           subLabel={
             <Translate
               id="theme.changelog.post.paginator.newerRelease"
-              description="The changelog button label to navigate to the newer release">
+              description="The changelog button label to navigate to the newer release"
+            >
               Newer release
             </Translate>
           }
@@ -41,7 +43,8 @@ export default function ChangelogPaginator(props: Props): ReactNode {
           subLabel={
             <Translate
               id="theme.changelog.post.paginator.olderRelease"
-              description="The changelog button label to navigate to the older release">
+              description="The changelog button label to navigate to the older release"
+            >
               Older release
             </Translate>
           }
@@ -49,5 +52,5 @@ export default function ChangelogPaginator(props: Props): ReactNode {
         />
       )}
     </nav>
-  );
+  )
 }

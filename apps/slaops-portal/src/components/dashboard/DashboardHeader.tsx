@@ -1,15 +1,15 @@
-import { User } from "@supabase/supabase-js";
-import { Button } from "@/components/ui/button";
-import { LogOut, Plus, FlaskConical } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Button } from '@/components/ui/button'
+import { User } from '@supabase/supabase-js'
+import { FlaskConical, LogOut, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 interface DashboardHeaderProps {
-  user: User | null;
-  onSignOut: () => void;
+  user: User | null
+  onSignOut: () => void
 }
 
 const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
     <header className="border-b border-border bg-card/30 backdrop-blur">
@@ -21,13 +21,13 @@ const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
             </h1>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={() => navigate("/api-tester")}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/api-tester')}>
               <FlaskConical className="h-4 w-4 mr-2" />
               API Tester
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/add-service")}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/add-service')}>
               <Plus className="h-4 w-4 mr-2" />
               Add Service
             </Button>
@@ -39,7 +39,7 @@ const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
         </div>
       </div>
     </header>
-  );
-};
+  )
+}
 
-export default DashboardHeader;
+export default DashboardHeader

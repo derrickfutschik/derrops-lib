@@ -1,202 +1,200 @@
-import * as dynamodb from "@aws-sdk/client-dynamodb";
+import * as dynamodb from '@aws-sdk/client-dynamodb'
 
-
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { Repository } from "./repo";
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
+import { Repository } from './repo'
 
 export interface DynamoDBRepoConfig {
-    client: dynamodb.DynamoDBClient;
-    tableName: string;
-    partitionKeyName: string;
-    sortKeyName?: string;
+  client: dynamodb.DynamoDBClient
+  tableName: string
+  partitionKeyName: string
+  sortKeyName?: string
 }
 
 export class DynamoDBRepo<T extends Record<string, any>, ID = string> implements Repository<T, ID> {
+  private client: dynamodb.DynamoDBClient
+  private tableName: string
+  private partitionKeyName: string
+  private sortKeyName?: string
 
-    private client: dynamodb.DynamoDBClient;
-    private tableName: string;
-    private partitionKeyName: string;
-    private sortKeyName?: string;
+  constructor(config: DynamoDBRepoConfig) {
+    this.client = config.client
+    this.tableName = config.tableName
+    this.partitionKeyName = config.partitionKeyName
+    this.sortKeyName = config.sortKeyName
+  }
 
-    constructor(config: DynamoDBRepoConfig) {
-        this.client = config.client;
-        this.tableName = config.tableName;
-        this.partitionKeyName = config.partitionKeyName;
-        this.sortKeyName = config.sortKeyName;
+  async tableExists(): Promise<boolean> {
+    try {
+      const command = new dynamodb.DescribeTableCommand({
+        TableName: this.tableName,
+      })
+      const response = await this.client.send(command)
+      return response.Table !== undefined
+    } catch (error) {
+      return false
+    }
+  }
+
+  async createTable() {
+    const attributeDefinitions: dynamodb.AttributeDefinition[] = [
+      {
+        AttributeName: this.partitionKeyName,
+        AttributeType: 'S',
+      },
+    ]
+
+    const keySchema: dynamodb.KeySchemaElement[] = [
+      {
+        AttributeName: this.partitionKeyName,
+        KeyType: 'HASH',
+      },
+    ]
+
+    // Only add sort key if it's defined
+    if (this.sortKeyName) {
+      attributeDefinitions.push({
+        AttributeName: this.sortKeyName,
+        AttributeType: 'S',
+      })
+      keySchema.push({
+        AttributeName: this.sortKeyName,
+        KeyType: 'RANGE',
+      })
     }
 
-    async tableExists(): Promise<boolean> {
+    const table = await this.client.send(
+      new dynamodb.CreateTableCommand({
+        TableName: this.tableName,
+        AttributeDefinitions: attributeDefinitions,
+        KeySchema: keySchema,
+        BillingMode: 'PAY_PER_REQUEST',
+      }),
+    )
 
-        try {
-            const command = new dynamodb.DescribeTableCommand({
-                TableName: this.tableName,
-            });
-            const response = await this.client.send(command)
-            return response.Table !== undefined;
-        } catch (error) {
-            return false
-        }
+    return table
+  }
 
+  async createMany(entities: T[]): Promise<number> {
+    if (entities.length === 0) {
+      return 0
     }
 
-    async createTable() {
-        const attributeDefinitions: dynamodb.AttributeDefinition[] = [
-            {
-                AttributeName: this.partitionKeyName,
-                AttributeType: 'S',
+    const BATCH_SIZE = 25 // DynamoDB BatchWriteItem limit
+    let totalCreated = 0
+
+    // Process entities in batches of 25
+    for (let i = 0; i < entities.length; i += BATCH_SIZE) {
+      const batch = entities.slice(i, i + BATCH_SIZE)
+
+      const command = new dynamodb.BatchWriteItemCommand({
+        RequestItems: {
+          [this.tableName]: batch.map((entity) => ({
+            PutRequest: {
+              Item: marshall(entity, { removeUndefinedValues: true }),
             },
-        ];
+          })),
+        },
+      })
 
-        const keySchema: dynamodb.KeySchemaElement[] = [
-            {
-                AttributeName: this.partitionKeyName,
-                KeyType: 'HASH',
-            },
-        ];
+      const response = await this.client.send(command)
 
-        // Only add sort key if it's defined
-        if (this.sortKeyName) {
-            attributeDefinitions.push({
-                AttributeName: this.sortKeyName,
-                AttributeType: 'S',
-            });
-            keySchema.push({
-                AttributeName: this.sortKeyName,
-                KeyType: 'RANGE',
-            });
-        }
+      const unprocessedCount = response.UnprocessedItems?.[this.tableName]?.length ?? 0
+      totalCreated += batch.length - unprocessedCount
 
-        const table = await this.client.send(new dynamodb.CreateTableCommand({
-            TableName: this.tableName,
-            AttributeDefinitions: attributeDefinitions,
-            KeySchema: keySchema,
-            BillingMode: 'PAY_PER_REQUEST',
-        }));
-
-        return table;
+      // TODO: Handle unprocessed items with exponential backoff retry
+      if (unprocessedCount > 0) {
+        console.warn(`${unprocessedCount} items were not processed in batch starting at index ${i}`)
+      }
     }
 
-    async createMany(entities: T[]): Promise<number> {
-        if (entities.length === 0) {
-            return 0;
-        }
+    return totalCreated
+  }
 
-        const BATCH_SIZE = 25; // DynamoDB BatchWriteItem limit
-        let totalCreated = 0;
+  async findById(id: ID): Promise<T | null> {
+    const key = this.buildKey(id)
 
-        // Process entities in batches of 25
-        for (let i = 0; i < entities.length; i += BATCH_SIZE) {
-            const batch = entities.slice(i, i + BATCH_SIZE);
+    const command = new dynamodb.GetItemCommand({
+      TableName: this.tableName,
+      Key: marshall(key),
+    })
 
-            const command = new dynamodb.BatchWriteItemCommand({
-                RequestItems: {
-                    [this.tableName]: batch.map(entity => ({
-                        PutRequest: {
-                            Item: marshall(entity, { removeUndefinedValues: true }),
-                        },
-                    })),
-                },
-            });
+    const response = await this.client.send(command)
 
-            const response = await this.client.send(command);
-
-            const unprocessedCount = response.UnprocessedItems?.[this.tableName]?.length ?? 0;
-            totalCreated += (batch.length - unprocessedCount);
-
-            // TODO: Handle unprocessed items with exponential backoff retry
-            if (unprocessedCount > 0) {
-                console.warn(`${unprocessedCount} items were not processed in batch starting at index ${i}`);
-            }
-        }
-
-        return totalCreated;
+    if (!response.Item) {
+      return null
     }
 
-    async findById(id: ID): Promise<T | null> {
-        const key = this.buildKey(id);
+    return unmarshall(response.Item) as T
+  }
 
-        const command = new dynamodb.GetItemCommand({
-            TableName: this.tableName,
-            Key: marshall(key),
-        });
+  async create(entity: T): Promise<T> {
+    const command = new dynamodb.PutItemCommand({
+      TableName: this.tableName,
+      Item: marshall(entity, { removeUndefinedValues: true }),
+    })
 
-        const response = await this.client.send(command);
+    await this.client.send(command)
+    return entity
+  }
 
-        if (!response.Item) {
-            return null;
-        }
-
-        return unmarshall(response.Item) as T;
+  async update(id: ID, updates: Partial<T>): Promise<T> {
+    // First get the existing entity
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error(`Entity with id ${id} not found`)
     }
 
-    async create(entity: T): Promise<T> {
-        const command = new dynamodb.PutItemCommand({
-            TableName: this.tableName,
-            Item: marshall(entity, { removeUndefinedValues: true }),
-        });
+    // Merge updates with existing entity
+    const updated = { ...existing, ...updates }
 
-        await this.client.send(command);
-        return entity;
-    }
+    // Put the updated entity
+    const command = new dynamodb.PutItemCommand({
+      TableName: this.tableName,
+      Item: marshall(updated, { removeUndefinedValues: true }),
+    })
 
-    async update(id: ID, updates: Partial<T>): Promise<T> {
-        // First get the existing entity
-        const existing = await this.findById(id);
-        if (!existing) {
-            throw new Error(`Entity with id ${id} not found`);
-        }
+    await this.client.send(command)
+    return updated
+  }
 
-        // Merge updates with existing entity
-        const updated = { ...existing, ...updates };
+  async delete(id: ID): Promise<void> {
+    const key = this.buildKey(id)
 
-        // Put the updated entity
-        const command = new dynamodb.PutItemCommand({
-            TableName: this.tableName,
-            Item: marshall(updated, { removeUndefinedValues: true }),
-        });
+    const command = new dynamodb.DeleteItemCommand({
+      TableName: this.tableName,
+      Key: marshall(key),
+    })
 
-        await this.client.send(command);
-        return updated;
-    }
+    await this.client.send(command)
+  }
 
-    async delete(id: ID): Promise<void> {
-        const key = this.buildKey(id);
+  async exists(id: ID): Promise<boolean> {
+    const entity = await this.findById(id)
+    return entity !== null
+  }
 
-        const command = new dynamodb.DeleteItemCommand({
-            TableName: this.tableName,
-            Key: marshall(key),
-        });
-
-        await this.client.send(command);
-    }
-
-    async exists(id: ID): Promise<boolean> {
-        const entity = await this.findById(id);
-        return entity !== null;
-    }
-
-    /**
-     * Builds the key object for DynamoDB operations
-     * Handles both simple partition key and composite partition+sort key
-     */
-    private buildKey(id: ID): Record<string, any> {
-        if (this.sortKeyName) {
-            // For composite keys, expect ID to be an object with both keys
-            if (typeof id === "object" && id !== null) {
-                const idObj = id as any;
-                return {
-                    [this.partitionKeyName]: idObj[this.partitionKeyName],
-                    [this.sortKeyName]: idObj[this.sortKeyName],
-                };
-            }
-            throw new Error(
-                `ID must be an object with ${this.partitionKeyName} and ${this.sortKeyName} for composite key table`
-            );
-        }
-
-        // Simple partition key
+  /**
+   * Builds the key object for DynamoDB operations
+   * Handles both simple partition key and composite partition+sort key
+   */
+  private buildKey(id: ID): Record<string, any> {
+    if (this.sortKeyName) {
+      // For composite keys, expect ID to be an object with both keys
+      if (typeof id === 'object' && id !== null) {
+        const idObj = id as any
         return {
-            [this.partitionKeyName]: id,
-        };
+          [this.partitionKeyName]: idObj[this.partitionKeyName],
+          [this.sortKeyName]: idObj[this.sortKeyName],
+        }
+      }
+      throw new Error(
+        `ID must be an object with ${this.partitionKeyName} and ${this.sortKeyName} for composite key table`,
+      )
     }
+
+    // Simple partition key
+    return {
+      [this.partitionKeyName]: id,
+    }
+  }
 }

@@ -1,6 +1,5 @@
-import axios, { AxiosInstance } from 'axios'
 import { BaseClient, type BaseClientOptions } from '@slaops/client'
-import type { HarEntry } from '../../slaops-public/dist'
+import axios, { AxiosInstance } from 'axios'
 
 export type SlaOpsClientOptions = BaseClientOptions
 

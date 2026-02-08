@@ -2,13 +2,12 @@
  * OpenAPI Indexer Service - Handles S3 events and OpenSearch indexing
  */
 
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { defaultProvider } from '@aws-sdk/credential-provider-node'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { Client } from '@opensearch-project/opensearch'
 import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws'
-import { defaultProvider } from '@aws-sdk/credential-provider-node'
-import { OpenApiParserService } from './openapi-parser.service'
 import {
   IndexResult,
   IndexingError,
@@ -17,6 +16,7 @@ import {
 } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { config } from '@slaops/config'
 import { TypescriptOSProxyClient } from 'opensearch-ts'
+import { OpenApiParserService } from './openapi-parser.service'
 
 @Injectable()
 export class OpenApiIndexerService implements OnModuleInit {

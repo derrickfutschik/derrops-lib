@@ -1,13 +1,13 @@
-import type {ReactNode} from 'react';
-import clsx from 'clsx';
-import Heading from '@theme/Heading';
-import styles from './styles.module.css';
+import Heading from '@theme/Heading'
+import clsx from 'clsx'
+import type { ReactNode } from 'react'
+import styles from './styles.module.css'
 
 type FeatureItem = {
-  title: string;
-  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
-  description: ReactNode;
-};
+  title: string
+  Svg: React.ComponentType<React.ComponentProps<'svg'>>
+  description: ReactNode
+}
 
 const FeatureList: FeatureItem[] = [
   {
@@ -20,7 +20,6 @@ const FeatureList: FeatureItem[] = [
           <li>Detect downtime directly</li>
           <li>Detect usage behavior changes</li>
         </ul>
-        
       </>
     ),
   },
@@ -42,13 +41,13 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <ul>
-          <li>Automatically generate an OpenAPI specification based on API calls</li>
-        </ul>
+        <li>Automatically generate an OpenAPI specification based on API calls</li>
+      </ul>
     ),
   },
-];
+]
 
-function Feature({title, Svg, description}: FeatureItem) {
+function Feature({ title, Svg, description }: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
       <div className="text--center">
@@ -59,7 +58,7 @@ function Feature({title, Svg, description}: FeatureItem) {
         <p>{description}</p>
       </div>
     </div>
-  );
+  )
 }
 
 export default function HomepageFeatures(): ReactNode {
@@ -73,5 +72,5 @@ export default function HomepageFeatures(): ReactNode {
         </div>
       </div>
     </section>
-  );
+  )
 }

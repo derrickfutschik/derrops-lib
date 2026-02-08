@@ -1,24 +1,24 @@
 // packages/config/src/from-env.ts
-import type { AppConfigEnv } from "./schema";
-import { loadConfig } from "./load";
+import { loadConfig } from './load'
+import type { AppConfigEnv } from './schema'
 
-let cached: AppConfigEnv | undefined;
+let cached: AppConfigEnv | undefined
 
 export function configFromEnv(env: Record<string, unknown> = process.env): AppConfigEnv {
-    // cache only when using the real process.env
-    if (env === process.env) {
-        if (!cached) cached = loadConfig(env);
-        return cached;
-    }
+  // cache only when using the real process.env
+  if (env === process.env) {
+    if (!cached) cached = loadConfig(env)
+    return cached
+  }
 
-    // no caching for custom env objects (tests)
-    return loadConfig(env);
+  // no caching for custom env objects (tests)
+  return loadConfig(env)
 }
 
 export function setConfigForProcess(config: AppConfigEnv) {
-    cached = config;
+  cached = config
 }
 
 export function resetConfigForTests() {
-    cached = undefined;
+  cached = undefined
 }

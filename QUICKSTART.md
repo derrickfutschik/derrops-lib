@@ -33,6 +33,7 @@ Start the Docker-based backend environment (PostgreSQL, OpenSearch, etc.) using 
 ```
 
 This command:
+
 - Launches a tmuxinator session defined in `.tmuxinator.yml`
 - Starts all required Docker containers
 - Sets up the local development environment
@@ -46,6 +47,7 @@ Open all useful development URLs in Safari:
 ```
 
 This opens:
+
 - **OpenSearch Dashboards**: http://192.168.7.224:5601
 - **SLAOps Portal**: http://localhost:8080
 - **SLAOps Docs**: http://localhost:8081
@@ -77,12 +79,14 @@ pnpm run commit
 ```
 
 **Features:**
+
 - Automatically stages files if needed (with confirmation)
 - Generates conventional commit messages with emojis
 - Opens editor for review and editing before committing
 - Follows repository commit conventions
 
 **Examples of generated messages:**
+
 - `✨ feat(auth): add OAuth2 login flow`
 - `🐛 fix(api): handle null response in user endpoint`
 - `📝 docs: update installation instructions for Docker setup`
@@ -101,6 +105,7 @@ After making changes to `apps/slaops-portal`, push them to the Loveable reposito
 ```
 
 This command:
+
 - Uses git subtree to push only the `apps/slaops-portal` directory
 - Pushes to: `git@github.com:derrickfutschik/slaops-portal.git` (main branch)
 - Preserves the portal's independent git history
@@ -114,11 +119,13 @@ Pull changes made in the Loveable environment back to the monorepo:
 ```
 
 This command:
+
 - Uses git subtree to pull changes from the Loveable repository
 - Pulls from: `git@github.com:derrickfutschik/slaops-portal.git` (main branch)
 - Squashes commits to keep monorepo history clean
 
 **Workflow example:**
+
 ```bash
 # 1. Make changes to apps/slaops-portal
 cd apps/slaops-portal
@@ -187,27 +194,27 @@ pnpm run dev
 
 All utility scripts are located in the `scripts/` directory:
 
-| Script | Purpose |
-|--------|---------|
-| `ai-commit.sh` | AI-powered commit message generation |
-| `push-portal.sh` | Push portal changes to Loveable |
-| `pull-portal.sh` | Pull portal changes from Loveable |
-| `quickstart.sh` | Start backend services (tmuxinator) |
-| `browser.sh` | Open development dashboards |
-| `shutdown.sh` | Stop backend services |
+| Script           | Purpose                              |
+| ---------------- | ------------------------------------ |
+| `ai-commit.sh`   | AI-powered commit message generation |
+| `push-portal.sh` | Push portal changes to Loveable      |
+| `pull-portal.sh` | Pull portal changes from Loveable    |
+| `quickstart.sh`  | Start backend services (tmuxinator)  |
+| `browser.sh`     | Open development dashboards          |
+| `shutdown.sh`    | Stop backend services                |
 
 ### Port Reference
 
-| Service | Port | URL |
-|---------|------|-----|
-| Documentation | 3000 | http://localhost:3000 |
-| Cloud API | 3001 | http://localhost:3001/api |
-| OpenSearch Dashboards | 5601 | http://192.168.7.224:5601 |
-| PGAdmin | 5050 | http://192.168.7.224:5050 |
-| Portal | 8080 | http://localhost:8080 |
-| Portal (production build) | 8081 | http://localhost:8081 |
-| Syncthing (server) | 8384 | http://192.168.7.224:8384 |
-| Syncthing (local) | 8384 | http://localhost:8384 |
+| Service                   | Port | URL                       |
+| ------------------------- | ---- | ------------------------- |
+| Documentation             | 3000 | http://localhost:3000     |
+| Cloud API                 | 3001 | http://localhost:3001/api |
+| OpenSearch Dashboards     | 5601 | http://192.168.7.224:5601 |
+| PGAdmin                   | 5050 | http://192.168.7.224:5050 |
+| Portal                    | 8080 | http://localhost:8080     |
+| Portal (production build) | 8081 | http://localhost:8081     |
+| Syncthing (server)        | 8384 | http://192.168.7.224:8384 |
+| Syncthing (local)         | 8384 | http://localhost:8384     |
 
 ### Environment Files
 

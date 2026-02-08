@@ -14,10 +14,10 @@ Preferred option, customer can maintain their own logs in their own S3 bucket an
 ```mermaid Flowchart
 
 flowchart LR
-    
+
     subgraph Customer["Customer AWS Environment"]
     Z[Client App] --> |SLAOps SDK| AClient[S3]
-    
+
     end
 
     subgraph SLAOps["SLAOps AWS Environment"]
@@ -28,7 +28,6 @@ flowchart LR
 
 ```
 
-
 ## (Not yet implemented) Option 2 - Direct to our S3 Bucket
 
 Cheapest option, customer does not need to maintain any logs, but will not have access to raw logs.
@@ -36,11 +35,11 @@ Cheapest option, customer does not need to maintain any logs, but will not have 
 ```mermaid Flowchart
 
 flowchart LR
-    
+
     Z[Client App] --> |SLAOps SDK| A[S3]
 
 subgraph client["Client AWS Environment"]
-    Z[Client App] 
+    Z[Client App]
 end
 
     subgraph SLAOps["SLAOps AWS Environment"]
@@ -49,9 +48,6 @@ end
     end
 
 ```
-
-
-
 
 ## (Not yet implemented) Option 3 - Customer Managed Deployment
 

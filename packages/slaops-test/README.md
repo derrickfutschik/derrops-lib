@@ -28,16 +28,16 @@ pnpm install
 Create test files in `src/__tests__/` or use the `.test.ts` suffix:
 
 ```typescript
-import { describe, it, expect } from '@jest/globals';
-import axios from 'axios';
-import { attachSlaOpsInterceptor } from '@slaops/client-nodejs-axios';
+import { describe, it, expect } from '@jest/globals'
+import axios from 'axios'
+import { attachSlaOpsInterceptor } from '@slaops/client-nodejs-axios'
 // Import from any other SLAOps package as needed
 
 describe('My Integration Test', () => {
   it('should test cross-package functionality', () => {
     // Your test here
-  });
-});
+  })
+})
 ```
 
 ### Running Tests

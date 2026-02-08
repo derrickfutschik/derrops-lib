@@ -1,94 +1,97 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Zap } from "lucide-react";
-import { ServiceApi, Configuration } from "@/client/slaops-cloud";
-import type { CreateServiceDto } from "@/client/slaops-cloud";
-import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/config";
+import type { CreateServiceDto } from '@/client/slaops-cloud'
+import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { API_BASE_URL } from '@/config'
+import { useToast } from '@/hooks/use-toast'
+import { ArrowLeft, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const exampleServices = [
   {
-    name: "AWS S3",
-    openapi_doc_url: "https://raw.githubusercontent.com/APIs-guru/openapi-directory/main/APIs/amazonaws.com/s3/2006-03-01/openapi.yaml",
-    openapi_doc_content: "",
-    endpoint: "https://s3.amazonaws.com",
-    availability: "99.99",
-    response_time: "45",
+    name: 'AWS S3',
+    openapi_doc_url:
+      'https://raw.githubusercontent.com/APIs-guru/openapi-directory/main/APIs/amazonaws.com/s3/2006-03-01/openapi.yaml',
+    openapi_doc_content: '',
+    endpoint: 'https://s3.amazonaws.com',
+    availability: '99.99',
+    response_time: '45',
   },
   {
-    name: "Stripe API",
-    openapi_doc_url: "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
-    openapi_doc_content: "",
-    endpoint: "https://api.stripe.com/v1",
-    availability: "99.95",
-    response_time: "120",
+    name: 'Stripe API',
+    openapi_doc_url: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json',
+    openapi_doc_content: '',
+    endpoint: 'https://api.stripe.com/v1',
+    availability: '99.95',
+    response_time: '120',
   },
   {
-    name: "Twilio API",
-    openapi_doc_url: "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json",
-    openapi_doc_content: "",
-    endpoint: "https://api.twilio.com",
-    availability: "99.97",
-    response_time: "95",
+    name: 'Twilio API',
+    openapi_doc_url:
+      'https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json',
+    openapi_doc_content: '',
+    endpoint: 'https://api.twilio.com',
+    availability: '99.97',
+    response_time: '95',
   },
   {
-    name: "SendGrid API",
-    openapi_doc_url: "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json",
-    openapi_doc_content: "",
-    endpoint: "https://api.sendgrid.com/v3",
-    availability: "99.98",
-    response_time: "80",
+    name: 'SendGrid API',
+    openapi_doc_url: 'https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json',
+    openapi_doc_content: '',
+    endpoint: 'https://api.sendgrid.com/v3',
+    availability: '99.98',
+    response_time: '80',
   },
   {
-    name: "GitHub API",
-    openapi_doc_url: "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
-    openapi_doc_content: "",
-    endpoint: "https://api.github.com",
-    availability: "99.96",
-    response_time: "110",
+    name: 'GitHub API',
+    openapi_doc_url:
+      'https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json',
+    openapi_doc_content: '',
+    endpoint: 'https://api.github.com',
+    availability: '99.96',
+    response_time: '110',
   },
   {
-    name: "Open-Meteo API",
-    openapi_doc_url: "https://open-meteo.com/docs/openapi.yml",
-    openapi_doc_content: "",
-    endpoint: "https://api.open-meteo.com/v1",
-    availability: "99.95",
-    response_time: "150",
+    name: 'Open-Meteo API',
+    openapi_doc_url: 'https://open-meteo.com/docs/openapi.yml',
+    openapi_doc_content: '',
+    endpoint: 'https://api.open-meteo.com/v1',
+    availability: '99.95',
+    response_time: '150',
   },
-];
+]
 
 const AddService = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
-    name: "",
-    openapi_doc_url: "",
-    openapi_doc_content: "",
-    endpoint: "",
-    availability: "",
-    response_time: "",
-  });
+    name: '',
+    openapi_doc_url: '',
+    openapi_doc_content: '',
+    endpoint: '',
+    availability: '',
+    response_time: '',
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    e.preventDefault()
+    setIsSubmitting(true)
 
     try {
       // TODO: Replace with actual user authentication
       // For now, using a hardcoded user_id
-      const user_id = "5c963787-d89d-4260-adaf-6541c41cb982";
+      const user_id = '5c963787-d89d-4260-adaf-6541c41cb982'
 
       const config = new Configuration({
         basePath: API_BASE_URL,
-      });
-      const serviceApi = new ServiceApi(config);
+      })
+      const serviceApi = new ServiceApi(config)
 
       const createDto: CreateServiceDto = {
         user_id,
@@ -98,35 +101,31 @@ const AddService = () => {
         openapi_doc_content: formData.openapi_doc_content || undefined,
         availability: formData.availability ? parseFloat(formData.availability) : undefined,
         response_time: formData.response_time ? parseInt(formData.response_time) : undefined,
-      };
+      }
 
-      await serviceApi.serviceControllerCreate(createDto);
+      await serviceApi.serviceControllerCreate(createDto)
 
       toast({
-        title: "Success",
-        description: "Service added successfully",
-      });
+        title: 'Success',
+        description: 'Service added successfully',
+      })
 
-      navigate("/dashboard");
+      navigate('/dashboard')
     } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to add service",
-        variant: "destructive",
-      });
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add service',
+        variant: 'destructive',
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/dashboard")}
-          className="mb-6"
-        >
+        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
@@ -197,7 +196,9 @@ const AddService = () => {
                 <Textarea
                   id="openapi_doc_content"
                   value={formData.openapi_doc_content}
-                  onChange={(e) => setFormData({ ...formData, openapi_doc_content: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, openapi_doc_content: e.target.value })
+                  }
                   placeholder="Paste your OpenAPI specification here..."
                   className="min-h-[120px] font-mono text-sm"
                 />
@@ -244,13 +245,9 @@ const AddService = () => {
 
               <div className="flex gap-3">
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Adding..." : "Add Service"}
+                  {isSubmitting ? 'Adding...' : 'Add Service'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/dashboard")}
-                >
+                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
                   Cancel
                 </Button>
               </div>
@@ -259,7 +256,7 @@ const AddService = () => {
         </Card>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AddService;
+export default AddService

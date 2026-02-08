@@ -1,6 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { Test, TestingModule } from '@nestjs/testing'
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { AppModule } from '@slaops/cloud/app.module'
 import { AppConfig, makeConfig } from '@slaops/config'
 

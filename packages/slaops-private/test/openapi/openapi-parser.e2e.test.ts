@@ -1,41 +1,37 @@
-import { getHttpMethodOperations, loadSpec } from '../../src/openapi/openapi-parser';
-import { TEST_API_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader';
-import { OpenAPIV3_1 } from 'openapi-types';
+import { TEST_API_SPECS, resolveOpenApiSpec } from '../../../../test-resources/loader'
+import { getHttpMethodOperations, loadSpec } from '../../src/openapi/openapi-parser'
 
+test('should ensureOperationIds is populating all operations with an operationId', async () => {
+  // given
+  const specPath = TEST_API_SPECS.ably()
 
+  // when
+  const spec = await loadSpec(specPath)
 
-test("should ensureOperationIds is populating all operations with an operationId", async () => {
+  //then
+  expect(spec).toBeDefined()
+  expect(spec.paths).toBeDefined()
+  Object.values(spec.paths!).forEach((path) => {
+    if (!path) return
+    for (const [method, operation] of getHttpMethodOperations(path)) {
+      if (operation) {
+        expect(operation.operationId).toBeDefined()
+      }
+    }
+  })
+})
 
-    // given 
-    const specPath = TEST_API_SPECS.ably();
+test('should load a spec from a file', async () => {
+  const specPath = TEST_API_SPECS.ably()
+  const spec = await loadSpec(specPath)
+  expect(spec).toBeDefined()
+  expect(spec.info).toBeDefined()
+})
 
-    // when
-    const spec = await loadSpec(specPath);
+test('should load a spec using resolveOpenApiSpec', async () => {
+  const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1')
+  const spec = await loadSpec(specPath)
 
-    //then 
-    expect(spec).toBeDefined();
-    expect(spec.paths).toBeDefined();
-    Object.values(spec.paths!).forEach((path) => {
-        if (!path) return;
-        for (const [method, operation] of getHttpMethodOperations(path)) {
-            if (operation) {
-                expect(operation.operationId).toBeDefined();
-            }
-        }
-    });
-});
-
-test("should load a spec from a file", async () => {
-    const specPath = TEST_API_SPECS.ably();
-    const spec = await loadSpec(specPath);
-    expect(spec).toBeDefined();
-    expect(spec.info).toBeDefined();
-});
-
-test("should load a spec using resolveOpenApiSpec", async () => {
-    const specPath = resolveOpenApiSpec('ably.net', 'control', 'v1');
-    const spec = await loadSpec(specPath);
-
-    expect(spec).toBeDefined();
-    expect(spec.info).toBeDefined();
-});
+  expect(spec).toBeDefined()
+  expect(spec.info).toBeDefined()
+})

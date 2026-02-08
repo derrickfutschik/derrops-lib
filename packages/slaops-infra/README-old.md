@@ -71,6 +71,7 @@ The `ApiStack` includes:
 ### Key Features
 
 **VPC & Networking:**
+
 - **Multi-AZ**: 3 availability zones for high availability
 - **Subnet Tiers**: Public, private, and isolated subnet layers
 - **NAT Gateways**: Configurable 1-3 NAT gateways
@@ -78,6 +79,7 @@ The `ApiStack` includes:
 - **Flow Logs**: Optional network traffic monitoring
 
 **Authentication:**
+
 - **Email Login**: Sign in with email and password
 - **Self Sign-Up**: Users can register themselves
 - **Password Policy**: Min 8 chars with complexity requirements
@@ -86,6 +88,7 @@ The `ApiStack` includes:
 - **Token Validity**: 1-hour access/ID tokens, 30-day refresh tokens
 
 **Database:**
+
 - **Serverless Scaling**: 0.5-2 ACU with automatic scaling
 - **High Availability**: Multi-AZ deployment with reader instance
 - **Backup & Recovery**: 7-day backup retention with automated backups
@@ -93,11 +96,13 @@ The `ApiStack` includes:
 - **Network Isolation**: Database in isolated subnets, no public access
 
 **Security:**
+
 - **Centralized Security Groups**: Reusable security groups for all services
 - **Least Privilege**: Only required traffic permitted between services
 - **Service Isolation**: Separate security boundaries for each service
 
 **API:**
+
 - **REST API**: Regional API Gateway endpoint
 - **CORS**: Configurable origin support
 - **Throttling**: Rate limiting and burst protection
@@ -175,98 +180,98 @@ The stacks export the following CloudFormation outputs that can be referenced by
 
 ### VPC Stack Exports
 
-| Export Name | Description |
-|------------|-------------|
-| `slaops-vpc-id` | VPC ID |
-| `slaops-vpc-cidr-block` | VPC CIDR block |
-| `slaops-vpc-subnet-public-a` | Public subnet A ID |
-| `slaops-vpc-subnet-public-b` | Public subnet B ID |
-| `slaops-vpc-subnet-public-c` | Public subnet C ID |
-| `slaops-vpc-subnet-private-a` | Private subnet A ID |
-| `slaops-vpc-subnet-private-b` | Private subnet B ID |
-| `slaops-vpc-subnet-private-c` | Private subnet C ID |
+| Export Name                    | Description          |
+| ------------------------------ | -------------------- |
+| `slaops-vpc-id`                | VPC ID               |
+| `slaops-vpc-cidr-block`        | VPC CIDR block       |
+| `slaops-vpc-subnet-public-a`   | Public subnet A ID   |
+| `slaops-vpc-subnet-public-b`   | Public subnet B ID   |
+| `slaops-vpc-subnet-public-c`   | Public subnet C ID   |
+| `slaops-vpc-subnet-private-a`  | Private subnet A ID  |
+| `slaops-vpc-subnet-private-b`  | Private subnet B ID  |
+| `slaops-vpc-subnet-private-c`  | Private subnet C ID  |
 | `slaops-vpc-subnet-isolated-a` | Isolated subnet A ID |
 | `slaops-vpc-subnet-isolated-b` | Isolated subnet B ID |
 | `slaops-vpc-subnet-isolated-c` | Isolated subnet C ID |
 
 ### Auth Stack Exports
 
-| Export Name | Description |
-|------------|-------------|
-| `SlaOpsUserPoolId` | Cognito User Pool ID |
-| `SlaOpsUserPoolArn` | Cognito User Pool ARN |
-| `SlaOpsUserPoolClientId` | User Pool Client ID for web apps |
-| `SlaOpsUserPoolProviderName` | User Pool provider name |
-| `SlaOpsUserPoolProviderUrl` | User Pool provider URL |
+| Export Name                  | Description                      |
+| ---------------------------- | -------------------------------- |
+| `SlaOpsUserPoolId`           | Cognito User Pool ID             |
+| `SlaOpsUserPoolArn`          | Cognito User Pool ARN            |
+| `SlaOpsUserPoolClientId`     | User Pool Client ID for web apps |
+| `SlaOpsUserPoolProviderName` | User Pool provider name          |
+| `SlaOpsUserPoolProviderUrl`  | User Pool provider URL           |
 
 ### Database Stack Exports
 
-| Export Name | Description |
-|------------|-------------|
-| `SlaOpsDbClusterEndpoint` | Aurora cluster writer endpoint |
-| `SlaOpsDbClusterReadEndpoint` | Aurora cluster reader endpoint |
-| `SlaOpsDbName` | Database name (slaops) |
-| `SlaOpsDbSecretArn` | ARN of database credentials secret |
-| `SlaOpsDbPort` | Database port (5432) |
-| `SlaOpsBastionHostId` | Bastion host instance ID |
+| Export Name                   | Description                        |
+| ----------------------------- | ---------------------------------- |
+| `SlaOpsDbClusterEndpoint`     | Aurora cluster writer endpoint     |
+| `SlaOpsDbClusterReadEndpoint` | Aurora cluster reader endpoint     |
+| `SlaOpsDbName`                | Database name (slaops)             |
+| `SlaOpsDbSecretArn`           | ARN of database credentials secret |
+| `SlaOpsDbPort`                | Database port (5432)               |
+| `SlaOpsBastionHostId`         | Bastion host instance ID           |
 
 ### Security Group Stack Exports
 
-| Export Name | Description |
-|------------|-------------|
-| `slaops-opensearch-sg` | OpenSearch security group ID |
-| `slaops-rds-sg` | RDS security group ID |
-| `slaops-backend-sg` | Lambda backend security group ID |
+| Export Name            | Description                      |
+| ---------------------- | -------------------------------- |
+| `slaops-opensearch-sg` | OpenSearch security group ID     |
+| `slaops-rds-sg`        | RDS security group ID            |
+| `slaops-backend-sg`    | Lambda backend security group ID |
 
 ### Hosted Zone Stack Exports
 
-| Export Name | Description |
-|------------|-------------|
-| `slaops-hosted-zone-id` | Private hosted zone ID |
+| Export Name               | Description              |
+| ------------------------- | ------------------------ |
+| `slaops-hosted-zone-id`   | Private hosted zone ID   |
 | `slaops-hosted-zone-name` | Private hosted zone name |
 
 ### API Stack Exports
 
-| Export Name | Description |
-|------------|-------------|
-| `SlaOpsApiUrl` | API Gateway base URL |
-| `SlaOpsApiId` | API Gateway REST API ID |
-| `SlaOpsApiArn` | API Gateway ARN |
+| Export Name         | Description                    |
+| ------------------- | ------------------------------ |
+| `SlaOpsApiUrl`      | API Gateway base URL           |
+| `SlaOpsApiId`       | API Gateway REST API ID        |
+| `SlaOpsApiArn`      | API Gateway ARN                |
 | `SlaOpsApiEndpoint` | API endpoint with stage (prod) |
 
 ### Referencing Outputs in Other Stacks
 
 ```typescript
-import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as cdk from 'aws-cdk-lib'
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
 // Import VPC resources
-const vpcId = cdk.Fn.importValue('slaops-vpc-id');
-const vpcCidrBlock = cdk.Fn.importValue('slaops-vpc-cidr-block');
+const vpcId = cdk.Fn.importValue('slaops-vpc-id')
+const vpcCidrBlock = cdk.Fn.importValue('slaops-vpc-cidr-block')
 
 // Create minimal VPC reference (only VPC ID needed for security groups)
 const vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
   vpcId,
   availabilityZones: cdk.Fn.getAzs(), // Automatically uses first 3 AZs
-});
+})
 
 // Import specific subnets if needed
 const publicSubnetIds = [
   cdk.Fn.importValue('slaops-vpc-subnet-public-a'),
   cdk.Fn.importValue('slaops-vpc-subnet-public-b'),
   cdk.Fn.importValue('slaops-vpc-subnet-public-c'),
-];
+]
 
 // Import auth resources
-const userPoolId = cdk.Fn.importValue('SlaOpsUserPoolId');
-const userPoolClientId = cdk.Fn.importValue('SlaOpsUserPoolClientId');
+const userPoolId = cdk.Fn.importValue('SlaOpsUserPoolId')
+const userPoolClientId = cdk.Fn.importValue('SlaOpsUserPoolClientId')
 
 // Import database resources
-const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint');
-const secretArn = cdk.Fn.importValue('SlaOpsDbSecretArn');
+const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint')
+const secretArn = cdk.Fn.importValue('SlaOpsDbSecretArn')
 
 // Import security groups
-const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
+const backendSgId = cdk.Fn.importValue('slaops-backend-sg')
 ```
 
 ## Accessing the Database
@@ -274,6 +279,7 @@ const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
 ### Via Bastion Host
 
 1. Get the bastion host ID:
+
    ```bash
    aws cloudformation describe-stacks \
      --stack-name slaops-database-infrastructure \
@@ -282,11 +288,13 @@ const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
    ```
 
 2. Connect via Systems Manager Session Manager:
+
    ```bash
    aws ssm start-session --target <bastion-instance-id>
    ```
 
 3. Set up SSH tunnel:
+
    ```bash
    aws ssm start-session \
      --target <bastion-instance-id> \
@@ -295,6 +303,7 @@ const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
    ```
 
 4. Connect to database:
+
    ```bash
    # Get credentials from Secrets Manager
    aws secretsmanager get-secret-value \
@@ -316,6 +325,7 @@ const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
 ### Customization
 
 **VPC Stack** (`lib/stack/vpc.ts`):
+
 - Number of NAT Gateways (1-3)
 - VPC CIDR block
 - Subnet CIDR masks
@@ -323,26 +333,31 @@ const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
 - Enable/disable flow logs
 
 **Database Stack** (`lib/stack/database.ts`):
+
 - Aurora capacity (min/max ACU)
 - Backup retention period
 - PostgreSQL version
 - Bastion instance type
 
 **Auth Stack** (`lib/stack/userpool.ts`):
+
 - Password policy
 - MFA requirements
 - Token validity periods
 - OAuth flows
 
 **Security Group Stack** (`lib/stack/security-group.ts`):
+
 - Security group rules
 - Port configurations
 - CIDR ranges
 
 **Hosted Zone Stack** (`lib/stack/hosted-zone.ts`):
+
 - Zone name (defaults to `${env}.internal.slaops.com`)
 
 **API Stack** (`lib/stack/apigateway.ts`):
+
 - Rate limits
 - CORS origins
 - Logging levels
@@ -425,29 +440,36 @@ const backendSgId = cdk.Fn.importValue('slaops-backend-sg');
 ## Cost Considerations
 
 **VPC Stack:**
+
 - **NAT Gateway**: ~$0.045/hour (~$33/month per gateway) + data transfer ($0.045/GB)
 - **VPC Endpoints**: Interface endpoints ~$0.01/hour (~$7.20/month each)
 - **VPC Flow Logs**: CloudWatch Logs ingestion costs (if enabled)
 
 **Auth Stack:**
+
 - **Cognito**: Free tier covers 50,000 MAU, then $0.0055/MAU
 - **Advanced Security**: $0.05/MAU
 
 **Database Stack:**
+
 - **Aurora Serverless v2**: ~$0.12/ACU-hour (scales 0.5-2 ACU)
 - **Bastion Host**: ~$0.0116/hour (t3.micro)
 - **Backups**: First 100GB free, then $0.021/GB-month
 
 **Security Group Stack:**
+
 - **No cost**: Security groups are free
 
 **Hosted Zone Stack:**
+
 - **Private Hosted Zone**: $0.50/month
 
 **API Stack:**
+
 - **API Gateway**: $3.50 per million requests + data transfer
 
 **Estimated monthly cost**: $100-250 depending on:
+
 - Number of NAT Gateways (1-3)
 - VPC endpoints enabled
 - Database utilization
@@ -598,6 +620,7 @@ pnpm --filter @slaops/infra run cdk deploy SlaOpsApiStack \
 ## Integration with Amplify Backend
 
 The infrastructure stacks export resources via CloudFormation that are imported by:
+
 1. **Amplify Backend** (`packages/slaops-backend`) - imports VPC, Auth, Database, Security Groups
 2. **API Gateway Stack** - imports Lambda ARN from Amplify
 
@@ -613,6 +636,7 @@ This separation provides:
 ### Optimization: Minimal VPC Imports
 
 The stacks are optimized to import only what they need:
+
 - **Security groups**: Only VPC ID
 - **Hosted zones**: Only VPC ID
 - **Database**: VPC ID + specific subnet IDs (no full VPC reconstruction)
@@ -629,19 +653,19 @@ This reduces CloudFormation complexity and improves deployment speed.
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `build` | Type-check TypeScript |
-| `dev` | Type-check in watch mode |
-| `typecheck` | Run TypeScript type checking |
-| `cdk` | Run CDK CLI commands |
-| `synth` | Synthesize CloudFormation template |
-| `diff` | Compare deployed stack with local changes |
-| `deploy` | Deploy stack to AWS |
-| `deploy:all` | Deploy all stacks |
-| `destroy` | Destroy stack (with snapshot) |
-| `bootstrap` | Bootstrap CDK in AWS account |
-| `clean` | Remove build artifacts |
+| Script       | Description                               |
+| ------------ | ----------------------------------------- |
+| `build`      | Type-check TypeScript                     |
+| `dev`        | Type-check in watch mode                  |
+| `typecheck`  | Run TypeScript type checking              |
+| `cdk`        | Run CDK CLI commands                      |
+| `synth`      | Synthesize CloudFormation template        |
+| `diff`       | Compare deployed stack with local changes |
+| `deploy`     | Deploy stack to AWS                       |
+| `deploy:all` | Deploy all stacks                         |
+| `destroy`    | Destroy stack (with snapshot)             |
+| `bootstrap`  | Bootstrap CDK in AWS account              |
+| `clean`      | Remove build artifacts                    |
 
 ## Resources
 

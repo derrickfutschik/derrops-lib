@@ -1,8 +1,8 @@
-import { Duration, RemovalPolicy, Stack, StackProps, CfnOutput, Fn } from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as rds from 'aws-cdk-lib/aws-rds';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import { Construct } from 'constructs';
+import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import * as rds from 'aws-cdk-lib/aws-rds'
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
+import { Construct } from 'constructs'
 
 /**
  * Infrastructure stack for SLAOps database resources
@@ -19,53 +19,53 @@ import { Construct } from 'constructs';
  * referenced by other stacks (like the Amplify backend).
  */
 export class AppDatabaseStack extends Stack {
-  public readonly vpc: ec2.IVpc;
-  public readonly cluster: rds.DatabaseCluster;
-  public readonly databaseCredentials: secretsmanager.Secret;
-  public readonly bastionHost: ec2.BastionHostLinux;
-  public readonly dbSecurityGroup: ec2.ISecurityGroup;
+  public readonly vpc: ec2.IVpc
+  public readonly cluster: rds.DatabaseCluster
+  public readonly databaseCredentials: secretsmanager.Secret
+  public readonly bastionHost: ec2.BastionHostLinux
+  public readonly dbSecurityGroup: ec2.ISecurityGroup
 
   constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+    super(scope, id, props)
 
     // Import VPC attributes from the VPC stack using CloudFormation exports
-    const vpcId = Fn.importValue('slaops-vpc-id');
+    const vpcId = Fn.importValue('slaops-vpc-id')
 
     // Import only the subnet IDs we need
     const publicSubnetIds = [
       Fn.importValue('slaops-vpc-subnet-public-a'),
       Fn.importValue('slaops-vpc-subnet-public-b'),
       Fn.importValue('slaops-vpc-subnet-public-c'),
-    ];
+    ]
 
     const isolatedSubnetIds = [
       Fn.importValue('slaops-vpc-subnet-isolated-a'),
       Fn.importValue('slaops-vpc-subnet-isolated-b'),
       Fn.importValue('slaops-vpc-subnet-isolated-c'),
-    ];
+    ]
 
     // Create minimal VPC reference - only VPC ID is needed for security groups
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
       vpcId,
       availabilityZones: Fn.getAzs(),
-    });
+    })
 
     // Create subnet references for direct use (avoids needing full VPC reconstruction)
     const publicSubnets = publicSubnetIds.map((subnetId, index) =>
-      ec2.Subnet.fromSubnetId(this, `PublicSubnet${index}`, subnetId)
-    );
+      ec2.Subnet.fromSubnetId(this, `PublicSubnet${index}`, subnetId),
+    )
 
     const isolatedSubnets = isolatedSubnetIds.map((subnetId, index) =>
-      ec2.Subnet.fromSubnetId(this, `IsolatedSubnet${index}`, subnetId)
-    );
+      ec2.Subnet.fromSubnetId(this, `IsolatedSubnet${index}`, subnetId),
+    )
 
     // Import security group from the SecurityGroup stack
-    const dbSecurityGroupId = Fn.importValue('slaops-rds-sg-id');
+    const dbSecurityGroupId = Fn.importValue('slaops-rds-sg-id')
     this.dbSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
       this,
       'ImportedDbSecurityGroup',
       dbSecurityGroupId,
-    );
+    )
 
     // Create database credentials secret
     this.databaseCredentials = new secretsmanager.Secret(this, 'SlaOpsDbCredentials', {
@@ -80,7 +80,7 @@ export class AppDatabaseStack extends Stack {
         includeSpace: false,
         passwordLength: 32,
       },
-    });
+    })
 
     // Create Aurora Serverless v2 PostgreSQL cluster
     this.cluster = new rds.DatabaseCluster(this, 'SlaOpsAuroraCluster', {
@@ -111,14 +111,14 @@ export class AppDatabaseStack extends Stack {
       },
       removalPolicy: RemovalPolicy.SNAPSHOT,
       storageEncrypted: true,
-    });
+    })
 
     // Create a bastion host for database access (optional, for development)
     const bastionSecurityGroup = new ec2.SecurityGroup(this, 'SlaOpsBastionSecurityGroup', {
       vpc: this.vpc,
       description: 'Security group for bastion host',
       allowAllOutbound: true,
-    });
+    })
 
     this.bastionHost = new ec2.BastionHostLinux(this, 'SlaOpsBastionHost', {
       vpc: this.vpc,
@@ -127,14 +127,14 @@ export class AppDatabaseStack extends Stack {
         subnets: publicSubnets,
       },
       instanceName: 'slaops-bastion',
-    });
+    })
 
     // Allow bastion to connect to database
     this.cluster.connections.allowFrom(
       this.bastionHost,
       ec2.Port.tcp(5432),
       'Allow bastion host to connect to database',
-    );
+    )
 
     // Export important values via CloudFormation outputs
     // These can be referenced by other stacks using Fn.importValue()
@@ -142,36 +142,36 @@ export class AppDatabaseStack extends Stack {
       value: this.cluster.clusterEndpoint.hostname,
       description: 'Aurora cluster writer endpoint',
       exportName: 'SlaOpsDbClusterEndpoint',
-    });
+    })
 
     new CfnOutput(this, 'DatabaseClusterReadEndpoint', {
       value: this.cluster.clusterReadEndpoint.hostname,
       description: 'Aurora cluster reader endpoint',
       exportName: 'SlaOpsDbClusterReadEndpoint',
-    });
+    })
 
     new CfnOutput(this, 'DatabaseName', {
       value: 'slaops',
       description: 'Database name',
       exportName: 'SlaOpsDbName',
-    });
+    })
 
     new CfnOutput(this, 'DatabaseSecretArn', {
       value: this.databaseCredentials.secretArn,
       description: 'ARN of the secret containing database credentials',
       exportName: 'SlaOpsDbSecretArn',
-    });
+    })
 
     new CfnOutput(this, 'DatabasePort', {
       value: '5432',
       description: 'Database port',
       exportName: 'SlaOpsDbPort',
-    });
+    })
 
     new CfnOutput(this, 'BastionHostId', {
       value: this.bastionHost.instanceId,
       description: 'Bastion host instance ID for SSH tunneling',
       exportName: 'SlaOpsBastionHostId',
-    });
+    })
   }
 }

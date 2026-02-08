@@ -1,15 +1,11 @@
-import { z } from "zod";
-
+import { z } from 'zod'
 
 // TODO - there should be no default variables and rather manage this through environment variables somehwo
 
-
-
 export const ConfigSchema = z.object({
-
   NODE_VERSION: z.number().optional(),
 
-  NODE_ENV: z.enum(["local", "test", "dev", "staging", "prod"]),
+  NODE_ENV: z.enum(['local', 'test', 'dev', 'staging', 'prod']),
   PORT: z.coerce.number().optional(),
 
   DB_NAME: z.string().min(1).optional(),
@@ -23,8 +19,8 @@ export const ConfigSchema = z.object({
   DB_PASSWORD: z.string().min(1),
 
   APP_NAME: z.preprocess(
-    (v) => (v === "" || v === undefined ? undefined : v),
-    z.string().min(1).default("SLAOps"),
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.string().min(1).default('SLAOps'),
   ),
   APP_VERSION: z.string().min(1).optional(), // should come from package.json
 
@@ -42,11 +38,9 @@ export const ConfigSchema = z.object({
   AWS_S3_ENDPOINT: z.string().min(1).optional(),
 
   APP_DEBUG: z.boolean().optional(),
+})
 
+export type AppConfigEnv = z.infer<typeof ConfigSchema>
 
-});
-
-export type AppConfigEnv = z.infer<typeof ConfigSchema>;
-
-export type ConfigInput = z.input<typeof ConfigSchema>;
-export type Config = z.output<typeof ConfigSchema>;
+export type ConfigInput = z.input<typeof ConfigSchema>
+export type Config = z.output<typeof ConfigSchema>

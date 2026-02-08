@@ -1,14 +1,13 @@
 # Test Dashboard
 
+| :clock10: Start time   | :hourglass: Duration |
+| ---------------------- | -------------------: |
+| 11/30/2025, 4:56:10 PM |              3.737 s |
 
-| :clock10: Start time | :hourglass: Duration |
-| --- | ---: |
-|11/30/2025, 4:56:10 PM|3.737 s|
-
-| | :white_check_mark: Passed | :x: Failed | :construction: Todo | :white_circle: Total |
-| --- | ---: | ---: | ---:| ---: |
-|Test Suites|3|0|-|3|
-|Tests|5|0|0|5|
+|             | :white_check_mark: Passed | :x: Failed | :construction: Todo | :white_circle: Total |
+| ----------- | ------------------------: | ---------: | ------------------: | -------------------: |
+| Test Suites |                         3 |          0 |                   - |                    3 |
+| Tests       |                         5 |          0 |                   0 |                    5 |
 
 ## test/aws/dynamdb.test.ts [[link](https://github.com/derrickfutschik/slaops-platform/blob/15935cea9dc967a9e5d23eb2f0cba22b9ad82559/packages/slaops-test/test/aws/dynamdb.test.ts)]
 
@@ -22,7 +21,7 @@
 1 passed, 0 failed, 0 todo, done in 2.22 s
 
 - :white_check_mark: AWS S3
-  - :white_check_mark: AWS S3 List 
+  - :white_check_mark: AWS S3 List
 
 ## test/integration.test.ts [[link](https://github.com/derrickfutschik/slaops-platform/blob/15935cea9dc967a9e5d23eb2f0cba22b9ad82559/packages/slaops-test/test/integration.test.ts)]
 
@@ -32,4 +31,3 @@
   - :white_check_mark: should import from all packages without errors
   - :white_check_mark: should be able to create an axios instance with SLAOps interceptor
   - :white_check_mark: should verify package version
-

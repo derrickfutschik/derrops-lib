@@ -12,11 +12,7 @@
         ".docusaurus/**",
         "../slaops-portal/src/client/slaops-cloud/**"
       ],
-      "env": [
-        "NODE_ENV",
-        "VITE_SUPABASE_URL",
-        "VITE_SUPABASE_ANON_KEY"
-      ]
+      "env": ["NODE_ENV", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"]
     },
     "dev": {
       "cache": false,

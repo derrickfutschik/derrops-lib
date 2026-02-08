@@ -8,12 +8,12 @@
  * application to use the OpenApiIndexerService.
  */
 
-import { NestFactory } from '@nestjs/core'
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import type { S3Event, Context } from 'aws-lambda'
-import { OpenApiIndexerModule, OpenApiIndexerService } from './openapi-indexer'
+import { NestFactory } from '@nestjs/core'
 import { IndexResult } from '@slaops/cloud/openapi-search/types/openapi-index.types'
+import type { Context, S3Event } from 'aws-lambda'
+import { OpenApiIndexerModule, OpenApiIndexerService } from './openapi-indexer'
 
 /**
  * Minimal module for the indexer Lambda

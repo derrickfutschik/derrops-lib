@@ -251,13 +251,13 @@ pnpm run dev        # Watch mode
 
 ```typescript
 // ✅ Correct - use the config module
-import { config } from '@slaops/config';
+import { config } from '@slaops/config'
 
-const port = config["app.port"];
-const dbHost = config["db.host"];
+const port = config['app.port']
+const dbHost = config['db.host']
 
 // ❌ Wrong - do not access process.env directly
-const port = process.env.PORT;
+const port = process.env.PORT
 ```
 
 Key exports:
@@ -273,10 +273,10 @@ Key exports:
 **Configuration access** (dot-notation keys):
 
 ```typescript
-config["app.port"]              // Application settings
-config["db.host"]               // Database settings
-config["opensearch.endpoint"]   // OpenSearch settings
-config["opensearch.index"](entity)  // Function to generate index names
+config['app.port'] // Application settings
+config['db.host'] // Database settings
+config['opensearch.endpoint'] // OpenSearch settings
+config['opensearch.index'](entity) // Function to generate index names
 ```
 
 See `packages/slaops-config/src/schema.ts` for all available configuration keys.
@@ -284,19 +284,19 @@ See `packages/slaops-config/src/schema.ts` for all available configuration keys.
 **Testing with custom config**:
 
 ```typescript
-import { loadConfig, resetConfigForTests } from '@slaops/config';
+import { loadConfig, resetConfigForTests } from '@slaops/config'
 
 // In test setup - use custom env
 const testConfig = loadConfig({
   NODE_ENV: 'test',
   DB_NAME: 'test_db',
   // ... other required vars
-});
+})
 
 // In test teardown
 afterEach(() => {
-  resetConfigForTests();
-});
+  resetConfigForTests()
+})
 ```
 
 ```bash
@@ -421,12 +421,14 @@ Key features:
 **Current Resources**:
 
 **AuthStack** - Authentication infrastructure:
+
 - **Cognito User Pool**: Email-based authentication with password policy
 - **User Pool Client**: OAuth client for web applications
 - **MFA Support**: Optional TOTP-based MFA
 - **Advanced Security**: AWS threat detection enabled
 
 **DatabaseStack** - Database infrastructure:
+
 - **VPC**: Multi-AZ with NAT Gateway, 3-tier subnet architecture
 - **Aurora Serverless v2**: PostgreSQL cluster with writer and reader instances
 - **Secrets Manager**: Database credentials
@@ -434,6 +436,7 @@ Key features:
 - **Bastion Host**: EC2 instance for SSH tunneling to database
 
 **ApiStack** - API Gateway infrastructure:
+
 - **API Gateway REST API**: Regional endpoint with CORS
 - **Lambda Proxy Integration**: Routes to Amplify-deployed Lambda
 - **Rate Limiting**: 50 req/sec with 100 burst
@@ -442,6 +445,7 @@ Key features:
 **Exported CloudFormation Outputs**:
 
 Auth Stack:
+
 - `SlaOpsUserPoolId` - Cognito User Pool ID
 - `SlaOpsUserPoolArn` - User Pool ARN
 - `SlaOpsUserPoolClientId` - Client ID for web apps
@@ -449,6 +453,7 @@ Auth Stack:
 - `SlaOpsUserPoolProviderUrl` - Provider URL
 
 Database Stack:
+
 - `SlaOpsDbClusterEndpoint` - Writer endpoint
 - `SlaOpsDbClusterReadEndpoint` - Reader endpoint
 - `SlaOpsDbName` - Database name (slaops)
@@ -458,6 +463,7 @@ Database Stack:
 - `SlaOpsVpcId` - VPC ID
 
 API Stack:
+
 - `SlaOpsApiUrl` - API Gateway base URL
 - `SlaOpsApiId` - API Gateway ID
 - `SlaOpsApiArn` - API Gateway ARN
@@ -1056,14 +1062,15 @@ pnpm --filter @slaops/private update <dependency>
 
 ```typescript
 // ✅ Correct
-import { config } from '@slaops/config';
-const port = config["app.port"];
+import { config } from '@slaops/config'
+const port = config['app.port']
 
 // ❌ Wrong - do not do this
-const port = process.env.PORT;
+const port = process.env.PORT
 ```
 
 Benefits of using `@slaops/config`:
+
 - Type-safe configuration with Zod validation
 - Runtime validation on application startup
 - Centralized configuration management
@@ -1227,7 +1234,5 @@ This file provides guidance for working with the SLAOps monorepo. For app-specif
 - [apps/slaops-portal/CLAUDE.md](apps/slaops-portal/CLAUDE.md) - Web portal
 
 For package-specific details, see the README.md in each package directory.
-
-
 
 ## Conventions can be found at [CONVENTIONS.md](CONVENTIONS.md)

@@ -1,8 +1,8 @@
-import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
-import { AppModule } from './app.module'
+import { NestFactory } from '@nestjs/core'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { config } from '@slaops/config'
+import { AppModule } from './app.module'
 import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.command'
 
 async function bootstrap() {

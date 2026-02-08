@@ -5,48 +5,45 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, {type ReactNode} from 'react';
-import clsx from 'clsx';
-import Translate from '@docusaurus/Translate';
-import Link from '@docusaurus/Link';
-import {HtmlClassNameProvider, ThemeClassNames} from '@docusaurus/theme-common';
-import {
-  BlogPostProvider,
-  useBlogPost,
-} from '@docusaurus/plugin-content-blog/client';
-import BlogPostPageMetadata from '@theme/BlogPostPage/Metadata';
-import BlogLayout from '@theme/BlogLayout';
-import ChangelogItem from '@theme/ChangelogItem';
-import ChangelogPaginator from '@theme/ChangelogPaginator';
-import TOC from '@theme/TOC';
-import type {Props} from '@theme/BlogPostPage';
-import type {BlogSidebar} from '@docusaurus/plugin-content-blog';
+import Link from '@docusaurus/Link'
+import type { BlogSidebar } from '@docusaurus/plugin-content-blog'
+import { BlogPostProvider, useBlogPost } from '@docusaurus/plugin-content-blog/client'
+import { HtmlClassNameProvider, ThemeClassNames } from '@docusaurus/theme-common'
+import Translate from '@docusaurus/Translate'
+import BlogLayout from '@theme/BlogLayout'
+import type { Props } from '@theme/BlogPostPage'
+import BlogPostPageMetadata from '@theme/BlogPostPage/Metadata'
+import ChangelogItem from '@theme/ChangelogItem'
+import ChangelogPaginator from '@theme/ChangelogPaginator'
+import TOC from '@theme/TOC'
+import clsx from 'clsx'
+import { type ReactNode } from 'react'
 
 function BackToIndexLink() {
-  const {metadata} = useBlogPost();
+  const { metadata } = useBlogPost()
   // @ts-expect-error: we injected this
-  const {listPageLink} = metadata;
+  const { listPageLink } = metadata
   return (
     <Link to={listPageLink}>
       <Translate id="changelog.backLink">← Back to index page</Translate>
     </Link>
-  );
+  )
 }
 
 function ChangelogPageContent({
   sidebar,
   children,
 }: {
-  sidebar: BlogSidebar;
-  children: ReactNode;
+  sidebar: BlogSidebar
+  children: ReactNode
 }): ReactNode {
-  const {metadata, toc} = useBlogPost();
-  const {nextItem, prevItem, frontMatter} = metadata;
+  const { metadata, toc } = useBlogPost()
+  const { nextItem, prevItem, frontMatter } = metadata
   const {
     hide_table_of_contents: hideTableOfContents,
     toc_min_heading_level: tocMinHeadingLevel,
     toc_max_heading_level: tocMaxHeadingLevel,
-  } = frontMatter;
+  } = frontMatter
   return (
     <BlogLayout
       sidebar={sidebar}
@@ -58,32 +55,29 @@ function ChangelogPageContent({
             maxHeadingLevel={tocMaxHeadingLevel}
           />
         ) : undefined
-      }>
+      }
+    >
       <BackToIndexLink />
 
       <ChangelogItem>{children}</ChangelogItem>
 
-      {(nextItem || prevItem) && (
-        <ChangelogPaginator nextItem={nextItem} prevItem={prevItem} />
-      )}
+      {(nextItem || prevItem) && <ChangelogPaginator nextItem={nextItem} prevItem={prevItem} />}
     </BlogLayout>
-  );
+  )
 }
 
 export default function ChangelogPage(props: Props): ReactNode {
-  const ChangelogContent = props.content;
+  const ChangelogContent = props.content
   return (
     <BlogPostProvider content={props.content} isBlogPostPage>
       <HtmlClassNameProvider
-        className={clsx(
-          ThemeClassNames.wrapper.blogPages,
-          ThemeClassNames.page.blogPostPage,
-        )}>
+        className={clsx(ThemeClassNames.wrapper.blogPages, ThemeClassNames.page.blogPostPage)}
+      >
         <BlogPostPageMetadata />
         <ChangelogPageContent sidebar={props.sidebar}>
           <ChangelogContent />
         </ChangelogPageContent>
       </HtmlClassNameProvider>
     </BlogPostProvider>
-  );
+  )
 }

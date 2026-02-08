@@ -138,11 +138,11 @@ Example migration:
 // Before (Supabase)
 const { data, error } = await supabase
   .from('services')
-  .select('id, name, endpoint, openapi_doc_url, openapi_doc_content');
+  .select('id, name, endpoint, openapi_doc_url, openapi_doc_content')
 
 // After (NestJS API)
 const response = await fetch(
   'http://localhost:3001/service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content',
-);
-const data = await response.json();
+)
+const data = await response.json()
 ```

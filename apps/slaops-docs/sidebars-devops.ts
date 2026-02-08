@@ -1,4 +1,4 @@
-import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs'
 
 const sidebars: SidebarsConfig = {
   devops: [
@@ -6,10 +6,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Sprints',
-      items: [
-        'sprints/index',
-        'sprints/2026-01-19',
-      ],
+      items: ['sprints/index', 'sprints/2026-01-19'],
     },
     'user-stories/index',
     'user-stories/personas',
@@ -20,6 +17,6 @@ const sidebars: SidebarsConfig = {
     'user-stories/saas-management',
     'user-stories/CLAUDE',
   ],
-};
+}
 
-export default sidebars;
+export default sidebars

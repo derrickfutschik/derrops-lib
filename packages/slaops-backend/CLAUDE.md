@@ -3,7 +3,6 @@
 The purpose of this package is to define the Lambda functions for the backend (using `defineFunction`) which are deployed using the AWS Amplify framework. It should not contain any business logic, only the infrastructure code eg:
 
 ```ts
-
 export const api = defineFunction({
   name: 'slaops-api',
   entry: '../../../../apps/slaops-cloud/src/lambda.ts',
@@ -20,7 +19,5 @@ export const api = defineFunction({
     DB_SSL: 'true',
     DB_LOGGING: 'false',
   },
-});
-
+})
 ```
-

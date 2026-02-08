@@ -3,17 +3,16 @@
 This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 This is the documentation site for the SLAOps platform. It is to be used as a resource when implementing new features.
 It contains:
- - User Stories
- - Technical Specifications
- - Functional Behavior
- - Architecture
- - Implementation
- - Testing
- - Deployment
- - Monitoring
- - Logging
 
-
+- User Stories
+- Technical Specifications
+- Functional Behavior
+- Architecture
+- Implementation
+- Testing
+- Deployment
+- Monitoring
+- Logging
 
 # Running the website
 

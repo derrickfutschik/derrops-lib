@@ -1,99 +1,103 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Activity, Clock, TrendingUp, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ServiceApi, Configuration } from "@/client/slaops-cloud";
-import { Service } from "@/client/slaops-cloud/models/service";
-import { useToast } from "@/hooks/use-toast";
-import SwaggerUI from "swagger-ui-react";
-import "swagger-ui-react/swagger-ui.css";
-import yaml from "js-yaml";
-import { API_BASE_URL } from "@/config";
+import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { Service } from '@/client/slaops-cloud/models/service'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { API_BASE_URL } from '@/config'
+import { useToast } from '@/hooks/use-toast'
+import yaml from 'js-yaml'
+import { Activity, AlertCircle, ArrowLeft, Clock, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import SwaggerUI from 'swagger-ui-react'
+import 'swagger-ui-react/swagger-ui.css'
 
 const ServiceDetails = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [service, setService] = useState<Service | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [openapiSpec, setOpenapiSpec] = useState<Record<string, unknown> | null>(null);
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const [service, setService] = useState<Service | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [openapiSpec, setOpenapiSpec] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {
-    fetchService();
-  }, [id]);
+    fetchService()
+  }, [id])
 
   const fetchService = async () => {
     try {
       if (!id) {
-        throw new Error("Service ID is required");
+        throw new Error('Service ID is required')
       }
 
       const config = new Configuration({
         basePath: API_BASE_URL,
-      });
-      const serviceApi = new ServiceApi(config);
+      })
+      const serviceApi = new ServiceApi(config)
 
-      const response = await serviceApi.serviceControllerFindOne(id);
-      const data = response.data;
+      const response = await serviceApi.serviceControllerFindOne(id)
+      const data = response.data
 
-      setService(data);
+      setService(data)
 
       // Parse OpenAPI spec
       if (data.openapi_doc_content) {
         try {
-          setOpenapiSpec(JSON.parse(data.openapi_doc_content));
+          setOpenapiSpec(JSON.parse(data.openapi_doc_content))
         } catch (e) {
-          console.error("Failed to parse OpenAPI content:", e);
+          console.error('Failed to parse OpenAPI content:', e)
         }
       } else if (data.openapi_doc_url) {
         // Fetch from URL
         try {
-          const response = await fetch(data.openapi_doc_url);
-          const contentType = response.headers.get("content-type") || "";
-          const text = await response.text();
+          const response = await fetch(data.openapi_doc_url)
+          const contentType = response.headers.get('content-type') || ''
+          const text = await response.text()
 
           // Try to determine if it's YAML or JSON
-          let spec;
-          if (contentType.includes("yaml") || contentType.includes("yml") ||
-            data.openapi_doc_url.endsWith(".yaml") || data.openapi_doc_url.endsWith(".yml") ||
-            text.trim().startsWith("openapi:")) {
+          let spec
+          if (
+            contentType.includes('yaml') ||
+            contentType.includes('yml') ||
+            data.openapi_doc_url.endsWith('.yaml') ||
+            data.openapi_doc_url.endsWith('.yml') ||
+            text.trim().startsWith('openapi:')
+          ) {
             // Parse as YAML
-            spec = yaml.load(text);
+            spec = yaml.load(text)
           } else {
             // Parse as JSON
-            spec = JSON.parse(text);
+            spec = JSON.parse(text)
           }
 
-          setOpenapiSpec(spec);
+          setOpenapiSpec(spec)
         } catch (e) {
-          console.error("Failed to fetch OpenAPI spec from URL:", e);
+          console.error('Failed to fetch OpenAPI spec from URL:', e)
           toast({
-            title: "Error loading API documentation",
-            description: "Failed to load the OpenAPI specification. Please check the URL.",
-            variant: "destructive",
-          });
+            title: 'Error loading API documentation',
+            description: 'Failed to load the OpenAPI specification. Please check the URL.',
+            variant: 'destructive',
+          })
         }
       }
     } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load service",
-        variant: "destructive",
-      });
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load service',
+        variant: 'destructive',
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-muted-foreground">Loading service details...</div>
       </div>
-    );
+    )
   }
 
   if (!service) {
@@ -101,39 +105,33 @@ const ServiceDetails = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Service not found</h2>
-          <Button onClick={() => navigate("/dashboard")}>
-            Back to Dashboard
-          </Button>
+          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
         </div>
       </div>
-    );
+    )
   }
 
   const getAvailabilityStatus = (availability: number | null) => {
-    if (!availability) return { label: "Unknown", variant: "secondary" as const };
-    if (availability >= 99.9) return { label: "Excellent", variant: "default" as const };
-    if (availability >= 99.0) return { label: "Good", variant: "secondary" as const };
-    return { label: "Poor", variant: "destructive" as const };
-  };
+    if (!availability) return { label: 'Unknown', variant: 'secondary' as const }
+    if (availability >= 99.9) return { label: 'Excellent', variant: 'default' as const }
+    if (availability >= 99.0) return { label: 'Good', variant: 'secondary' as const }
+    return { label: 'Poor', variant: 'destructive' as const }
+  }
 
   const getResponseTimeStatus = (responseTime: number | null) => {
-    if (!responseTime) return { label: "Unknown", variant: "secondary" as const };
-    if (responseTime < 200) return { label: "Fast", variant: "default" as const };
-    if (responseTime < 500) return { label: "Normal", variant: "secondary" as const };
-    return { label: "Slow", variant: "destructive" as const };
-  };
+    if (!responseTime) return { label: 'Unknown', variant: 'secondary' as const }
+    if (responseTime < 200) return { label: 'Fast', variant: 'default' as const }
+    if (responseTime < 500) return { label: 'Normal', variant: 'secondary' as const }
+    return { label: 'Slow', variant: 'destructive' as const }
+  }
 
-  const availabilityStatus = getAvailabilityStatus(service.availability);
-  const responseTimeStatus = getResponseTimeStatus(service.response_time);
+  const availabilityStatus = getAvailabilityStatus(service.availability)
+  const responseTimeStatus = getResponseTimeStatus(service.response_time)
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/dashboard")}
-          className="mb-6"
-        >
+        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
@@ -160,11 +158,9 @@ const ServiceDetails = () => {
               <CardContent>
                 <div className="flex items-baseline justify-between">
                   <div className="text-2xl font-bold">
-                    {service.availability ? `${service.availability}%` : "N/A"}
+                    {service.availability ? `${service.availability}%` : 'N/A'}
                   </div>
-                  <Badge variant={availabilityStatus.variant}>
-                    {availabilityStatus.label}
-                  </Badge>
+                  <Badge variant={availabilityStatus.variant}>{availabilityStatus.label}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -179,11 +175,9 @@ const ServiceDetails = () => {
               <CardContent>
                 <div className="flex items-baseline justify-between">
                   <div className="text-2xl font-bold">
-                    {service.response_time ? `${service.response_time}ms` : "N/A"}
+                    {service.response_time ? `${service.response_time}ms` : 'N/A'}
                   </div>
-                  <Badge variant={responseTimeStatus.variant}>
-                    {responseTimeStatus.label}
-                  </Badge>
+                  <Badge variant={responseTimeStatus.variant}>{responseTimeStatus.label}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -285,7 +279,9 @@ const ServiceDetails = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-sm">No activity logs yet. Logs will appear here once SDK integration is complete.</p>
+                  <p className="text-muted-foreground text-sm">
+                    No activity logs yet. Logs will appear here once SDK integration is complete.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -426,7 +422,7 @@ const ServiceDetails = () => {
         }
       `}</style>
     </div>
-  );
-};
+  )
+}
 
-export default ServiceDetails;
+export default ServiceDetails

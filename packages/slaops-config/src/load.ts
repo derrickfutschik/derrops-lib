@@ -1,4 +1,4 @@
-import { ConfigSchema, type AppConfigEnv } from "./schema";
+import { ConfigSchema, type AppConfigEnv } from './schema'
 
 /**
  * Pure function.
@@ -7,23 +7,18 @@ import { ConfigSchema, type AppConfigEnv } from "./schema";
  * - No globals
  * - Deterministic
  */
-export function loadConfig(
-  env: Record<string, unknown>,
-): AppConfigEnv {
-  const parsed = ConfigSchema.safeParse(env);
+export function loadConfig(env: Record<string, unknown>): AppConfigEnv {
+  const parsed = ConfigSchema.safeParse(env)
 
   if (!parsed.success) {
     const issues = parsed.error.issues
-      .map(issue => `${issue.path.join(".")}: ${issue.message}`)
-      .join("\n");
+      .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+      .join('\n')
 
-    throw new Error(
-      `Invalid environment variables:\n${issues}`,
-    );
+    throw new Error(`Invalid environment variables:\n${issues}`)
   }
 
-  return parsed.data;
+  return parsed.data
 }
-
 
 // export const load = (env: NodeJS.ProcessEnv = process.env) => makeConfig(loadEnv(env))

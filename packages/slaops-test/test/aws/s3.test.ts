@@ -1,42 +1,36 @@
-
-
-import { describe, it } from '@jest/globals';
-import { loadSpecSync } from '../../../slaops-private/src/openapi/openapi-parser';
-import { TEST_API_SPECS } from '../../../../test-resources/loader';
-import { zipOperations } from '../../../slaops-private/src/openapi/openapi-spec-zipper';
+import { describe, it } from '@jest/globals'
+import { TEST_API_SPECS } from '../../../../test-resources/loader'
+import { loadSpecSync } from '../../../slaops-private/src/openapi/openapi-parser'
+import { zipOperations } from '../../../slaops-private/src/openapi/openapi-spec-zipper'
 
 // import { har } from './s3.fixture';
 
 /**
  * This is a full end to end to end test of an AWS DynamoDB request being made, and an SLA Ops Log being created.
- * 
- * Limitations: 
+ *
+ * Limitations:
  *  1. It will not feature API Matching, as this is not yet built.
  *  2. It will also not save the log to a database just yet.
- * 
+ *
  */
 describe('AWS S3', () => {
+  it('AWS Operations', async () => {
+    const spec = loadSpecSync(TEST_API_SPECS.awsS3())
 
+    const operations = zipOperations(spec)
 
-    it('AWS Operations', async () => {
+    const request = {
+      method: 'GET',
+      path: '/Foo/Bar/#uploadId',
+    }
 
-        const spec = loadSpecSync(TEST_API_SPECS.awsS3())
+    console.log(request.path.split('/'))
 
-        const operations = zipOperations(spec)
+    const possibleMatches = operations.filter(
+      (operation) =>
+        operation.seg === request.path.split('/').filter((segment) => segment !== '').length,
+    )
 
-        const request = {
-            method: "GET",
-            path: "/Foo/Bar/#uploadId"
-        }
-
-        console.log(request.path.split("/"))
-
-        const possibleMatches = operations.filter(operation => operation.seg === request.path.split("/").filter(segment => segment !== "").length);
-
-
-
-        console.log(possibleMatches)
-
-    });
-
-});
+    console.log(possibleMatches)
+  })
+})

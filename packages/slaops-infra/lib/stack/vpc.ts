@@ -1,72 +1,72 @@
-import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { Construct } from 'constructs';
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib'
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import { Construct } from 'constructs'
 
 /**
  * Props for VpcStack with configurable networking features
  */
 export interface VpcStackProps extends StackProps {
-    /**
-     * Number of NAT Gateways to create (1-3)
-     * - 1: Cost-optimized for dev/staging (single point of failure)
-     * - 2: Balance between cost and availability
-     * - 3: High availability (one per AZ, recommended for production)
-     * @default 1
-     */
-    natGatewayCount?: number;
+  /**
+   * Number of NAT Gateways to create (1-3)
+   * - 1: Cost-optimized for dev/staging (single point of failure)
+   * - 2: Balance between cost and availability
+   * - 3: High availability (one per AZ, recommended for production)
+   * @default 1
+   */
+  natGatewayCount?: number
 
-    /**
-     * Enable VPC Flow Logs for network traffic monitoring
-     * @default false
-     */
-    enableFlowLogs?: boolean;
+  /**
+   * Enable VPC Flow Logs for network traffic monitoring
+   * @default false
+   */
+  enableFlowLogs?: boolean
 
-    /**
-     * Enable S3 Gateway Endpoint (FREE - eliminates NAT costs for S3)
-     * @default false
-     */
-    enableS3Endpoint?: boolean;
+  /**
+   * Enable S3 Gateway Endpoint (FREE - eliminates NAT costs for S3)
+   * @default false
+   */
+  enableS3Endpoint?: boolean
 
-    /**
-     * Enable DynamoDB Gateway Endpoint (FREE - eliminates NAT costs for DynamoDB)
-     * @default false
-     */
-    enableDynamoDbEndpoint?: boolean;
+  /**
+   * Enable DynamoDB Gateway Endpoint (FREE - eliminates NAT costs for DynamoDB)
+   * @default false
+   */
+  enableDynamoDbEndpoint?: boolean
 
-    /**
-     * Enable Secrets Manager Interface Endpoint (~$7.20/month)
-     * Recommended for secure database credential access
-     * @default false
-     */
-    enableSecretsManagerEndpoint?: boolean;
+  /**
+   * Enable Secrets Manager Interface Endpoint (~$7.20/month)
+   * Recommended for secure database credential access
+   * @default false
+   */
+  enableSecretsManagerEndpoint?: boolean
 
-    /**
-     * Enable CloudWatch Logs Interface Endpoint (~$7.20/month)
-     * Reduces NAT costs for Lambda and service logging
-     * @default false
-     */
-    enableCloudWatchLogsEndpoint?: boolean;
+  /**
+   * Enable CloudWatch Logs Interface Endpoint (~$7.20/month)
+   * Reduces NAT costs for Lambda and service logging
+   * @default false
+   */
+  enableCloudWatchLogsEndpoint?: boolean
 
-    /**
-     * Enable EC2 Interface Endpoint (~$7.20/month)
-     * Faster Lambda cold starts via improved ENI management
-     * @default false
-     */
-    enableEc2Endpoint?: boolean;
+  /**
+   * Enable EC2 Interface Endpoint (~$7.20/month)
+   * Faster Lambda cold starts via improved ENI management
+   * @default false
+   */
+  enableEc2Endpoint?: boolean
 
-    /**
-     * Enable ECR API Interface Endpoint (~$7.20/month)
-     * For container registry API calls
-     * @default false
-     */
-    enableEcrApiEndpoint?: boolean;
+  /**
+   * Enable ECR API Interface Endpoint (~$7.20/month)
+   * For container registry API calls
+   * @default false
+   */
+  enableEcrApiEndpoint?: boolean
 
-    /**
-     * Enable ECR Docker Interface Endpoint (~$7.20/month)
-     * For Docker image pulls from ECR
-     * @default false
-     */
-    enableEcrDockerEndpoint?: boolean;
+  /**
+   * Enable ECR Docker Interface Endpoint (~$7.20/month)
+   * For Docker image pulls from ECR
+   * @default false
+   */
+  enableEcrDockerEndpoint?: boolean
 }
 
 /**
@@ -85,185 +85,183 @@ export interface VpcStackProps extends StackProps {
  * referenced by other stacks.
  */
 export class VpcStack extends Stack {
-    public readonly vpc: ec2.Vpc;
-    public readonly publicSubnets: ec2.ISubnet[];
-    public readonly privateSubnets: ec2.ISubnet[];
+  public readonly vpc: ec2.Vpc
+  public readonly publicSubnets: ec2.ISubnet[]
+  public readonly privateSubnets: ec2.ISubnet[]
 
-    constructor(scope: Construct, id: string, props?: VpcStackProps) {
-        super(scope, id, props);
+  constructor(scope: Construct, id: string, props?: VpcStackProps) {
+    super(scope, id, props)
 
-        // Get configurable NAT Gateway count (default: 1)
-        const natGateways = props?.natGatewayCount ?? 1;
+    // Get configurable NAT Gateway count (default: 1)
+    const natGateways = props?.natGatewayCount ?? 1
 
-        // Create VPC with 3 availability zones
-        // This will automatically create 3 public, 3 private, and 3 isolated subnets
-        this.vpc = new ec2.Vpc(this, 'SlaOpsVpc', {
-            maxAzs: 3,
-            natGateways,
-            enableDnsHostnames: true, // Required for RDS/OpenSearch/VPC endpoints
-            enableDnsSupport: true,   // Required for private DNS resolution
-            subnetConfiguration: [
-                {
-                    cidrMask: 24,
-                    name: 'Public',
-                    subnetType: ec2.SubnetType.PUBLIC,
-                },
-                {
-                    cidrMask: 24,
-                    name: 'Private',
-                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-                },
-                {
-                    cidrMask: 24,  // Increased from /28 to /24 for future scalability
-                    name: 'Isolated',
-                    subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-                },
-            ],
-        });
+    // Create VPC with 3 availability zones
+    // This will automatically create 3 public, 3 private, and 3 isolated subnets
+    this.vpc = new ec2.Vpc(this, 'SlaOpsVpc', {
+      maxAzs: 3,
+      natGateways,
+      enableDnsHostnames: true, // Required for RDS/OpenSearch/VPC endpoints
+      enableDnsSupport: true, // Required for private DNS resolution
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
+        {
+          cidrMask: 24,
+          name: 'Private',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
+        {
+          cidrMask: 24, // Increased from /28 to /24 for future scalability
+          name: 'Isolated',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        },
+      ],
+    })
 
-        // Get references to the subnets
-        this.publicSubnets = this.vpc.publicSubnets;
-        this.privateSubnets = this.vpc.privateSubnets;
+    // Get references to the subnets
+    this.publicSubnets = this.vpc.publicSubnets
+    this.privateSubnets = this.vpc.privateSubnets
 
-        // Gateway Endpoints (FREE - no additional cost, reduces NAT charges)
-        if (props?.enableS3Endpoint ?? false) {
-            this.vpc.addGatewayEndpoint('S3Endpoint', {
-                service: ec2.GatewayVpcEndpointAwsService.S3,
-            });
-        }
-
-        if (props?.enableDynamoDbEndpoint ?? false) {
-            this.vpc.addGatewayEndpoint('DynamoDBEndpoint', {
-                service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
-            });
-        }
-
-        // Interface Endpoints (require security group)
-        // Only create security group if at least one interface endpoint is enabled
-        const needsEndpointSecurityGroup =
-            (props?.enableSecretsManagerEndpoint ?? false) ||
-            (props?.enableCloudWatchLogsEndpoint ?? false) ||
-            (props?.enableEc2Endpoint ?? false) ||
-            (props?.enableEcrApiEndpoint ?? false) ||
-            (props?.enableEcrDockerEndpoint ?? false);
-
-        if (needsEndpointSecurityGroup) {
-            // Create security group for interface endpoints (reused by all endpoints)
-            const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
-                vpc: this.vpc,
-                description: 'Security group for VPC interface endpoints',
-                allowAllOutbound: true,
-            });
-
-            endpointSecurityGroup.addIngressRule(
-                ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
-                ec2.Port.tcp(443),
-                'Allow HTTPS from VPC',
-            );
-
-            // Secrets Manager endpoint (~$7.20/month)
-            if (props?.enableSecretsManagerEndpoint ?? false) {
-                this.vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
-                    service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-                    privateDnsEnabled: true,
-                    subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-                    securityGroups: [endpointSecurityGroup],
-                });
-            }
-
-            // CloudWatch Logs endpoint (~$7.20/month)
-            if (props?.enableCloudWatchLogsEndpoint ?? false) {
-                this.vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
-                    service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
-                    privateDnsEnabled: true,
-                    subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-                    securityGroups: [endpointSecurityGroup],
-                });
-            }
-
-            // EC2 endpoint (~$7.20/month)
-            if (props?.enableEc2Endpoint ?? false) {
-                this.vpc.addInterfaceEndpoint('EC2Endpoint', {
-                    service: ec2.InterfaceVpcEndpointAwsService.EC2,
-                    privateDnsEnabled: true,
-                    subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-                    securityGroups: [endpointSecurityGroup],
-                });
-            }
-
-            // ECR API endpoint (~$7.20/month)
-            if (props?.enableEcrApiEndpoint ?? false) {
-                this.vpc.addInterfaceEndpoint('EcrApiEndpoint', {
-                    service: ec2.InterfaceVpcEndpointAwsService.ECR,
-                    privateDnsEnabled: true,
-                    subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-                    securityGroups: [endpointSecurityGroup],
-                });
-            }
-
-            // ECR Docker endpoint (~$7.20/month)
-            if (props?.enableEcrDockerEndpoint ?? false) {
-                this.vpc.addInterfaceEndpoint('EcrDockerEndpoint', {
-                    service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
-                    privateDnsEnabled: true,
-                    subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-                    securityGroups: [endpointSecurityGroup],
-                });
-            }
-        }
-
-        // VPC Flow Logs for network traffic monitoring
-        if (props?.enableFlowLogs ?? false) {
-            new ec2.FlowLog(this, 'VpcFlowLog', {
-                resourceType: ec2.FlowLogResourceType.fromVpc(this.vpc),
-                trafficType: ec2.FlowLogTrafficType.ALL,
-                flowLogName: 'slaops-vpc-flow-log',
-            });
-        }
-
-        // Export VPC outputs
-        new CfnOutput(this, 'VpcId', {
-            value: this.vpc.vpcId,
-            description: 'VPC ID',
-            exportName: 'slaops-vpc-id',
-        });
-
-        new CfnOutput(this, 'VpcCidrBlock', {
-            value: this.vpc.vpcCidrBlock,
-            description: 'VPC CIDR block',
-            exportName: 'slaops-vpc-cidr-block',
-        });
-
-        // Export public subnet IDs with AZ-specific naming
-        this.publicSubnets.forEach((subnet, index) => {
-            const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase();
-            new CfnOutput(this, `PublicSubnet${azLetter.toUpperCase()}Id`, {
-                value: subnet.subnetId,
-                description: `Public subnet ${azLetter.toUpperCase()} ID`,
-                exportName: `slaops-vpc-subnet-public-${azLetter}`,
-            });
-        });
-
-        // Export private subnet IDs with AZ-specific naming
-        this.privateSubnets.forEach((subnet, index) => {
-            const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase();
-            new CfnOutput(this, `PrivateSubnet${azLetter.toUpperCase()}Id`, {
-                value: subnet.subnetId,
-                description: `Private subnet ${azLetter.toUpperCase()} ID`,
-                exportName: `slaops-vpc-subnet-private-${azLetter}`,
-            });
-        });
-
-        // Export isolated subnet IDs with AZ-specific naming
-        this.vpc.isolatedSubnets.forEach((subnet, index) => {
-            const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase();
-            new CfnOutput(this, `IsolatedSubnet${azLetter.toUpperCase()}Id`, {
-                value: subnet.subnetId,
-                description: `Isolated subnet ${azLetter.toUpperCase()} ID`,
-                exportName: `slaops-vpc-subnet-isolated-${azLetter}`,
-            });
-        });
-
+    // Gateway Endpoints (FREE - no additional cost, reduces NAT charges)
+    if (props?.enableS3Endpoint ?? false) {
+      this.vpc.addGatewayEndpoint('S3Endpoint', {
+        service: ec2.GatewayVpcEndpointAwsService.S3,
+      })
     }
-}
 
+    if (props?.enableDynamoDbEndpoint ?? false) {
+      this.vpc.addGatewayEndpoint('DynamoDBEndpoint', {
+        service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+      })
+    }
+
+    // Interface Endpoints (require security group)
+    // Only create security group if at least one interface endpoint is enabled
+    const needsEndpointSecurityGroup =
+      (props?.enableSecretsManagerEndpoint ?? false) ||
+      (props?.enableCloudWatchLogsEndpoint ?? false) ||
+      (props?.enableEc2Endpoint ?? false) ||
+      (props?.enableEcrApiEndpoint ?? false) ||
+      (props?.enableEcrDockerEndpoint ?? false)
+
+    if (needsEndpointSecurityGroup) {
+      // Create security group for interface endpoints (reused by all endpoints)
+      const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
+        vpc: this.vpc,
+        description: 'Security group for VPC interface endpoints',
+        allowAllOutbound: true,
+      })
+
+      endpointSecurityGroup.addIngressRule(
+        ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
+        ec2.Port.tcp(443),
+        'Allow HTTPS from VPC',
+      )
+
+      // Secrets Manager endpoint (~$7.20/month)
+      if (props?.enableSecretsManagerEndpoint ?? false) {
+        this.vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+          service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+          privateDnsEnabled: true,
+          subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+          securityGroups: [endpointSecurityGroup],
+        })
+      }
+
+      // CloudWatch Logs endpoint (~$7.20/month)
+      if (props?.enableCloudWatchLogsEndpoint ?? false) {
+        this.vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
+          service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+          privateDnsEnabled: true,
+          subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+          securityGroups: [endpointSecurityGroup],
+        })
+      }
+
+      // EC2 endpoint (~$7.20/month)
+      if (props?.enableEc2Endpoint ?? false) {
+        this.vpc.addInterfaceEndpoint('EC2Endpoint', {
+          service: ec2.InterfaceVpcEndpointAwsService.EC2,
+          privateDnsEnabled: true,
+          subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+          securityGroups: [endpointSecurityGroup],
+        })
+      }
+
+      // ECR API endpoint (~$7.20/month)
+      if (props?.enableEcrApiEndpoint ?? false) {
+        this.vpc.addInterfaceEndpoint('EcrApiEndpoint', {
+          service: ec2.InterfaceVpcEndpointAwsService.ECR,
+          privateDnsEnabled: true,
+          subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+          securityGroups: [endpointSecurityGroup],
+        })
+      }
+
+      // ECR Docker endpoint (~$7.20/month)
+      if (props?.enableEcrDockerEndpoint ?? false) {
+        this.vpc.addInterfaceEndpoint('EcrDockerEndpoint', {
+          service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+          privateDnsEnabled: true,
+          subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+          securityGroups: [endpointSecurityGroup],
+        })
+      }
+    }
+
+    // VPC Flow Logs for network traffic monitoring
+    if (props?.enableFlowLogs ?? false) {
+      new ec2.FlowLog(this, 'VpcFlowLog', {
+        resourceType: ec2.FlowLogResourceType.fromVpc(this.vpc),
+        trafficType: ec2.FlowLogTrafficType.ALL,
+        flowLogName: 'slaops-vpc-flow-log',
+      })
+    }
+
+    // Export VPC outputs
+    new CfnOutput(this, 'VpcId', {
+      value: this.vpc.vpcId,
+      description: 'VPC ID',
+      exportName: 'slaops-vpc-id',
+    })
+
+    new CfnOutput(this, 'VpcCidrBlock', {
+      value: this.vpc.vpcCidrBlock,
+      description: 'VPC CIDR block',
+      exportName: 'slaops-vpc-cidr-block',
+    })
+
+    // Export public subnet IDs with AZ-specific naming
+    this.publicSubnets.forEach((subnet, index) => {
+      const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase()
+      new CfnOutput(this, `PublicSubnet${azLetter.toUpperCase()}Id`, {
+        value: subnet.subnetId,
+        description: `Public subnet ${azLetter.toUpperCase()} ID`,
+        exportName: `slaops-vpc-subnet-public-${azLetter}`,
+      })
+    })
+
+    // Export private subnet IDs with AZ-specific naming
+    this.privateSubnets.forEach((subnet, index) => {
+      const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase()
+      new CfnOutput(this, `PrivateSubnet${azLetter.toUpperCase()}Id`, {
+        value: subnet.subnetId,
+        description: `Private subnet ${azLetter.toUpperCase()} ID`,
+        exportName: `slaops-vpc-subnet-private-${azLetter}`,
+      })
+    })
+
+    // Export isolated subnet IDs with AZ-specific naming
+    this.vpc.isolatedSubnets.forEach((subnet, index) => {
+      const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase()
+      new CfnOutput(this, `IsolatedSubnet${azLetter.toUpperCase()}Id`, {
+        value: subnet.subnetId,
+        description: `Isolated subnet ${azLetter.toUpperCase()} ID`,
+        exportName: `slaops-vpc-subnet-isolated-${azLetter}`,
+      })
+    })
+  }
+}

@@ -5,6 +5,7 @@
 Create a Tauri-based desktop application at `apps/slaops-desktop/` that shares code with the existing `apps/slaops-portal/` web application via a new shared package `packages/slaops-ui/`.
 
 **Key Decisions:**
+
 - Framework: Tauri 2.0 (Rust-based, ~3-5MB bundle)
 - Backend: Supabase cloud (desktop as client, requires internet)
 - Code Sharing: New `@slaops/ui` package for all shared components/pages
@@ -46,12 +47,14 @@ apps/slaops-desktop/         # NEW - Desktop app using shared package
 ### Phase 1: Create Shared UI Package
 
 **1.1 Create package structure:**
+
 ```bash
 mkdir -p packages/slaops-ui/src
 ```
 
 **1.2 Create package.json:**
 File: `packages/slaops-ui/package.json`
+
 - Set name: `@slaops/ui`
 - Set version: `0.1.0`
 - Set type: `module`
@@ -59,6 +62,7 @@ File: `packages/slaops-ui/package.json`
 - Configure exports for pages, components, hooks, lib, styles
 
 **1.3 Move shared code from portal:**
+
 ```bash
 cp -r apps/slaops-portal/src/components packages/slaops-ui/src/
 cp -r apps/slaops-portal/src/pages packages/slaops-ui/src/
@@ -70,17 +74,20 @@ cp apps/slaops-portal/src/index.css packages/slaops-ui/src/
 
 **1.4 Create index.ts:**
 File: `packages/slaops-ui/src/index.ts`
+
 - Export all pages (Landing, Auth, Dashboard, AddService, ServiceDetails, ApiTester, NotFound)
 - Export commonly used components (Toaster, Sonner, TooltipProvider)
 - Export utilities and integrations
 
 **1.5 Create TypeScript config:**
 Files: `packages/slaops-ui/tsconfig.json`, `packages/slaops-ui/tsconfig.node.json`
+
 - Extend base config
 - Set up path alias `@/*` → `./src/*`
 - Configure for React 18
 
 **1.6 Install dependencies:**
+
 ```bash
 pnpm install
 ```
@@ -89,25 +96,30 @@ pnpm install
 
 **2.1 Update package.json:**
 File: `apps/slaops-portal/package.json`
+
 - Add dependency: `"@slaops/ui": "workspace:*"`
 - Remove dependencies now in @slaops/ui (keep only portal-specific)
 
 **2.2 Update App.tsx:**
 File: `apps/slaops-portal/src/App.tsx`
+
 - Change imports to use `@slaops/ui` for pages
 - Keep BrowserRouter (web-specific)
 
 **2.3 Update main.tsx:**
 File: `apps/slaops-portal/src/main.tsx`
+
 - Import styles from `@slaops/ui/styles`
 
 **2.4 Remove moved files:**
+
 ```bash
 cd apps/slaops-portal
 rm -rf src/components src/pages src/hooks src/lib src/integrations
 ```
 
 **2.5 Test portal:**
+
 ```bash
 pnpm install
 pnpm --filter @slaops/portal run build
@@ -117,6 +129,7 @@ pnpm --filter @slaops/portal run dev  # Verify at http://localhost:8080
 ### Phase 3: Set Up Tauri Desktop App
 
 **3.1 Install Rust:**
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustc --version  # Verify
@@ -126,6 +139,7 @@ rustc --version  # Verify
 macOS: `xcode-select --install`
 
 **3.3 Create desktop app directory:**
+
 ```bash
 cd apps
 mkdir slaops-desktop
@@ -135,6 +149,7 @@ npm create tauri-app@latest . -- --name slaops-desktop --template vanilla-ts --m
 
 **3.4 Create package.json:**
 File: `apps/slaops-desktop/package.json`
+
 - Scripts: dev, build, build:dev, preview, tauri
 - Dependencies: @slaops/ui, @tanstack/react-query, react, react-dom, react-router-dom, @tauri-apps/api
 - DevDependencies: @tauri-apps/cli, @vitejs/plugin-react-swc, tailwindcss, etc.
@@ -143,22 +158,26 @@ File: `apps/slaops-desktop/package.json`
 
 **4.1 Create App.tsx:**
 File: `apps/slaops-desktop/src/App.tsx`
+
 - Import pages from `@slaops/ui`
 - Use **HashRouter** instead of BrowserRouter (critical difference)
 - Same route structure as portal
 
 **4.2 Create main.tsx:**
 File: `apps/slaops-desktop/src/main.tsx`
+
 - Import styles from `@slaops/ui/styles`
 - Render App component
 
 **4.3 Create index.html:**
 File: `apps/slaops-desktop/index.html`
+
 - Title: "SLAOps Desktop"
 - Script: `/src/main.tsx`
 
 **4.4 Create vite.config.ts:**
 File: `apps/slaops-desktop/vite.config.ts`
+
 - Port: 1420 (Tauri expects fixed port)
 - strictPort: true
 - Configure HMR for Tauri
@@ -167,11 +186,13 @@ File: `apps/slaops-desktop/vite.config.ts`
 
 **4.5 Create tailwind.config.ts:**
 File: `apps/slaops-desktop/tailwind.config.ts`
+
 - Copy from portal
 - Content: include both `./src/**/*.{ts,tsx}` and `../../packages/slaops-ui/src/**/*.{ts,tsx}`
 
 **4.6 Create tsconfig.json:**
 File: `apps/slaops-desktop/tsconfig.json`
+
 - Similar to portal
 - Add path aliases for @slaops/ui
 
@@ -179,6 +200,7 @@ File: `apps/slaops-desktop/tsconfig.json`
 
 **5.1 Configure tauri.conf.json:**
 File: `apps/slaops-desktop/src-tauri/tauri.conf.json`
+
 - productName: "SLAOps"
 - identifier: "com.slaops.desktop"
 - version: "0.1.0"
@@ -192,6 +214,7 @@ File: `apps/slaops-desktop/src-tauri/tauri.conf.json`
 
 **5.2 Configure Cargo.toml:**
 File: `apps/slaops-desktop/src-tauri/Cargo.toml`
+
 - name: "slaops-desktop"
 - version: "0.1.0"
 - edition: "2021"
@@ -200,9 +223,11 @@ File: `apps/slaops-desktop/src-tauri/Cargo.toml`
 
 **5.3 Create main.rs:**
 File: `apps/slaops-desktop/src-tauri/src/main.rs`
+
 - Basic Tauri app (default template is sufficient)
 
 **5.4 Generate icons:**
+
 ```bash
 cp apps/slaops-portal/public/favicon.png apps/slaops-desktop/app-icon.png
 cd apps/slaops-desktop
@@ -213,6 +238,7 @@ pnpm tauri icon app-icon.png
 
 **6.1 Create .env:**
 File: `apps/slaops-desktop/.env`
+
 ```
 VITE_SUPABASE_PROJECT_ID="omjpxenvfphdxkarmsxk"
 VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGci..."
@@ -221,24 +247,28 @@ VITE_SUPABASE_URL="https://omjpxenvfphdxkarmsxk.supabase.co"
 
 **6.2 Create .env.example:**
 File: `apps/slaops-desktop/.env.example`
+
 - Template with placeholder values
 - Instructions on where to get credentials
 
 **6.3 Update .gitignore:**
 File: `apps/slaops-desktop/.gitignore`
-- Ignore: node_modules, dist, src-tauri/target, .env, *.dmg, *.msi
+
+- Ignore: node_modules, dist, src-tauri/target, .env, _.dmg, _.msi
 
 ### Phase 7: Monorepo Integration
 
 **7.1 Update root package.json:**
 File: `package.json`
 Add scripts:
+
 - `dev:desktop`: `pnpm --filter slaops-desktop run dev`
 - `build:desktop`: `pnpm --filter slaops-desktop run build`
 - `build:desktop:dev`: `pnpm --filter slaops-desktop run build:dev`
 
 **7.2 Update turbo.json:**
 File: `turbo.json`
+
 - Add `src-tauri/target/**` to build outputs
 - Add Tauri env vars to env list
 
@@ -246,6 +276,7 @@ File: `turbo.json`
 
 **8.1 Create README.md:**
 File: `apps/slaops-desktop/README.md`
+
 - Overview, tech stack, development setup
 - Prerequisites (Node.js, Rust, platform tools)
 - Scripts (dev, build, release)
@@ -256,6 +287,7 @@ File: `apps/slaops-desktop/README.md`
 
 **8.2 Create CLAUDE.md:**
 File: `apps/slaops-desktop/CLAUDE.md`
+
 - Architecture decisions
 - Code sharing strategy
 - Development workflow
@@ -271,31 +303,38 @@ Add section for slaops-desktop package with links to detailed docs
 ### Phase 9: Testing & Verification
 
 **9.1 Test shared package:**
+
 ```bash
 pnpm --filter @slaops/ui run typecheck
 ```
 
 **9.2 Test portal:**
+
 ```bash
 pnpm --filter @slaops/portal run build
 pnpm --filter @slaops/portal run dev
 ```
+
 - Verify at http://localhost:8080
 - Test navigation, authentication, all features
 
 **9.3 Test desktop dev mode:**
+
 ```bash
 pnpm dev:desktop
 ```
+
 - Desktop window should open
 - Test all navigation and features
 - Verify Supabase connection
 - Test hot reload
 
 **9.4 Test desktop build:**
+
 ```bash
 pnpm build:desktop
 ```
+
 - Verify DMG created (macOS): `src-tauri/target/release/bundle/dmg/`
 - Verify MSI created (Windows): `src-tauri/target/release/bundle/msi/`
 - Install and test built app
@@ -305,11 +344,13 @@ pnpm build:desktop
 ### New Files to Create
 
 **Shared UI Package:**
+
 - `packages/slaops-ui/package.json` - Package definition with all dependencies
 - `packages/slaops-ui/src/index.ts` - Export all shared code
 - `packages/slaops-ui/tsconfig.json` - TypeScript configuration
 
 **Desktop App:**
+
 - `apps/slaops-desktop/package.json` - Desktop dependencies and scripts
 - `apps/slaops-desktop/src/App.tsx` - HashRouter configuration
 - `apps/slaops-desktop/src/main.tsx` - Desktop entry point
@@ -324,11 +365,13 @@ pnpm build:desktop
 ### Files to Modify
 
 **Portal:**
+
 - `apps/slaops-portal/package.json` - Add @slaops/ui dependency
 - `apps/slaops-portal/src/App.tsx` - Import from @slaops/ui
 - `apps/slaops-portal/src/main.tsx` - Import styles from @slaops/ui
 
 **Monorepo Root:**
+
 - `package.json` - Add desktop scripts
 - `turbo.json` - Add Tauri outputs and env vars
 - `CLAUDE.md` - Document new desktop app
@@ -336,6 +379,7 @@ pnpm build:desktop
 ### Files to Move
 
 Move from `apps/slaops-portal/src/` to `packages/slaops-ui/src/`:
+
 - `components/` directory
 - `pages/` directory
 - `hooks/` directory
@@ -345,15 +389,15 @@ Move from `apps/slaops-portal/src/` to `packages/slaops-ui/src/`:
 
 ## Key Differences: Portal vs Desktop
 
-| Aspect | Portal (Web) | Desktop (Tauri) |
-|--------|-------------|-----------------|
-| Router | BrowserRouter | HashRouter |
-| URLs | `/dashboard` | `#/dashboard` |
-| Port | 8080 | 1420 |
-| Build | Vite → dist | Vite → dist → Tauri bundle |
-| Output | HTML/JS/CSS | .dmg (macOS), .msi (Windows) |
-| Distribution | AWS Amplify | Direct download |
-| Size | ~2.2MB | ~3-5MB |
+| Aspect       | Portal (Web)  | Desktop (Tauri)              |
+| ------------ | ------------- | ---------------------------- |
+| Router       | BrowserRouter | HashRouter                   |
+| URLs         | `/dashboard`  | `#/dashboard`                |
+| Port         | 8080          | 1420                         |
+| Build        | Vite → dist   | Vite → dist → Tauri bundle   |
+| Output       | HTML/JS/CSS   | .dmg (macOS), .msi (Windows) |
+| Distribution | AWS Amplify   | Direct download              |
+| Size         | ~2.2MB        | ~3-5MB                       |
 
 ## Security Considerations
 

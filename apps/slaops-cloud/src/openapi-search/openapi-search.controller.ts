@@ -1,13 +1,13 @@
-import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger'
-import { OpenApiSearchService } from './openapi-search.service'
+import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common'
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { OpenApiSearchQueryDto } from './dto/openapi-search-query.dto'
 import {
+  IndexStatsResponseDto,
   OpenApiSearchResponseDto,
   ProviderListResponseDto,
-  IndexStatsResponseDto,
 } from './dto/openapi-search-response.dto'
-import { OpenApiIndexDocument } from '@slaops/cloud/openapi-search/types/openapi-index.types'
+import { OpenApiSearchService } from './openapi-search.service'
 
 @ApiTags('OpenAPI Search')
 @Controller('openapi-search')

@@ -1,9 +1,9 @@
-import { themes as prismThemes } from 'prism-react-renderer';
-import type { Config } from '@docusaurus/types';
-import type * as Preset from '@docusaurus/preset-classic';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import remarkCodeImport from 'remark-code-import';
+import type * as Preset from '@docusaurus/preset-classic'
+import type { Config } from '@docusaurus/types'
+import { themes as prismThemes } from 'prism-react-renderer'
+import rehypeKatex from 'rehype-katex'
+import remarkCodeImport from 'remark-code-import'
+import remarkMath from 'remark-math'
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -61,17 +61,15 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
 
           editUrl: ({ docPath }) => {
-            const awsBranch = process.env.AWS_BRANCH;
+            const awsBranch = process.env.AWS_BRANCH
             if (awsBranch) {
-              const cleanPath = docPath.replace(/^\//, '');
-              return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/docs/${cleanPath}`;
+              const cleanPath = docPath.replace(/^\//, '')
+              return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/docs/${cleanPath}`
             }
-            const cleanPath = docPath.replace(/^\//, '');
-            const pathToFile = `${process.cwd()}/docs/${cleanPath}`;
-            return `cursor://file${pathToFile}`;
+            const cleanPath = docPath.replace(/^\//, '')
+            const pathToFile = `${process.cwd()}/docs/${cleanPath}`
+            return `cursor://file${pathToFile}`
           },
-
-
 
           remarkPlugins: [remarkMath, remarkCodeImport],
           rehypePlugins: [rehypeKatex],
@@ -83,12 +81,9 @@ const config: Config = {
             xslt: true,
           },
 
-          editUrl:
-            process.env.AWS_BRANCH
-              ? `https://github.com/derrickfutschik/slaops-platform/tree/${process.env.AWS_BRANCH}/apps/slaops-docs/blog`
-              : `cursor://open?folder=/docs`,
-
-
+          editUrl: process.env.AWS_BRANCH
+            ? `https://github.com/derrickfutschik/slaops-platform/tree/${process.env.AWS_BRANCH}/apps/slaops-docs/blog`
+            : `cursor://open?folder=/docs`,
 
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -130,14 +125,14 @@ const config: Config = {
         routeBasePath: 'notes',
         sidebarPath: './sidebars.ts',
         editUrl: ({ docPath }) => {
-          const awsBranch = process.env.AWS_BRANCH;
+          const awsBranch = process.env.AWS_BRANCH
           if (awsBranch) {
-            const cleanPath = docPath.replace(/^\//, '');
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/notes/${cleanPath}`;
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/notes/${cleanPath}`
           }
-          const cleanPath = docPath.replace(/^\//, '');
-          const pathToFile = `${process.cwd()}/notes/${cleanPath}`;
-          return `cursor://file${pathToFile}`;
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/notes/${cleanPath}`
+          return `cursor://file${pathToFile}`
         },
         remarkPlugins: [remarkMath, remarkCodeImport],
         rehypePlugins: [rehypeKatex],
@@ -151,14 +146,14 @@ const config: Config = {
         routeBasePath: 'devops',
         sidebarPath: './sidebars-devops.ts',
         editUrl: ({ docPath }) => {
-          const awsBranch = process.env.AWS_BRANCH;
+          const awsBranch = process.env.AWS_BRANCH
           if (awsBranch) {
-            const cleanPath = docPath.replace(/^\//, '');
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/devops/${cleanPath}`;
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/devops/${cleanPath}`
           }
-          const cleanPath = docPath.replace(/^\//, '');
-          const pathToFile = `${process.cwd()}/devops/${cleanPath}`;
-          return `cursor://file${pathToFile}`;
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/devops/${cleanPath}`
+          return `cursor://file${pathToFile}`
         },
         remarkPlugins: [remarkMath, remarkCodeImport],
         rehypePlugins: [rehypeKatex],
@@ -172,14 +167,14 @@ const config: Config = {
         routeBasePath: 'code',
         sidebarPath: './sidebars-code.ts',
         editUrl: ({ docPath }) => {
-          const awsBranch = process.env.AWS_BRANCH;
+          const awsBranch = process.env.AWS_BRANCH
           if (awsBranch) {
-            const cleanPath = docPath.replace(/^\//, '');
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/code/${cleanPath}`;
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/code/${cleanPath}`
           }
-          const cleanPath = docPath.replace(/^\//, '');
-          const pathToFile = `${process.cwd()}/code/${cleanPath}`;
-          return `cursor://file${pathToFile}`;
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/code/${cleanPath}`
+          return `cursor://file${pathToFile}`
         },
         remarkPlugins: [remarkMath, remarkCodeImport],
         rehypePlugins: [rehypeKatex],
@@ -191,8 +186,7 @@ const config: Config = {
     {
       href: 'https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css',
       type: 'text/css',
-      integrity:
-        'sha384-odtC+0UGzzFL/6PNoE8rX/SPcQDXBJ+uRepguP4QkPCm2LBxH3FA3y+fKSiJ+AmM',
+      integrity: 'sha384-odtC+0UGzzFL/6PNoE8rX/SPcQDXBJ+uRepguP4QkPCm2LBxH3FA3y+fKSiJ+AmM',
       crossorigin: 'anonymous',
     },
   ],
@@ -264,7 +258,7 @@ const config: Config = {
             {
               label: 'Stack Overflow',
               href: 'https://stackoverflow.com/users/4033292/SLAOps',
-            }
+            },
           ],
         },
         {
@@ -288,6 +282,6 @@ const config: Config = {
       darkTheme: prismThemes.dracula,
     },
   } satisfies Preset.ThemeConfig,
-};
+}
 
-export default config;
+export default config

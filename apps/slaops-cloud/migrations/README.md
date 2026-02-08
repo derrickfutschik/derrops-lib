@@ -59,11 +59,13 @@ psql -h localhost -p 5432 -U slaops_admin -d slaops
 ## Migration Naming Convention
 
 Migrations should follow this naming pattern:
+
 ```
 <number>_<description>.sql
 ```
 
 Examples:
+
 - `001_create_service_table.sql`
 - `002_add_api_keys_table.sql`
 - `003_add_service_metrics.sql`
@@ -81,6 +83,7 @@ Examples:
 To rollback a migration, you'll need to manually write and execute the reverse SQL statements. It's recommended to include commented rollback SQL in each migration file.
 
 Example:
+
 ```sql
 -- Rollback for 001_create_service_table.sql
 -- DROP TRIGGER IF EXISTS update_service_updated_at ON service;

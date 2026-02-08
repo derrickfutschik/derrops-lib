@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { IsOptional, IsString, IsArray, IsInt, Min, Max, IsIn } from 'class-validator'
 import { Transform, Type } from 'class-transformer'
+import { IsArray, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator'
 
 /**
  * DTO for OpenAPI search query parameters

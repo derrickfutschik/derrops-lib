@@ -7,4 +7,4 @@
  * This is a convenience package for testing purposes only.
  */
 
-export const TEST_PACKAGE_VERSION = '0.1.0';
+export const TEST_PACKAGE_VERSION = '0.1.0'

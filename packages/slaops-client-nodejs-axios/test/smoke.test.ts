@@ -1,5 +1,5 @@
-import { describe, it, expect } from '@jest/globals'
-import axios, { AxiosStatic } from 'axios'
+import { describe, expect, it } from '@jest/globals'
+import axios from 'axios'
 import { attachSlaOpsInterceptor } from '../src/index.js'
 
 async function testRequest() {
