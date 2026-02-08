@@ -8,17 +8,11 @@ if [ ! -f pnpm-workspace.yaml ]; then
   cd ../..
 fi
 
-# Check if we should skip the build (after cd so we can create dist in the right place)
+# Check if we should skip the build. Do not create any artifact and exit non-zero
+# so Amplify does not deploy (previous deployment stays live).
 if [ -f /tmp/skip-build ]; then
-  echo "Skip flag detected, creating minimal artifact under dist/ for Amplify"
-  if [ -f pnpm-workspace.yaml ]; then
-    skip_dir=apps/slaops-portal/dist
-  else
-    skip_dir=dist
-  fi
-  mkdir -p "$skip_dir"
-  echo "<!DOCTYPE html><html><body>Build skipped - no relevant changes</body></html>" > "$skip_dir/index.html"
-  exit 0
+  echo "Skip flag detected: no relevant changes. Exiting without artifact so Amplify will not deploy."
+  exit 1
 fi
 
 echo "Check NVM exists"

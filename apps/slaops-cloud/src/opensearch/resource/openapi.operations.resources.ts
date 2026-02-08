@@ -8,7 +8,7 @@ export const OPENAPI_OPS_TEMPLATE_NAME = 'openapi-operations-template';
 export const OPENAPI_OPS_PIPELINE_ID = 'openapi-operation-pipeline';
 export const OPENAPI_OPS_WRITE_ALIAS = 'openapi-operations';
 
-// TODO 
+// TODO 2
 
 export const openapiOperationsTemplate: Indices_PutIndexTemplate_Request = {
     name: OPENAPI_OPS_TEMPLATE_NAME,
