@@ -8,6 +8,10 @@ applications:
       phases:
         preBuild:
           commands:
+            - export NODE_OPTIONS="--max-old-space-size=6144"
+            - corepack enable
+            - corepack prepare pnpm@9.0.0 --activate
+            - pnpm config set store-dir .pnpm-store
             - |
               if ! git diff --name-only HEAD^ HEAD | grep -q "^apps/slaops-portal/"; then
                 echo "No changes in apps/slaops-portal, skipping build."
@@ -17,6 +21,7 @@ applications:
             - ./amplify-prebuild.sh
         build:
           commands:
+            - export NODE_OPTIONS="--max-old-space-size=6144"
             - chmod +x amplify-build.sh
             - ./amplify-build.sh
       artifacts:
@@ -25,6 +30,7 @@ applications:
           - '**/*'
       cache:
         paths:
+          - .pnpm-store/**/*
           - node_modules/**/*
           - ~/.pnpm-store/**/*
           - .turbo/**/*
