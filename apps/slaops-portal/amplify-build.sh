@@ -28,6 +28,9 @@ echo "Using Node 22.x"
 nvm install 22
 nvm use 22
 
+# Ensure Node heap limit for Vite build (reduces OOM on 16GB Amplify build instances)
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=12000}"
+
 echo "Installing pnpm globally..."
 npm install -g pnpm@8.15.4
 

@@ -19,11 +19,15 @@ export default defineConfig(({ mode }) => ({
     include: ["swagger-ui-react"],
   },
   build: {
+    // Disable source maps in production to reduce memory (Amplify 16GB build often OOMs with 5k+ modules)
+    sourcemap: false,
     commonjsOptions: {
       include: [/swagger-ui-react/, /node_modules/],
       transformMixedEsModules: true,
     },
     rollupOptions: {
+      // Limit parallel file ops to lower peak memory during build (helps on 16GB Amplify instances)
+      maxParallelFileOps: 4,
       onwarn(warning, warn) {
         // Suppress certain warnings from swagger-ui-react
         if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
