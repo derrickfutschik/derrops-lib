@@ -29,6 +29,8 @@ async function bootstrap() {
     .setDescription(config["app.description"])
     .setVersion(config["app.version"])
     .addTag('service')
+    .addTag('config')
+    .addTag('Config')
     .addBearerAuth()
     .build();
 

@@ -440,6 +440,21 @@
           "OpenAPI Search"
         ]
       }
+    },
+    "/config": {
+      "get": {
+        "operationId": "ConfigController_getConfig",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The config"
+          }
+        },
+        "summary": "Get the config",
+        "tags": [
+          "Config"
+        ]
+      }
     }
   },
   "info": {
@@ -474,27 +489,33 @@
           },
           "endpoint": {
             "type": "string",
+            "format": "uri",
             "description": "Service endpoint URL",
             "example": "https://api.sendgrid.com/v3"
           },
           "openapi_doc_url": {
             "type": "string",
+            "nullable": true,
             "description": "OpenAPI document URL",
             "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json"
           },
           "openapi_doc_content": {
             "type": "string",
+            "nullable": true,
             "description": "OpenAPI document content (stored as text)"
           },
           "availability": {
             "type": "number",
-            "description": "Service availability percentage",
-            "example": 99.98,
+            "nullable": true,
             "minimum": 0,
-            "maximum": 100
+            "maximum": 100,
+            "description": "Service availability percentage",
+            "example": 99.98
           },
           "response_time": {
             "type": "number",
+            "nullable": true,
+            "minimum": 0,
             "description": "Average response time in milliseconds",
             "example": 80
           }
@@ -530,28 +551,28 @@
           },
           "openapi_doc_url": {
             "type": "string",
+            "nullable": true,
             "description": "OpenAPI document URL",
-            "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json",
-            "nullable": true
+            "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json"
           },
           "openapi_doc_content": {
             "type": "string",
-            "description": "OpenAPI document content (stored as text)",
-            "nullable": true
+            "nullable": true,
+            "description": "OpenAPI document content (stored as text)"
           },
           "availability": {
             "type": "number",
+            "nullable": true,
             "description": "Service availability percentage",
             "example": 99.98,
-            "nullable": true,
             "minimum": 0,
             "maximum": 100
           },
           "response_time": {
             "type": "number",
+            "nullable": true,
             "description": "Average response time in milliseconds",
             "example": 80,
-            "nullable": true,
             "minimum": 0
           },
           "created_at": {
@@ -591,27 +612,33 @@
           },
           "endpoint": {
             "type": "string",
+            "format": "uri",
             "description": "Service endpoint URL",
             "example": "https://api.sendgrid.com/v3"
           },
           "openapi_doc_url": {
             "type": "string",
+            "nullable": true,
             "description": "OpenAPI document URL",
             "example": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json"
           },
           "openapi_doc_content": {
             "type": "string",
+            "nullable": true,
             "description": "OpenAPI document content (stored as text)"
           },
           "availability": {
             "type": "number",
-            "description": "Service availability percentage",
-            "example": 99.98,
+            "nullable": true,
             "minimum": 0,
-            "maximum": 100
+            "maximum": 100,
+            "description": "Service availability percentage",
+            "example": 99.98
           },
           "response_time": {
             "type": "number",
+            "nullable": true,
+            "minimum": 0,
             "description": "Average response time in milliseconds",
             "example": 80
           }

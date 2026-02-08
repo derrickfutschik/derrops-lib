@@ -48,6 +48,7 @@ async function bootstrapServer(): Promise<any> {
       .setDescription('API for managing services and monitoring SLA compliance')
       .setVersion('1.0')
       .addTag('service')
+      .addTag('Config')
       .addBearerAuth()
       .build();
 

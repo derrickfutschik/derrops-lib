@@ -30,18 +30,18 @@ export interface CreateServiceDto {
     /**
      * OpenAPI document URL
      */
-    'openapi_doc_url'?: string;
+    'openapi_doc_url'?: string | null;
     /**
      * OpenAPI document content (stored as text)
      */
-    'openapi_doc_content'?: string;
+    'openapi_doc_content'?: string | null;
     /**
      * Service availability percentage
      */
-    'availability'?: number;
+    'availability'?: number | null;
     /**
      * Average response time in milliseconds
      */
-    'response_time'?: number;
+    'response_time'?: number | null;
 }
 

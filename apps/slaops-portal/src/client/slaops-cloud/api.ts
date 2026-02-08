@@ -14,6 +14,7 @@
 
 
 
+export * from './api/config-api';
 export * from './api/open-apisearch-api';
 export * from './api/service-api';
 

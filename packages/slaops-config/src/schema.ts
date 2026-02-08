@@ -22,7 +22,10 @@ export const ConfigSchema = z.object({
   DB_USERNAME: z.string().min(1),
   DB_PASSWORD: z.string().min(1),
 
-  APP_NAME: z.string().min(1).optional(),
+  APP_NAME: z.preprocess(
+    (v) => (v === "" || v === undefined ? undefined : v),
+    z.string().min(1).default("SLAOps"),
+  ),
   APP_VERSION: z.string().min(1).optional(), // should come from package.json
 
   AWS_REGION: z.string().min(1),

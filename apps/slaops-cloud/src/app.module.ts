@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServiceModule } from './service/service.module';
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
 import { config } from '@slaops/config';
+import { SLAConfigModule } from './config/config.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { config } from '@slaops/config';
     }),
     ServiceModule,
     OpenApiSearchModule,
+    SLAConfigModule,
   ],
   controllers: [],
   providers: [],

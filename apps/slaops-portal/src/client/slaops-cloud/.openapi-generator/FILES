@@ -1,12 +1,14 @@
 .gitignore
 .npmignore
 api.ts
+api/config-api.ts
 api/open-apisearch-api.ts
 api/service-api.ts
 base.ts
 common.ts
 configuration.ts
 docs/AggregationBucket.md
+docs/ConfigApi.md
 docs/CreateServiceDto.md
 docs/IndexStatsResponseDto.md
 docs/OpenAPISearchApi.md

@@ -21,7 +21,7 @@ export const makeConfig = (cfg: ConfigInput = configFromEnv({
 })) => {
     // const cfg = configFromEnv(env);
 
-    const appName = cfg.APP_NAME ?? "SLAOps";
+    const appName = (cfg.APP_NAME ?? "SLAOps") + "";
     const app = appName.toLowerCase();
     const env = (cfg.NODE_ENV ?? "dev").toLowerCase();
 
