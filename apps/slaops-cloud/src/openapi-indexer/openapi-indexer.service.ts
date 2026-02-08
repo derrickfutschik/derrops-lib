@@ -24,9 +24,9 @@ export class OpenApiIndexerService implements OnModuleInit {
   private readonly indexName: string;
   private readonly debug: boolean;
 
-  private s3Client: S3Client;
-  private opensearchClient: Client;
-  private tsClient: TypescriptOSProxyClient
+  private s3Client!: S3Client;
+  private opensearchClient!: Client;
+  private tsClient!: TypescriptOSProxyClient;
 
   constructor(
     private readonly configService: ConfigService,

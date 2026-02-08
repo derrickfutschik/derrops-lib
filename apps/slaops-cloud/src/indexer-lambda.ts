@@ -36,15 +36,15 @@ let cachedService: OpenApiIndexerService | null = null;
  * Bootstrap the NestJS application and get the indexer service
  */
 async function getIndexerService(): Promise<OpenApiIndexerService> {
-  if (!cachedService) {
-    const app = await NestFactory.createApplicationContext(IndexerLambdaModule, {
-      logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
-    });
-
-    cachedService = app.get(OpenApiIndexerService);
+  if (cachedService) {
+    return cachedService;
   }
-
-  return cachedService;
+  const app = await NestFactory.createApplicationContext(IndexerLambdaModule, {
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
+  });
+  const service = app.get(OpenApiIndexerService);
+  cachedService = service;
+  return service;
 }
 
 /**
