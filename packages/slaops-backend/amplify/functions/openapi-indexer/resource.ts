@@ -14,7 +14,7 @@ export const openapiIndexer = defineFunction({
   // TODO use zod schema for this (may need all the env vars)
   environment: {
     OPENSEARCH_ENDPOINT: config["opensearch.endpoint"],
-    OPENSEARCH_INDEX_NAME: config["opensearch.index.openapis"],
+    OPENSEARCH_INDEX_NAME: config["opensearch.index.openapi.apis"],
     DEBUG: 'false',
   },
 });

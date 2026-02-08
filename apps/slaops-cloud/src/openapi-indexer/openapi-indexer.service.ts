@@ -32,7 +32,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly parserService: OpenApiParserService,
   ) {
-    this.indexName = config['opensearch.index.openapis'];
+    this.indexName = config['opensearch.index.openapi.apis'];
     this.debug = this.configService.get<string>('DEBUG') === 'true';
   }
 

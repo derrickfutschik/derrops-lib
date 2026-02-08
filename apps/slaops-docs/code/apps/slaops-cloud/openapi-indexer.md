@@ -57,7 +57,7 @@ Dimensionality is capped via `INDEXING_LIMITS` (e.g. max paths, sample operation
 
 ## Configuration
 
-- **OpenSearch**: Uses `@slaops-config/config` — index name from `config['opensearch.index.openapis']`; endpoint and region from `config['aws.accountId']` and `config['aws.region']`. AWS SigV4 is used for OpenSearch Serverless (`aoss`). If the endpoint is not set, indexing is skipped (warning logged).
+- **OpenSearch**: Uses `@slaops-config/config` — index name from `config['opensearch.index.openapi.apis']`; endpoint and region from `config['aws.accountId']` and `config['aws.region']`. AWS SigV4 is used for OpenSearch Serverless (`aoss`). If the endpoint is not set, indexing is skipped (warning logged).
 - **Debug**: Set `DEBUG=true` (e.g. in Lambda env) for extra logging (e.g. skipped non-OpenAPI keys).
 
 ## Error handling

@@ -68,7 +68,7 @@ type StatsSearch = Search<OpenApiIndexDocument,
 @Injectable()
 export class OpenApiSearchService implements OnModuleInit {
   private readonly logger = new Logger(OpenApiSearchService.name);
-  private readonly indexName = config['opensearch.index.openapis']
+  private readonly indexName = config['opensearch.index.openapi.apis']
 
   private client: Client;
   private tsClient: TypescriptOSProxyClient
