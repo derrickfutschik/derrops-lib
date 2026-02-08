@@ -2,6 +2,9 @@
 # Hosting → Build settings → Advanced settings → Edit → Build instance type.
 # Use Large (16 GiB) or XLarge (72 GiB) if builds run out of memory.
 # Node heap below is set for Large (12000 MB); use 60000 for XLarge.
+#
+# buildPath: '/' runs install/build from repo root so cache paths (node_modules,
+# .pnpm-store, .turbo) match where pnpm and Turbo actually write.
 version: 1
 applications:
   - appRoot: apps/slaops-portal
@@ -9,13 +12,13 @@ applications:
       variables:
         NODE_OPTIONS: "--max-old-space-size=12000"
     frontend:
+      buildPath: /
       phases:
         preBuild:
           commands:
             - export NODE_OPTIONS="--max-old-space-size=12000"
             - corepack enable
             - corepack prepare pnpm@9.0.0 --activate
-            - pnpm config set store-dir .pnpm-store
             - |
               set +e
               if ! git rev-parse HEAD^ >/dev/null 2>&1; then
@@ -32,21 +35,20 @@ applications:
                 fi
               fi
               set -e
-            - chmod +x amplify-prebuild.sh
-            - ./amplify-prebuild.sh
+            - chmod +x apps/slaops-portal/amplify-prebuild.sh
+            - ./apps/slaops-portal/amplify-prebuild.sh
         build:
           commands:
             - export NODE_OPTIONS="--max-old-space-size=12000"
-            - chmod +x amplify-build.sh
-            - ./amplify-build.sh
+            - chmod +x apps/slaops-portal/amplify-build.sh
+            - ./apps/slaops-portal/amplify-build.sh
       artifacts:
-        baseDirectory: dist
+        baseDirectory: apps/slaops-portal/dist
         files:
           - '**/*'
       cache:
         paths:
           - .pnpm-store/**/*
           - node_modules/**/*
-          - ~/.pnpm-store/**/*
           - .turbo/**/*
           - node_modules/.cache/turbo/**/*

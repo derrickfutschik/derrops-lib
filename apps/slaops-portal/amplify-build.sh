@@ -3,11 +3,21 @@ set -e
 
 echo "=== Amplify Build Script for slaops-portal ==="
 
-# Check if we should skip the build
+# When amplify.yml uses buildPath: '/', cwd is repo root. Otherwise cwd is apps/slaops-portal.
+if [ ! -f pnpm-workspace.yaml ]; then
+  cd ../..
+fi
+
+# Check if we should skip the build (after cd so we can create dist in the right place)
 if [ -f /tmp/skip-build ]; then
   echo "Skip flag detected, creating minimal artifact under dist/ for Amplify"
-  mkdir -p dist
-  echo "<!DOCTYPE html><html><body>Build skipped - no relevant changes</body></html>" > dist/index.html
+  if [ -f pnpm-workspace.yaml ]; then
+    skip_dir=apps/slaops-portal/dist
+  else
+    skip_dir=dist
+  fi
+  mkdir -p "$skip_dir"
+  echo "<!DOCTYPE html><html><body>Build skipped - no relevant changes</body></html>" > "$skip_dir/index.html"
   exit 0
 fi
 
@@ -22,7 +32,6 @@ echo "Installing pnpm globally..."
 npm install -g pnpm@8.15.4
 
 echo "Building slaops-portal with Turbo (with caching)..."
-cd ../..
 pnpm exec turbo run build --filter=@slaops/portal
 
 echo "=== Build completed successfully ==="
