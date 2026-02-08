@@ -24,6 +24,7 @@ export const makeConfig = (cfg: ConfigInput = configFromEnv({
     const appName = cfg.APP_NAME ?? "SLAOps";
     const app = appName.toLowerCase();
     const env = (cfg.NODE_ENV ?? "dev").toLowerCase();
+
     const getIndexName = (entity: string) => `${app}-${entity}-${env}`.toLowerCase()
 
     return {
@@ -81,8 +82,11 @@ export const makeConfig = (cfg: ConfigInput = configFromEnv({
         /** The suffix for the index */
         "opensearch.index.suffix": cfg.OPENSEARCH_INDEX_SUFFIX ?? `-${env}`.toLowerCase(),
 
-        /** Find the name of an index */
-        "opensearch.index.openapis": getIndexName("openapis"),
+        /** Index of the OpenAPI APIs */
+        "opensearch.index.openapi.apis": getIndexName("openapi-apis"),
+
+        /** Index of the OpenAPI Operations */
+        "opensearch.index.openapi.operations": getIndexName("openapi-operations"),
 
         "app.pagination.default.size": 20,
 

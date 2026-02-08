@@ -5,9 +5,9 @@ echo "=== Amplify Build Script for slaops-portal ==="
 
 # Check if we should skip the build
 if [ -f /tmp/skip-build ]; then
-  echo "Skip flag detected, creating empty dist to satisfy Amplify"
-  mkdir -p ../../dist
-  echo "<html><body>Build skipped - no changes detected</body></html>" > ../../dist/index.html
+  echo "Skip flag detected, creating minimal artifact under dist/ for Amplify"
+  mkdir -p dist
+  echo "<!DOCTYPE html><html><body>Build skipped - no relevant changes</body></html>" > dist/index.html
   exit 0
 fi
 

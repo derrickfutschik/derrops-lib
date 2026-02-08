@@ -17,10 +17,21 @@ applications:
             - corepack prepare pnpm@9.0.0 --activate
             - pnpm config set store-dir .pnpm-store
             - |
-              if ! git diff --name-only HEAD^ HEAD | grep -q "^apps/slaops-portal/"; then
-                echo "No changes in apps/slaops-portal, skipping build."
-                touch /tmp/skip-build
+              set +e
+              if ! git rev-parse HEAD^ >/dev/null 2>&1; then
+                echo "Single commit or shallow clone, building to be safe."
+              else
+                changed=$(git diff --name-only HEAD^ HEAD)
+                if echo "$changed" | grep -qE '^apps/slaops-portal/'; then
+                  echo "Changes in apps/slaops-portal, building."
+                elif echo "$changed" | grep -qE '^packages/'; then
+                  echo "Changes in packages (portal dependencies), building."
+                else
+                  echo "No changes in apps/slaops-portal or packages, skipping build."
+                  touch /tmp/skip-build
+                fi
               fi
+              set -e
             - chmod +x amplify-prebuild.sh
             - ./amplify-prebuild.sh
         build:

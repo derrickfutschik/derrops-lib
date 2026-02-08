@@ -1,10 +1,13 @@
+import { config } from '@slaops/config';
+
 import type { Indices_PutIndexTemplate_Request } from '@opensearch-project/opensearch/api/indices/putIndexTemplate';
 import type { Ingest_PutPipeline_Request } from '@opensearch-project/opensearch/api/ingest/putPipeline';
 
-export const OPENAPI_OPS_INDEX_PATTERNS = ['openapi-operations-*'];
+export const OPENAPI_OPS_INDEX_PATTERNS = [config['opensearch.index.openapi.operations']];
 export const OPENAPI_OPS_TEMPLATE_NAME = 'openapi-operations-template';
 export const OPENAPI_OPS_PIPELINE_ID = 'openapi-operation-pipeline';
 export const OPENAPI_OPS_WRITE_ALIAS = 'openapi-operations';
+
 
 export const openapiOperationsTemplate: Indices_PutIndexTemplate_Request = {
     name: OPENAPI_OPS_TEMPLATE_NAME,
