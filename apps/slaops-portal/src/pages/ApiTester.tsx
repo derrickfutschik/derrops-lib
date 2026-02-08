@@ -28,6 +28,7 @@ import { OpenAPIRequestTab } from "@/components/api-tester/OpenAPIRequestTab";
 import { OpenAPISelection } from "@/components/api-tester/OpenAPISelection";
 import { OpenAPIFormValues } from "@/components/api-tester/OpenAPIParameterForm";
 import { Service } from "@/client/slaops-cloud/models/service";
+import { API_BASE_URL } from "@/config";
 
 interface KeyValuePair {
   key: string;
@@ -923,7 +924,6 @@ const ApiTester = () => {
   const fetchServices = async () => {
     try {
       // TODO this should reference the correct pah in docker
-      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });

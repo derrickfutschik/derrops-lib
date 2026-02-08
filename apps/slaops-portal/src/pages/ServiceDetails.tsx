@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import SwaggerUI from "swagger-ui-react";
 import "swagger-ui-react/swagger-ui.css";
 import yaml from "js-yaml";
+import { API_BASE_URL } from "@/config";
 
 const ServiceDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +31,6 @@ const ServiceDetails = () => {
         throw new Error("Service ID is required");
       }
 
-      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });

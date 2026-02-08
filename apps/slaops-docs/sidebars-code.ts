@@ -8,8 +8,8 @@ const sidebars: SidebarsConfig = {
       label: 'Apps',
       items: [
         'apps/slaops-cloud',
-        'apps/slaops-cloud-openapi-indexer',
-        'apps/slaops-cloud-openapi-search',
+        'apps/slaops-cloud/openapi-indexer',
+        'apps/slaops-cloud/openapi-search',
         'apps/slaops-portal',
       ],
     },

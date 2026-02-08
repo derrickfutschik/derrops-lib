@@ -16,8 +16,8 @@ const codeDir = path.join(docsDir, 'code')
 /** [source path relative to monorepo root, dest path relative to code/] */
 const COPY_LIST = [
   ['apps/slaops-cloud/README.md', 'apps/slaops-cloud.md'],
-  ['apps/slaops-cloud/src/openapi-indexer/README.md', 'apps/slaops-cloud-openapi-indexer.md'],
-  ['apps/slaops-cloud/src/openapi-search/README.md', 'apps/slaops-cloud-openapi-search.md'],
+  ['apps/slaops-cloud/src/openapi-indexer/README.md', 'apps/slaops-cloud/openapi-indexer.md'],
+  ['apps/slaops-cloud/src/openapi-search/README.md', 'apps/slaops-cloud/openapi-search.md'],
   ['apps/slaops-portal/README.md', 'apps/slaops-portal.md'],
   ['packages/slaops-config/README.md', 'packages/slaops-config.md'],
   ['packages/slaops-private/README.md', 'packages/slaops-private.md'],

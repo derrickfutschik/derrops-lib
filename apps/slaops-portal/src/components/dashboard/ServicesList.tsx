@@ -7,6 +7,7 @@ import { Activity, TrendingUp } from "lucide-react";
 import { ServiceApi, Configuration } from "@/client/slaops-cloud";
 import { Service } from "@/client/slaops-cloud/models/service";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/config";
 
 const ServicesList = () => {
   const navigate = useNavigate();
@@ -20,7 +21,6 @@ const ServicesList = () => {
 
   const fetchServices = async () => {
     try {
-      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });

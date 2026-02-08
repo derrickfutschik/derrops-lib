@@ -9,6 +9,7 @@ import { ArrowLeft, Zap } from "lucide-react";
 import { ServiceApi, Configuration } from "@/client/slaops-cloud";
 import type { CreateServiceDto } from "@/client/slaops-cloud";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/config";
 
 const exampleServices = [
   {
@@ -84,7 +85,6 @@ const AddService = () => {
       // For now, using a hardcoded user_id
       const user_id = "5c963787-d89d-4260-adaf-6541c41cb982";
 
-      const API_BASE_URL = 'http://localhost:8080';
       const config = new Configuration({
         basePath: API_BASE_URL,
       });

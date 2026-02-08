@@ -13,7 +13,7 @@ Content is copied at build time from each area’s `README.md` via `scripts/copy
 
 - **[slaops-cloud](/code/apps/slaops-cloud)** — NestJS backend API
 - **[slaops-portal](/code/apps/slaops-portal)** — React web portal
-- **slaops-cloud modules**: [OpenAPI Indexer](/code/apps/slaops-cloud-openapi-indexer), [OpenAPI Search](/code/apps/slaops-cloud-openapi-search)
+- **slaops-cloud modules**: [OpenAPI Indexer](/code/apps/slaops-cloud/openapi-indexer), [OpenAPI Search](/code/apps/slaops-cloud/openapi-search)
 
 ## Packages
 
