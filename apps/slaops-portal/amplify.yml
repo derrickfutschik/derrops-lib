@@ -1,14 +1,18 @@
+# Build instance type (Standard/Large/XLarge) is set in Amplify Console:
+# Hosting → Build settings → Advanced settings → Edit → Build instance type.
+# Use Large (16 GiB) or XLarge (72 GiB) if builds run out of memory.
+# Node heap below is set for Large (12000 MB); use 60000 for XLarge.
 version: 1
 applications:
   - appRoot: apps/slaops-portal
     env:
       variables:
-        NODE_OPTIONS: "--max_old_space_size=4096"
+        NODE_OPTIONS: "--max-old-space-size=12000"
     frontend:
       phases:
         preBuild:
           commands:
-            - export NODE_OPTIONS="--max-old-space-size=6144"
+            - export NODE_OPTIONS="--max-old-space-size=12000"
             - corepack enable
             - corepack prepare pnpm@9.0.0 --activate
             - pnpm config set store-dir .pnpm-store
@@ -21,7 +25,7 @@ applications:
             - ./amplify-prebuild.sh
         build:
           commands:
-            - export NODE_OPTIONS="--max-old-space-size=6144"
+            - export NODE_OPTIONS="--max-old-space-size=12000"
             - chmod +x amplify-build.sh
             - ./amplify-build.sh
       artifacts:
