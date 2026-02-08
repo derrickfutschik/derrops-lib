@@ -44,7 +44,15 @@ for (const [srcRel, destRel] of COPY_LIST) {
     continue
   }
   ensureDir(path.dirname(dest))
-  fs.copyFileSync(src, dest)
+  let content = fs.readFileSync(src, 'utf8')
+  // Fix relative links that break in Docusaurus when viewed under /code/
+  if (destRel === 'apps/slaops-cloud.md') {
+    content = content.replace(
+      /\]\(\.\.\/\.\.\/packages\/slaops-backend\/README\.md\)/g,
+      '](/code/packages/slaops-backend)'
+    )
+  }
+  fs.writeFileSync(dest, content)
   console.log(`Copied: ${srcRel} → code/${destRel}`)
   copied++
 }

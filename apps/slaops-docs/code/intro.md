@@ -20,7 +20,6 @@ Content is copied at build time from each area’s `README.md` via `scripts/copy
 - **[slaops-config](/code/packages/slaops-config)** — Configuration
 - **[slaops-private](/code/packages/slaops-private)** — Core types and utilities
 - **[slaops-public](/code/packages/slaops-public)** — Shared utilities
-- **[slaops-client](/code/packages/slaops-client)** — Base HTTP client
 - **[slaops-client-nodejs-axios](/code/packages/slaops-client-nodejs-axios)** — Axios client
 - **[slaops-backend](/code/packages/slaops-backend)** — Amplify backend
 - **[slaops-infra](/code/packages/slaops-infra)** — CDK infrastructure
