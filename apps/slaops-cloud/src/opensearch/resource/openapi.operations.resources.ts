@@ -3,17 +3,11 @@ import { config } from '@slaops/config';
 import type { Indices_PutIndexTemplate_Request } from '@opensearch-project/opensearch/api/indices/putIndexTemplate';
 import type { Ingest_PutPipeline_Request } from '@opensearch-project/opensearch/api/ingest/putPipeline';
 
-export const OPENAPI_OPS_INDEX_PATTERNS = [config['opensearch.index.openapi.operations']];
-export const OPENAPI_OPS_TEMPLATE_NAME = 'openapi-operations-template';
-export const OPENAPI_OPS_PIPELINE_ID = 'openapi-operation-pipeline';
-export const OPENAPI_OPS_WRITE_ALIAS = 'openapi-operations';
-
-// TODO 2
 
 export const openapiOperationsTemplate: Indices_PutIndexTemplate_Request = {
-    name: OPENAPI_OPS_TEMPLATE_NAME,
+    name: config['opensearch.template.openapi.operations'],
     body: {
-        index_patterns: OPENAPI_OPS_INDEX_PATTERNS,
+        index_patterns: [config['opensearch.index.openapi.operations']],
         template: {
             settings: {
                 analysis: {
@@ -84,7 +78,7 @@ export const openapiOperationsTemplate: Indices_PutIndexTemplate_Request = {
 };
 
 export const openapiOperationPipeline: Ingest_PutPipeline_Request = {
-    id: OPENAPI_OPS_PIPELINE_ID,
+    id: config['opensearch.pipeline.openapi.operations'],
     body: {
         description: 'Build searchText for openapi operation documents',
         processors: [

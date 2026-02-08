@@ -6,6 +6,7 @@ import { ServiceModule } from './service/service.module';
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module';
 import { config } from '@slaops/config';
 import { SLAConfigModule } from './config/config.module';
+import { OpenSearchModule } from './opensearch/opensearch.module';
 
 @Module({
   imports: [
@@ -57,7 +58,8 @@ import { SLAConfigModule } from './config/config.module';
     }),
     ServiceModule,
     OpenApiSearchModule,
-    SLAConfigModule,
+    SLAConfigModule,  // TODO - only import this in non prod environments
+    OpenSearchModule, // TODO - only import this in non prod environments
   ],
   controllers: [],
   providers: [],

@@ -3,10 +3,19 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { config } from '@slaops/config';
+import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.command';
 
 async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
+
+  if (process.argv.includes('opensearch:migrate')) {
+    const cmd = app.get(OpenSearchMigrateCommand);
+    await cmd.run();
+    await app.close();
+    return;
+  }
+
 
   // Enable CORS for frontend integration
   app.enableCors({

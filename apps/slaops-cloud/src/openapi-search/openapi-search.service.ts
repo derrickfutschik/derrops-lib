@@ -1,8 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Client } from '@opensearch-project/opensearch';
-import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws';
-import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { OpenApiSearchQueryDto } from './dto/openapi-search-query.dto';
 import {
   OpenApiSearchResponseDto,
@@ -67,38 +64,20 @@ type StatsSearch = Search<OpenApiIndexDocument,
  */
 @Injectable()
 export class OpenApiSearchService implements OnModuleInit {
+
   private readonly logger = new Logger(OpenApiSearchService.name);
+
   private readonly indexName = config['opensearch.index.openapi.apis']
 
-  private client: Client;
-  private tsClient: TypescriptOSProxyClient
-
+  constructor(
+    private readonly client: Client,
+    private readonly tsClient: TypescriptOSProxyClient) {
+  }
 
   async onModuleInit() {
-    const endpoint = config['opensearch.endpoint'];
-    const region = config['aws.region'];
-
-    if (!endpoint) {
-      this.logger.warn('OPENSEARCH_ENDPOINT not configured, OpenAPI search will not be available');
-      return;
-    }
 
     try {
-      this.client = new Client({
-        ...AwsSigv4Signer({
-          region,
-          service: 'aoss', // OpenSearch Serverless
-          getCredentials: () => {
-            const credentialsProvider = defaultProvider();
-            return credentialsProvider();
-          },
-        }),
-        node: endpoint,
-      });
 
-      this.tsClient = new TypescriptOSProxyClient(this.client);
-
-      this.logger.log(`Connected to OpenSearch at ${endpoint}`);
     } catch (error) {
       this.logger.error('Failed to initialize OpenSearch client', error);
     }

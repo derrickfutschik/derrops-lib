@@ -25,7 +25,11 @@ export const makeConfig = (cfg: ConfigInput = configFromEnv({
     const app = appName.toLowerCase();
     const env = (cfg.NODE_ENV ?? "dev").toLowerCase();
 
-    const getIndexName = (entity: string) => `${app}-${entity}-${env}`.toLowerCase()
+
+    const opensearchPrefix = cfg.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase();
+    const opensearchSuffix = cfg.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase();
+
+    const opensearchName = (entity: string) => `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
 
     return {
 
@@ -77,16 +81,29 @@ export const makeConfig = (cfg: ConfigInput = configFromEnv({
         "opensearch.endpoint": cfg.OPENSEARCH_ENDPOINT,
 
         /** The index prefix */
-        "opensearch.index.prefix": cfg.OPENSEARCH_INDEX_PREFIX ?? `${app}-`.toLowerCase(),
+        "opensearch.index.prefix": opensearchPrefix,
 
         /** The suffix for the index */
-        "opensearch.index.suffix": cfg.OPENSEARCH_INDEX_SUFFIX ?? `-${env}`.toLowerCase(),
+        "opensearch.index.suffix": opensearchSuffix,
 
         /** Index of the OpenAPI APIs */
-        "opensearch.index.openapi.apis": getIndexName("openapi-apis"),
+        "opensearch.index.openapi.apis": opensearchName("openapi-apis"),
 
         /** Index of the OpenAPI Operations */
-        "opensearch.index.openapi.operations": getIndexName("openapi-operations"),
+        "opensearch.index.openapi.operations": opensearchName("openapi-operations"),
+
+        /** Template of the OpenAPI APIs */
+        "opensearch.template.openapi.apis": opensearchName("openapi-apis"),
+
+        /** Template of the OpenAPI Operations */
+        "opensearch.template.openapi.operations": opensearchName("openapi-operations"),
+
+        /** Pipeline of the OpenAPI APIs */
+        "opensearch.pipeline.openapi.apis": opensearchName("openapi-apis"),
+
+        /** Pipeline of the OpenAPI Operations */
+        "opensearch.pipeline.openapi.operations": opensearchName("openapi-operations"),
+
 
         "app.pagination.default.size": 20,
 
