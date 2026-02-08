@@ -24,7 +24,3 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - node_modules/**/*
-          - .turbo/**/*
-          - node_modules/.cache/turbo/**/*
-          - apps/slaops-docs/.docusaurus/**/*
