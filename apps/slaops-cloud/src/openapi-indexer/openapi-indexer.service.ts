@@ -91,6 +91,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     await this.opensearchClient.index({
       index: this.indexName,
       id: documentId,
+      pipeline: config['opensearch.pipeline.openapi.apis'],
       body: document as unknown as Record<string, unknown>,
       refresh: true,
     })
