@@ -26,6 +26,9 @@ pnpm --filter @slaops/cloud run build
 
 # Lint and fix
 pnpm --filter @slaops/cloud run lint
+
+# Apply OpenSearch index templates and ingest pipelines (run after adding/changing assets)
+pnpm --filter @slaops/cloud run opensearch:migrate:dev
 ```
 
 ## Conventions
@@ -55,6 +58,9 @@ NestJS modules follow the standard pattern with singular naming:
 ```
 src/
 ├── app.module.ts              # Root module, configures TypeORM
+├── opensearch/                # OpenSearch instance management (see below)
+├── openapi-indexer/           # OpenAPI spec indexing
+├── openapi-search/            # OpenAPI search API
 └── service/                   # Feature module (singular)
     ├── service.module.ts      # Module definition
     ├── service.controller.ts  # REST endpoints
@@ -65,6 +71,26 @@ src/
         ├── create-service.dto.ts
         └── update-service.dto.ts
 ```
+
+### OpenSearch (`src/opensearch/`)
+
+**All OpenSearch instance management lives in this package.** Do not create OpenSearch clients, index templates, or ingest pipelines elsewhere.
+
+- **Ownership** – The opensearch module owns the AWS OpenSearch Serverless client and all index templates and ingest pipelines. Feature modules (e.g. `openapi-search`, `openapi-indexer`) must **import `OpenSearchModule`** and use the exported `Client`, `TypescriptOSProxyClient`, or `OpenSearchService`; they must not instantiate their own clients or define templates/pipelines.
+- **Configuration** – Endpoint, index names, template names, and pipeline ids come from `@slaops/config` (e.g. `opensearch.endpoint`, `opensearch.index.*`, `opensearch.template.*`, `opensearch.pipeline.*`). No hardcoded asset names in opensearch code.
+- **Definitions** – Index templates live under `resource/indices/`, ingest pipelines under `resource/pipelines/`. Each is registered in the barrel `index.ts` and applied by the migration.
+- **Migration** – A single command applies (upserts) all defined templates and pipelines. Run when deploying or when adding/changing assets:
+
+  ```bash
+  pnpm --filter @slaops/cloud run opensearch:migrate:dev
+  ```
+
+- **Exports** – `OpenSearchModule` provides:
+  - `Client` – `@opensearch-project/opensearch` client (AWS SigV4, config-driven endpoint).
+  - `TypescriptOSProxyClient` – Typed client from `opensearch-ts`.
+  - `OpenSearchService` – Runs migration (template and pipeline upserts).
+
+Adding new index templates or ingest pipelines: add definitions under `resource/indices/` or `resource/pipelines/`, register them in the barrel `index.ts`, and re-run the migrate command. See `src/opensearch/README.md` for details.
 
 ### Database
 
@@ -91,6 +117,7 @@ Key variables:
 - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` - Database connection
 - `DB_SECRET_ARN` - AWS Secrets Manager ARN (Lambda only)
 - `CORS_ORIGIN` - Allowed CORS origin
+- OpenSearch: use `@slaops/config` keys (e.g. `opensearch.endpoint`, `opensearch.index.*`, `opensearch.template.*`, `opensearch.pipeline.*`); see `packages/slaops-config`
 
 ## API
 

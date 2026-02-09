@@ -21,6 +21,8 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf packages/*/dist packages/*/node_modules node_modules",
     "clean:modules": "rm -rf node_modules packages/*/node_modules apps/*/node_modules test-resources/node_modules",
+    "format": "prettier --write .",
+    "format:organize": "prettier --write --plugin prettier-plugin-organize-imports .",
     "commit": "bash scripts/ai-commit.sh",
     "commit:ai": "bash scripts/ai-commit.sh",
     "setup:test-resources": "git clone git@github.com:APIs-guru/openapi-directory.git test-resources/openapi-directory",

@@ -1,10 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Client } from '@opensearch-project/opensearch'
 import { config } from '@slaops/config'
-import {
-  openapiOperationPipeline,
-  openapiOperationsTemplate,
-} from './resource/openapi.operations.resources'
+
+import { ALL_INDICES_TEMPLATES } from './resource/indices'
+import { ALL_INGEST_PIPELINES } from './resource/pipelines'
 
 @Injectable()
 export class OpenSearchService {
@@ -12,30 +11,50 @@ export class OpenSearchService {
 
   constructor(private readonly client: Client) {}
 
+  private async upsertTemplates(): Promise<void> {
+    this.logger.log('Upserting templates')
+
+    for (const template of ALL_INDICES_TEMPLATES) {
+      this.logger.log(`Upserting template: ${template.name}`)
+      await this.client.indices
+        .putIndexTemplate(template)
+        .then(
+          (response) =>
+            response.statusCode === 200 && this.logger.log('Template upserted successfully'),
+        )
+    }
+  }
+
+  private async upsertPipelines(): Promise<void> {
+    this.logger.log('Upserting pipelines')
+
+    for (const pipeline of ALL_INGEST_PIPELINES) {
+      this.logger.log(`Upserting pipeline: ${pipeline.id}`)
+      await this.client.ingest
+        .putPipeline(pipeline)
+        .then(
+          (response) =>
+            response.statusCode === 200 && this.logger.log('Ingest pipeline upserted successfully'),
+        )
+    }
+  }
   async migrateOpenApiSearchResources(): Promise<void> {
     this.logger.log('Migrating OpenSearch indices')
 
-    // 1) Upsert template
-    this.logger.log('Upserting template')
-    await this.client.indices
-      .putIndexTemplate(openapiOperationsTemplate)
-      .then(
-        (response) =>
-          response.statusCode === 200 && this.logger.log('Template upserted successfully'),
-      )
+    await this.upsertTemplates()
 
-    // 2) Upsert ingest pipeline
-    this.logger.log('Upserting ingest pipeline')
-    await this.client.ingest
-      .putPipeline(openapiOperationPipeline)
-      .then(
-        (response) =>
-          response.statusCode === 200 && this.logger.log('Ingest pipeline upserted successfully'),
-      )
+    await this.upsertPipelines()
 
     // 3) Ensure alias exists pointing at some physical index (optional but recommended)
-    this.logger.log('Ensuring write alias exists')
-    await this.ensureWriteAlias()
+    // this.logger.log('Ensuring write alias exists')
+    // await this.ensureWriteAlias()
+  }
+
+  private async ensureIndexExists(): Promise<void> {
+    this.logger.log('Ensuring index exists')
+    await this.client.indices.create({
+      index: config['opensearch.index.openapi.operations'],
+    })
   }
 
   /**
