@@ -12,6 +12,8 @@ const isSecret = (key: string) => {
     k.includes('email') ||
     k.includes('account') ||
     k.includes('credentials') ||
+    k.includes('endpoint') ||
+    k.includes('host') ||
     (k.includes('database') && k.includes('user')) ||
     (k.includes('db') && k.includes('user')) ||
     (k.includes('opensearch') && k.includes('user'))
