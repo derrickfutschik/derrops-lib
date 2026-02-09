@@ -112,9 +112,6 @@ export class OpenApiIndexerService implements OnModuleInit {
     return pattern.test(s3Key)
   }
 
-  /**
-   * Process a single S3 record
-   */
   async processRecord(record: {
     bucket: string
     key: string

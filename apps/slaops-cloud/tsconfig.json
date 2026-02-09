@@ -13,7 +13,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@slaops/cloud/*": ["./src/*"]
+      "@slaops/cloud/*": ["./src/*"],
+      "@slaops/config/*": ["../../packages/slaops-config/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
