@@ -38,6 +38,7 @@ export class OpenSearchService {
         )
     }
   }
+
   async migrateOpenApiSearchResources(): Promise<void> {
     this.logger.log('Migrating OpenSearch indices')
 
@@ -45,16 +46,29 @@ export class OpenSearchService {
 
     await this.upsertPipelines()
 
-    // 3) Ensure alias exists pointing at some physical index (optional but recommended)
+    await this.ensureIndexExists()
+
+    // Ensure alias exists pointing at some physical index (optional but recommended)
     // this.logger.log('Ensuring write alias exists')
     // await this.ensureWriteAlias()
   }
 
   private async ensureIndexExists(): Promise<void> {
-    this.logger.log('Ensuring index exists')
-    await this.client.indices.create({
-      index: config['opensearch.index.openapi.operations'],
-    })
+    this.logger.log('Ensuring indices exists')
+    Object.keys(config)
+      .filter((key) => key.startsWith('opensearch.index'))
+      .forEach(async (key) => {
+        this.logger.log(`Ensuring index exists: ${key} => ${config[key]}`)
+        const indexExists = await this.client.indices.exists({ index: config[key] })
+        if (!indexExists.body) {
+          this.logger.log(`Creating index: ${config[key]}`)
+          await this.client.indices.create({
+            index: config[key],
+          })
+        } else {
+          this.logger.log(`Index already exists: ${config[key]}`)
+        }
+      })
   }
 
   /**

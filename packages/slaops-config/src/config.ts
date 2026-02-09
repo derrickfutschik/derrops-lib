@@ -78,10 +78,10 @@ export const makeConfig = (
     'opensearch.endpoint': cfg.OPENSEARCH_ENDPOINT,
 
     /** The index prefix */
-    'opensearch.index.prefix': opensearchPrefix,
+    'opensearch.prefix': opensearchPrefix,
 
     /** The suffix for the index */
-    'opensearch.index.suffix': opensearchSuffix,
+    'opensearch.suffix': opensearchSuffix,
 
     /** Index of the OpenAPI APIs */
     'opensearch.index.openapi.apis': opensearchName('openapi-apis'),
