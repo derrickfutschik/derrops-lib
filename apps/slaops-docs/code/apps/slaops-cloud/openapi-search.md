@@ -1,6 +1,6 @@
 Prefer to use the opensearch-ts client for the openapi-search service.
 
-This involves first constructing the cilent if not done so already, then using the client to search the index.
+This involves first constructing the client if not done so already, then using the client to search the index.
 
 ```ts
 const tsClient = new TypescriptOSProxyClient(this.client)

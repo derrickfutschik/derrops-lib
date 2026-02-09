@@ -3,11 +3,9 @@
  */
 
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
-import { defaultProvider } from '@aws-sdk/credential-provider-node'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Client } from '@opensearch-project/opensearch'
-import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws'
 import {
   IndexResult,
   IndexingError,
@@ -23,14 +21,13 @@ export class OpenApiIndexerService implements OnModuleInit {
   private readonly logger = new Logger(OpenApiIndexerService.name)
   private readonly indexName: string
   private readonly debug: boolean
-
   private s3Client!: S3Client
-  private opensearchClient!: Client
-  private tsClient!: TypescriptOSProxyClient
 
   constructor(
     private readonly configService: ConfigService,
     private readonly parserService: OpenApiParserService,
+    private readonly opensearchClient: Client,
+    private readonly tsClient: TypescriptOSProxyClient,
   ) {
     this.indexName = config['opensearch.index.openapi.apis']
     this.debug = this.configService.get<string>('DEBUG') === 'true'
@@ -39,35 +36,6 @@ export class OpenApiIndexerService implements OnModuleInit {
   async onModuleInit() {
     // Initialize S3 client
     this.s3Client = new S3Client({})
-
-    // Initialize OpenSearch client
-    const endpoint = config['aws.accountId']
-    const region = config['aws.region']
-
-    if (!endpoint) {
-      this.logger.warn('OPENSEARCH_ENDPOINT not configured, indexing will not be available')
-      return
-    }
-
-    try {
-      this.opensearchClient = new Client({
-        ...AwsSigv4Signer({
-          region,
-          service: 'aoss', // OpenSearch Serverless
-          getCredentials: () => {
-            const credentialsProvider = defaultProvider()
-            return credentialsProvider()
-          },
-        }),
-        node: endpoint,
-      })
-
-      this.tsClient = new TypescriptOSProxyClient(this.opensearchClient)
-
-      this.logger.log(`Connected to OpenSearch at ${endpoint}`)
-    } catch (error) {
-      this.logger.error('Failed to initialize OpenSearch client', error)
-    }
   }
 
   /**
