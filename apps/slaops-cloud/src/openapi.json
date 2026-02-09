@@ -31,7 +31,9 @@
           }
         },
         "summary": "Create a new service",
-        "tags": ["Service"]
+        "tags": [
+          "Service"
+        ]
       },
       "get": {
         "operationId": "ServiceController_findAll",
@@ -63,7 +65,9 @@
           }
         },
         "summary": "Get all services",
-        "tags": ["Service"]
+        "tags": [
+          "Service"
+        ]
       }
     },
     "/services/{id}": {
@@ -106,7 +110,9 @@
           }
         },
         "summary": "Get a service by ID",
-        "tags": ["Service"]
+        "tags": [
+          "Service"
+        ]
       },
       "patch": {
         "operationId": "ServiceController_update",
@@ -151,7 +157,9 @@
           }
         },
         "summary": "Update a service",
-        "tags": ["Service"]
+        "tags": [
+          "Service"
+        ]
       },
       "delete": {
         "operationId": "ServiceController_remove",
@@ -189,7 +197,9 @@
           }
         },
         "summary": "Delete a service",
-        "tags": ["Service"]
+        "tags": [
+          "Service"
+        ]
       }
     },
     "/openapi-search": {
@@ -237,7 +247,15 @@
             "description": "Filter by HTTP method",
             "schema": {
               "example": "POST",
-              "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "HEAD",
+                "OPTIONS"
+              ],
               "type": "string"
             }
           },
@@ -301,7 +319,13 @@
             "description": "Sort field",
             "schema": {
               "default": "_score",
-              "enum": ["title", "provider", "indexedAt", "operationStats.total", "_score"],
+              "enum": [
+                "title",
+                "provider",
+                "indexedAt",
+                "operationStats.total",
+                "_score"
+              ],
               "type": "string"
             }
           },
@@ -312,7 +336,10 @@
             "description": "Sort order",
             "schema": {
               "default": "desc",
-              "enum": ["asc", "desc"],
+              "enum": [
+                "asc",
+                "desc"
+              ],
               "type": "string"
             }
           }
@@ -330,7 +357,9 @@
           }
         },
         "summary": "Search OpenAPI specifications",
-        "tags": ["OpenAPI Search"]
+        "tags": [
+          "OpenAPI Search"
+        ]
       }
     },
     "/openapi-search/provider": {
@@ -354,7 +383,9 @@
           }
         },
         "summary": "List all API providers",
-        "tags": ["OpenAPI Search"]
+        "tags": [
+          "OpenAPI Search"
+        ]
       }
     },
     "/openapi-search/stats": {
@@ -375,7 +406,9 @@
           }
         },
         "summary": "Get index statistics",
-        "tags": ["OpenAPI Search"]
+        "tags": [
+          "OpenAPI Search"
+        ]
       }
     },
     "/openapi-search/{id}": {
@@ -403,7 +436,9 @@
           }
         },
         "summary": "Get OpenAPI spec by ID",
-        "tags": ["OpenAPI Search"]
+        "tags": [
+          "OpenAPI Search"
+        ]
       }
     },
     "/config": {
@@ -416,7 +451,9 @@
           }
         },
         "summary": "Get the config",
-        "tags": ["Config"]
+        "tags": [
+          "Config"
+        ]
       }
     }
   },
@@ -483,7 +520,11 @@
             "example": 80
           }
         },
-        "required": ["user_id", "name", "endpoint"]
+        "required": [
+          "user_id",
+          "name",
+          "endpoint"
+        ]
       },
       "Service": {
         "type": "object",
@@ -547,7 +588,14 @@
             "example": "2024-01-15T10:30:00.000Z"
           }
         },
-        "required": ["id", "user_id", "name", "endpoint", "created_at", "updated_at"]
+        "required": [
+          "id",
+          "user_id",
+          "name",
+          "endpoint",
+          "created_at",
+          "updated_at"
+        ]
       },
       "UpdateServiceDto": {
         "type": "object",
@@ -612,7 +660,10 @@
             "description": "Highlighted matches"
           }
         },
-        "required": ["document", "score"]
+        "required": [
+          "document",
+          "score"
+        ]
       },
       "AggregationBucket": {
         "type": "object",
@@ -626,7 +677,10 @@
             "description": "Document count"
           }
         },
-        "required": ["key", "count"]
+        "required": [
+          "key",
+          "count"
+        ]
       },
       "SearchAggregations": {
         "type": "object",
@@ -660,7 +714,12 @@
             }
           }
         },
-        "required": ["providers", "tags", "methods", "pathPrefixes"]
+        "required": [
+          "providers",
+          "tags",
+          "methods",
+          "pathPrefixes"
+        ]
       },
       "OpenApiSearchResponseDto": {
         "type": "object",
@@ -689,7 +748,11 @@
             "description": "Query execution time in milliseconds"
           }
         },
-        "required": ["total", "hits", "took"]
+        "required": [
+          "total",
+          "hits",
+          "took"
+        ]
       },
       "ProviderListResponseDto": {
         "type": "object",
@@ -703,7 +766,10 @@
             "description": "Number of API specs"
           }
         },
-        "required": ["provider", "count"]
+        "required": [
+          "provider",
+          "count"
+        ]
       },
       "IndexStatsResponseDto": {
         "type": "object",
@@ -729,7 +795,12 @@
             "description": "Last indexed timestamp"
           }
         },
-        "required": ["totalDocuments", "totalOperations", "uniqueProviders", "uniqueTags"]
+        "required": [
+          "totalDocuments",
+          "totalOperations",
+          "uniqueProviders",
+          "uniqueTags"
+        ]
       }
     }
   }
