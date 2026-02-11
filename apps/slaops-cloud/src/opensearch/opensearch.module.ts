@@ -4,30 +4,36 @@ import { Client } from '@opensearch-project/opensearch'
 import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws'
 import { OpenSearchMigrateCommand } from './opensearch.migrate.command'
 import { OpenSearchService } from './opensearch.service'
-
 import { config } from '@slaops/config'
 import { TypescriptOSProxyClient } from 'opensearch-ts'
+
+function createOpenSearchClient(): Client {
+  const endpoint = config['opensearch.endpoint']
+  const isLocal = endpoint.startsWith('http://')
+
+  if (isLocal) {
+    return new Client({ node: endpoint })
+  }
+
+  const region = config['aws.region']
+  return new Client({
+    ...AwsSigv4Signer({
+      region,
+      service: 'aoss', // OpenSearch Serverless
+      getCredentials: () => {
+        const credentialsProvider = defaultProvider()
+        return credentialsProvider()
+      },
+    }),
+    node: endpoint,
+  })
+}
 
 @Module({
   providers: [
     {
       provide: Client,
-      useFactory: () => {
-        const endpoint = config['opensearch.endpoint']
-        const region = config['aws.region']
-
-        return new Client({
-          ...AwsSigv4Signer({
-            region,
-            service: 'aoss', // OpenSearch Serverless
-            getCredentials: () => {
-              const credentialsProvider = defaultProvider()
-              return credentialsProvider()
-            },
-          }),
-          node: endpoint,
-        })
-      },
+      useFactory: createOpenSearchClient,
     },
     {
       provide: TypescriptOSProxyClient,

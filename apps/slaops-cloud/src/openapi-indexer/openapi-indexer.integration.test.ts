@@ -1,18 +1,21 @@
 /**
  * Integration test for OpenApiIndexerService.indexDocument
- * Uses TEST_API_SPECS.ably and a mocked OpenSearch client.
+ * Uses TEST_API_SPECS.ably and a real OpenSearch client.
+ * Requires OpenSearch to be available at OPENSEARCH_ENDPOINT.
  */
 
 import { ConfigModule } from '@nestjs/config'
 import { Test } from '@nestjs/testing'
 import { Client } from '@opensearch-project/opensearch'
-import { loadConfig, resetConfigForTests, setConfigForProcess } from '@slaops/config'
-import testEnv from '@slaops/config/src/test-env'
+import { config, loadConfig, resetConfigForTests, setConfigForProcess } from '@slaops/config'
+// import testEnv from '@slaops/config/src/test-env'
+
 import { existsSync, readFileSync } from 'node:fs'
-import { TypescriptOSProxyClient } from 'opensearch-ts'
 import { TEST_API_SPECS } from '../../../../test-resources/loader'
+import { OpenApiIndexerModule } from './openapi-indexer.module'
 import { OpenApiIndexerService } from './openapi-indexer.service'
 import { OpenApiParserService } from './openapi-parser.service'
+import devEnv from '@slaops/config/dev-env'
 
 const ABLY_DOCUMENT_ID = 'ably.net/control/v1'
 const ABLY_S3_KEY = 'APIs/ably.net/control/v1/openapi.yaml'
@@ -21,10 +24,11 @@ const ABLY_BUCKET = 'test-openapis'
 describe('OpenApiIndexerService (integration)', () => {
   let indexerService: OpenApiIndexerService
   let parserService: OpenApiParserService
-  let mockIndex: jest.Mock
+  let opensearchClient: Client
 
   beforeAll(() => {
-    const env = loadConfig(testEnv)
+    // const env = loadConfig(testEnv)
+    const env = loadConfig(devEnv)
     setConfigForProcess(env)
   })
 
@@ -33,30 +37,16 @@ describe('OpenApiIndexerService (integration)', () => {
   })
 
   beforeEach(async () => {
-    mockIndex = jest.fn().mockResolvedValue({ body: { result: 'created', _id: ABLY_DOCUMENT_ID } })
-
-    const mockClient = {
-      index: mockIndex,
-      delete: jest.fn().mockResolvedValue(undefined),
-    } as unknown as Client
-
-    const mockTsClient = {} as TypescriptOSProxyClient
-
     const moduleRef = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ isGlobal: true })],
-      providers: [
-        OpenApiIndexerService,
-        OpenApiParserService,
-        { provide: Client, useValue: mockClient },
-        { provide: TypescriptOSProxyClient, useValue: mockTsClient },
-      ],
+      imports: [ConfigModule.forRoot({ isGlobal: true }), OpenApiIndexerModule],
     }).compile()
 
     indexerService = moduleRef.get(OpenApiIndexerService)
     parserService = moduleRef.get(OpenApiParserService)
+    opensearchClient = moduleRef.get(Client)
   })
 
-  it('indexDocument indexes the Ably spec document and calls OpenSearch with the expected payload', async () => {
+  it('indexDocument indexes the Ably spec document in OpenSearch', async () => {
     const specPath = TEST_API_SPECS.ably()
     expect(existsSync(specPath)).toBe(true)
 
@@ -74,21 +64,19 @@ describe('OpenApiIndexerService (integration)', () => {
 
     await indexerService.indexDocument(ABLY_DOCUMENT_ID, document)
 
-    expect(mockIndex).toHaveBeenCalledTimes(1)
-    const [call] = mockIndex.mock.calls
-    expect(call[0]).toMatchObject({
-      index: expect.any(String),
+    const { body } = await opensearchClient.get({
+      index: config['opensearch.index.openapi.apis'],
       id: ABLY_DOCUMENT_ID,
-      refresh: true,
     })
-    expect(call[0].body).toBeDefined()
-    const body = call[0].body as Record<string, unknown>
-    expect(body.id).toBe(ABLY_DOCUMENT_ID)
-    expect(body.provider).toBe('ably.net')
-    expect(body.serviceName).toBe('control')
-    expect(body.version).toBe('v1')
-    expect(body.title).toBe(document.title)
-    expect(body.operationStats).toEqual(document.operationStats)
-    expect(body.s3Location).toEqual({ bucket: ABLY_BUCKET, key: ABLY_S3_KEY })
+    const indexed = body._source as Record<string, unknown>
+    expect(indexed.id).toBe(ABLY_DOCUMENT_ID)
+    expect(indexed.provider).toBe('ably.net')
+    expect(indexed.serviceName).toBe('control')
+    expect(indexed.version).toBe('v1')
+    expect(indexed.title).toBe(document.title)
+    expect(indexed.operationStats).toEqual(document.operationStats)
+    expect(indexed.s3Location).toEqual({ bucket: ABLY_BUCKET, key: ABLY_S3_KEY })
+
+    await indexerService.deleteDocument(ABLY_DOCUMENT_ID)
   })
 })

@@ -11,13 +11,17 @@ const config: Config = {
         tsconfig: {
           experimentalDecorators: true,
           emitDecoratorMetadata: true,
+          paths: {
+            '@slaops/cloud/*': ['./src/*'],
+            '@slaops/config/*': ['../../packages/slaops-config/src/*'],
+          },
         },
       },
     ],
   },
   moduleNameMapper: {
     '^@slaops/cloud/(.*)$': '<rootDir>/src/$1',
-    '^@slaops/config/(.*)$': '<rootDir>/../../packages/slaops-config/$1',
+    '^@slaops/config/(.*)$': '<rootDir>/../../packages/slaops-config/src/$1',
   },
   collectCoverageFrom: ['src/**/*.(t|j)s', '!src/main.ts', '!src/**/*.module.ts'],
   coverageDirectory: './coverage',

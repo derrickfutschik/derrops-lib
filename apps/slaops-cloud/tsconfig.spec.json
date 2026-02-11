@@ -6,7 +6,8 @@
     "types": ["jest", "node"],
     "baseUrl": "./",
     "paths": {
-      "@slaops/cloud/*": ["./src/*"]
+      "@slaops/cloud/*": ["./src/*"],
+      "@slaops/config/*": ["../../packages/slaops-config/src/*"]
     }
   },
   "include": ["src/**/*", "test/**/*"],
