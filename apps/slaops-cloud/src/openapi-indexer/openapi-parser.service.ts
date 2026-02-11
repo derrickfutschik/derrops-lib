@@ -2,6 +2,7 @@
  * OpenAPI Parser Service - Parses OpenAPI 3.x specs and transforms them for indexing
  */
 
+import { createHash } from 'node:crypto'
 import { Injectable } from '@nestjs/common'
 import {
   INDEXING_LIMITS,
@@ -300,7 +301,7 @@ export class OpenApiParserService {
     const now = new Date().toISOString()
 
     const document: OpenApiIndexDocument = {
-      id: `${provider}/${service}/${version}`,
+      id: calculateId(provider, service, version),
       provider,
       serviceName: service,
       version,
@@ -364,4 +365,16 @@ export class OpenApiParserService {
     // Transform to index document
     return this.transformToIndexDocument(rawSpec, s3Key, bucket, fileSize, format)
   }
+}
+
+/**
+ * Calculate the ID for the OpenAPI index document compatible with Opensearch
+ * @param provider - The provider of the API
+ * @param service - The service of the API
+ * @param version - The version of the API
+ * @returns The ID for the OpenAPI index document
+ */
+function calculateId(provider: string, service: string, version: string): string {
+  const payload = JSON.stringify({ provider, service, version })
+  return createHash('md5').update(payload, 'utf8').digest('hex')
 }

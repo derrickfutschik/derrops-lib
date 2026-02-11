@@ -55,8 +55,8 @@ export class OpenApiIndexerService implements OnModuleInit {
   /**
    * Index document to OpenSearch
    */
-  async indexDocument(documentId: string, document: OpenApiIndexDocument): Promise<void> {
-    await this.opensearchClient.index({
+  async indexDocument(documentId: string, document: OpenApiIndexDocument) {
+    return await this.opensearchClient.index({
       index: this.indexName,
       id: documentId,
       pipeline: config['opensearch.pipeline.openapi.apis'],
@@ -68,9 +68,9 @@ export class OpenApiIndexerService implements OnModuleInit {
   /**
    * Delete document from OpenSearch
    */
-  async deleteDocument(documentId: string): Promise<void> {
+  async deleteDocument(documentId: string) {
     try {
-      await this.opensearchClient.delete({
+      return this.opensearchClient.delete({
         index: this.indexName,
         id: documentId,
         refresh: true,
