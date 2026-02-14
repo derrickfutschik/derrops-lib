@@ -83,6 +83,16 @@ export class OpenApiIndexerService implements OnModuleInit {
     }
   }
 
+  async deleteAllDocuments() {
+    return this.opensearchClient.deleteByQuery({
+      index: this.indexName,
+      body: {
+        query: {
+          match_all: {},
+        },
+      },
+    })
+  }
   /**
    * Extract document ID from S3 key
    * Format: APIs/{provider}/{service}/{version}/... -> {provider}/{service}/{version}

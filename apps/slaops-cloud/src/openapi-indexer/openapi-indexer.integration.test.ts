@@ -13,8 +13,8 @@ import { TEST_API_SPECS } from '../../../../test-resources/loader'
 import { OpenApiIndexerModule } from './openapi-indexer.module'
 import { OpenApiIndexerService } from './openapi-indexer.service'
 import { OpenApiParserService } from './openapi-parser.service'
-import devEnv from '@slaops/config/dev-env'
-// import testEnv from '@slaops/config/test-env'
+// import devEnv from '@slaops/config/dev-env'
+import testEnv from '@slaops/config/test-env'
 
 const ABLY_DOCUMENT_ID = 'c57b6076698b15a556a609c44e99ac7f'
 const ABLY_S3_KEY = 'APIs/ably.net/control/v1/openapi.yaml'
@@ -86,6 +86,6 @@ describe('OpenApiIndexerService (integration)', () => {
     expect(indexed.operationStats).toEqual(document.operationStats)
     expect(indexed.s3Location).toEqual({ bucket: ABLY_BUCKET, key: ABLY_S3_KEY })
 
-    await indexerService.deleteDocument(ABLY_DOCUMENT_ID)
+    await indexerService.deleteAllDocuments()
   })
 })
