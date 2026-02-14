@@ -99,29 +99,29 @@ export class OpenApiParserService {
   }
 
   /**
-   * Extract path components from S3 key
-   * Expected format: APIs/{provider}/{service}/{version}/openapi.{yaml|json}
+   * Extract path components from S3 key or full filesystem path
+   * Expected format: .../APIs/{provider}/{service}/{version}/openapi.{yaml|json}
    */
   extractPathComponents(s3Key: string): { provider: string; service: string; version: string } {
-    // Remove leading APIs/ if present
-    const normalizedKey = s3Key.replace(/^APIs\//, '')
-    const parts = normalizedKey.split('/')
+    const parts = s3Key.split('/').filter(Boolean)
 
-    if (parts.length < 4) {
+    // Find APIs segment - works for both S3 keys and full filesystem paths
+    const apisIdx = parts.indexOf('APIs')
+    if (apisIdx === -1 || parts.length < apisIdx + 5) {
       throw new IndexingError(
-        `Invalid S3 key format. Expected: APIs/{provider}/{service}/{version}/openapi.{yaml|json}, got: ${s3Key}`,
+        `Invalid path format. Expected: APIs/{provider}/{service}/{version}/openapi.{yaml|json}, got: ${s3Key}`,
         IndexingErrorCode.INVALID_PATH,
         s3Key,
       )
     }
 
-    const provider = parts[0]
-    const service = parts[1]
-    const version = parts[2]
+    const provider = parts[apisIdx + 1]
+    const service = parts[apisIdx + 2]
+    const version = parts[apisIdx + 3]
 
     if (!provider || !service || !version) {
       throw new IndexingError(
-        `Invalid S3 key format. Missing provider, service, or version: ${s3Key}`,
+        `Invalid path format. Missing provider, service, or version: ${s3Key}`,
         IndexingErrorCode.INVALID_PATH,
         s3Key,
       )

@@ -46,6 +46,13 @@ describe('OpenApiIndexerService (integration)', () => {
     opensearchClient = moduleRef.get(Client)
   })
 
+  it('test loading a doc', async () => {
+    const specPath = resolveSpec('1password.com', 'events', '1.2.0')
+    const content = readFileSync(specPath, 'utf-8')
+    const { document } = parserService.parseAndTransform(content, specPath, ABLY_BUCKET)
+    expect(document).toBeDefined()
+  })
+
   it('load all docs', async () => {
     const allApis = Object.keys(apis)
     for (const api of allApis) {
