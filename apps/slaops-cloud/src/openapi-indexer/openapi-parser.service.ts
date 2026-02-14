@@ -374,7 +374,7 @@ export class OpenApiParserService {
  * @param version - The version of the API
  * @returns The ID for the OpenAPI index document
  */
-function calculateId(provider: string, service: string, version: string): string {
+export function calculateId(provider: string, service: string, version: string): string {
   const payload = JSON.stringify({ provider, service, version })
   return createHash('md5').update(payload, 'utf8').digest('hex')
 }

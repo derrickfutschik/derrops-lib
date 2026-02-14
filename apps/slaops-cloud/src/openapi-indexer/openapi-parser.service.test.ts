@@ -2,7 +2,7 @@
  * Unit tests for OpenApiParserService
  */
 import { Test } from '@nestjs/testing'
-import { IndexingErrorCode } from '@slaops/cloud/openapi-search/types/openapi-index.types'
+import { IndexingErrorCode } from '../openapi-search/types/openapi-index.types'
 import { OpenApiParserService } from './openapi-parser.service'
 
 describe('OpenApiParserService', () => {

@@ -62,7 +62,7 @@ describe('OpenApiIndexerService (integration)', () => {
     expect(document.operationStats.total).toBeGreaterThan(0)
     expect(document.paths.length).toBeGreaterThan(0)
 
-    const indexedResponse = await indexerService.indexDocument(API_ID, document)
+    const indexedResponse = await indexerService.indexDocument(document)
     console.log(JSON.stringify(indexedResponse, null, 2))
 
     const { body } = await opensearchClient.get({

@@ -58,10 +58,16 @@ describe('OpenApiIndexerService (integration)', () => {
     for (const api of allApis) {
       const apiPaths = Object.keys(apis[api])
       for (const path of apiPaths) {
-        const specPath = resolveSpec(api as any, path)
-        console.log({ specPath })
-        const content = readFileSync(specPath, 'utf-8')
-        const { document } = parserService.parseAndTransform(content, specPath, ABLY_BUCKET)
+        try {
+          const specPath = resolveSpec(api as any, path)
+          console.log({ specPath })
+          const content = readFileSync(specPath, 'utf-8')
+          const { document } = parserService.parseAndTransform(content, specPath, ABLY_BUCKET)
+          const indexedResponse = await indexerService.indexDocument(document)
+          console.log(JSON.stringify(indexedResponse, null, 2))
+        } catch (e) {
+          console.error(e)
+        }
       }
     }
 
@@ -76,7 +82,7 @@ describe('OpenApiIndexerService (integration)', () => {
     // expect(document.operationStats.total).toBeGreaterThan(0)
     // expect(document.paths.length).toBeGreaterThan(0)
 
-    // const indexedResponse = await indexerService.indexDocument(API_ID, document)
+    // const indexedResponse = await indexerService.indexDocument(document)
     // console.log(JSON.stringify(indexedResponse, null, 2))
 
     // const { body } = await opensearchClient.get({

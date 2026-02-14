@@ -14,7 +14,7 @@ import {
 } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { config } from '@slaops/config'
 import { TypescriptOSProxyClient } from 'opensearch-ts'
-import { OpenApiParserService } from './openapi-parser.service'
+import { calculateId, OpenApiParserService } from './openapi-parser.service'
 
 @Injectable()
 export class OpenApiIndexerService implements OnModuleInit {
@@ -55,10 +55,11 @@ export class OpenApiIndexerService implements OnModuleInit {
   /**
    * Index document to OpenSearch
    */
-  async indexDocument(documentId: string, document: OpenApiIndexDocument) {
+  async indexDocument(document: OpenApiIndexDocument) {
+    const id = calculateId(document.provider, document.serviceName, document.version)
     return await this.opensearchClient.index({
       index: this.indexName,
-      id: documentId,
+      id: id,
       pipeline: config['opensearch.pipeline.openapi.apis'],
       body: document as unknown as Record<string, unknown>,
       refresh: true,
@@ -174,7 +175,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       const { document, truncated } = this.parserService.parseAndTransform(content, key, bucket)
 
       // Index to OpenSearch
-      await this.indexDocument(documentId, document)
+      await this.indexDocument(document)
 
       this.logger.log(
         `Indexed: ${documentId} (${document.operationStats.total} operations, ${document.paths.length} paths${truncated ? ', truncated' : ''})`,
