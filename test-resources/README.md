@@ -42,9 +42,7 @@ pnpm run setup:test-resources --force
 import {
   resolveTestResource,
   resolveOpenApiSpec,
-  findOpenApiSpecs,
-  listOpenApiDomains,
-  getRandomOpenApiSpec,
+  getLatestOpenApiSpecPath,
   TEST_API_SPECS,
 } from '../../../../test-resources/loader'
 ```
@@ -163,6 +161,28 @@ Resolve a path to an OpenAPI spec in the openapi-directory.
 ```typescript
 const path = resolveOpenApiSpec('github.com', 'api.github.com', '1.1.4')
 // Returns: /path/to/test-resources/openapi-directory/APIs/github.com/api.github.com/1.1.4/openapi.yaml
+```
+
+---
+
+#### `getLatestOpenApiSpecPath(host: string, path: string): string | null`
+
+Resolve the path to the OpenAPI spec for the **latest version** of a given API. Version directories under `APIs/{host}/{path}/` are compared (semver-like then lexicographic); the latest is returned.
+
+**Parameters:**
+
+- `host` - Domain (e.g. `'github.com'`)
+- `path` - Service path (e.g. `'api.github.com'`)
+
+**Returns:** Absolute path to `openapi.yaml` for the latest version, or `null` if the API or no spec is found.
+
+**Example:**
+
+```typescript
+const latestPath = getLatestOpenApiSpecPath('github.com', 'api.github.com')
+if (latestPath) {
+  const spec = await loadSpec(latestPath)
+}
 ```
 
 ---

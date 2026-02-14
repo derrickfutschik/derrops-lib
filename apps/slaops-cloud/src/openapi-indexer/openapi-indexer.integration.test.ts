@@ -16,8 +16,8 @@ import { OpenApiParserService } from './openapi-parser.service'
 // import devEnv from '@slaops/config/dev-env'
 import testEnv from '@slaops/config/test-env'
 
-const ABLY_DOCUMENT_ID = 'c57b6076698b15a556a609c44e99ac7f'
-const ABLY_S3_KEY = 'APIs/ably.net/control/v1/openapi.yaml'
+const API_ID = 'c57b6076698b15a556a609c44e99ac7f'
+const API_YAML = 'APIs/ably.net/control/v1/openapi.yaml'
 const ABLY_BUCKET = 'test-openapis'
 
 describe('OpenApiIndexerService (integration)', () => {
@@ -47,13 +47,14 @@ describe('OpenApiIndexerService (integration)', () => {
 
   it('indexDocument indexes the Ably spec document in OpenSearch', async () => {
     const specPath = TEST_API_SPECS.ably()
+    console.log({ specPath })
     expect(existsSync(specPath)).toBe(true)
 
     const content = readFileSync(specPath, 'utf-8')
-    const { document } = parserService.parseAndTransform(content, ABLY_S3_KEY, ABLY_BUCKET)
+    const { document } = parserService.parseAndTransform(content, API_YAML, ABLY_BUCKET)
 
     expect(document).toBeDefined()
-    expect(document.id).toBe(ABLY_DOCUMENT_ID)
+    expect(document.id).toBe(API_ID)
     expect(document.provider).toBe('ably.net')
     expect(document.serviceName).toBe('control')
     expect(document.version).toBe('v1')
@@ -61,31 +62,31 @@ describe('OpenApiIndexerService (integration)', () => {
     expect(document.operationStats.total).toBeGreaterThan(0)
     expect(document.paths.length).toBeGreaterThan(0)
 
-    const indexedResponse = await indexerService.indexDocument(ABLY_DOCUMENT_ID, document)
+    const indexedResponse = await indexerService.indexDocument(API_ID, document)
     console.log(JSON.stringify(indexedResponse, null, 2))
 
     const { body } = await opensearchClient.get({
       index: config['opensearch.index.openapi.apis'],
-      id: ABLY_DOCUMENT_ID,
+      id: API_ID,
     })
 
     console.log({
       index: config['opensearch.index.openapi.apis'],
-      id: ABLY_DOCUMENT_ID,
+      id: API_ID,
     })
     console.log(body)
 
     console.log(config)
 
     const indexed = body._source as Record<string, unknown>
-    expect(indexed.id).toBe(ABLY_DOCUMENT_ID)
+    expect(indexed.id).toBe(API_ID)
     expect(indexed.provider).toBe('ably.net')
     expect(indexed.serviceName).toBe('control')
     expect(indexed.version).toBe('v1')
     expect(indexed.title).toBe(document.title)
     expect(indexed.operationStats).toEqual(document.operationStats)
-    expect(indexed.s3Location).toEqual({ bucket: ABLY_BUCKET, key: ABLY_S3_KEY })
+    expect(indexed.s3Location).toEqual({ bucket: ABLY_BUCKET, key: API_YAML })
 
-    await indexerService.deleteAllDocuments()
+    // TODO make a test for then searching the documents
   })
 })
