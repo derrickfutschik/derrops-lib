@@ -9,7 +9,7 @@ import { Client } from '@opensearch-project/opensearch'
 import { config, loadConfig, resetConfigForTests, setConfigForProcess } from '@slaops/config'
 
 import { existsSync, readFileSync } from 'node:fs'
-import { TEST_API_SPECS } from '../../../../test-resources/loader'
+import { resolveSpec, TEST_API_SPECS } from '../../../../test-resources/loader'
 import { OpenApiIndexerModule } from './openapi-indexer.module'
 import { OpenApiIndexerService } from './openapi-indexer.service'
 import { OpenApiParserService } from './openapi-parser.service'

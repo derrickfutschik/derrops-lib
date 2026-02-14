@@ -135,6 +135,44 @@ export function resolveSpecYaml(path: string) {
   return resolve(monorepoRoot, 'test-resources', 'openapi-directory', 'APIs', path)
 }
 
+type Apis = typeof apis
+
+/**
+ * Type-safe spec resolver. Arguments are constrained by the apis object so that
+ * only valid host / path / version combinations are accepted.
+ *
+ * @example
+ *   resolveSpec('1password.com', 'events', '1.2.0')
+ *   resolveSpec('ably.net', 'control', 'v1')
+ */
+export function resolveSpec<
+  H extends keyof Apis,
+  P extends keyof Apis[H],
+  V extends keyof Apis[H][P],
+>(host: H, path: P, version: V): string {
+  const relativePath = (apis[host][path] as Record<string, string>)[version as string]
+  return resolveSpecYaml(relativePath!)
+}
+
+/**
+ * Type-safe spec resolver that automatically picks the latest version.
+ * Versions are compared using semver-aware sorting (handles v-prefixes,
+ * numeric segments, date-based versions, etc.).
+ *
+ * @example
+ *   resolveSpecLatest('ably.net', 'control')   // resolves 'v1' (> '1.0.14')
+ *   resolveSpecLatest('adyen.com', 'CheckoutService') // resolves '68'
+ */
+export function resolveSpecLatest<
+  H extends keyof Apis,
+  P extends keyof Apis[H],
+>(host: H, path: P): string {
+  const versions = apis[host][path] as Record<string, string>
+  const sorted = Object.keys(versions).sort(compareVersions)
+  const latest = sorted[sorted.length - 1]!
+  return resolveSpecYaml(versions[latest]!)
+}
+
 export const TEST_API_SPECS = {
   /**
    * Get the Ably.net control API spec
