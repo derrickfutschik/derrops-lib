@@ -46,7 +46,7 @@ describe('OpenApiIndexerService (integration)', () => {
   })
 
   it('indexDocument indexes the Ably spec document in OpenSearch', async () => {
-    const specPath = TEST_API_SPECS.ably()
+    const specPath = resolveSpec('ably.net', 'control')
     console.log({ specPath })
     expect(existsSync(specPath)).toBe(true)
 

@@ -144,13 +144,17 @@ type Apis = typeof apis
  * @example
  *   resolveSpec('1password.com', 'events', '1.2.0')
  *   resolveSpec('ably.net', 'control', 'v1')
+ *   resolveSpec('ably.net', 'control') // resolves the latest version
  */
 export function resolveSpec<
   H extends keyof Apis,
   P extends keyof Apis[H],
   V extends keyof Apis[H][P],
->(host: H, path: P, version: V): string {
-  const relativePath = (apis[host][path] as Record<string, string>)[version as string]
+>(host: H, path: P, version?: V): string {
+  const relativePath =
+    version == undefined
+      ? resolveSpecLatest(host, path)
+      : (apis[host][path] as Record<string, string>)[version as string]
   return resolveSpecYaml(relativePath!)
 }
 
@@ -163,10 +167,10 @@ export function resolveSpec<
  *   resolveSpecLatest('ably.net', 'control')   // resolves 'v1' (> '1.0.14')
  *   resolveSpecLatest('adyen.com', 'CheckoutService') // resolves '68'
  */
-export function resolveSpecLatest<
-  H extends keyof Apis,
-  P extends keyof Apis[H],
->(host: H, path: P): string {
+export function resolveSpecLatest<H extends keyof Apis, P extends keyof Apis[H]>(
+  host: H,
+  path: P,
+): string {
   const versions = apis[host][path] as Record<string, string>
   const sorted = Object.keys(versions).sort(compareVersions)
   const latest = sorted[sorted.length - 1]!
