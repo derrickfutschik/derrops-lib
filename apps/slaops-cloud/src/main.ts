@@ -30,6 +30,8 @@ async function bootstrap() {
     }),
   )
 
+  // TODO - require authentication from cognito ()
+
   // Swagger documentation setup
   const docConfig = new DocumentBuilder()
     .setTitle(config['app.title'])

@@ -27,6 +27,10 @@ export const ConfigSchema = z.object({
   AWS_REGION: z.string().min(1),
   AWS_ACCOUNT_ID: z.string().min(1),
 
+  AWS_COGNITO_USER_POOL_ID: z.string().min(1).optional(),
+  // AWS_COGNITO_USER_POOL_CLIENT_ID: z.string().min(1),
+  // AWS_COGNITO_IDENTITY_POOL_ID: z.string().min(1),
+
   AWS_LAMBDA_RUNTIME: z.string().min(1).optional(),
   AWS_LAMBDA_MEMORY: z.number().min(1).optional(),
 

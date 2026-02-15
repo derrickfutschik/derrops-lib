@@ -41,6 +41,17 @@ export const makeConfig = (
     'aws.lambda.memory': cfg.AWS_LAMBDA_MEMORY ?? 2048,
     'aws.lambda.timeout.seconds': 20,
 
+    'aws.cognito.userPoolId': cfg.AWS_COGNITO_USER_POOL_ID,
+    // 'aws.cognito.userPoolClientId': cfg.AWS_COGNITO_USER_POOL_CLIENT_ID,
+    // 'aws.cognito.identityPoolId': cfg.AWS_COGNITO_IDENTITY_POOL_ID,
+
+    /**
+    "user_pool_id": "ap-southeast-2_XUMcOaNb2",
+    "aws_region": "ap-southeast-2",
+    "user_pool_client_id": "5ecm72u58jjgvebt0dcbelgctq",
+    "identity_pool_id": "ap-southeast-2:1881e13f-256b-4b2a-a8f5-7c2fd6bb85d1",
+     */
+
     // Application properties, properties regarding the actual application
     'app.port': cfg.PORT,
     'app.env': cfg.NODE_ENV,
@@ -106,7 +117,7 @@ export const makeConfig = (
     /** Defaults for pagination */
     'app.pagination.default.from': 0,
 
-    'openapi.s3.bucket': `${app}-openapis-${env}`,
+    'openapi.s3.bucket': `${app}-apis-${env}`,
 
     'aws.s3.endpoint': cfg.AWS_S3_ENDPOINT,
 

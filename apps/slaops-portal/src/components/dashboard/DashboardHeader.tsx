@@ -29,7 +29,7 @@ const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/add-service')}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Service
+              Add SAAS
             </Button>
             <Button variant="ghost" size="sm" onClick={onSignOut}>
               <LogOut className="h-4 w-4 mr-2" />
