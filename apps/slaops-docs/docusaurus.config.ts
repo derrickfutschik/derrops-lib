@@ -26,6 +26,9 @@ const config: Config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
+  // Register Iconify logos (AWS, etc.) for Mermaid architecture diagrams
+  clientModules: [require.resolve('./src/scripts/mermaid-icons.ts')],
+
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4

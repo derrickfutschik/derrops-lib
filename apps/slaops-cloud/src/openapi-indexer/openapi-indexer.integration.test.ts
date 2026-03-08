@@ -13,7 +13,7 @@ import { resolveSpec, TEST_API_SPECS } from '../../../../test-resources/loader'
 import { OpenApiIndexerModule } from './openapi-indexer.module'
 import { OpenApiIndexerService } from './openapi-indexer.service'
 import { OpenApiParserService } from './openapi-parser.service'
-// import devEnv from '@slaops/config/dev-env'
+
 import testEnv from '@slaops/config/test-env'
 
 const API_ID = 'c57b6076698b15a556a609c44e99ac7f'
@@ -53,39 +53,35 @@ describe('OpenApiIndexerService (integration)', () => {
     const content = readFileSync(specPath, 'utf-8')
     const { document } = parserService.parseAndTransform(content, API_YAML, ABLY_BUCKET)
 
-    expect(document).toBeDefined()
-    expect(document.id).toBe(API_ID)
-    expect(document.provider).toBe('ably.net')
-    expect(document.serviceName).toBe('control')
-    expect(document.version).toBe('v1')
-    expect(document.title).toBeDefined()
+    expect(document).toMatchObject({
+      id: API_ID,
+      provider: 'ably.net',
+      serviceName: 'control',
+      version: 'v1',
+      title: document.title,
+      operationStats: expect.objectContaining({ total: expect.any(Number) }),
+      paths: expect.any(Array),
+    })
     expect(document.operationStats.total).toBeGreaterThan(0)
     expect(document.paths.length).toBeGreaterThan(0)
 
     const indexedResponse = await indexerService.indexDocument(document)
-    console.log(JSON.stringify(indexedResponse, null, 2))
 
     const { body } = await opensearchClient.get({
       index: config['opensearch.index.openapi.apis'],
       id: API_ID,
     })
 
-    console.log({
-      index: config['opensearch.index.openapi.apis'],
-      id: API_ID,
-    })
-    console.log(body)
-
-    console.log(config)
-
     const indexed = body._source as Record<string, unknown>
-    expect(indexed.id).toBe(API_ID)
-    expect(indexed.provider).toBe('ably.net')
-    expect(indexed.serviceName).toBe('control')
-    expect(indexed.version).toBe('v1')
-    expect(indexed.title).toBe(document.title)
-    expect(indexed.operationStats).toEqual(document.operationStats)
-    expect(indexed.s3Location).toEqual({ bucket: ABLY_BUCKET, key: API_YAML })
+    expect(indexed).toMatchObject({
+      id: API_ID,
+      provider: 'ably.net',
+      serviceName: 'control',
+      version: 'v1',
+      title: document.title,
+      operationStats: document.operationStats,
+      s3Location: { bucket: ABLY_BUCKET, key: API_YAML },
+    })
 
     // TODO make a test for then searching the documents
   })

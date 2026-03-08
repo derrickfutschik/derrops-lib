@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { config } from '@slaops/config'
 import { nestConfigOptions } from '@slaops/config-nestjs'
 import { SLAConfigModule } from './config/config.module'
+import { OpenApiIndexerModule } from './openapi-indexer/openapi-indexer.module'
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module'
 import { OpenSearchModule } from './opensearch/opensearch.module'
 import { ServiceModule } from './service/service.module'
@@ -57,6 +58,7 @@ import { ServiceModule } from './service/service.module'
       },
     }),
     ServiceModule,
+    OpenApiIndexerModule,
     OpenApiSearchModule,
     SLAConfigModule, // TODO - only import this in non prod environments
     OpenSearchModule, // TODO - only import this in non prod environments

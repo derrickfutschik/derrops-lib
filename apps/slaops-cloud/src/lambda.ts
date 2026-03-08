@@ -1,7 +1,7 @@
 import serverlessExpress from '@codegenie/serverless-express'
 import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { ExpressAdapter } from '@nestjs/platform-express'
+import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda'
 import { AppModule } from './app.module'
@@ -16,12 +16,15 @@ let cachedServer: any
 async function bootstrapServer(): Promise<any> {
   if (!cachedServer) {
     const expressApp = express()
-    const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
+    const nestApp = await NestFactory.create<NestExpressApplication>(AppModule, new ExpressAdapter(expressApp), {
       logger:
         process.env.NODE_ENV === 'production'
           ? ['error', 'warn']
           : ['log', 'error', 'warn', 'debug', 'verbose'],
     })
+
+    // Enable text body parsing for YAML/plain-text OpenAPI specs
+    nestApp.useBodyParser('text', { type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'] })
 
     // Enable CORS for frontend integration
     nestApp.enableCors({

@@ -6,7 +6,7 @@
     "docusaurus": "docusaurus",
     "docs:prepare": "node scripts/copy-code-readmes.mjs",
     "prestart": "git diff --quiet HEAD -- blog || docusaurus clear",
-    "start": "pnpm docs:prepare && docusaurus clear && docusaurus start --host 0.0.0.0 --port $PORT",
+    "start": "pnpm docs:prepare && docusaurus clear && node scripts/copy-code-readmes.mjs --watch & docusaurus start --host 0.0.0.0 --port $PORT",
     "start:watch": "nodemon --watch docs --watch notes --watch blog --watch code --ext md,mdx -x 'pnpm docs:prepare && docusaurus clear && docusaurus start --host 0.0.0.0 --port $PORT'",
     "build": "pnpm docs:prepare && docusaurus build",
     "swizzle": "docusaurus swizzle",
@@ -29,7 +29,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "rehype-katex": "^7.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "@iconify-json/logos": "^1.2.10"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.9.2",

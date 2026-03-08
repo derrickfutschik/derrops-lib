@@ -182,7 +182,7 @@ export class IndexingError extends Error {
   constructor(
     message: string,
     public readonly code: IndexingErrorCode,
-    public readonly s3Key: string,
+    public readonly s3Key?: string,
     public readonly details?: unknown,
   ) {
     super(message)

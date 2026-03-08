@@ -3,6 +3,7 @@
  * code/ directory so the "Code" tab can surface them without manual duplication.
  *
  * Run from apps/slaops-docs (e.g. pnpm docs:prepare). Monorepo root is two levels up from docs dir.
+ * Pass --watch to do the initial copy then re-copy on source file changes.
  */
 import fs from 'fs'
 import path from 'path'
@@ -32,16 +33,12 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
 }
 
-let copied = 0
-let skipped = 0
-
-for (const [srcRel, destRel] of COPY_LIST) {
+function copyFile(srcRel, destRel) {
   const src = path.join(root, srcRel)
   const dest = path.join(codeDir, destRel)
   if (!fs.existsSync(src)) {
     console.warn(`Skip (missing): ${srcRel}`)
-    skipped++
-    continue
+    return false
   }
   ensureDir(path.dirname(dest))
   let content = fs.readFileSync(src, 'utf8')
@@ -53,8 +50,35 @@ for (const [srcRel, destRel] of COPY_LIST) {
     )
   }
   fs.writeFileSync(dest, content)
-  console.log(`Copied: ${srcRel} → code/${destRel}`)
-  copied++
+  return true
 }
 
-console.log(`\nCode READMEs: ${copied} copied, ${skipped} skipped.`)
+function copyAll() {
+  let copied = 0
+  let skipped = 0
+  for (const [srcRel, destRel] of COPY_LIST) {
+    if (copyFile(srcRel, destRel)) {
+      console.log(`Copied: ${srcRel} → code/${destRel}`)
+      copied++
+    } else {
+      skipped++
+    }
+  }
+  console.log(`\nCode READMEs: ${copied} copied, ${skipped} skipped.`)
+}
+
+copyAll()
+
+if (process.argv.includes('--watch')) {
+  console.log('\nWatching source READMEs for changes...')
+  for (const [srcRel, destRel] of COPY_LIST) {
+    const src = path.join(root, srcRel)
+    if (!fs.existsSync(src)) continue
+    fs.watch(src, () => {
+      console.log(`Changed: ${srcRel} — re-copying...`)
+      if (copyFile(srcRel, destRel)) {
+        console.log(`Copied: ${srcRel} → code/${destRel}`)
+      }
+    })
+  }
+}

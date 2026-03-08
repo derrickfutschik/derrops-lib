@@ -87,8 +87,9 @@ export class OpenApiParserService {
       if (format === 'json') {
         return JSON.parse(content)
       }
-      return yaml.parse(content)
+      return yaml.parse(this.sanitizeYaml(content))
     } catch (error: any) {
+      if (error instanceof IndexingError) throw error
       throw new IndexingError(
         `Failed to parse ${format.toUpperCase()}: ${error.message}`,
         IndexingErrorCode.PARSE_ERROR,
@@ -96,6 +97,18 @@ export class OpenApiParserService {
         error,
       )
     }
+  }
+
+  /**
+   * Pre-process YAML to fix common issues in real-world OpenAPI specs.
+   * Quotes bare URL schemes (e.g., `url: https:`) that would otherwise
+   * break YAML parsing by creating unintended nested mappings.
+   */
+  private sanitizeYaml(content: string): string {
+    return content.replace(
+      /^(\s*(?:-\s+)?[\w.-]+:\s+)(https?:)\s*$/gm,
+      "$1'$2'",
+    )
   }
 
   /**
@@ -342,8 +355,9 @@ export class OpenApiParserService {
    */
   parseAndTransform(
     content: string,
-    s3Key: string,
-    bucket: string,
+    s3Key?: string,
+    bucket?: string,
+    format?: 'yaml' | 'json',
   ): { document: OpenApiIndexDocument; truncated: boolean } {
     // Check file size
     const fileSize = Buffer.byteLength(content, 'utf8')
@@ -356,14 +370,14 @@ export class OpenApiParserService {
     }
 
     // Detect format and parse
-    const format = this.detectFormat(s3Key)
-    const rawSpec = this.parseContent(content, format)
+    const finalFormat = format ?? this.detectFormat(s3Key)
+    const rawSpec = this.parseContent(content, finalFormat)
 
     // Validate OpenAPI 3.x
     this.validateOpenApi3(rawSpec, s3Key)
 
     // Transform to index document
-    return this.transformToIndexDocument(rawSpec, s3Key, bucket, fileSize, format)
+    return this.transformToIndexDocument(rawSpec, s3Key, bucket, fileSize, finalFormat)
   }
 }
 

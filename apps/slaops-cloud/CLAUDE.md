@@ -43,6 +43,31 @@ Use singular names for modules, folders, files, database tables, and API routes:
 - Route: `@Controller('service')` → `/service`
 - Class names: `ServiceModule`, `ServiceController`, `ServiceService`
 
+## Tests
+
+Prefer **object-style assertions** over line-by-line `expect` statements when asserting on a single object or response.
+
+- **Use `toMatchObject`** – Assert the whole shape in one call instead of one `expect` per property. This keeps tests readable and makes the expected structure obvious.
+- **Use asymmetric matchers** – For constraints like “any string”, “positive number”, or “non-empty array”, use `expect.any(String)`, `expect.objectContaining({ ... })`, or a custom `{ asymmetricMatch: (value) => ... }` inside the object so everything stays in one assertion.
+
+Example (see `openapi-indexer.integration.test.ts`):
+
+```ts
+const positiveNumber = { asymmetricMatch: (n: unknown) => typeof n === 'number' && n > 0 }
+const nonEmptyArray = { asymmetricMatch: (a: unknown) => Array.isArray(a) && a.length > 0 }
+expect(document).toMatchObject({
+  id: API_ID,
+  provider: 'ably.net',
+  serviceName: 'control',
+  version: 'v1',
+  title: expect.any(String),
+  operationStats: expect.objectContaining({ total: positiveNumber }),
+  paths: nonEmptyArray,
+})
+```
+
+Avoid writing multiple separate lines such as `expect(obj.id).toBe(...)`, `expect(obj.provider).toBe(...)`, etc., when you can express the same in a single `toMatchObject` (or similar) call.
+
 ## Architecture
 
 ### Entry Points

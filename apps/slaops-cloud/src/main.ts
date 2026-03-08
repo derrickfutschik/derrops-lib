@@ -1,12 +1,16 @@
 import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
+import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { config } from '@slaops/config'
 import { AppModule } from './app.module'
 import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.command'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule)
+
+  // Enable text body parsing for YAML/plain-text OpenAPI specs
+  app.useBodyParser('text', { type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'] })
 
   if (process.argv.includes('opensearch:migrate')) {
     const cmd = app.get(OpenSearchMigrateCommand)

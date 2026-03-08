@@ -22,6 +22,7 @@ export const makeConfig = (
   const appName = (cfg.APP_NAME ?? 'SLAOps') + ''
   const app = appName.toLowerCase()
   const env = (cfg.NODE_ENV ?? 'dev').toLowerCase()
+  const globalTenantId = 't-glbl0000'
 
   const opensearchPrefix = cfg.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase()
   const opensearchSuffix = cfg.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
@@ -29,16 +30,41 @@ export const makeConfig = (
   const opensearchName = (entity: string) =>
     `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
 
+  const oaspecBucketName = (tenantId: string) =>
+    `${cfg.AWS_REGION}--${env}--${app}--${tenantId}--oaspec--storage--specs`
+
   return {
+    /** Global Tenant ID */
+    'tenant.global.id': 't-glbl0000',
+
+    /** Global Tenant Name */
+    'tenant.global.name': 'SLAOps Global Tenant',
+
+    'tenant.global.openapi.bucket': oaspecBucketName(globalTenantId),
+
+    /** Allowed characters for the tenant ID */
+    'tenant.id.chars': 'abcdefghjkmnpqrstuvwxyz23456789',
+    /** Number of characters for the tenant ID */
+    'tenant.id.no': 8,
+    /** Prefix for the tenant ID */
+    'tenant.id.prefix': 't-',
+
     /** The version of NodeJS the application uses*/
     'node.version': cfg.NODE_VERSION ?? 22,
+
+    /** The environment the application is running in */
     'node.env': cfg.NODE_ENV ?? 'dev',
 
+    /** The region the application is running in */
     'aws.region': cfg.AWS_REGION,
+    /** The account ID the application is running in */
     'aws.accountId': cfg.AWS_ACCOUNT_ID,
 
+    /** The runtime of the application */
     'aws.lambda.runtime': cfg.AWS_LAMBDA_RUNTIME ?? 'nodejs22.x',
+    /** The memory of the application */
     'aws.lambda.memory': cfg.AWS_LAMBDA_MEMORY ?? 2048,
+    /** The timeout of the application */
     'aws.lambda.timeout.seconds': 20,
 
     'aws.cognito.userPoolId': cfg.AWS_COGNITO_USER_POOL_ID,
