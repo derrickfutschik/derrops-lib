@@ -1140,6 +1140,7 @@ When you need to enable IDE navigation to source files in another module (e.g., 
 
 - **IMPORTANT**: When completing tasks, add or update documentation in [apps/slaops-docs/](apps/slaops-docs/)
 - Before starting a task, review existing documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/) for context
+- **Glossary**: Consult [apps/slaops-docs/docs/glossary.md](apps/slaops-docs/docs/glossary.md) for definitions of domain-specific terms (OASpec, OASpecDoc, TopOp, APIUser, etc.) before using terminology in code, comments, or documentation
 - Update CLAUDE.md files when making significant changes
 - Keep README.md files up to date
 - Document public APIs thoroughly in the docs site

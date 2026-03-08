@@ -105,10 +105,7 @@ export class OpenApiParserService {
    * break YAML parsing by creating unintended nested mappings.
    */
   private sanitizeYaml(content: string): string {
-    return content.replace(
-      /^(\s*(?:-\s+)?[\w.-]+:\s+)(https?:)\s*$/gm,
-      "$1'$2'",
-    )
+    return content.replace(/^(\s*(?:-\s+)?[\w.-]+:\s+)(https?:)\s*$/gm, "$1'$2'")
   }
 
   /**

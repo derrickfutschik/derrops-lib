@@ -33,8 +33,8 @@ flowchart LR
     OS[OpenSearch]
 
     S --> I
-    I --> OAS
-    I --> OS
+    I -->|OASpec| OAS
+    I -->|OASpec Document| OS
 
 ```
 
@@ -49,3 +49,31 @@ OASPec Temp Bucket is a temporary bucket that is used to store the OASpec so it 
 3. The `OpenAPI Indexer` will transform the OASpec into an OpenSearch document
 4. The `OpenAPI Indexer` will index the document into OpenSearch
 5. The `OpenAPI Indexer` will return the document
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant I as OpenAPI Indexer
+    participant S3T as OASpec Temp Bucket
+    participant S3 as OASpec Bucket
+    participant OS as OpenSearch
+
+    C->>I: Request pre-signed upload URL
+    I-->>C: Pre-signed URL
+
+    C->>S3T: Upload OASpec (via pre-signed URL)
+
+    C->>I: Trigger indexing (S3 URI / URL / JSON / YAML)
+    I->>S3T: Fetch OASpec
+    S3T-->>I: OASpec content
+
+    I->>I: Parse & validate OASpec
+    I->>I: Transform into OpenSearch document
+
+    I->>S3: Copy OASpec
+    I->>OS: Index document
+
+    I-->>C: Return indexed document
+```
