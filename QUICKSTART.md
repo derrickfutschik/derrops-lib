@@ -48,13 +48,13 @@ Open all useful development URLs in Safari:
 
 This opens:
 
-- **OpenSearch Dashboards**: http://192.168.7.224:5601
+- **OpenSearch Dashboards**: http://192.168.7.223:5601
 - **SLAOps Portal**: http://localhost:8080
 - **SLAOps Docs**: http://localhost:8081
 - **SLAOps Cloud API**: http://localhost:3001/api
-- **Syncthing Server**: http://192.168.7.224:8384/#
+- **Syncthing Server**: http://192.168.7.223:8384/#
 - **Syncthing Localhost**: http://localhost:8384/#
-- **PGAdmin**: http://192.168.7.224:5050
+- **PGAdmin**: http://192.168.7.223:5050
 
 ## Common Workflows
 
@@ -209,11 +209,11 @@ All utility scripts are located in the `scripts/` directory:
 | ------------------------- | ---- | ------------------------- |
 | Documentation             | 3000 | http://localhost:3000     |
 | Cloud API                 | 3001 | http://localhost:3001/api |
-| OpenSearch Dashboards     | 5601 | http://192.168.7.224:5601 |
-| PGAdmin                   | 5050 | http://192.168.7.224:5050 |
+| OpenSearch Dashboards     | 5601 | http://192.168.7.223:5601 |
+| PGAdmin                   | 5050 | http://192.168.7.223:5050 |
 | Portal                    | 8080 | http://localhost:8080     |
 | Portal (production build) | 8081 | http://localhost:8081     |
-| Syncthing (server)        | 8384 | http://192.168.7.224:8384 |
+| Syncthing (server)        | 8384 | http://192.168.7.223:8384 |
 | Syncthing (local)         | 8384 | http://localhost:8384     |
 
 ### Environment Files

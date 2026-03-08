@@ -277,7 +277,7 @@ Configuration becomes **intentional**, not incidental.
 | Concern       | Test                    | Local Dev                   | Cloud                 |
 | ------------- | ----------------------- | --------------------------- | --------------------- |
 | Config source | Explicit object in code | .env file                   | SSM + Secrets Manager |
-| DB            | localhost / test DB     | Your server (192.168.7.224) | Aurora endpoint       |
+| DB            | localhost / test DB     | Your server (192.168.7.223) | Aurora endpoint       |
 | Secrets       | Hardcoded test values   | .env file                   | Secrets Manager       |
 | NODE_ENV      | test                    | dev                         | prod                  |
 | Committed?    | Yes (in test code)      | No (.env gitignored)        | No (infra-managed)    |

@@ -1,8 +1,6 @@
 import { configFromEnv } from './from-env'
 import { ConfigInput } from './schema'
 
-const env = process.env.STAGE ?? process.env.NODE_ENV ?? 'dev'
-
 import local from './local-env'
 import test from './test-env'
 
@@ -30,17 +28,21 @@ export const makeConfig = (
   const opensearchName = (entity: string) =>
     `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
 
-  const oaspecBucketName = (tenantId: string) =>
-    `${cfg.AWS_REGION}--${env}--${app}--${tenantId}--oaspec--storage--specs`
+  const logBucketName = (tenantId: string) =>
+    `${cfg.AWS_REGION}--${env}--${app}--${tenantId}--logs--storage`
 
   return {
+    /** The bucket for the OASpecs Storage */
+    'slaops.oaspec.storage.bucket': `${cfg.AWS_REGION}--${env}--${app}--oaspec--storage`,
+
+    /** The bucket for the OASpec Staging Bucket */
+    'slaops.oaspec.staging.bucket': `${cfg.AWS_REGION}--${env}--${app}--oaspec--staging`,
+
     /** Global Tenant ID */
-    'tenant.global.id': 't-glbl0000',
+    'tenant.global.id': globalTenantId,
 
     /** Global Tenant Name */
     'tenant.global.name': 'SLAOps Global Tenant',
-
-    'tenant.global.openapi.bucket': oaspecBucketName(globalTenantId),
 
     /** Allowed characters for the tenant ID */
     'tenant.id.chars': 'abcdefghjkmnpqrstuvwxyz23456789',

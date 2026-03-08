@@ -7,7 +7,7 @@ import { DynamoDBRepo } from '../../src/openapi/repo/dynamodb-repo'
 
 describe('Operation Indexer', () => {
   const client = new DynamoDBClient({
-    endpoint: 'http://192.168.7.224:4566',
+    endpoint: 'http://192.168.7.223:4566',
     region: 'us-east-1',
   })
 

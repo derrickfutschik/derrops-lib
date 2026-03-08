@@ -2,6 +2,7 @@
 .npmignore
 api.ts
 api/config-api.ts
+api/open-api-indexer-api.ts
 api/open-apisearch-api.ts
 api/service-api.ts
 base.ts
@@ -12,6 +13,7 @@ docs/ConfigApi.md
 docs/CreateServiceDto.md
 docs/IndexStatsResponseDto.md
 docs/OpenAPISearchApi.md
+docs/OpenApiIndexerApi.md
 docs/OpenApiSearchHit.md
 docs/OpenApiSearchResponseDto.md
 docs/ProviderListResponseDto.md

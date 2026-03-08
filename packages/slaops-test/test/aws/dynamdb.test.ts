@@ -67,7 +67,7 @@ describe('AWS DynamoDB', () => {
     // })
 
     const client = new dynamodb.DynamoDBClient({
-      endpoint: 'http://192.168.7.224:4566',
+      endpoint: 'http://192.168.7.223:4566',
       region: 'us-east-1',
       requestHandler: new AxiosHttpHandler(axiosInstance, {}),
     })

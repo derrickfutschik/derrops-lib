@@ -52,7 +52,7 @@ describe('AWS S3', () => {
   })
 
   const client = new s3.S3Client({
-    endpoint: 'http://192.168.7.224:4566',
+    endpoint: 'http://192.168.7.223:4566',
     region: 'us-east-1',
     requestHandler: new AxiosHttpHandler(axiosInstance, {}),
   })

@@ -202,6 +202,27 @@
         ]
       }
     },
+    "/openapi": {
+      "post": {
+        "operationId": "OpenApiIndexerController_indexSpec",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpenApiIndexer"
+        ]
+      }
+    },
     "/openapi-search": {
       "get": {
         "description": "Search indexed OpenAPI specs by title, description, operations, tags, and more. Supports full-text search and filtering.",

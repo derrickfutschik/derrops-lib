@@ -5,6 +5,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications'
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
+import { config } from '@slaops/config'
 import { api } from './functions/api/resource'
 import { openapiIndexer } from './functions/openapi-indexer/resource'
 
@@ -148,6 +149,54 @@ new cdk.CfnOutput(indexerStack, 'IndexerLambdaFunctionArn', {
   value: indexerFunction.functionArn,
   description: 'ARN of the OpenAPI Indexer Lambda function',
   exportName: 'SlaOpsIndexerLambdaFunctionArn',
+})
+
+// ============================================================================
+// OASpec S3 Buckets
+// ============================================================================
+
+// OASpec Storage Bucket — persistent store for validated OpenAPI specs
+const oaspecStorageBucket = new s3.Bucket(indexerStack, 'OaspecStorageBucket', {
+  bucketName: config['slaops.oaspec.storage.bucket'],
+  versioned: true,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  removalPolicy: cdk.RemovalPolicy.RETAIN,
+})
+
+// OASpec Staging Bucket — temporary landing zone for incoming OASpec uploads
+const oaspecStagingBucket = new s3.Bucket(indexerStack, 'OaspecStagingBucket', {
+  bucketName: config['slaops.oaspec.staging.bucket'],
+  versioned: false,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  removalPolicy: cdk.RemovalPolicy.DESTROY,
+  autoDeleteObjects: true,
+})
+
+// Grant the API Lambda read access to the storage bucket
+oaspecStorageBucket.grantRead(lambdaFunction)
+
+// Grant the indexer Lambda read/write access to both buckets
+oaspecStorageBucket.grantReadWrite(indexerFunction)
+oaspecStagingBucket.grantReadWrite(indexerFunction)
+
+// Expose bucket names as environment variables on both Lambdas
+backend.api.addEnvironment('OASPEC_STORAGE_BUCKET', oaspecStorageBucket.bucketName)
+backend.openapiIndexer.addEnvironment('OASPEC_STORAGE_BUCKET', oaspecStorageBucket.bucketName)
+backend.openapiIndexer.addEnvironment('OASPEC_STAGING_BUCKET', oaspecStagingBucket.bucketName)
+
+// Export bucket names for cross-stack references
+new cdk.CfnOutput(indexerStack, 'OaspecStorageBucketName', {
+  value: oaspecStorageBucket.bucketName,
+  description: 'Name of the OASpec storage bucket',
+  exportName: 'SlaOpsOaspecStorageBucketName',
+})
+
+new cdk.CfnOutput(indexerStack, 'OaspecStagingBucketName', {
+  value: oaspecStagingBucket.bucketName,
+  description: 'Name of the OASpec staging bucket',
+  exportName: 'SlaOpsOaspecStagingBucketName',
 })
 
 export { backend }
