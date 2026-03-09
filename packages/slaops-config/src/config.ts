@@ -33,10 +33,10 @@ export const makeConfig = (
 
   return {
     /** The bucket for the OASpecs Storage */
-    'slaops.oaspec.storage.bucket': `${cfg.AWS_REGION}--${env}--${app}--oaspec--storage`,
+    'slaops.oaspec.storage.bucket': `${cfg.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
 
     /** The bucket for the OASpec Staging Bucket */
-    'slaops.oaspec.staging.bucket': `${cfg.AWS_REGION}--${env}--${app}--oaspec--staging`,
+    'slaops.oaspec.staging.bucket': `${cfg.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--staging`,
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
