@@ -2,7 +2,7 @@
 # Need a more secure way at runtime of getting all the credentials rather not from environment variables, but rather from secrets, potentially using the aws secret caching mechanism if needed
 
 # MAIN SETTINGS
-export DERROPS_SERVER_IP=192.168.7.223
+export DERROPS_SERVER_IP=192.168.7.233
 export NODE_OPTIONS=--experimental-vm-modules
 
 
@@ -12,7 +12,7 @@ export VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc
 export VITE_SUPABASE_URL="https://omjpxenvfphdxkarmsxk.supabase.co"
 
 # POSTGRES SETTINGS
-export DB_HOST=192.168.7.223
+export DB_HOST=192.168.7.233
 export DB_PORT=5432
 
 export DB_USER=postgres
@@ -32,4 +32,5 @@ export AWS_ACCOUNT_ID=632953687273
 export NODE_ENV=dev
 export AWS_REGION=ap-southeast-2
 
-export OPENSEARCH_ENDPOINT=http://192.168.7.223:9200
+export OPENSEARCH_ENDPOINT=http://192.168.7.233:9200
+export DYNAMODB_ENDPOINT=http://192.168.7.233:4566

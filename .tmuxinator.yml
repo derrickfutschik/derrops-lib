@@ -63,31 +63,31 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.223
+        - ssh -t derrick@192.168.7.233
 
   - opensearch:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.223 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch"
+        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch"
 
   - opensearch-dashboards:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.223 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch-dashboards"
+        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch-dashboards"
 
   - localstack:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.223 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f localstack"
+        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f localstack"
 
   - postgres:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.223 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f postgres"
+        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f postgres"
 
   - cloudflare:
       root: .

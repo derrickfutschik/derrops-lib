@@ -38,7 +38,7 @@ export const ConfigSchema = z.object({
   OPENSEARCH_INDEX_SUFFIX: z.string().min(1).optional(),
 
   OPENSEARCH_ENDPOINT: z.string().min(1),
-
+  DYNAMODB_ENDPOINT: z.string().min(1),
   AWS_S3_ENDPOINT: z.string().min(1).optional(),
 
   APP_DEBUG: z.boolean().optional(),

@@ -108,7 +108,8 @@ export const makeConfig = (
     'db.logging': cfg.DB_LOGGING ?? 'false',
     'db.schema': cfg.DB_SCHEMA ?? 'public',
 
-    //opensearch properties
+    /** The endpoint to access dynamodb */
+    'dynamodb.endpoint': cfg.DYNAMODB_ENDPOINT,
 
     /** The region opensearch is deployed in  */
     'opensearch.region': cfg.AWS_REGION,

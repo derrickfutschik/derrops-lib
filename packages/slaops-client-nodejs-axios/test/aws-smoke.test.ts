@@ -2,8 +2,8 @@ import * as dynamodb from '@aws-sdk/client-dynamodb'
 import axios from 'axios'
 import { attachSlaOpsInterceptor } from '../src'
 import { AxiosHttpHandler } from './AxiosHttpHandler'
+import { config } from '@slaops/config'
 
-// This test requires a DynamoDB instance running at 192.168.7.223:4566
 describe('aws smoke test', () => {
   const axiosInstance = axios.create()
   attachSlaOpsInterceptor(axiosInstance, {
@@ -19,7 +19,7 @@ describe('aws smoke test', () => {
   })
 
   const client = new dynamodb.DynamoDBClient({
-    endpoint: 'http://192.168.7.223:4566',
+    endpoint: config['dynamodb.endpoint'],
     region: 'us-east-1',
     requestHandler: new AxiosHttpHandler(axiosInstance, {}),
   })

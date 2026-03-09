@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@slaops/config": "workspace:*",
     "@slaops/test-resources": "*",
     "@types/jest": "^29.5.12",
     "@types/js-yaml": "^4.0.9",

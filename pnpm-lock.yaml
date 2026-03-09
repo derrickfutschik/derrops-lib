@@ -595,6 +595,9 @@ importers:
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
+      '@slaops/config':
+        specifier: workspace:*
+        version: link:../slaops-config
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14
@@ -710,6 +713,9 @@ importers:
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
+      '@slaops/config':
+        specifier: workspace:*
+        version: link:../slaops-config
       '@slaops/test-resources':
         specifier: '*'
         version: link:../../test-resources
@@ -786,6 +792,9 @@ importers:
       '@slaops/client-nodejs-axios':
         specifier: workspace:*
         version: link:../slaops-client-nodejs-axios
+      '@slaops/config':
+        specifier: workspace:*
+        version: link:../slaops-config
       '@slaops/private':
         specifier: workspace:*
         version: link:../slaops-private

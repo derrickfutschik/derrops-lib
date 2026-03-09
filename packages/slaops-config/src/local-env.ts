@@ -1,6 +1,6 @@
 import { ConfigInput } from './schema'
 
-const devServer = '192.168.7.223'
+const devServer = '192.168.7.233'
 
 const cfg: ConfigInput = {
   NODE_ENV: 'local',
@@ -16,6 +16,7 @@ const cfg: ConfigInput = {
   AWS_ACCOUNT_ID: '123456789012',
 
   OPENSEARCH_ENDPOINT: `http://${devServer}:9200`,
+  DYNAMODB_ENDPOINT: `http://${devServer}:4566`,
 }
 
 export default cfg

@@ -4,10 +4,11 @@ import { buildOperationIndex } from '../../src/openapi/openapi-indexer'
 import { loadSpec } from '../../src/openapi/openapi-parser'
 import { IndexedOperationDoc } from '../../src/openapi/openapi-types'
 import { DynamoDBRepo } from '../../src/openapi/repo/dynamodb-repo'
+import { config } from '@slaops/config'
 
 describe('Operation Indexer', () => {
   const client = new DynamoDBClient({
-    endpoint: 'http://192.168.7.223:4566',
+    endpoint: config['dynamodb.endpoint'],
     region: 'us-east-1',
   })
 

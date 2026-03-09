@@ -4,12 +4,13 @@ import { buildAPIIndex } from '../../src/openapi/openapi-indexer'
 import { loadSpec, loadSpecSync } from '../../src/openapi/openapi-parser'
 import { IndexedServerDoc } from '../../src/openapi/openapi-types'
 import { DynamoDBRepo } from '../../src/openapi/repo/dynamodb-repo'
+import { config } from '@slaops/config'
 
 describe('API Indexer', () => {
   // jest.setTimeout(30000);
 
   const client = new dynamodb.DynamoDBClient({
-    endpoint: 'http://192.168.7.223:4566',
+    endpoint: config['dynamodb.endpoint'],
     region: 'us-east-1',
   })
 

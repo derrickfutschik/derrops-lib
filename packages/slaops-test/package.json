@@ -29,6 +29,7 @@
     "@aws-sdk/client-dynamodb": "^3.940.0",
     "@jest/globals": "^29.7.0",
     "@slaops/client": "workspace:*",
+    "@slaops/config": "workspace:*",
     "@slaops/client-nodejs-axios": "workspace:*",
     "@slaops/private": "workspace:*",
     "@slaops/public": "workspace:*",

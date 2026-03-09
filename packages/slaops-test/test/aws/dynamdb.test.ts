@@ -8,7 +8,7 @@ import { TEST_API_SPECS } from '../../../../test-resources/loader'
 import { AxiosHttpHandler } from '../../../slaops-client-nodejs-axios/test/AxiosHttpHandler'
 import { matchPath } from '../../../slaops-private/src/openapi/match/OpenAPIUtil'
 import { loadSpec } from '../../../slaops-private/src/openapi/openapi-parser'
-
+import { config } from '@slaops/config'
 /**
  * This is a full end to end to end test of an AWS DynamoDB request being made, and an SLA Ops Log being created.
  *
@@ -67,7 +67,7 @@ describe('AWS DynamoDB', () => {
     // })
 
     const client = new dynamodb.DynamoDBClient({
-      endpoint: 'http://192.168.7.223:4566',
+      endpoint: config['dynamodb.endpoint'],
       region: 'us-east-1',
       requestHandler: new AxiosHttpHandler(axiosInstance, {}),
     })

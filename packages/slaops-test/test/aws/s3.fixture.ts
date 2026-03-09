@@ -5,7 +5,7 @@ const har: HarEntry = {
   time: 11,
   request: {
     method: 'GET',
-    url: 'http://192.168.7.223:4566/bucket-bar/',
+    url: 'http://192.168.7.233:4566/bucket-bar/',
     httpVersion: 'HTTP/1.1',
     cookies: [],
     headers: [
@@ -28,7 +28,7 @@ const har: HarEntry = {
       },
       {
         name: 'host',
-        value: '192.168.7.223:4566',
+        value: '192.168.7.233:4566',
       },
       {
         name: 'amz-sdk-invocation-id',
