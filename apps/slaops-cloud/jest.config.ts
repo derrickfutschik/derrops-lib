@@ -21,6 +21,7 @@ const config: Config = {
   },
   moduleNameMapper: {
     '^@slaops/cloud/(.*)$': '<rootDir>/src/$1',
+    '^@slaops/config$': '<rootDir>/../../packages/slaops-config/src/index.ts',
     '^@slaops/config/(.*)$': '<rootDir>/../../packages/slaops-config/src/$1',
   },
   collectCoverageFrom: ['src/**/*.(t|j)s', '!src/main.ts', '!src/**/*.module.ts'],

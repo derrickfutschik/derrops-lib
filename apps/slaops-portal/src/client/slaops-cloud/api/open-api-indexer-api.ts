@@ -28,10 +28,44 @@ export const OpenApiIndexerApiAxiosParamCreator = function (configuration?: Conf
     return {
         /**
          * 
+         * @param {object} body 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        openApiIndexerControllerIndexSpec: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        openApiIndexerControllerGetUploadUrl: async (body: object, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'body' is not null or undefined
+            assertParamExists('openApiIndexerControllerGetUploadUrl', 'body', body)
+            const localVarPath = `/openapi/upload-url`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(body, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerIndexFromBody: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/openapi`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -55,6 +89,40 @@ export const OpenApiIndexerApiAxiosParamCreator = function (configuration?: Conf
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 
+         * @param {object} body 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerIndexFromS3: async (body: object, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'body' is not null or undefined
+            assertParamExists('openApiIndexerControllerIndexFromS3', 'body', body)
+            const localVarPath = `/openapi/index`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(body, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -66,13 +134,37 @@ export const OpenApiIndexerApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @param {object} body 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async openApiIndexerControllerIndexSpec(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerIndexSpec(options);
+        async openApiIndexerControllerGetUploadUrl(body: object, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetUploadUrl(body, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['OpenApiIndexerApi.openApiIndexerControllerIndexSpec']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['OpenApiIndexerApi.openApiIndexerControllerGetUploadUrl']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerIndexFromBody(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerIndexFromBody(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenApiIndexerApi.openApiIndexerControllerIndexFromBody']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {object} body 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerIndexFromS3(body: object, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerIndexFromS3(body, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenApiIndexerApi.openApiIndexerControllerIndexFromS3']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
@@ -86,11 +178,29 @@ export const OpenApiIndexerApiFactory = function (configuration?: Configuration,
     return {
         /**
          * 
+         * @param {object} body 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        openApiIndexerControllerIndexSpec(options?: RawAxiosRequestConfig): AxiosPromise<object> {
-            return localVarFp.openApiIndexerControllerIndexSpec(options).then((request) => request(axios, basePath));
+        openApiIndexerControllerGetUploadUrl(body: object, options?: RawAxiosRequestConfig): AxiosPromise<object> {
+            return localVarFp.openApiIndexerControllerGetUploadUrl(body, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerIndexFromBody(options?: RawAxiosRequestConfig): AxiosPromise<object> {
+            return localVarFp.openApiIndexerControllerIndexFromBody(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {object} body 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerIndexFromS3(body: object, options?: RawAxiosRequestConfig): AxiosPromise<object> {
+            return localVarFp.openApiIndexerControllerIndexFromS3(body, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -101,11 +211,31 @@ export const OpenApiIndexerApiFactory = function (configuration?: Configuration,
 export class OpenApiIndexerApi extends BaseAPI {
     /**
      * 
+     * @param {object} body 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public openApiIndexerControllerIndexSpec(options?: RawAxiosRequestConfig) {
-        return OpenApiIndexerApiFp(this.configuration).openApiIndexerControllerIndexSpec(options).then((request) => request(this.axios, this.basePath));
+    public openApiIndexerControllerGetUploadUrl(body: object, options?: RawAxiosRequestConfig) {
+        return OpenApiIndexerApiFp(this.configuration).openApiIndexerControllerGetUploadUrl(body, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerIndexFromBody(options?: RawAxiosRequestConfig) {
+        return OpenApiIndexerApiFp(this.configuration).openApiIndexerControllerIndexFromBody(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {object} body 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerIndexFromS3(body: object, options?: RawAxiosRequestConfig) {
+        return OpenApiIndexerApiFp(this.configuration).openApiIndexerControllerIndexFromS3(body, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

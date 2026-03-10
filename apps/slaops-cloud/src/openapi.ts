@@ -25,7 +25,6 @@ async function generateOpenApi() {
     const { OpenApiIndexerController } = await import('./openapi-indexer/openapi-indexer.controller')
     const { OpenApiIndexerService } = await import('./openapi-indexer/openapi-indexer.service')
     const { OpenApiParserService } = await import('./openapi-indexer/openapi-parser.service')
-    const { OpenAPICreateService } = await import('./openapi-indexer/openapi-create.service')
     const { OpenApiSearchController } = await import('./openapi-search/openapi-search.controller')
     const { OpenApiSearchService } = await import('./openapi-search/openapi-search.service')
     const { ConfigController } = await import('./config/config.controller')
@@ -44,7 +43,6 @@ async function generateOpenApi() {
         ServiceService,
         OpenApiIndexerService,
         OpenApiParserService,
-        OpenAPICreateService,
         OpenApiSearchService,
         { provide: getRepositoryToken(Service), useValue: mockValue },
         { provide: Client, useValue: mockValue },

@@ -202,12 +202,74 @@
         ]
       }
     },
+    "/openapi/upload-url": {
+      "post": {
+        "operationId": "OpenApiIndexerController_getUploadUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadUrlDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpenApiIndexer"
+        ]
+      }
+    },
+    "/openapi/index": {
+      "post": {
+        "operationId": "OpenApiIndexerController_indexFromS3",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndexFromS3Dto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpenApiIndexer"
+        ]
+      }
+    },
     "/openapi": {
       "post": {
-        "operationId": "OpenApiIndexerController_indexSpec",
+        "operationId": "OpenApiIndexerController_indexFromBody",
         "parameters": [],
         "responses": {
-          "201": {
+          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -664,6 +726,14 @@
             "example": 80
           }
         }
+      },
+      "UploadUrlDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "IndexFromS3Dto": {
+        "type": "object",
+        "properties": {}
       },
       "OpenApiSearchHit": {
         "type": "object",

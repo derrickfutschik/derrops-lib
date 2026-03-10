@@ -1,4 +1,4 @@
-import { configFromEnv } from './from-env'
+import { configFromEnv, getConfigInputOverride, setOnCacheReset } from './from-env'
 import { ConfigInput } from './schema'
 
 import local from './local-env'
@@ -9,34 +9,36 @@ const configs: { [env: string]: ConfigInput } = {
   test,
 }
 
-export const makeConfig = (
-  cfg: ConfigInput = configFromEnv({
+function getDefaultConfigInput(): ConfigInput {
+  return configFromEnv({
     ...(configs[process.env.NODE_ENV ?? process.env.STAGE ?? 'local'] ?? {}),
     ...process.env,
-  }),
-) => {
-  // const cfg = configFromEnv(env);
+  })
+}
 
-  const appName = (cfg.APP_NAME ?? 'SLAOps') + ''
+export const makeConfig = (cfg?: ConfigInput) => {
+  const input = cfg ?? getConfigInputOverride() ?? getDefaultConfigInput()
+
+  const appName = (input.APP_NAME ?? 'SLAOps') + ''
   const app = appName.toLowerCase()
-  const env = (cfg.NODE_ENV ?? 'dev').toLowerCase()
+  const env = (input.NODE_ENV ?? 'dev').toLowerCase()
   const globalTenantId = 't-glbl0000'
 
-  const opensearchPrefix = cfg.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase()
-  const opensearchSuffix = cfg.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
+  const opensearchPrefix = input.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase()
+  const opensearchSuffix = input.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
 
   const opensearchName = (entity: string) =>
     `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
 
   const logBucketName = (tenantId: string) =>
-    `${cfg.AWS_REGION}--${env}--${app}--${tenantId}--logs--storage`
+    `${input.AWS_REGION}--${env}--${app}--${tenantId}--logs--storage`
 
   return {
     /** The bucket for the OASpecs Storage */
-    'slaops.oaspec.storage.bucket': `${cfg.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
+    'slaops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
 
     /** The bucket for the OASpec Staging Bucket */
-    'slaops.oaspec.staging.bucket': `${cfg.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--staging`,
+    'slaops.oaspec.staging.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--staging`,
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
@@ -52,24 +54,24 @@ export const makeConfig = (
     'tenant.id.prefix': 't-',
 
     /** The version of NodeJS the application uses*/
-    'node.version': cfg.NODE_VERSION ?? 22,
+    'node.version': input.NODE_VERSION ?? 22,
 
     /** The environment the application is running in */
-    'node.env': cfg.NODE_ENV ?? 'dev',
+    'node.env': input.NODE_ENV ?? 'dev',
 
     /** The region the application is running in */
-    'aws.region': cfg.AWS_REGION,
+    'aws.region': input.AWS_REGION,
     /** The account ID the application is running in */
-    'aws.accountId': cfg.AWS_ACCOUNT_ID,
+    'aws.accountId': input.AWS_ACCOUNT_ID,
 
     /** The runtime of the application */
-    'aws.lambda.runtime': cfg.AWS_LAMBDA_RUNTIME ?? 'nodejs22.x',
+    'aws.lambda.runtime': input.AWS_LAMBDA_RUNTIME ?? 'nodejs22.x',
     /** The memory of the application */
-    'aws.lambda.memory': cfg.AWS_LAMBDA_MEMORY ?? 2048,
+    'aws.lambda.memory': input.AWS_LAMBDA_MEMORY ?? 2048,
     /** The timeout of the application */
     'aws.lambda.timeout.seconds': 20,
 
-    'aws.cognito.userPoolId': cfg.AWS_COGNITO_USER_POOL_ID,
+    'aws.cognito.userPoolId': input.AWS_COGNITO_USER_POOL_ID,
     // 'aws.cognito.userPoolClientId': cfg.AWS_COGNITO_USER_POOL_CLIENT_ID,
     // 'aws.cognito.identityPoolId': cfg.AWS_COGNITO_IDENTITY_POOL_ID,
 
@@ -81,16 +83,16 @@ export const makeConfig = (
      */
 
     // Application properties, properties regarding the actual application
-    'app.port': cfg.PORT,
-    'app.env': cfg.NODE_ENV,
-    'app.name': cfg.APP_NAME,
-    'app.version': cfg.APP_VERSION ?? '0.0.1',
-    'app.debug': cfg.APP_DEBUG ?? false,
+    'app.port': input.PORT,
+    'app.env': input.NODE_ENV,
+    'app.name': input.APP_NAME,
+    'app.version': input.APP_VERSION ?? '0.0.1',
+    'app.debug': input.APP_DEBUG ?? false,
 
     // Open API properties
-    'openapi.version': cfg.APP_VERSION,
-    'openapi.title': `${cfg.APP_NAME} Cloud API`,
-    'openapi.description': `${cfg.APP_NAME} is a platform for managing and monitoring SLA metrics of SAAS applications`,
+    'openapi.version': input.APP_VERSION,
+    'openapi.title': `${input.APP_NAME} Cloud API`,
+    'openapi.description': `${input.APP_NAME} is a platform for managing and monitoring SLA metrics of SAAS applications`,
     'openapi.author': 'Derrops',
     'openapi.license': 'MIT',
     'openapi.url': `https://${app}.com`,
@@ -99,23 +101,23 @@ export const makeConfig = (
     'openapi.address': '123 Main St, Anytown, USA',
 
     // Database properties
-    'db.username': cfg.DB_USERNAME,
-    'db.password': cfg.DB_PASSWORD,
-    'db.host': cfg.DB_HOST,
-    'db.port': cfg.DB_PORT ?? 5432,
-    'db.database': cfg.DB_DATABASE ?? `${appName}-${env}`,
-    'db.ssl': cfg.DB_SSL ?? 'false',
-    'db.logging': cfg.DB_LOGGING ?? 'false',
-    'db.schema': cfg.DB_SCHEMA ?? 'public',
+    'db.username': input.DB_USERNAME,
+    'db.password': input.DB_PASSWORD,
+    'db.host': input.DB_HOST,
+    'db.port': input.DB_PORT ?? 5432,
+    'db.database': input.DB_DATABASE ?? `${appName}-${env}`,
+    'db.ssl': input.DB_SSL ?? 'false',
+    'db.logging': input.DB_LOGGING ?? 'false',
+    'db.schema': input.DB_SCHEMA ?? 'public',
 
     /** The endpoint to access dynamodb */
-    'dynamodb.endpoint': cfg.DYNAMODB_ENDPOINT,
+    'dynamodb.endpoint': input.DYNAMODB_ENDPOINT,
 
     /** The region opensearch is deployed in  */
-    'opensearch.region': cfg.AWS_REGION,
+    'opensearch.region': input.AWS_REGION,
 
     /** The endpoint to access opensearch */
-    'opensearch.endpoint': cfg.OPENSEARCH_ENDPOINT,
+    'opensearch.endpoint': input.OPENSEARCH_ENDPOINT,
 
     /** The index prefix */
     'opensearch.prefix': opensearchPrefix,
@@ -148,7 +150,8 @@ export const makeConfig = (
 
     'openapi.s3.bucket': `${app}-apis-${env}`,
 
-    'aws.s3.endpoint': cfg.AWS_S3_ENDPOINT,
+    'aws.s3.endpoint': input.AWS_S3_ENDPOINT,
+    'aws.s3.region': input.AWS_REGION,
 
     'app.opneapi-indexer.name': 'openapi-indexer',
     'app.api.name': `${appName}-api`,
@@ -157,4 +160,28 @@ export const makeConfig = (
 
 export type AppConfig = ReturnType<typeof makeConfig>
 
-export const config = makeConfig()
+let appConfigCache: AppConfig | null = null
+let appConfigCacheKey: ConfigInput | undefined = undefined
+
+function getConfig(): AppConfig {
+  const input = getConfigInputOverride() ?? getDefaultConfigInput()
+  if (input !== appConfigCacheKey) {
+    appConfigCacheKey = input
+    appConfigCache = makeConfig(input)
+  }
+  return appConfigCache!
+}
+
+/** Resets app config cache (called when resetConfigForTests runs). */
+function invalidateConfigCache() {
+  appConfigCache = null
+  appConfigCacheKey = undefined
+}
+
+setOnCacheReset(invalidateConfigCache)
+
+export const config: AppConfig = new Proxy({} as AppConfig, {
+  get(_, prop: string) {
+    return getConfig()[prop as keyof AppConfig]
+  },
+})

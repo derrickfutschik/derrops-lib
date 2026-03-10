@@ -21,4 +21,17 @@ export function setConfigForProcess(config: AppConfigEnv) {
 
 export function resetConfigForTests() {
   cached = undefined
+  onCacheReset?.()
 }
+
+/** Returns the overridden config env when set (for tests). Otherwise undefined. */
+export function getConfigInputOverride(): AppConfigEnv | undefined {
+  return cached
+}
+
+/** Registers callback for when config cache should be invalidated. Used by config module. */
+export function setOnCacheReset(fn: () => void) {
+  onCacheReset = fn
+}
+
+let onCacheReset: (() => void) | undefined
