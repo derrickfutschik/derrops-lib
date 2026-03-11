@@ -184,4 +184,14 @@ export const config: AppConfig = new Proxy({} as AppConfig, {
   get(_, prop: string) {
     return getConfig()[prop as keyof AppConfig]
   },
+  ownKeys(_) {
+    return Object.keys(getConfig())
+  },
+  getOwnPropertyDescriptor(_, prop: string) {
+    const cfg = getConfig()
+    if (prop in cfg) {
+      return { enumerable: true, configurable: true, value: cfg[prop as keyof AppConfig] }
+    }
+    return undefined
+  },
 })

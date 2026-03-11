@@ -63,7 +63,7 @@ sequenceDiagram
     C->>I: Request pre-signed upload URL
     I-->>C: Pre-signed URL
 
-    C->>S3T: Upload OASpec (via pre-signed URL)
+    C->>S3T: Upload OASpec (via pre-signed URL) ${uuidv1()}/spec.[yaml|json]
 
     C->>I: Trigger indexing (S3 URI / URL / JSON / YAML)
     I->>S3T: Fetch OASpec
@@ -72,7 +72,7 @@ sequenceDiagram
     I->>I: Parse & validate OASpec
     I->>I: Transform into OpenSearch document
 
-    I->>S3: Copy OASpec
+    I->>S3: Copy OASpec s3://APIs/{provider}/{service}/{version}/openapi.{yaml|json}
     I->>OS: Index document
 
     I-->>C: Return indexed document

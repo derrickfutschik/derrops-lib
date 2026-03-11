@@ -11,7 +11,7 @@ description: Information about the Tenancy
 | API Management     | -    | ✅    | ✅     | ✅         |
 | SSO                | 0    | -     | -      | ✅         |
 | Log Enrichment     | 0    | -     | -      | ✅         |
-| [BYOK](./byok.md)  | 0    | -     | ✅     | ✅         |
+| BYOK               | 0    | -     | ✅     | ✅         |
 | Log Storage Engine | 0    | -     | Shared | Dedicated  |
 | Self Hosted Logs   | 0    | -     | -      | ✅         |
 | IP WhiteListing    | 0    | -     | -      | ✅         |
