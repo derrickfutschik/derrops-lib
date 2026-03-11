@@ -1,4 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import React, { useState } from 'react'
 
 interface JsonResponseViewerProps {
@@ -78,18 +79,149 @@ const PropertyKeyWithTooltip: React.FC<{
   )
 }
 
-// Parse JSON and render with tooltips
-const renderJsonWithTooltips = (
+// Toggle button for collapsing/expanding scopes
+const CollapseToggle: React.FC<{
+  collapsed: boolean
+  onClick: () => void
+}> = ({ collapsed, onClick }) => (
+  <button
+    onClick={onClick}
+    className="inline-flex items-center justify-center w-4 h-4 rounded hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors align-middle"
+    aria-label={collapsed ? 'Expand' : 'Collapse'}
+  >
+    {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+  </button>
+)
+
+// Collapsible array component
+const CollapsibleArray: React.FC<{
+  value: any[]
+  schema: PropertySchema | undefined
+  validationErrors: Record<string, string> | undefined
+  path: string[]
+  indent: number
+}> = ({ value, schema, validationErrors, path, indent }) => {
+  const [collapsed, setCollapsed] = useState(false)
+  const indentStr = '  '.repeat(indent)
+  const nextIndent = indent + 1
+  const nextIndentStr = '  '.repeat(nextIndent)
+  const itemSchema = schema?.items
+
+  if (value.length === 0) {
+    return <span>[]</span>
+  }
+
+  if (collapsed) {
+    return (
+      <>
+        <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(false)} />
+        <span className="text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => setCollapsed(false)}>
+          {`[${value.length} item${value.length !== 1 ? 's' : ''}]`}
+        </span>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(true)} />
+      {'[\n'}
+      {value.map((item, index) => (
+        <React.Fragment key={index}>
+          {nextIndentStr}
+          {renderJsonNode(
+            item,
+            itemSchema,
+            validationErrors,
+            [...path, String(index)],
+            nextIndent,
+          )}
+          {index < value.length - 1 ? ',\n' : '\n'}
+        </React.Fragment>
+      ))}
+      {indentStr}]
+    </>
+  )
+}
+
+// Collapsible object component
+const CollapsibleObject: React.FC<{
+  value: Record<string, any>
+  schema: PropertySchema | undefined
+  validationErrors: Record<string, string> | undefined
+  path: string[]
+  indent: number
+}> = ({ value, schema, validationErrors, path, indent }) => {
+  const [collapsed, setCollapsed] = useState(false)
+  const indentStr = '  '.repeat(indent)
+  const nextIndent = indent + 1
+  const nextIndentStr = '  '.repeat(nextIndent)
+  const entries = Object.entries(value)
+
+  if (entries.length === 0) {
+    return <span>{'{}'}</span>
+  }
+
+  if (collapsed) {
+    return (
+      <>
+        <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(false)} />
+        <span className="text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => setCollapsed(false)}>
+          {`{${entries.length} key${entries.length !== 1 ? 's' : ''}}`}
+        </span>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(true)} />
+      {'{\n'}
+      {entries.map(([key, val], index) => {
+        const propPath = [...path, key]
+        const propSchema = getPropertySchema(schema, [key])
+        const description = propSchema?.description
+        const propType = propSchema?.type
+        const validationError = validationErrors?.[key]
+        const hasTooltip = description || validationError
+
+        const keyElement = (
+          <span className={validationError ? 'text-red-400' : 'text-purple-400'}>"{key}"</span>
+        )
+
+        return (
+          <React.Fragment key={key}>
+            {nextIndentStr}
+            {hasTooltip ? (
+              <PropertyKeyWithTooltip
+                keyName={key}
+                description={description}
+                propType={propType}
+                validationError={validationError}
+              />
+            ) : (
+              keyElement
+            )}
+            {': '}
+            {renderJsonNode(val, propSchema, validationErrors, propPath, nextIndent)}
+            {index < entries.length - 1 ? ',\n' : '\n'}
+          </React.Fragment>
+        )
+      })}
+      {indentStr}
+      {'}'}
+    </>
+  )
+}
+
+// Render a JSON node — primitives inline, objects/arrays as collapsible components
+const renderJsonNode = (
   value: any,
   schema: PropertySchema | undefined,
   validationErrors: Record<string, string> | undefined,
   path: string[] = [],
   indent: number = 0,
 ): React.ReactNode => {
-  const indentStr = '  '.repeat(indent)
-  const nextIndent = indent + 1
-  const nextIndentStr = '  '.repeat(nextIndent)
-
   if (value === null) {
     return <span className="text-red-400">null</span>
   }
@@ -107,76 +239,26 @@ const renderJsonWithTooltips = (
   }
 
   if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return <span>[]</span>
-    }
-
-    const itemSchema = schema?.items
-
     return (
-      <>
-        {'[\n'}
-        {value.map((item, index) => (
-          <React.Fragment key={index}>
-            {nextIndentStr}
-            {renderJsonWithTooltips(
-              item,
-              itemSchema,
-              validationErrors,
-              [...path, String(index)],
-              nextIndent,
-            )}
-            {index < value.length - 1 ? ',\n' : '\n'}
-          </React.Fragment>
-        ))}
-        {indentStr}]
-      </>
+      <CollapsibleArray
+        value={value}
+        schema={schema}
+        validationErrors={validationErrors}
+        path={path}
+        indent={indent}
+      />
     )
   }
 
   if (typeof value === 'object') {
-    const entries = Object.entries(value)
-    if (entries.length === 0) {
-      return <span>{'{}'}</span>
-    }
-
     return (
-      <>
-        {'{\n'}
-        {entries.map(([key, val], index) => {
-          const propPath = [...path, key]
-          const propSchema = getPropertySchema(schema, [key])
-          const description = propSchema?.description
-          const propType = propSchema?.type
-          const validationError = validationErrors?.[key]
-          const hasTooltip = description || validationError
-
-          const keyElement = (
-            <span className={validationError ? 'text-red-400' : 'text-purple-400'}>"{key}"</span>
-          )
-
-          return (
-            <React.Fragment key={key}>
-              {nextIndentStr}
-              {hasTooltip ? (
-                <PropertyKeyWithTooltip
-                  keyName={key}
-                  description={description}
-                  propType={propType}
-                  validationError={validationError}
-                />
-              ) : (
-                keyElement
-              )}
-              {': '}
-              {renderJsonWithTooltips(val, propSchema, validationErrors, propPath, nextIndent)}
-              {index < entries.length - 1 ? ',\n' : '\n'}
-            </React.Fragment>
-          )
-        })}
-        {indentStr}
-        {'}'}
-      </>
+      <CollapsibleObject
+        value={value}
+        schema={schema}
+        validationErrors={validationErrors}
+        path={path}
+        indent={indent}
+      />
     )
   }
 
@@ -190,7 +272,7 @@ export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
 }) => {
   try {
     const parsed = JSON.parse(jsonString)
-    return <>{renderJsonWithTooltips(parsed, responseSchema, validationErrors)}</>
+    return <>{renderJsonNode(parsed, responseSchema, validationErrors)}</>
   } catch {
     // If parsing fails, return the raw string
     return <>{jsonString}</>
