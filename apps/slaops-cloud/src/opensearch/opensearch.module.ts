@@ -38,6 +38,7 @@ function createOpenSearchClient(): Client {
     {
       provide: TypescriptOSProxyClient,
       useFactory: (client: Client) => new TypescriptOSProxyClient(client),
+      inject: [Client],
     },
 
     OpenSearchService,
