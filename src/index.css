@@ -66,3 +66,230 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* AWS Amplify UI Theme Customization */
+[data-amplify-authenticator] {
+  --amplify-colors-background-primary: hsl(220, 26%, 14%);
+  --amplify-colors-background-secondary: hsl(222, 24%, 18%);
+  --amplify-colors-background-tertiary: hsl(217, 33%, 17%);
+
+  --amplify-colors-font-primary: hsl(213, 31%, 91%);
+  --amplify-colors-font-secondary: hsl(215, 20%, 65%);
+  --amplify-colors-font-tertiary: hsl(215, 20%, 65%);
+  --amplify-colors-font-interactive: hsl(189, 94%, 43%);
+
+  --amplify-colors-brand-primary-10: hsl(189, 94%, 43%);
+  --amplify-colors-brand-primary-20: hsl(189, 94%, 43%);
+  --amplify-colors-brand-primary-40: hsl(189, 94%, 43%);
+  --amplify-colors-brand-primary-60: hsl(189, 94%, 43%);
+  --amplify-colors-brand-primary-80: hsl(189, 94%, 43%);
+  --amplify-colors-brand-primary-90: hsl(189, 94%, 43%);
+  --amplify-colors-brand-primary-100: hsl(189, 94%, 43%);
+
+  --amplify-colors-border-primary: hsl(217, 33%, 25%);
+  --amplify-colors-border-secondary: hsl(217, 33%, 25%);
+  --amplify-colors-border-tertiary: hsl(217, 33%, 25%);
+
+  --amplify-colors-overlay-10: hsla(220, 26%, 14%, 0.1);
+  --amplify-colors-overlay-20: hsla(220, 26%, 14%, 0.2);
+  --amplify-colors-overlay-30: hsla(220, 26%, 14%, 0.3);
+  --amplify-colors-overlay-40: hsla(220, 26%, 14%, 0.4);
+  --amplify-colors-overlay-50: hsla(220, 26%, 14%, 0.5);
+  --amplify-colors-overlay-60: hsla(220, 26%, 14%, 0.6);
+  --amplify-colors-overlay-70: hsla(220, 26%, 14%, 0.7);
+  --amplify-colors-overlay-80: hsla(220, 26%, 14%, 0.8);
+  --amplify-colors-overlay-90: hsla(220, 26%, 14%, 0.9);
+
+  --amplify-components-authenticator-router-background-color: hsl(220, 26%, 14%);
+  --amplify-components-authenticator-router-border-color: transparent;
+
+  --amplify-components-button-primary-background-color: hsl(189, 94%, 43%);
+  --amplify-components-button-primary-color: hsl(220, 26%, 14%);
+  --amplify-components-button-primary-hover-background-color: hsl(189, 94%, 50%);
+  --amplify-components-button-primary-focus-background-color: hsl(189, 94%, 50%);
+  --amplify-components-button-primary-active-background-color: hsl(189, 94%, 35%);
+
+  --amplify-components-button-link-color: hsl(189, 94%, 43%);
+  --amplify-components-button-link-hover-background-color: transparent;
+  --amplify-components-button-link-hover-color: hsl(189, 94%, 50%);
+
+  --amplify-components-fieldcontrol-border-color: hsl(217, 33%, 25%);
+  --amplify-components-fieldcontrol-background-color: hsl(217, 33%, 17%);
+  --amplify-components-fieldcontrol-color: hsl(213, 31%, 91%);
+  --amplify-components-fieldcontrol-focus-border-color: hsl(189, 94%, 43%);
+
+  --amplify-components-tabs-item-active-border-color: hsl(189, 94%, 43%);
+  --amplify-components-tabs-item-active-color: hsl(189, 94%, 43%);
+  --amplify-components-tabs-item-color: hsl(215, 20%, 65%);
+  --amplify-components-tabs-item-hover-color: hsl(213, 31%, 91%);
+  --amplify-components-tabs-item-focus-color: hsl(189, 94%, 43%);
+
+  --amplify-components-text-color: hsl(213, 31%, 91%);
+
+  --amplify-space-small: 0.5rem;
+  --amplify-space-medium: 1rem;
+  --amplify-space-large: 1.5rem;
+  --amplify-space-xl: 2rem;
+
+  --amplify-radii-small: 0.5rem;
+  --amplify-radii-medium: 0.75rem;
+  --amplify-radii-large: 0.75rem;
+}
+
+/* Override specific Amplify components */
+[data-amplify-authenticator] [data-amplify-router] {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+[data-amplify-authenticator] [data-amplify-container] {
+  background-color: hsl(222, 24%, 18%);
+  border: 1px solid hsl(217, 33%, 25%);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px hsla(220, 26%, 14%, 0.4);
+}
+
+[data-amplify-authenticator] .amplify-input,
+[data-amplify-authenticator] .amplify-select,
+[data-amplify-authenticator] .amplify-textarea,
+[data-amplify-authenticator] input,
+[data-amplify-authenticator] select,
+[data-amplify-authenticator] textarea {
+  background-color: hsl(217, 33%, 17%) !important;
+  border-color: hsl(217, 33%, 25%) !important;
+  color: hsl(213, 31%, 91%) !important;
+}
+
+[data-amplify-authenticator] .amplify-input:focus,
+[data-amplify-authenticator] .amplify-select:focus,
+[data-amplify-authenticator] .amplify-textarea:focus,
+[data-amplify-authenticator] input:focus,
+[data-amplify-authenticator] select:focus,
+[data-amplify-authenticator] textarea:focus {
+  border-color: hsl(189, 94%, 43%) !important;
+  box-shadow: 0 0 0 1px hsl(189, 94%, 43%) !important;
+  background-color: hsl(217, 33%, 17%) !important;
+}
+
+[data-amplify-authenticator] .amplify-input:hover,
+[data-amplify-authenticator] input:hover {
+  background-color: hsl(217, 33%, 17%) !important;
+}
+
+[data-amplify-authenticator] .amplify-input:empty,
+[data-amplify-authenticator] input:empty,
+[data-amplify-authenticator] .amplify-input:not(:focus):not(:placeholder-shown),
+[data-amplify-authenticator] input:not(:focus):not(:placeholder-shown) {
+  background-color: hsl(217, 33%, 17%) !important;
+}
+
+[data-amplify-authenticator] .amplify-input::placeholder,
+[data-amplify-authenticator] input::placeholder {
+  color: hsl(215, 20%, 65%) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure dark background for autofilled/autocompleted inputs */
+[data-amplify-authenticator] input:-webkit-autofill,
+[data-amplify-authenticator] input:-webkit-autofill:hover,
+[data-amplify-authenticator] input:-webkit-autofill:focus,
+[data-amplify-authenticator] input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px hsl(217, 33%, 17%) inset !important;
+  -webkit-text-fill-color: hsl(213, 31%, 91%) !important;
+  transition: background-color 5000s ease-in-out 0s;
+  background-color: hsl(217, 33%, 17%) !important;
+  border-color: hsl(217, 33%, 25%) !important;
+}
+
+/* Force dark background on all input states */
+[data-amplify-authenticator] input[type="email"],
+[data-amplify-authenticator] input[type="password"],
+[data-amplify-authenticator] input[type="text"],
+[data-amplify-authenticator] input[type="tel"] {
+  background-color: hsl(217, 33%, 17%) !important;
+  background: hsl(217, 33%, 17%) !important;
+}
+
+/* Style password visibility toggle button */
+[data-amplify-authenticator] .amplify-field__show-password,
+[data-amplify-authenticator] button[aria-label*="password"],
+[data-amplify-authenticator] .amplify-button--link {
+  color: hsl(215, 20%, 65%) !important;
+  border-color: hsl(217, 33%, 25%) !important;
+  background-color: hsl(217, 33%, 17%) !important;
+}
+
+[data-amplify-authenticator] .amplify-field__show-password:hover,
+[data-amplify-authenticator] button[aria-label*="password"]:hover {
+  color: hsl(189, 94%, 43%) !important;
+  background-color: hsl(217, 33%, 17%) !important;
+  border-color: hsl(217, 33%, 25%) !important;
+}
+
+[data-amplify-authenticator] .amplify-field__show-password:focus,
+[data-amplify-authenticator] button[aria-label*="password"]:focus {
+  border-color: hsl(189, 94%, 43%) !important;
+  box-shadow: 0 0 0 1px hsl(189, 94%, 43%) !important;
+}
+
+[data-amplify-authenticator] .amplify-field__show-password svg,
+[data-amplify-authenticator] button[aria-label*="password"] svg {
+  fill: currentColor;
+  color: hsl(215, 20%, 65%);
+}
+
+[data-amplify-authenticator] .amplify-field__show-password:hover svg,
+[data-amplify-authenticator] button[aria-label*="password"]:hover svg {
+  color: hsl(189, 94%, 43%);
+}
+
+[data-amplify-authenticator] .amplify-button--primary {
+  background-color: hsl(189, 94%, 43%) !important;
+  color: hsl(220, 26%, 14%) !important;
+  font-weight: 500;
+}
+
+[data-amplify-authenticator] .amplify-button--primary:hover {
+  background-color: hsl(189, 94%, 50%) !important;
+}
+
+[data-amplify-authenticator] .amplify-tabs-item {
+  color: hsl(215, 20%, 65%);
+  font-weight: 500;
+}
+
+[data-amplify-authenticator] .amplify-tabs-item[data-state="active"],
+[data-amplify-authenticator] .amplify-tabs-item--active {
+  color: hsl(189, 94%, 43%) !important;
+  border-bottom-color: hsl(189, 94%, 43%) !important;
+}
+
+[data-amplify-authenticator] .amplify-heading {
+  color: hsl(213, 31%, 91%) !important;
+}
+
+[data-amplify-authenticator] .amplify-text {
+  color: hsl(213, 31%, 91%) !important;
+}
+
+/* Ensure labels are white */
+[data-amplify-authenticator] .amplify-label,
+[data-amplify-authenticator] label {
+  color: hsl(213, 31%, 91%) !important;
+  font-weight: 500;
+}
+
+/* Field descriptions and helper text can remain muted */
+[data-amplify-authenticator] .amplify-field__description,
+[data-amplify-authenticator] .amplify-text--tertiary {
+  color: hsl(215, 20%, 65%) !important;
+}
+
+[data-amplify-authenticator] a {
+  color: hsl(189, 94%, 43%) !important;
+}
+
+[data-amplify-authenticator] a:hover {
+  color: hsl(189, 94%, 50%) !important;
+}

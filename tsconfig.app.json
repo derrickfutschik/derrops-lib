@@ -23,7 +23,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@slaops/portal/*": ["./src/*"]
     }
   },
   "include": ["src"]

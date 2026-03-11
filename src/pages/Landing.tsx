@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Zap, BarChart3, Bell } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Button } from '@/components/ui/button'
+import { ArrowRight, BarChart3, Bell, Shield, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const Landing = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-background">
@@ -11,7 +11,7 @@ const Landing = () => {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[var(--gradient-hero)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(6,182,212,0.1),transparent_50%)]" />
-        
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center space-y-8">
             <div className="inline-block">
@@ -22,23 +22,19 @@ const Landing = () => {
                 Monitor Your SaaS Stack with Confidence
               </p>
             </div>
-            
+
             <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-              Track API performance, usage, and costs across all your SaaS applications. 
-              Get real-time insights and AI-powered anomaly detection.
+              Track API performance, usage, and costs across all your SaaS applications. Get
+              real-time insights and AI-powered anomaly detection.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                className="text-lg px-8"
-                onClick={() => navigate('/auth')}
-              >
+              <Button size="lg" className="text-lg px-8" onClick={() => navigate('/auth')}>
                 Get Started <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
+              <Button
+                size="lg"
+                variant="outline"
                 className="text-lg px-8"
                 onClick={() => navigate('/auth')}
               >
@@ -52,9 +48,7 @@ const Landing = () => {
       {/* Features Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-foreground mb-4">
-            Complete SaaS Observability
-          </h2>
+          <h2 className="text-4xl font-bold text-foreground mb-4">Complete SaaS Observability</h2>
           <p className="text-lg text-muted-foreground">
             Everything you need to monitor and optimize your SaaS applications
           </p>
@@ -107,12 +101,8 @@ const Landing = () => {
       <div className="bg-card/50 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">
-              Simple Integration
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Get up and running in minutes
-            </p>
+            <h2 className="text-4xl font-bold text-foreground mb-4">Simple Integration</h2>
+            <p className="text-lg text-muted-foreground">Get up and running in minutes</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -158,17 +148,13 @@ const Landing = () => {
           <p className="text-lg text-muted-foreground mb-8">
             Join teams monitoring their SaaS applications with SLAOps
           </p>
-          <Button 
-            size="lg" 
-            className="text-lg px-8"
-            onClick={() => navigate('/auth')}
-          >
+          <Button size="lg" className="text-lg px-8" onClick={() => navigate('/auth')}>
             Start Monitoring Now <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Landing;
+export default Landing

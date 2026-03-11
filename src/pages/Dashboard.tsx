@@ -1,50 +1,50 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, TrendingUp, AlertTriangle, DollarSign } from "lucide-react";
-import { toast } from "sonner";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import ServicesList from "@/components/dashboard/ServicesList";
+import DashboardHeader from '@/components/dashboard/DashboardHeader'
+import ServicesList from '@/components/dashboard/ServicesList'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { supabase } from '@/integrations/supabase/client'
+import { Session, User } from '@supabase/supabase-js'
+import { signOut } from 'aws-amplify/auth'
+import { Activity, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate()
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (!session) {
-          navigate("/auth");
-        }
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+
+      // if (!session) {
+      //   navigate("/auth");
+      // }
+    })
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-      
-      if (!session) {
-        navigate("/auth");
-      }
-    });
+      setSession(session)
+      setUser(session?.user ?? null)
+      setIsLoading(false)
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+      // if (!session) {
+      //   navigate("/auth");
+      // }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [navigate])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.success("Signed out successfully");
-    navigate("/");
-  };
+    // await supabase.auth.signOut();
+    // toast.success("Signed out successfully");
+    await signOut({ global: true })
+    navigate('/')
+  }
 
   if (isLoading) {
     return (
@@ -54,13 +54,13 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader user={user} onSignOut={handleSignOut} />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -81,9 +81,7 @@ const Dashboard = () => {
 
           <Card className="border-border bg-card/50 backdrop-blur">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                API Calls
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">API Calls</CardTitle>
               <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
@@ -129,7 +127,7 @@ const Dashboard = () => {
         <ServicesList />
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

@@ -3,12 +3,16 @@ set -e
 
 echo "=== Amplify Build Script for slaops-portal ==="
 
-# Check if we should skip the build
+# When amplify.yml uses buildPath: '/', cwd is repo root. Otherwise cwd is apps/slaops-portal.
+if [ ! -f pnpm-workspace.yaml ]; then
+  cd ../..
+fi
+
+# Check if we should skip the build. Do not create any artifact and exit non-zero
+# so Amplify does not deploy (previous deployment stays live).
 if [ -f /tmp/skip-build ]; then
-  echo "Skip flag detected, creating empty dist to satisfy Amplify"
-  mkdir -p ../../dist
-  echo "<html><body>Build skipped - no changes detected</body></html>" > ../../dist/index.html
-  exit 0
+  echo "Skip flag detected: no relevant changes. Exiting without artifact so Amplify will not deploy."
+  exit 1
 fi
 
 echo "Check NVM exists"
@@ -18,11 +22,13 @@ echo "Using Node 22.x"
 nvm install 22
 nvm use 22
 
+# Ensure Node heap limit for Vite build (reduces OOM on 16GB Amplify build instances)
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=12000}"
+
 echo "Installing pnpm globally..."
 npm install -g pnpm@8.15.4
 
 echo "Building slaops-portal with Turbo (with caching)..."
-cd ../..
-pnpm exec turbo run build --filter=vite_react_shadcn_ts
+pnpm exec turbo run build --filter=@slaops/portal
 
 echo "=== Build completed successfully ==="

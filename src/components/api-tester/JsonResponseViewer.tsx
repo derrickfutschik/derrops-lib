@@ -1,88 +1,82 @@
-import React, { useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import React, { useState } from 'react'
 
 interface JsonResponseViewerProps {
-  jsonString: string;
-  responseSchema: any;
-  validationErrors?: Record<string, string>; // Map of field names to validation error messages
+  jsonString: string
+  responseSchema: any
+  validationErrors?: Record<string, string> // Map of field names to validation error messages
 }
 
 interface PropertySchema {
-  description?: string;
-  type?: string;
-  properties?: Record<string, PropertySchema>;
-  items?: PropertySchema;
+  description?: string
+  type?: string
+  properties?: Record<string, PropertySchema>
+  items?: PropertySchema
 }
 
 // Recursively get property schema from a path
-const getPropertySchema = (schema: PropertySchema | undefined, path: string[]): PropertySchema | undefined => {
-  if (!schema || path.length === 0) return schema;
-  
-  const [current, ...rest] = path;
-  
+const getPropertySchema = (
+  schema: PropertySchema | undefined,
+  path: string[],
+): PropertySchema | undefined => {
+  if (!schema || path.length === 0) return schema
+
+  const [current, ...rest] = path
+
   // Handle array items
   if (schema.type === 'array' && schema.items) {
-    return getPropertySchema(schema.items, path);
+    return getPropertySchema(schema.items, path)
   }
-  
+
   // Handle object properties
   if (schema.properties && schema.properties[current]) {
     if (rest.length === 0) {
-      return schema.properties[current];
+      return schema.properties[current]
     }
-    return getPropertySchema(schema.properties[current], rest);
+    return getPropertySchema(schema.properties[current], rest)
   }
-  
-  return undefined;
-};
+
+  return undefined
+}
 
 // Component for property key with popover tooltip
 const PropertyKeyWithTooltip: React.FC<{
-  keyName: string;
-  description?: string;
-  propType?: string;
-  validationError?: string;
+  keyName: string
+  description?: string
+  propType?: string
+  validationError?: string
 }> = ({ keyName, description, propType, validationError }) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
 
   const keyElement = (
-    <span className={validationError ? "text-red-400" : "text-purple-400"}>"{keyName}"</span>
-  );
+    <span className={validationError ? 'text-red-400' : 'text-purple-400'}>"{keyName}"</span>
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span 
+        <span
           className={`cursor-help border-b border-dashed ${
             validationError
-              ? "border-red-400/50 hover:border-red-400"
-              : "border-purple-400/50 hover:border-purple-400"
+              ? 'border-red-400/50 hover:border-red-400'
+              : 'border-purple-400/50 hover:border-purple-400'
           }`}
         >
           {keyElement}
         </span>
       </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        className="max-w-[300px] text-sm p-2"
-      >
+      <PopoverContent side="top" className="max-w-[300px] text-sm p-2">
         <div className="space-y-1">
-          {validationError && (
-            <div className="text-red-400 font-medium">
-              {validationError}
-            </div>
-          )}
+          {validationError && <div className="text-red-400 font-medium">{validationError}</div>}
           {propType && (
-            <div className="text-xs text-muted-foreground font-mono">
-              Type: {propType}
-            </div>
+            <div className="text-xs text-muted-foreground font-mono">Type: {propType}</div>
           )}
           {description && <div>{description}</div>}
         </div>
       </PopoverContent>
     </Popover>
-  );
-};
+  )
+}
 
 // Parse JSON and render with tooltips
 const renderJsonWithTooltips = (
@@ -90,70 +84,76 @@ const renderJsonWithTooltips = (
   schema: PropertySchema | undefined,
   validationErrors: Record<string, string> | undefined,
   path: string[] = [],
-  indent: number = 0
+  indent: number = 0,
 ): React.ReactNode => {
-  const indentStr = "  ".repeat(indent);
-  const nextIndent = indent + 1;
-  const nextIndentStr = "  ".repeat(nextIndent);
+  const indentStr = '  '.repeat(indent)
+  const nextIndent = indent + 1
+  const nextIndentStr = '  '.repeat(nextIndent)
 
   if (value === null) {
-    return <span className="text-red-400">null</span>;
+    return <span className="text-red-400">null</span>
   }
 
-  if (typeof value === "boolean") {
-    return <span className="text-blue-400">{value.toString()}</span>;
+  if (typeof value === 'boolean') {
+    return <span className="text-blue-400">{value.toString()}</span>
   }
 
-  if (typeof value === "number") {
-    return <span className="text-amber-400">{value}</span>;
+  if (typeof value === 'number') {
+    return <span className="text-amber-400">{value}</span>
   }
 
-  if (typeof value === "string") {
-    return <span className="text-green-400">"{value}"</span>;
+  if (typeof value === 'string') {
+    return <span className="text-green-400">"{value}"</span>
   }
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return <span>[]</span>;
+      return <span>[]</span>
     }
 
-    const itemSchema = schema?.items;
-    
+    const itemSchema = schema?.items
+
     return (
       <>
-        {"[\n"}
+        {'[\n'}
         {value.map((item, index) => (
           <React.Fragment key={index}>
             {nextIndentStr}
-            {renderJsonWithTooltips(item, itemSchema, validationErrors, [...path, String(index)], nextIndent)}
-            {index < value.length - 1 ? ",\n" : "\n"}
+            {renderJsonWithTooltips(
+              item,
+              itemSchema,
+              validationErrors,
+              [...path, String(index)],
+              nextIndent,
+            )}
+            {index < value.length - 1 ? ',\n' : '\n'}
           </React.Fragment>
         ))}
         {indentStr}]
       </>
-    );
+    )
   }
 
-  if (typeof value === "object") {
-    const entries = Object.entries(value);
+  if (typeof value === 'object') {
+    const entries = Object.entries(value)
     if (entries.length === 0) {
-      return <span>{"{}"}</span>;
+      return <span>{'{}'}</span>
     }
 
     return (
       <>
-        {"{\n"}
+        {'{\n'}
         {entries.map(([key, val], index) => {
-          const propPath = [...path, key];
-          const propSchema = getPropertySchema(schema, [key]);
-          const description = propSchema?.description;
-          const propType = propSchema?.type;
-          const validationError = validationErrors?.[key];
-          const hasTooltip = description || validationError;
+          const propPath = [...path, key]
+          const propSchema = getPropertySchema(schema, [key])
+          const description = propSchema?.description
+          const propType = propSchema?.type
+          const validationError = validationErrors?.[key]
+          const hasTooltip = description || validationError
 
           const keyElement = (
-            <span className={validationError ? "text-red-400" : "text-purple-400"}>"{key}"</span>
-          );
+            <span className={validationError ? 'text-red-400' : 'text-purple-400'}>"{key}"</span>
+          )
 
           return (
             <React.Fragment key={key}>
@@ -168,30 +168,31 @@ const renderJsonWithTooltips = (
               ) : (
                 keyElement
               )}
-              {": "}
+              {': '}
               {renderJsonWithTooltips(val, propSchema, validationErrors, propPath, nextIndent)}
-              {index < entries.length - 1 ? ",\n" : "\n"}
+              {index < entries.length - 1 ? ',\n' : '\n'}
             </React.Fragment>
-          );
+          )
         })}
-        {indentStr}{"}"}
+        {indentStr}
+        {'}'}
       </>
-    );
+    )
   }
 
-  return <span>{String(value)}</span>;
-};
+  return <span>{String(value)}</span>
+}
 
 export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
   jsonString,
   responseSchema,
-  validationErrors
+  validationErrors,
 }) => {
   try {
-    const parsed = JSON.parse(jsonString);
-    return <>{renderJsonWithTooltips(parsed, responseSchema, validationErrors)}</>;
+    const parsed = JSON.parse(jsonString)
+    return <>{renderJsonWithTooltips(parsed, responseSchema, validationErrors)}</>
   } catch {
     // If parsing fails, return the raw string
-    return <>{jsonString}</>;
+    return <>{jsonString}</>
   }
-};
+}

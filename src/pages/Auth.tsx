@@ -1,73 +1,73 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { z } from "zod";
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { supabase } from '@/integrations/supabase/client'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { z } from 'zod'
 
-const emailSchema = z.string().email("Please enter a valid email address");
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+const emailSchema = z.string().email('Please enter a valid email address')
+const passwordSchema = z.string().min(6, 'Password must be at least 6 characters')
 
 const Auth = () => {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const validateInputs = () => {
     try {
-      emailSchema.parse(email);
-      passwordSchema.parse(password);
-      return true;
+      emailSchema.parse(email)
+      passwordSchema.parse(password)
+      return true
     } catch (error) {
       if (error instanceof z.ZodError) {
-        toast.error(error.errors[0].message);
+        toast.error(error.errors[0].message)
       }
-      return false;
+      return false
     }
-  };
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateInputs()) return;
-    
-    setIsLoading(true);
-    
+    e.preventDefault()
+
+    if (!validateInputs()) return
+
+    setIsLoading(true)
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      });
+      })
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          toast.error("Invalid email or password");
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Invalid email or password')
         } else {
-          toast.error(error.message);
+          toast.error(error.message)
         }
       } else {
-        toast.success("Welcome back!");
-        navigate("/api-tester");
+        toast.success('Welcome back!')
+        navigate('/api-tester')
       }
     } catch (error) {
-      toast.error("An unexpected error occurred");
+      toast.error('An unexpected error occurred')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateInputs()) return;
-    
-    setIsLoading(true);
-    
+    e.preventDefault()
+
+    if (!validateInputs()) return
+
+    setIsLoading(true)
+
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -75,23 +75,23 @@ const Auth = () => {
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
         },
-      });
+      })
 
       if (error) {
-        if (error.message.includes("already registered")) {
-          toast.error("This email is already registered. Please sign in instead.");
+        if (error.message.includes('already registered')) {
+          toast.error('This email is already registered. Please sign in instead.')
         } else {
-          toast.error(error.message);
+          toast.error(error.message)
         }
       } else {
-        toast.success("Account created! You can now sign in.");
+        toast.success('Account created! You can now sign in.')
       }
     } catch (error) {
-      toast.error("An unexpected error occurred");
+      toast.error('An unexpected error occurred')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -114,7 +114,7 @@ const Auth = () => {
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
@@ -142,11 +142,11 @@ const Auth = () => {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
+                    {isLoading ? 'Signing in...' : 'Sign In'}
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
@@ -174,7 +174,7 @@ const Auth = () => {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
+                    {isLoading ? 'Creating account...' : 'Create Account'}
                   </Button>
                 </form>
               </TabsContent>
@@ -185,7 +185,7 @@ const Auth = () => {
         <div className="text-center mt-6">
           <Button
             variant="link"
-            onClick={() => navigate("/")}
+            onClick={() => navigate('/')}
             className="text-muted-foreground hover:text-foreground"
           >
             ← Back to Home
@@ -193,7 +193,7 @@ const Auth = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Auth;
+export default Auth

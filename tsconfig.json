@@ -4,7 +4,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@slaops/portal/*": ["./src/*"],
+      "@slaops/cloud/*": ["../slaops-cloud/src/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

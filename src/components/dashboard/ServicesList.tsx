@@ -1,56 +1,61 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Activity, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-
-interface Service {
-  id: string;
-  name: string;
-  endpoint: string | null;
-  availability: number | null;
-  response_time: number | null;
-}
+import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { Service } from '@/client/slaops-cloud/models/service'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { API_BASE_URL } from '@/config'
+import { useToast } from '@/hooks/use-toast'
+import { Activity, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const ServicesList = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchServices();
-  }, []);
+    fetchServices()
+  }, [])
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
-        .from("services")
-        .select("id, name, endpoint, availability, response_time")
-        .order("created_at", { ascending: false });
+      const config = new Configuration({
+        basePath: API_BASE_URL,
+      })
+      const serviceApi = new ServiceApi(config)
 
-      if (error) throw error;
-      setServices(data || []);
-    } catch (error: any) {
+      const response = await serviceApi.serviceControllerFindAll(
+        'id,name,endpoint,availability,response_time',
+      )
+      const data = response.data
+
+      // Sort by created_at descending (newest first)
+      const mappedServices: Service[] = [...data].sort((a, b) => {
+        // Since we don't have created_at in the response, we'll just return the data as-is
+        // If sorting is needed, it should be done on the backend
+        return 0
+      })
+
+      setServices(mappedServices)
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to load services",
-        variant: "destructive",
-      });
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load services',
+        variant: 'destructive',
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const getStatusFromAvailability = (availability: number | null) => {
-    if (!availability) return "unknown";
-    if (availability >= 99.5) return "healthy";
-    if (availability >= 98) return "warning";
-    return "critical";
-  };
+    if (!availability) return 'unknown'
+    if (availability >= 99.5) return 'healthy'
+    if (availability >= 98) return 'warning'
+    return 'critical'
+  }
 
   if (loading) {
     return (
@@ -63,7 +68,7 @@ const ServicesList = () => {
           <div className="py-8 text-center text-muted-foreground">Loading services...</div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   if (services.length === 0) {
@@ -76,11 +81,11 @@ const ServicesList = () => {
         <CardContent>
           <div className="py-8 text-center">
             <p className="text-muted-foreground mb-4">No services added yet</p>
-            <Button onClick={() => navigate("/add-service")}>Add Your First Service</Button>
+            <Button onClick={() => navigate('/add-service')}>Add Your First Service</Button>
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
@@ -92,8 +97,8 @@ const ServicesList = () => {
       <CardContent>
         <div className="space-y-4">
           {services.map((service) => {
-            const status = getStatusFromAvailability(service.availability);
-            
+            const status = getStatusFromAvailability(service.availability)
+
             return (
               <div
                 key={service.id}
@@ -105,13 +110,19 @@ const ServicesList = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-foreground">{service.name}</h3>
                       <Badge
-                        variant={status === "healthy" ? "default" : status === "warning" ? "secondary" : "destructive"}
+                        variant={
+                          status === 'healthy'
+                            ? 'default'
+                            : status === 'warning'
+                              ? 'secondary'
+                              : 'destructive'
+                        }
                         className={
-                          status === "healthy"
-                            ? "bg-success/20 text-success border-success/50"
-                            : status === "warning"
-                            ? "bg-warning/20 text-warning border-warning/50"
-                            : "bg-destructive/20 text-destructive border-destructive/50"
+                          status === 'healthy'
+                            ? 'bg-success/20 text-success border-success/50'
+                            : status === 'warning'
+                              ? 'bg-warning/20 text-warning border-warning/50'
+                              : 'bg-destructive/20 text-destructive border-destructive/50'
                         }
                       >
                         <Activity className="h-3 w-3 mr-1" />
@@ -119,41 +130,37 @@ const ServicesList = () => {
                       </Badge>
                     </div>
                     <div className="flex gap-6 text-sm text-muted-foreground">
-                      {service.availability && (
-                        <span>Uptime: {service.availability}%</span>
-                      )}
-                      {service.response_time && (
-                        <span>Avg Latency: {service.response_time}ms</span>
-                      )}
+                      {service.availability && <span>Uptime: {service.availability}%</span>}
+                      {service.response_time && <span>Avg Latency: {service.response_time}ms</span>}
                       {service.endpoint && (
                         <span className="font-mono truncate max-w-xs">{service.endpoint}</span>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-success" />
                   </div>
                 </div>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="ml-4"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/service/${service.id}`);
+                    e.stopPropagation()
+                    navigate(`/service/${service.id}`)
                   }}
                 >
                   View Details
                 </Button>
               </div>
-            );
+            )
           })}
         </div>
       </CardContent>
     </Card>
-  );
-};
+  )
+}
 
-export default ServicesList;
+export default ServicesList
