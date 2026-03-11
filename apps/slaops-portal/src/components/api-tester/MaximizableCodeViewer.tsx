@@ -364,25 +364,33 @@ export function MaximizableCodeViewer({
    * Takes the parsed JSON object and a Set of paths to highlight.
    */
   const highlightJson = (parsed: any, matchedPaths: Set<string>): React.ReactNode => {
+    const handleClick = (path: string) => (e: React.MouseEvent) => {
+      if ((e.metaKey || e.ctrlKey) && path) {
+        e.preventDefault()
+        setJmespathQuery(path)
+      }
+    }
+
     const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
       const indentStr = '  '.repeat(indent)
       const isHighlighted = matchedPaths.has(currentPath)
       const className = isHighlighted ? 'text-primary font-semibold' : 'text-muted-foreground/50'
+      const clickTitle = 'Cmd/Ctrl+click to use as JMESPath'
 
       if (value === null) {
-        return <span className={className}>null</span>
+        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>null</span>
       }
 
       if (typeof value === 'boolean') {
-        return <span className={className}>{String(value)}</span>
+        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{String(value)}</span>
       }
 
       if (typeof value === 'number') {
-        return <span className={className}>{value}</span>
+        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{value}</span>
       }
 
       if (typeof value === 'string') {
-        return <span className={className}>"{value}"</span>
+        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>"{value}"</span>
       }
 
       if (Array.isArray(value)) {
@@ -422,7 +430,7 @@ export function MaximizableCodeViewer({
                 <React.Fragment key={key}>
                   {indentStr}
                   {'  '}
-                  <span className="text-muted-foreground/50">"{key}"</span>
+                  <span className="text-muted-foreground/50 cursor-pointer" onClick={handleClick(keyPath)} title={clickTitle}>"{key}"</span>
                   <span className="text-muted-foreground/50">: </span>
                   {renderValue(value[key], keyPath, indent + 1)}
                   {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
