@@ -487,7 +487,7 @@ export function MaximizableCodeViewer({
             jsonString={content}
             responseSchema={responseSchema}
             validationErrors={validationErrors}
-            onJmespathSelect={jmespathEnabled ? setJmespathQuery : undefined}
+            onJmespathSelect={setJmespathQuery}
           />
         )
       } catch {

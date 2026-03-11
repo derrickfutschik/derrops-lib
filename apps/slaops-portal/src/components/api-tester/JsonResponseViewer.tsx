@@ -6,6 +6,7 @@ interface JsonResponseViewerProps {
   jsonString: string
   responseSchema: any
   validationErrors?: Record<string, string> // Map of field names to validation error messages
+  onJmespathSelect?: (path: string) => void // Called on Cmd/Ctrl+click with JMESPath expression
 }
 
 interface PropertySchema {
@@ -40,17 +41,40 @@ const getPropertySchema = (
   return undefined
 }
 
+// Build child JMESPath from a parent path and a key or index
+const childJmesPath = (parent: string, key: string | number): string => {
+  if (typeof key === 'number') {
+    return parent ? `${parent}[${key}]` : `[${key}]`
+  }
+  return parent ? `${parent}.${key}` : key
+}
+
 // Component for property key with popover tooltip
 const PropertyKeyWithTooltip: React.FC<{
   keyName: string
   description?: string
   propType?: string
   validationError?: string
-}> = ({ keyName, description, propType, validationError }) => {
+  onJmespathSelect?: (path: string) => void
+  jmesPath: string
+}> = ({ keyName, description, propType, validationError, onJmespathSelect, jmesPath }) => {
   const [open, setOpen] = useState(false)
 
+  const handleClick = (e: React.MouseEvent) => {
+    if ((e.metaKey || e.ctrlKey) && onJmespathSelect) {
+      e.preventDefault()
+      onJmespathSelect(jmesPath)
+    }
+  }
+
   const keyElement = (
-    <span className={validationError ? 'text-red-400' : 'text-purple-400'}>"{keyName}"</span>
+    <span
+      className={`${validationError ? 'text-red-400' : 'text-purple-400'} ${onJmespathSelect ? 'cursor-pointer' : ''}`}
+      onClick={handleClick}
+      title={onJmespathSelect ? 'Cmd/Ctrl+click to use as JMESPath' : undefined}
+    >
+      "{keyName}"
+    </span>
   )
 
   return (
@@ -99,8 +123,10 @@ const CollapsibleArray: React.FC<{
   schema: PropertySchema | undefined
   validationErrors: Record<string, string> | undefined
   path: string[]
+  jmesPath: string
   indent: number
-}> = ({ value, schema, validationErrors, path, indent }) => {
+  onJmespathSelect?: (path: string) => void
+}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect }) => {
   const [collapsed, setCollapsed] = useState(false)
   const indentStr = '  '.repeat(indent)
   const nextIndent = indent + 1
@@ -115,7 +141,10 @@ const CollapsibleArray: React.FC<{
     return (
       <>
         <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(false)} />
-        <span className="text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => setCollapsed(false)}>
+        <span
+          className="text-muted-foreground cursor-pointer hover:text-foreground"
+          onClick={() => setCollapsed(false)}
+        >
           {`[${value.length} item${value.length !== 1 ? 's' : ''}]`}
         </span>
       </>
@@ -134,7 +163,9 @@ const CollapsibleArray: React.FC<{
             itemSchema,
             validationErrors,
             [...path, String(index)],
+            childJmesPath(jmesPath, index),
             nextIndent,
+            onJmespathSelect,
           )}
           {index < value.length - 1 ? ',\n' : '\n'}
         </React.Fragment>
@@ -150,8 +181,10 @@ const CollapsibleObject: React.FC<{
   schema: PropertySchema | undefined
   validationErrors: Record<string, string> | undefined
   path: string[]
+  jmesPath: string
   indent: number
-}> = ({ value, schema, validationErrors, path, indent }) => {
+  onJmespathSelect?: (path: string) => void
+}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect }) => {
   const [collapsed, setCollapsed] = useState(false)
   const indentStr = '  '.repeat(indent)
   const nextIndent = indent + 1
@@ -166,7 +199,10 @@ const CollapsibleObject: React.FC<{
     return (
       <>
         <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(false)} />
-        <span className="text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => setCollapsed(false)}>
+        <span
+          className="text-muted-foreground cursor-pointer hover:text-foreground"
+          onClick={() => setCollapsed(false)}
+        >
           {`{${entries.length} key${entries.length !== 1 ? 's' : ''}}`}
         </span>
       </>
@@ -179,14 +215,30 @@ const CollapsibleObject: React.FC<{
       {'{\n'}
       {entries.map(([key, val], index) => {
         const propPath = [...path, key]
+        const propJmesPath = childJmesPath(jmesPath, key)
         const propSchema = getPropertySchema(schema, [key])
         const description = propSchema?.description
         const propType = propSchema?.type
         const validationError = validationErrors?.[key]
         const hasTooltip = description || validationError
 
-        const keyElement = (
-          <span className={validationError ? 'text-red-400' : 'text-purple-400'}>"{key}"</span>
+        const plainKey = (
+          <span
+            className={`${validationError ? 'text-red-400' : 'text-purple-400'} ${onJmespathSelect ? 'cursor-pointer' : ''}`}
+            onClick={
+              onJmespathSelect
+                ? (e) => {
+                    if (e.metaKey || e.ctrlKey) {
+                      e.preventDefault()
+                      onJmespathSelect(propJmesPath)
+                    }
+                  }
+                : undefined
+            }
+            title={onJmespathSelect ? 'Cmd/Ctrl+click to use as JMESPath' : undefined}
+          >
+            "{key}"
+          </span>
         )
 
         return (
@@ -198,12 +250,14 @@ const CollapsibleObject: React.FC<{
                 description={description}
                 propType={propType}
                 validationError={validationError}
+                onJmespathSelect={onJmespathSelect}
+                jmesPath={propJmesPath}
               />
             ) : (
-              keyElement
+              plainKey
             )}
             {': '}
-            {renderJsonNode(val, propSchema, validationErrors, propPath, nextIndent)}
+            {renderJsonNode(val, propSchema, validationErrors, propPath, propJmesPath, nextIndent, onJmespathSelect)}
             {index < entries.length - 1 ? ',\n' : '\n'}
           </React.Fragment>
         )
@@ -220,22 +274,35 @@ const renderJsonNode = (
   schema: PropertySchema | undefined,
   validationErrors: Record<string, string> | undefined,
   path: string[] = [],
+  jmesPath: string = '',
   indent: number = 0,
+  onJmespathSelect?: (path: string) => void,
 ): React.ReactNode => {
+  const handlePrimitiveClick = (e: React.MouseEvent) => {
+    if ((e.metaKey || e.ctrlKey) && jmesPath && onJmespathSelect) {
+      e.preventDefault()
+      onJmespathSelect(jmesPath)
+    }
+  }
+
+  const clickProps = onJmespathSelect
+    ? { onClick: handlePrimitiveClick, className: 'cursor-pointer', title: 'Cmd/Ctrl+click to use as JMESPath' }
+    : {}
+
   if (value === null) {
-    return <span className="text-red-400">null</span>
+    return <span className={`text-red-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>null</span>
   }
 
   if (typeof value === 'boolean') {
-    return <span className="text-blue-400">{value.toString()}</span>
+    return <span className={`text-blue-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>{value.toString()}</span>
   }
 
   if (typeof value === 'number') {
-    return <span className="text-amber-400">{value}</span>
+    return <span className={`text-amber-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>{value}</span>
   }
 
   if (typeof value === 'string') {
-    return <span className="text-green-400">"{value}"</span>
+    return <span className={`text-green-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>"{value}"</span>
   }
 
   if (Array.isArray(value)) {
@@ -245,7 +312,9 @@ const renderJsonNode = (
         schema={schema}
         validationErrors={validationErrors}
         path={path}
+        jmesPath={jmesPath}
         indent={indent}
+        onJmespathSelect={onJmespathSelect}
       />
     )
   }
@@ -257,7 +326,9 @@ const renderJsonNode = (
         schema={schema}
         validationErrors={validationErrors}
         path={path}
+        jmesPath={jmesPath}
         indent={indent}
+        onJmespathSelect={onJmespathSelect}
       />
     )
   }
@@ -269,10 +340,11 @@ export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
   jsonString,
   responseSchema,
   validationErrors,
+  onJmespathSelect,
 }) => {
   try {
     const parsed = JSON.parse(jsonString)
-    return <>{renderJsonNode(parsed, responseSchema, validationErrors)}</>
+    return <>{renderJsonNode(parsed, responseSchema, validationErrors, [], '', 0, onJmespathSelect)}</>
   } catch {
     // If parsing fails, return the raw string
     return <>{jsonString}</>
