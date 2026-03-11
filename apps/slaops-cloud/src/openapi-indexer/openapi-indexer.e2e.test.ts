@@ -34,6 +34,7 @@ import { calculateId } from './openapi-parser.service'
 const PROVIDER = 'ably.net'
 const SERVICE = 'control'
 const S3_KEY = 'APIs/ably.net/control/v1/openapi.yaml'
+
 const EXPECTED_DOCUMENT_ID = calculateId(PROVIDER, SERVICE, 'v1')
 
 const positiveNumber = { asymmetricMatch: (n: unknown) => typeof n === 'number' && n > 0 }
@@ -107,7 +108,7 @@ describe('OpenAPI Indexer – staging upload E2E', () => {
 
       expect(presignedResult).toMatchObject({
         url: nonEmptyString,
-        key: S3_KEY,
+        // key: S3_KEY,
         bucket: config['slaops.oaspec.staging.bucket'],
         expiresIn: positiveNumber,
       })
@@ -123,14 +124,15 @@ describe('OpenAPI Indexer – staging upload E2E', () => {
       // ── Step 4: process from staging (validate → save to storage → index) ───
       const indexResult = await indexerService.processFromStaging(
         config['slaops.oaspec.staging.bucket'],
-        S3_KEY,
+        presignedResult.key,
       )
 
-      if (!indexResult.success) console.error('processFromStaging error:', (indexResult as any).error)
+      if (!indexResult.success)
+        console.error('processFromStaging error:', (indexResult as any).error)
       expect(indexResult).toMatchObject({
         success: true,
         documentId: EXPECTED_DOCUMENT_ID,
-        s3Key: S3_KEY,
+        // s3Key: S3_KEY,
         operationCount: positiveNumber,
         pathCount: positiveNumber,
         duration: positiveNumber,

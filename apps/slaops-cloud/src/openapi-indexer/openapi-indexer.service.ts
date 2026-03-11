@@ -21,6 +21,7 @@ import {
 import { config } from '@slaops/config'
 import * as yaml from 'yaml'
 import { calculateId, OpenApiParserService } from './openapi-parser.service'
+import { v4 as uuid } from 'uuid'
 
 /**
  * Build an S3Client that works for both local (MinIO) and cloud environments.
@@ -77,8 +78,9 @@ export class OpenApiIndexerService implements OnModuleInit {
   // 1. Generate pre-signed upload URL → staging bucket
   // ---------------------------------------------------------------------------
 
-  async generatePresignedUploadUrl(key: string): Promise<PresignedUrlResult> {
+  async generatePresignedUploadUrl(file: string): Promise<PresignedUrlResult> {
     const bucket = config['slaops.oaspec.staging.bucket']
+    const key = `${uuid()}/${file}`
     const command = new PutObjectCommand({ Bucket: bucket, Key: key })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const url = await getSignedUrl(this.s3Client as any, command, {
@@ -142,7 +144,8 @@ export class OpenApiIndexerService implements OnModuleInit {
     try {
       const { content, document, truncated } = await this.fetchAndValidate(stagingBucket, key)
 
-      await this.saveToStorage(content, key)
+      const s3Key = this.deriveS3Key(content)
+      await this.saveToStorage(content, s3Key)
       await this.indexDocument(document)
 
       const documentId = calculateId(document.provider, document.serviceName, document.version)
