@@ -144,8 +144,11 @@ export class OpenApiIndexerService implements OnModuleInit {
     try {
       const { content, document, truncated } = await this.fetchAndValidate(stagingBucket, key)
 
-      const s3Key = this.deriveS3Key(content)
-      await this.saveToStorage(content, s3Key)
+      const derivedS3Key = this.deriveS3Key(content)
+
+      document.s3Location.key = derivedS3Key
+
+      await this.saveToStorage(content, derivedS3Key)
       await this.indexDocument(document)
 
       const documentId = calculateId(document.provider, document.serviceName, document.version)

@@ -30,12 +30,20 @@ import { OpenApiIndexerModule } from './openapi-indexer.module'
 import { buildS3Client, OpenApiIndexerService } from './openapi-indexer.service'
 import { calculateId } from './openapi-parser.service'
 // ─── Constants ────────────────────────────────────────────────────────────────
+// Spec loader: apis object keys for resolveSpec (ably.net/control → latest 1.0.14)
+const SPEC_HOST = 'ably.net'
+const SPEC_SERVICE = 'control'
 
-const PROVIDER = 'ably.net'
-const SERVICE = 'control'
-const S3_KEY = 'APIs/ably.net/control/v1/openapi.yaml'
+// Expected values derived from the spec content (deriveS3Key):
+// - provider from servers[0].url hostname (control.ably.net)
+// - service from info.title (sanitized to control-api-v1)
+// - version from info.version (1.0.14)
+const PROVIDER = 'control.ably.net'
+const SERVICE = 'control-api-v1'
+const VERSION = '1.0.14'
+const S3_KEY = `APIs/${PROVIDER}/${SERVICE}/${VERSION}/openapi.yaml`
 
-const EXPECTED_DOCUMENT_ID = calculateId(PROVIDER, SERVICE, 'v1')
+const EXPECTED_DOCUMENT_ID = calculateId(PROVIDER, SERVICE, VERSION)
 
 const positiveNumber = { asymmetricMatch: (n: unknown) => typeof n === 'number' && n > 0 }
 const nonEmptyArray = { asymmetricMatch: (a: unknown) => Array.isArray(a) && a.length > 0 }
@@ -99,7 +107,7 @@ describe('OpenAPI Indexer – staging upload E2E', () => {
     'uploads spec to staging via pre-signed URL, indexes into OpenSearch, saves to storage',
     async () => {
       // ── Step 1: load the spec ────────────────────────────────────────────────
-      const specPath = resolveSpec(PROVIDER, SERVICE)
+      const specPath = resolveSpec(SPEC_HOST, SPEC_SERVICE)
       const specContent = readFileSync(specPath, 'utf-8')
       expect(specContent.length).toBeGreaterThan(0)
 
@@ -148,7 +156,7 @@ describe('OpenAPI Indexer – staging upload E2E', () => {
         id: EXPECTED_DOCUMENT_ID,
         provider: PROVIDER,
         serviceName: SERVICE,
-        version: 'v1',
+        version: VERSION,
         title: nonEmptyString,
         operationStats: expect.objectContaining({
           total: positiveNumber,
