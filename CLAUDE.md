@@ -1077,6 +1077,48 @@ Benefits of using `@slaops/config`:
 - Consistent access patterns across the codebase
 - Easy testing with `resetConfigForTests()` and custom env objects
 
+### No Magic Numbers or Hardcoded Values
+
+**IMPORTANT**: Never use magic numbers, hardcoded strings, or inline constants in application code. All configurable values — including limits, sizes, timeouts, names, prefixes, and defaults — must be defined as named properties in `packages/slaops-config/src/config.ts` with a JSDoc comment.
+
+```typescript
+// ✅ Correct - defined in config.ts with a doc string, consumed via config
+/** Default page size for paginated API responses */
+'app.pagination.default.size': 20,
+
+// Then in application code:
+import { config } from '@slaops/config'
+const pageSize = config['app.pagination.default.size']
+
+// ❌ Wrong - magic number inline in application code
+const results = await query.limit(20)
+
+// ❌ Wrong - hardcoded string
+const bucketName = 'ap-southeast-2--dev--slaops--t-glbl0000--oaspec--storage'
+```
+
+**When to add a new config property:**
+
+- Any numeric literal that isn't `0`, `1`, or an obvious mathematical constant
+- Any string that represents a name, key, prefix, suffix, or identifier
+- Any timeout, limit, threshold, or size value
+- Any default value that a caller might reasonably need to override
+
+**How to add a config property** (`packages/slaops-config/src/config.ts`):
+
+```typescript
+return {
+  // ...existing properties
+
+  /** Maximum number of retries for failed API requests */
+  'app.api.max-retries': 3,
+}
+```
+
+- Use plain values (not `input.*`) unless the value genuinely needs to vary per environment
+- `input.*` is reserved for true environment variables (credentials, endpoints, region, etc.) — avoid creating new env vars for application constants
+- Every property **must** have a `/** JSDoc comment */` describing what it controls, following the existing pattern in the file.
+
 ### TypeScript
 
 - Use strict mode
