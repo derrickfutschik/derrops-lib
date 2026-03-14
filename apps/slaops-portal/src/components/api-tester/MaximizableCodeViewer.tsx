@@ -1,21 +1,32 @@
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import jmespath from 'jmespath'
 import {
   AlignLeft,
   ArrowLeftRight,
   BookOpen,
+  Code,
   Copy,
   Download,
   FileCode,
+  FileSpreadsheet,
+  FileText,
   Filter,
+  Fingerprint,
   Highlighter,
   Keyboard,
   Maximize2,
@@ -23,8 +34,35 @@ import {
   WrapText,
 } from 'lucide-react'
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
+
+type ViewMode = 'json' | 'markdown' | 'table'
+
+class MarkdownErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+          Failed to render Markdown. The content may not be valid Markdown.
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export interface JMESPathState {
   enabled: boolean
@@ -66,6 +104,8 @@ export function MaximizableCodeViewer({
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
   const [truncateValues, setTruncateValues] = useState(false)
+  const [uniqueFilter, setUniqueFilter] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('json')
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
@@ -198,6 +238,7 @@ export function MaximizableCodeViewer({
   }, [jmespathEnabled, jmespathMode, jmespathQuery, onJMESPathStateChange])
 
   const toggleTruncateValues = useCallback(() => setTruncateValues((v) => !v), [])
+  const toggleUniqueFilter = useCallback(() => setUniqueFilter((v) => !v), [])
 
   const toggleFilterMode = useCallback(() => {
     // Enable JMESPath in filter mode (like ⌘Click), or toggle off if already active
@@ -250,6 +291,10 @@ export function MaximizableCodeViewer({
     if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
       e.preventDefault()
       toggleTruncateValues()
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
+      e.preventDefault()
+      toggleUniqueFilter()
     }
   }
 
@@ -324,6 +369,55 @@ export function MaximizableCodeViewer({
         ? 'Downloaded filtered response'
         : 'Downloaded response',
     )
+  }
+
+  const handleDownloadCsv = () => {
+    const effectiveContent = getEffectiveContent()
+    let csvContent = ''
+    try {
+      const parsed = JSON.parse(effectiveContent)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+          // Array of objects: use keys as headers
+          const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
+          const escape = (val: any) => {
+            const str = val === null || val === undefined ? '' : String(val)
+            return str.includes(',') || str.includes('"') || str.includes('\n')
+              ? `"${str.replace(/"/g, '""')}"`
+              : str
+          }
+          csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(','))].join('\n')
+        } else {
+          // Array of primitives: single column
+          const escape = (val: any) => {
+            const str = val === null || val === undefined ? '' : String(val)
+            return str.includes(',') || str.includes('"') || str.includes('\n')
+              ? `"${str.replace(/"/g, '""')}"`
+              : str
+          }
+          csvContent = ['value', ...parsed.map(escape)].join('\n')
+        }
+      } else {
+        toast.error('CSV export requires a JSON array')
+        return
+      }
+    } catch {
+      toast.error('Failed to parse JSON for CSV export')
+      return
+    }
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download =
+      jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
+        ? 'response-filtered.csv'
+        : 'response.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success('Downloaded as CSV')
   }
 
   // JMESPath filtering/highlighting logic
@@ -651,22 +745,73 @@ export function MaximizableCodeViewer({
     }
   }
 
+  // When in filter mode, clicking a node should append to the existing expression
+  // rather than replace it. If the current filtered result is an array, clicking a
+  // key appends `[].key`; if it's an object, it appends `.key`.
+  const handleFilteredJmespathSelect = (clickedPath: string) => {
+    if (!jmespathQuery.trim() || filteredContent === null) {
+      setJmespathQuery(clickedPath)
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(filteredContent)
+      if (Array.isArray(parsed)) {
+        // Strip leading [number] or [number]. prefix and use [] wildcard instead
+        if (/^\[\d+\]$/.test(clickedPath)) {
+          // Clicking directly on an array element (no sub-path) — pipe to that index
+          setJmespathQuery(`${jmespathQuery} | ${clickedPath}`)
+        } else {
+          // Clicking a property within an array element — wildcard projection
+          const stripped = clickedPath.replace(/^\[\d+\]\.?/, '')
+          const suffix = stripped
+            ? stripped.startsWith('[') ? `[]${stripped}` : `[].${stripped}`
+            : '[]'
+          setJmespathQuery(`${jmespathQuery}${suffix}`)
+        }
+      } else {
+        // Object: append with dot separator (or nothing if path starts with '[')
+        const separator = clickedPath.startsWith('[') ? '' : '.'
+        setJmespathQuery(`${jmespathQuery}${separator}${clickedPath}`)
+      }
+    } catch {
+      setJmespathQuery(clickedPath)
+    }
+  }
+
   const renderContent = (unlimitedHeight = false) => {
-    // If JMESPath filter mode and we have filtered content
-    if (jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null) {
+    // If JMESPath filter mode and we have filtered content (unique filter applied on top if active)
+    if (jmespathEnabled && jmespathMode === 'filter' && effectiveFilteredContent !== null) {
       try {
-        JSON.parse(filteredContent)
+        JSON.parse(effectiveFilteredContent)
         return (
           <JsonResponseViewer
-            jsonString={filteredContent}
+            jsonString={effectiveFilteredContent}
             responseSchema={undefined}
             validationErrors={undefined}
+            onJmespathSelect={handleFilteredJmespathSelect}
+            truncateValues={truncateValues}
+          />
+        )
+      } catch {
+        return effectiveFilteredContent
+      }
+    }
+    // Unique filter active without JMESPath filter — apply to raw content
+    if (uniqueFilter && uniqueFilteredContent !== null) {
+      try {
+        JSON.parse(uniqueFilteredContent)
+        return (
+          <JsonResponseViewer
+            jsonString={uniqueFilteredContent}
+            responseSchema={responseSchema}
+            validationErrors={validationErrors}
             onJmespathSelect={setJmespathQuery}
             truncateValues={truncateValues}
           />
         )
       } catch {
-        return filteredContent
+        return uniqueFilteredContent
       }
     }
 
@@ -703,8 +848,114 @@ export function MaximizableCodeViewer({
         return content
       }
     }
-    return content
   }
+
+
+  // tableData is computed later (after displayContent is available)
+
+  const renderTableView = () => {
+    if (!tableData) return <span className="text-muted-foreground text-sm">No tabular data available</span>
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {tableData.columns.map((col, i) => (
+              <TableHead key={i}>{col}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tableData.rows.map((row, ri) => (
+            <TableRow key={ri}>
+              {row.map((cell, ci) => (
+                <TableCell key={ci} className="font-mono text-xs">{cell}</TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    )
+  }
+
+  const renderMarkdownView = () => {
+    const effective = getEffectiveContent()
+    // If it's a JSON string, extract the string value
+    let mdContent = effective
+    try {
+      const parsed = JSON.parse(effective)
+      if (typeof parsed === 'string') {
+        mdContent = parsed
+      } else {
+        // Non-string JSON (object, array, number, etc.) — not renderable as markdown
+        return (
+          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+            Content is not valid Markdown. Switch to JSON view to see the data.
+          </div>
+        )
+      }
+    } catch {
+      // Not JSON — use as-is (raw text/markdown)
+    }
+
+    if (!mdContent || !mdContent.trim()) {
+      return (
+        <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+          No content to render as Markdown.
+        </div>
+      )
+    }
+
+    try {
+      return (
+        <MarkdownErrorBoundary key={mdContent}>
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-primary prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-blockquote:text-muted-foreground prose-blockquote:border-border">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{mdContent}</ReactMarkdown>
+          </div>
+        </MarkdownErrorBoundary>
+      )
+    } catch {
+      return (
+        <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+          Failed to render Markdown. The content may not be valid Markdown.
+        </div>
+      )
+    }
+  }
+
+  const viewModeTabs = () => (
+    <div className="flex items-center gap-0.5">
+      <Button
+        variant={viewMode === 'json' ? 'default' : 'ghost'}
+        size="sm"
+        className="h-6 px-2 text-xs gap-1"
+        onClick={() => setViewMode('json')}
+        title="JSON View"
+      >
+        <Code className="h-3 w-3" />
+        JSON
+      </Button>
+      <Button
+        variant={viewMode === 'markdown' ? 'default' : 'ghost'}
+        size="sm"
+        className="h-6 px-2 text-xs gap-1"
+        onClick={() => setViewMode('markdown')}
+        title="Markdown View"
+      >
+        <FileText className="h-3 w-3" />
+        Markdown
+      </Button>
+      <Button
+        variant={viewMode === 'table' ? 'default' : 'ghost'}
+        size="sm"
+        className="h-6 px-2 text-xs gap-1"
+        onClick={() => setViewMode('table')}
+        title="Table View"
+      >
+        <FileSpreadsheet className="h-3 w-3" />
+        Table
+      </Button>
+    </div>
+  )
 
   const schemaButton = (showText: boolean = false) =>
     responseSchema && (
@@ -762,6 +1013,18 @@ export function MaximizableCodeViewer({
           {showText && <span>Truncate</span>}
         </Button>
       )}
+      {isJson && (
+        <Button
+          variant={uniqueFilter && duplicateCount > 0 ? 'destructive' : uniqueFilter ? 'default' : 'outline'}
+          size="sm"
+          className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
+          onClick={toggleUniqueFilter}
+          title="Filter duplicate values (⌘U)"
+        >
+          <Fingerprint className="h-3.5 w-3.5" />
+          {showText && <span>Unique</span>}
+        </Button>
+      )}
       {schemaButton(showText)}
       <Button
         variant="outline"
@@ -773,16 +1036,28 @@ export function MaximizableCodeViewer({
         <Copy className="h-3.5 w-3.5" />
         {showText && <span>Copy</span>}
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-        onClick={handleDownload}
-        title="Download"
-      >
-        <Download className="h-3.5 w-3.5" />
-        {showText && <span>Download</span>}
-      </Button>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
+            onClick={handleDownload}
+            title="Download (right-click for more options)"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {showText && <span>Download</span>}
+          </Button>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleDownload}>
+            Download as JSON
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleDownloadCsv}>
+            Download as CSV
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </>
   )
 
@@ -838,6 +1113,11 @@ export function MaximizableCodeViewer({
             if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
               e.preventDefault()
               toggleTruncateValues()
+              return
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
+              e.preventDefault()
+              toggleUniqueFilter()
               return
             }
             // Undo: Cmd+Z
@@ -965,12 +1245,116 @@ export function MaximizableCodeViewer({
     </div>
   )
 
+  // Compute pre-unique content (JMESPath filtered or original)
+  const preUniqueContent =
+    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
+
+  // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
+  const duplicateCount = useMemo(() => {
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return 0
+      const seen = new Set<string>()
+      let dupes = 0
+      for (const item of parsed) {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) dupes++
+        else seen.add(key)
+      }
+      return dupes
+    } catch {
+      return 0
+    }
+  }, [preUniqueContent])
+
+  // Deduplicated content (null when unique filter is off or content is not an array)
+  const uniqueFilteredContent = useMemo(() => {
+    if (!uniqueFilter) return null
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return null
+      const seen = new Set<string>()
+      const unique = parsed.filter((item) => {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      return JSON.stringify(unique, null, 2)
+    } catch {
+      return null
+    }
+  }, [uniqueFilter, preUniqueContent])
+
+  // Effective filtered content for renderContent (unique filter applied on top)
+  const effectiveFilteredContent =
+    uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
+
   // Calculate line count
   const displayContent =
-    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
-      ? filteredContent
-      : content
+    uniqueFilter && uniqueFilteredContent !== null
+      ? uniqueFilteredContent
+      : jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
+        ? filteredContent
+        : content
   const lineCount = displayContent.split('\n').length
+
+  // Parse table data from displayContent (JSON array of objects or primitives, or CSV string)
+  const tableData = useMemo(() => {
+    // Try JSON first
+    try {
+      const parsed = JSON.parse(displayContent)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+          const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
+          const rows = parsed.map((item: any) => columns.map((col) => {
+            const val = item[col]
+            return val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
+          }))
+          return { columns, rows }
+        }
+        // Array of primitives
+        const rows = parsed.map((v: any) => [v === null || v === undefined ? '' : String(v)])
+        return { columns: ['value'], rows }
+      }
+    } catch {
+      // Not JSON — try CSV
+    }
+    // Try CSV parse (simple: split by newlines, split by comma)
+    const lines = displayContent.trim().split('\n').filter((l: string) => l.trim())
+    if (lines.length >= 1) {
+      const parseCsvLine = (line: string) => {
+        const result: string[] = []
+        let current = ''
+        let inQuotes = false
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i]
+          if (inQuotes) {
+            if (ch === '"' && line[i + 1] === '"') { current += '"'; i++ }
+            else if (ch === '"') inQuotes = false
+            else current += ch
+          } else {
+            if (ch === '"') inQuotes = true
+            else if (ch === ',') { result.push(current); current = '' }
+            else current += ch
+          }
+        }
+        result.push(current)
+        return result
+      }
+      const headerRow = parseCsvLine(lines[0])
+      const hasHeader = headerRow.every((h) => isNaN(Number(h)) && h.trim().length > 0)
+      if (hasHeader && lines.length > 1) {
+        const rows = lines.slice(1).map(parseCsvLine)
+        return { columns: headerRow, rows }
+      }
+      const colCount = headerRow.length
+      const columns = colCount === 1 ? ['value'] : Array.from({ length: colCount }, (_, i) => `col${i + 1}`)
+      const rows = lines.map(parseCsvLine)
+      return { columns, rows }
+    }
+    return null
+  }, [displayContent])
 
   // Compute JSON stats for the status ribbon
   const jsonStats = useMemo(() => {
@@ -1028,7 +1412,7 @@ export function MaximizableCodeViewer({
       >
         <div className="flex items-center justify-between p-2 border-b border-border">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <FileCode className="h-4 w-4" />
+            {viewModeTabs()}
             <Button
               variant="ghost"
               size="sm"
@@ -1074,22 +1458,27 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && jmespathRow(normalInputRef)}
+        {viewMode === 'json' && isJson && jmespathRow(normalInputRef)}
         <div
           className={`p-4 overflow-auto flex-1 outline-none`}
           style={{ maxHeight }}
           tabIndex={0}
-          onKeyDown={(e) => handleViewerKeyDown(e, normalPreRef)}
+          onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, normalPreRef) : undefined}
         >
-          <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
-            <code>{renderContent()}</code>
-          </pre>
+          {viewMode === 'json' && (
+            <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+              <code>{renderContent()}</code>
+            </pre>
+          )}
+          {viewMode === 'markdown' && renderMarkdownView()}
+          {viewMode === 'table' && renderTableView()}
         </div>
         {/* Status ribbon */}
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
           <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
           <div className="flex items-center gap-4">
             {jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>}
+            {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
             {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
             {jsonStats?.type === 'object' && (
               <>
@@ -1110,8 +1499,7 @@ export function MaximizableCodeViewer({
           <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
             <div className="flex items-center justify-between pr-8">
               <DialogTitle className="flex items-center gap-2">
-                <FileCode className="h-5 w-5" />
-                {title}
+                {viewModeTabs()}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1136,21 +1524,26 @@ export function MaximizableCodeViewer({
               </div>
             </div>
           </DialogHeader>
-          {isJson && jmespathRow(dialogInputRef)}
+          {viewMode === 'json' && isJson && jmespathRow(dialogInputRef)}
           <div
             className="flex-1 overflow-auto p-6 outline-none"
             tabIndex={0}
-            onKeyDown={(e) => handleViewerKeyDown(e, dialogPreRef)}
+            onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, dialogPreRef) : undefined}
           >
-            <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
-              <code>{renderContent(true)}</code>
-            </pre>
+            {viewMode === 'json' && (
+              <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+                <code>{renderContent(true)}</code>
+              </pre>
+            )}
+            {viewMode === 'markdown' && renderMarkdownView()}
+            {viewMode === 'table' && renderTableView()}
           </div>
           {/* Status ribbon in maximized view */}
           <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
             <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
             <div className="flex items-center gap-4">
               {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+              {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
               {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
               {jsonStats?.type === 'object' && (
                 <>
