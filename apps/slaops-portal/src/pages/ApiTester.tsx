@@ -43,7 +43,9 @@ import {
   AlertCircle,
   ArrowDown,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowUp,
+  GripHorizontal,
   ArrowUpDown,
   CheckCircle,
   ChevronDown,
@@ -270,6 +272,44 @@ const ApiTester = () => {
   // Builder mode: "standard" or "openapi"
   type BuilderMode = 'standard' | 'openapi'
   const [builderMode, setBuilderMode] = useState<BuilderMode>('openapi')
+  const [jsonExpandedToBottom, setJsonExpandedToBottom] = useState(false)
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(0)
+  const [totalPanelsHeight, setTotalPanelsHeight] = useState(0)
+  const panelsWrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (jsonExpandedToBottom) {
+      requestAnimationFrame(() => {
+        if (panelsWrapperRef.current) {
+          const top = panelsWrapperRef.current.getBoundingClientRect().top
+          const total = window.innerHeight - top
+          setTotalPanelsHeight(total)
+          setBottomPanelHeight(Math.floor(total * 0.45))
+        }
+      })
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [jsonExpandedToBottom])
+
+  const handleBottomPanelDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startHeight = bottomPanelHeight
+    const onMove = (e: MouseEvent) => {
+      // drag down (positive delta) → bigger bottom panel
+      const delta = e.clientY - startY
+      setBottomPanelHeight(Math.max(100, Math.min(totalPanelsHeight - 150, startHeight + delta)))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   // OpenAPI tab state
   const [openAPIServiceId, setOpenAPIServiceId] = useState<string | null>(null)
@@ -3936,9 +3976,11 @@ const ApiTester = () => {
           </Tabs>
         ) : (
           /* Desktop View - Resizable Panels */
+          <div ref={panelsWrapperRef} className="flex flex-col" style={jsonExpandedToBottom && totalPanelsHeight ? { height: totalPanelsHeight } : undefined}>
           <ResizablePanelGroup
             direction="horizontal"
-            className="min-h-[600px] rounded-lg border border-border"
+            className="rounded-lg border border-border"
+            style={jsonExpandedToBottom && totalPanelsHeight ? { height: totalPanelsHeight - bottomPanelHeight - 1, minHeight: 0 } : { minHeight: '600px' }}
           >
             <ResizablePanel defaultSize={50} minSize={30}>
               {/* Left Panel - Request Builder */}
@@ -6059,35 +6101,52 @@ const ApiTester = () => {
                           </Collapsible>
 
                           {/* Response Body */}
-                          <MaximizableCodeViewer
-                            title="Response Body"
-                            content={requestResponse.body}
-                            contentType={
-                              requestResponse.headers['content-type'] ||
-                              requestResponse.headers['Content-Type'] ||
-                              ''
-                            }
-                            responseSchema={getResponseSchemaForStatus(
-                              matchResult,
-                              requestResponse.status,
-                            )}
-                            validationErrors={extractValidationErrors(matchResult)}
-                            jmespathState={jmespathState}
-                            onJMESPathStateChange={setJmespathState}
-                            onFormat={() => {
-                              try {
-                                const parsed = JSON.parse(requestResponse.body)
-                                const formatted = JSON.stringify(parsed, null, 2)
-                                setRequestResponse({
-                                  ...requestResponse,
-                                  body: formatted,
-                                })
-                                toast.success('Response formatted')
-                              } catch {
-                                toast.error('Invalid JSON - cannot format')
+                          {jsonExpandedToBottom ? (
+                            <div className="bg-background rounded-lg border border-border p-3 flex items-center gap-2 text-sm text-muted-foreground">
+                              <ArrowLeftRight className="h-4 w-4 flex-shrink-0" />
+                              <span>Response body expanded to bottom panel</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 ml-auto"
+                                onClick={() => setJsonExpandedToBottom(false)}
+                                title="Collapse back to side panel"
+                              >
+                                <ArrowLeftRight className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <MaximizableCodeViewer
+                              title="Response Body"
+                              content={requestResponse.body}
+                              contentType={
+                                requestResponse.headers['content-type'] ||
+                                requestResponse.headers['Content-Type'] ||
+                                ''
                               }
-                            }}
-                          />
+                              responseSchema={getResponseSchemaForStatus(
+                                matchResult,
+                                requestResponse.status,
+                              )}
+                              validationErrors={extractValidationErrors(matchResult)}
+                              jmespathState={jmespathState}
+                              onJMESPathStateChange={setJmespathState}
+                              onFormat={() => {
+                                try {
+                                  const parsed = JSON.parse(requestResponse.body)
+                                  const formatted = JSON.stringify(parsed, null, 2)
+                                  setRequestResponse({
+                                    ...requestResponse,
+                                    body: formatted,
+                                  })
+                                  toast.success('Response formatted')
+                                } catch {
+                                  toast.error('Invalid JSON - cannot format')
+                                }
+                              }}
+                              onExpandToBottom={() => setJsonExpandedToBottom(true)}
+                            />
+                          )}
                         </div>
                       )}
                     </>
@@ -6251,6 +6310,48 @@ const ApiTester = () => {
               </Card>
             </ResizablePanel>
           </ResizablePanelGroup>
+          {jsonExpandedToBottom && requestResponse && (
+            <>
+              {/* Drag handle - styled to match ResizableHandle */}
+              <div
+                className="relative flex h-px w-full items-center justify-center bg-border cursor-row-resize select-none after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:w-full after:-translate-y-1/2"
+                onMouseDown={handleBottomPanelDragStart}
+              >
+                <div className="z-10 flex h-3 w-4 items-center justify-center rounded-sm border bg-border">
+                  <GripHorizontal className="h-2.5 w-2.5" />
+                </div>
+              </div>
+              <div style={{ height: bottomPanelHeight }} className="overflow-hidden">
+                <MaximizableCodeViewer
+                  title="Response Body"
+                  content={requestResponse.body}
+                  contentType={
+                    requestResponse.headers['content-type'] ||
+                    requestResponse.headers['Content-Type'] ||
+                    ''
+                  }
+                  responseSchema={getResponseSchemaForStatus(matchResult, requestResponse.status)}
+                  validationErrors={extractValidationErrors(matchResult)}
+                  jmespathState={jmespathState}
+                  onJMESPathStateChange={setJmespathState}
+                  onFormat={() => {
+                    try {
+                      const parsed = JSON.parse(requestResponse.body)
+                      const formatted = JSON.stringify(parsed, null, 2)
+                      setRequestResponse({ ...requestResponse, body: formatted })
+                      toast.success('Response formatted')
+                    } catch {
+                      toast.error('Invalid JSON - cannot format')
+                    }
+                  }}
+                  onCollapseFromBottom={() => setJsonExpandedToBottom(false)}
+                  maxHeight="none"
+                  className="h-full rounded-none border-x-0 border-b-0"
+                />
+              </div>
+            </>
+          )}
+          </div>
         )}
       </main>
     </div>

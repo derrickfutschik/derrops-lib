@@ -9,6 +9,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import jmespath from 'jmespath'
 import {
   AlignLeft,
+  ArrowLeftRight,
   BookOpen,
   Copy,
   Download,
@@ -40,6 +41,8 @@ interface MaximizableCodeViewerProps {
   maxHeight?: string
   jmespathState?: JMESPathState
   onJMESPathStateChange?: (state: JMESPathState) => void
+  onExpandToBottom?: () => void
+  onCollapseFromBottom?: () => void
 }
 
 export function MaximizableCodeViewer({
@@ -54,6 +57,8 @@ export function MaximizableCodeViewer({
   maxHeight = '400px',
   jmespathState,
   onJMESPathStateChange,
+  onExpandToBottom,
+  onCollapseFromBottom,
 }: MaximizableCodeViewerProps) {
   const [isMaximized, setIsMaximized] = useState(false)
   const normalInputRef = useRef<HTMLInputElement>(null)
@@ -823,6 +828,28 @@ export function MaximizableCodeViewer({
           </div>
           <div className="flex items-center gap-2">
             {actionButtons(false)}
+            {onExpandToBottom && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={onExpandToBottom}
+                title="Expand to bottom panel"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {onCollapseFromBottom && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={onCollapseFromBottom}
+                title="Collapse to side panel"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
