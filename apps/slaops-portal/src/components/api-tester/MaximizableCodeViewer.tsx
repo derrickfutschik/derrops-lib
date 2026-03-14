@@ -18,7 +18,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react'
-import React, { useMemo, useRef, useState, useCallback } from 'react'
+import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
 
@@ -99,6 +99,13 @@ export function MaximizableCodeViewer({
   const [internalJmespathQuery, setInternalJmespathQuery] = useState('')
   const [internalJmespathMode, setInternalJmespathMode] = useState<'filter' | 'highlight'>('filter')
 
+  const [jmespathHistory, setJmespathHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const [showHistory, setShowHistory] = useState(false)
+  const isInputFocusedRef = useRef(false)
+  const savedQueryRef = useRef('')
+  const prevQueryRef = useRef('')
+
   const jmespathEnabled = jmespathState?.enabled ?? internalJmespathEnabled
   const jmespathQuery = jmespathState?.query ?? internalJmespathQuery
   const jmespathMode = jmespathState?.mode ?? internalJmespathMode
@@ -126,6 +133,24 @@ export function MaximizableCodeViewer({
       setInternalJmespathMode(mode)
     }
   }
+
+  const addToHistory = useCallback((query: string) => {
+    const trimmed = query.trim()
+    if (!trimmed) return
+    setJmespathHistory((prev) => {
+      const filtered = prev.filter((h) => h !== trimmed)
+      return [trimmed, ...filtered].slice(0, 10)
+    })
+  }, [])
+
+  // Add to history when query changes externally (e.g. cmd+click from JSON viewer)
+  useEffect(() => {
+    if (prevQueryRef.current !== jmespathQuery && !isInputFocusedRef.current) {
+      addToHistory(jmespathQuery)
+      setHistoryIndex(-1)
+    }
+    prevQueryRef.current = jmespathQuery
+  }, [jmespathQuery, addToHistory])
 
   const isJson = contentType.includes('application/json')
 
@@ -638,22 +663,93 @@ export function MaximizableCodeViewer({
           JMESPath
         </Label>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 relative">
         <Input
           ref={inputRef}
           placeholder="e.g. data[0].name, items[?status=='active']"
           value={jmespathQuery}
-          onChange={(e) => setJmespathQuery(e.target.value)}
+          onChange={(e) => {
+            setHistoryIndex(-1)
+            setJmespathQuery(e.target.value)
+          }}
+          onFocus={() => {
+            isInputFocusedRef.current = true
+          }}
+          onBlur={() => {
+            isInputFocusedRef.current = false
+            setShowHistory(false)
+          }}
+          onDoubleClick={() => {
+            if (jmespathHistory.length > 0) setShowHistory(true)
+          }}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === '8') {
               e.preventDefault()
               applyWildcard()
+              return
+            }
+            if (e.key === 'Enter') {
+              addToHistory(jmespathQuery)
+              setHistoryIndex(-1)
+              return
+            }
+            if (e.key === 'Escape') {
+              if (showHistory) {
+                setShowHistory(false)
+                return
+              }
+              if (historyIndex !== -1) {
+                setHistoryIndex(-1)
+                setJmespathQuery(savedQueryRef.current)
+              }
+              return
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              if (jmespathHistory.length === 0) return
+              if (historyIndex === -1) {
+                savedQueryRef.current = jmespathQuery
+              }
+              const newIndex = Math.min(historyIndex + 1, jmespathHistory.length - 1)
+              setHistoryIndex(newIndex)
+              setJmespathQuery(jmespathHistory[newIndex])
+              return
+            }
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              if (historyIndex === -1) return
+              const newIndex = historyIndex - 1
+              setHistoryIndex(newIndex)
+              if (newIndex === -1) {
+                setJmespathQuery(savedQueryRef.current)
+              } else {
+                setJmespathQuery(jmespathHistory[newIndex])
+              }
+              return
             }
           }}
           disabled={!jmespathEnabled}
           className={`h-7 text-xs font-mono ${jmespathError ? 'border-destructive' : ''}`}
-          title="Cmd/Ctrl+8 to wildcard array indices"
+          title="Cmd/Ctrl+8 to wildcard array indices | ↑↓ to browse history | Double-click to show history"
         />
+        {showHistory && jmespathHistory.length > 0 && (
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden">
+            {jmespathHistory.map((expr, i) => (
+              <button
+                key={i}
+                className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === historyIndex ? 'bg-muted' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setJmespathQuery(expr)
+                  setHistoryIndex(-1)
+                  setShowHistory(false)
+                }}
+              >
+                {expr}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <ToggleGroup
         type="single"
