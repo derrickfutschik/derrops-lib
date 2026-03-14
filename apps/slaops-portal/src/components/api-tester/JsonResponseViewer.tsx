@@ -49,6 +49,7 @@ const childJmesPath = (parent: string, key: string | number): string => {
   return parent ? `${parent}.${key}` : key
 }
 
+
 // Component for property key with popover tooltip
 const PropertyKeyWithTooltip: React.FC<{
   keyName: string

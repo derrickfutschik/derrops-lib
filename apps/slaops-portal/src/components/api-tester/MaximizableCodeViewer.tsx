@@ -18,7 +18,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react'
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
 
@@ -56,6 +56,43 @@ export function MaximizableCodeViewer({
   onJMESPathStateChange,
 }: MaximizableCodeViewerProps) {
   const [isMaximized, setIsMaximized] = useState(false)
+  const normalInputRef = useRef<HTMLInputElement>(null)
+  const dialogInputRef = useRef<HTMLInputElement>(null)
+  const normalPreRef = useRef<HTMLPreElement>(null)
+  const dialogPreRef = useRef<HTMLPreElement>(null)
+
+  const applyWildcard = () => {
+    const input = (isMaximized ? dialogInputRef : normalInputRef).current
+    if (!input) return
+    const newValue = jmespathQuery.replace(/\[\d+\]/g, '[*]')
+    input.focus()
+    input.select()
+    document.execCommand('insertText', false, newValue)
+  }
+
+  const selectAllInViewer = useCallback((preRef: React.RefObject<HTMLPreElement>) => {
+    const pre = preRef.current
+    if (!pre) return
+    const range = document.createRange()
+    range.selectNodeContents(pre)
+    const selection = window.getSelection()
+    if (selection) {
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+  }, [])
+
+  const handleViewerKeyDown = (e: React.KeyboardEvent, preRef: React.RefObject<HTMLPreElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+      e.preventDefault()
+      selectAllInViewer(preRef)
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === '8') {
+      e.preventDefault()
+      applyWildcard()
+    }
+  }
 
   // Use controlled state if provided, otherwise use internal state
   const [internalJmespathEnabled, setInternalJmespathEnabled] = useState(false)
@@ -573,7 +610,7 @@ export function MaximizableCodeViewer({
     </>
   )
 
-  const jmespathRow = () => (
+  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>) => (
     <div className="flex items-center gap-3 px-3 py-2 border-b border-border bg-muted/20">
       <div className="flex items-center gap-2">
         <Switch
@@ -591,11 +628,19 @@ export function MaximizableCodeViewer({
       </div>
       <div className="flex-1">
         <Input
+          ref={inputRef}
           placeholder="e.g. data[0].name, items[?status=='active']"
           value={jmespathQuery}
           onChange={(e) => setJmespathQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === '8') {
+              e.preventDefault()
+              applyWildcard()
+            }
+          }}
           disabled={!jmespathEnabled}
           className={`h-7 text-xs font-mono ${jmespathError ? 'border-destructive' : ''}`}
+          title="Cmd/Ctrl+8 to wildcard array indices"
         />
       </div>
       <ToggleGroup
@@ -657,9 +702,14 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && jmespathRow()}
-        <div className={`p-4 overflow-auto flex-1`} style={{ maxHeight }}>
-          <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+        {isJson && jmespathRow(normalInputRef)}
+        <div
+          className={`p-4 overflow-auto flex-1 outline-none`}
+          style={{ maxHeight }}
+          tabIndex={0}
+          onKeyDown={(e) => handleViewerKeyDown(e, normalPreRef)}
+        >
+          <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
             <code>{renderContent()}</code>
           </pre>
         </div>
@@ -696,9 +746,13 @@ export function MaximizableCodeViewer({
               </div>
             </div>
           </DialogHeader>
-          {isJson && jmespathRow()}
-          <div className="flex-1 overflow-auto p-6">
-            <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+          {isJson && jmespathRow(dialogInputRef)}
+          <div
+            className="flex-1 overflow-auto p-6 outline-none"
+            tabIndex={0}
+            onKeyDown={(e) => handleViewerKeyDown(e, dialogPreRef)}
+          >
+            <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
               <code>{renderContent(true)}</code>
             </pre>
           </div>
