@@ -299,8 +299,8 @@ const ApiTester = () => {
     const startY = e.clientY
     const startHeight = bottomPanelHeight
     const onMove = (e: MouseEvent) => {
-      // drag down (positive delta) → bigger bottom panel
-      const delta = e.clientY - startY
+      // drag up (negative clientY delta) → bigger bottom panel
+      const delta = startY - e.clientY
       setBottomPanelHeight(Math.max(100, Math.min(totalPanelsHeight - 150, startHeight + delta)))
     }
     const onUp = () => {
