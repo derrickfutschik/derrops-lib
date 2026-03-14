@@ -64,7 +64,21 @@ export function MaximizableCodeViewer({
   const applyWildcard = () => {
     const input = (isMaximized ? dialogInputRef : normalInputRef).current
     if (!input) return
-    const newValue = jmespathQuery.replace(/\[\d+\]/g, '[*]')
+
+    const wildcarded = jmespathQuery.replace(/\[\d+\]/g, '[*]')
+    const isCurrentlyWildcarded =
+      savedPreWildcardRef.current !== null &&
+      jmespathQuery === savedPreWildcardRef.current.replace(/\[\d+\]/g, '[*]')
+
+    let newValue: string
+    if (isCurrentlyWildcarded) {
+      newValue = savedPreWildcardRef.current!
+      savedPreWildcardRef.current = null
+    } else {
+      savedPreWildcardRef.current = jmespathQuery
+      newValue = wildcarded
+    }
+
     input.focus()
     input.select()
     document.execCommand('insertText', false, newValue)
@@ -105,6 +119,8 @@ export function MaximizableCodeViewer({
   const isInputFocusedRef = useRef(false)
   const savedQueryRef = useRef('')
   const prevQueryRef = useRef('')
+  const activeInputRef = useRef<HTMLInputElement | null>(null)
+  const savedPreWildcardRef = useRef<string | null>(null)
 
   const jmespathEnabled = jmespathState?.enabled ?? internalJmespathEnabled
   const jmespathQuery = jmespathState?.query ?? internalJmespathQuery
@@ -133,6 +149,17 @@ export function MaximizableCodeViewer({
       setInternalJmespathMode(mode)
     }
   }
+
+  // Apply a history value via execCommand so it enters the browser's native undo stack,
+  // letting Ctrl/Cmd+Z naturally undo history navigation.
+  const applyHistoryValue = useCallback((query: string) => {
+    const input = activeInputRef.current
+    if (input) {
+      input.focus()
+      input.select()
+      document.execCommand('insertText', false, query)
+    }
+  }, [])
 
   const addToHistory = useCallback((query: string) => {
     const trimmed = query.trim()
@@ -674,6 +701,7 @@ export function MaximizableCodeViewer({
           }}
           onFocus={() => {
             isInputFocusedRef.current = true
+            activeInputRef.current = inputRef.current
           }}
           onBlur={() => {
             isInputFocusedRef.current = false
@@ -700,7 +728,7 @@ export function MaximizableCodeViewer({
               }
               if (historyIndex !== -1) {
                 setHistoryIndex(-1)
-                setJmespathQuery(savedQueryRef.current)
+                applyHistoryValue(savedQueryRef.current)
               }
               return
             }
@@ -712,7 +740,7 @@ export function MaximizableCodeViewer({
               }
               const newIndex = Math.min(historyIndex + 1, jmespathHistory.length - 1)
               setHistoryIndex(newIndex)
-              setJmespathQuery(jmespathHistory[newIndex])
+              applyHistoryValue(jmespathHistory[newIndex])
               return
             }
             if (e.key === 'ArrowDown') {
@@ -720,11 +748,7 @@ export function MaximizableCodeViewer({
               if (historyIndex === -1) return
               const newIndex = historyIndex - 1
               setHistoryIndex(newIndex)
-              if (newIndex === -1) {
-                setJmespathQuery(savedQueryRef.current)
-              } else {
-                setJmespathQuery(jmespathHistory[newIndex])
-              }
+              applyHistoryValue(newIndex === -1 ? savedQueryRef.current : jmespathHistory[newIndex])
               return
             }
           }}
@@ -740,7 +764,7 @@ export function MaximizableCodeViewer({
                 className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === historyIndex ? 'bg-muted' : ''}`}
                 onMouseDown={(e) => {
                   e.preventDefault()
-                  setJmespathQuery(expr)
+                  applyHistoryValue(expr)
                   setHistoryIndex(-1)
                   setShowHistory(false)
                 }}
