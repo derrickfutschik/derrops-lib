@@ -14,6 +14,7 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
       ['⌘ J', 'Toggle Filter Mode'],
       ['⌘ 8', 'Wildcard array indices ([0] → [*])'],
       ['⌘ I', 'Toggle value truncation (click value to expand)'],
+      ['⌘ U', 'Filter duplicate values (arrays only)'],
       ['⌘ A', 'Select all content'],
       ['⌘ Click', 'Use value as JMESPath expression'],
     ],

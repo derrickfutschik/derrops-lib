@@ -16,6 +16,7 @@ import {
   Download,
   FileCode,
   Filter,
+  Fingerprint,
   Highlighter,
   Keyboard,
   Maximize2,
@@ -66,6 +67,7 @@ export function MaximizableCodeViewer({
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
   const [truncateValues, setTruncateValues] = useState(false)
+  const [uniqueFilter, setUniqueFilter] = useState(false)
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
@@ -198,6 +200,7 @@ export function MaximizableCodeViewer({
   }, [jmespathEnabled, jmespathMode, jmespathQuery, onJMESPathStateChange])
 
   const toggleTruncateValues = useCallback(() => setTruncateValues((v) => !v), [])
+  const toggleUniqueFilter = useCallback(() => setUniqueFilter((v) => !v), [])
 
   const toggleFilterMode = useCallback(() => {
     // Enable JMESPath in filter mode (like ⌘Click), or toggle off if already active
@@ -250,6 +253,10 @@ export function MaximizableCodeViewer({
     if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
       e.preventDefault()
       toggleTruncateValues()
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
+      e.preventDefault()
+      toggleUniqueFilter()
     }
   }
 
@@ -651,22 +658,73 @@ export function MaximizableCodeViewer({
     }
   }
 
+  // When in filter mode, clicking a node should append to the existing expression
+  // rather than replace it. If the current filtered result is an array, clicking a
+  // key appends `[].key`; if it's an object, it appends `.key`.
+  const handleFilteredJmespathSelect = (clickedPath: string) => {
+    if (!jmespathQuery.trim() || filteredContent === null) {
+      setJmespathQuery(clickedPath)
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(filteredContent)
+      if (Array.isArray(parsed)) {
+        // Strip leading [number] or [number]. prefix and use [] wildcard instead
+        if (/^\[\d+\]$/.test(clickedPath)) {
+          // Clicking directly on an array element (no sub-path) — pipe to that index
+          setJmespathQuery(`${jmespathQuery} | ${clickedPath}`)
+        } else {
+          // Clicking a property within an array element — wildcard projection
+          const stripped = clickedPath.replace(/^\[\d+\]\.?/, '')
+          const suffix = stripped
+            ? stripped.startsWith('[') ? `[]${stripped}` : `[].${stripped}`
+            : '[]'
+          setJmespathQuery(`${jmespathQuery}${suffix}`)
+        }
+      } else {
+        // Object: append with dot separator (or nothing if path starts with '[')
+        const separator = clickedPath.startsWith('[') ? '' : '.'
+        setJmespathQuery(`${jmespathQuery}${separator}${clickedPath}`)
+      }
+    } catch {
+      setJmespathQuery(clickedPath)
+    }
+  }
+
   const renderContent = (unlimitedHeight = false) => {
-    // If JMESPath filter mode and we have filtered content
-    if (jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null) {
+    // If JMESPath filter mode and we have filtered content (unique filter applied on top if active)
+    if (jmespathEnabled && jmespathMode === 'filter' && effectiveFilteredContent !== null) {
       try {
-        JSON.parse(filteredContent)
+        JSON.parse(effectiveFilteredContent)
         return (
           <JsonResponseViewer
-            jsonString={filteredContent}
+            jsonString={effectiveFilteredContent}
             responseSchema={undefined}
             validationErrors={undefined}
+            onJmespathSelect={handleFilteredJmespathSelect}
+            truncateValues={truncateValues}
+          />
+        )
+      } catch {
+        return effectiveFilteredContent
+      }
+    }
+    // Unique filter active without JMESPath filter — apply to raw content
+    if (uniqueFilter && uniqueFilteredContent !== null) {
+      try {
+        JSON.parse(uniqueFilteredContent)
+        return (
+          <JsonResponseViewer
+            jsonString={uniqueFilteredContent}
+            responseSchema={responseSchema}
+            validationErrors={validationErrors}
             onJmespathSelect={setJmespathQuery}
             truncateValues={truncateValues}
           />
         )
       } catch {
-        return filteredContent
+        return uniqueFilteredContent
       }
     }
 
@@ -762,6 +820,18 @@ export function MaximizableCodeViewer({
           {showText && <span>Truncate</span>}
         </Button>
       )}
+      {isJson && (
+        <Button
+          variant={uniqueFilter && duplicateCount > 0 ? 'destructive' : uniqueFilter ? 'default' : 'outline'}
+          size="sm"
+          className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
+          onClick={toggleUniqueFilter}
+          title="Filter duplicate values (⌘U)"
+        >
+          <Fingerprint className="h-3.5 w-3.5" />
+          {showText && <span>Unique</span>}
+        </Button>
+      )}
       {schemaButton(showText)}
       <Button
         variant="outline"
@@ -838,6 +908,11 @@ export function MaximizableCodeViewer({
             if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
               e.preventDefault()
               toggleTruncateValues()
+              return
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
+              e.preventDefault()
+              toggleUniqueFilter()
               return
             }
             // Undo: Cmd+Z
@@ -965,11 +1040,58 @@ export function MaximizableCodeViewer({
     </div>
   )
 
+  // Compute pre-unique content (JMESPath filtered or original)
+  const preUniqueContent =
+    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
+
+  // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
+  const duplicateCount = useMemo(() => {
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return 0
+      const seen = new Set<string>()
+      let dupes = 0
+      for (const item of parsed) {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) dupes++
+        else seen.add(key)
+      }
+      return dupes
+    } catch {
+      return 0
+    }
+  }, [preUniqueContent])
+
+  // Deduplicated content (null when unique filter is off or content is not an array)
+  const uniqueFilteredContent = useMemo(() => {
+    if (!uniqueFilter) return null
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return null
+      const seen = new Set<string>()
+      const unique = parsed.filter((item) => {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      return JSON.stringify(unique, null, 2)
+    } catch {
+      return null
+    }
+  }, [uniqueFilter, preUniqueContent])
+
+  // Effective filtered content for renderContent (unique filter applied on top)
+  const effectiveFilteredContent =
+    uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
+
   // Calculate line count
   const displayContent =
-    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
-      ? filteredContent
-      : content
+    uniqueFilter && uniqueFilteredContent !== null
+      ? uniqueFilteredContent
+      : jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
+        ? filteredContent
+        : content
   const lineCount = displayContent.split('\n').length
 
   // Compute JSON stats for the status ribbon
@@ -1090,6 +1212,7 @@ export function MaximizableCodeViewer({
           <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
           <div className="flex items-center gap-4">
             {jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>}
+            {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
             {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
             {jsonStats?.type === 'object' && (
               <>
@@ -1151,6 +1274,7 @@ export function MaximizableCodeViewer({
             <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
             <div className="flex items-center gap-4">
               {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+              {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
               {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
               {jsonStats?.type === 'object' && (
                 <>

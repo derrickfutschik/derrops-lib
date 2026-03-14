@@ -22,6 +22,7 @@ When adding new keyboard shortcuts to any component in this directory (e.g. `Max
 | `⌘ J` | Toggle Filter Mode | JSON Viewer |
 | `⌘ 8` | Wildcard array indices (`[0]` → `[*]`) | JSON Viewer |
 | `⌘ I` | Toggle value truncation (click individual value to expand) | JSON Viewer |
+| `⌘ U` | Filter duplicate values (arrays only) | JSON Viewer |
 | `⌘ A` | Select all content | JSON Viewer |
 | `⌘ Click` | Use value as JMESPath expression | JSON Viewer |
 | `↑ / ↓` | Browse query history | JMESPath Input |
