@@ -16,6 +16,7 @@ import {
   FileCode,
   Filter,
   Highlighter,
+  Keyboard,
   Maximize2,
   Minimize2,
 } from 'lucide-react'
@@ -61,6 +62,7 @@ export function MaximizableCodeViewer({
   onCollapseFromBottom,
 }: MaximizableCodeViewerProps) {
   const [isMaximized, setIsMaximized] = useState(false)
+  const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
@@ -101,18 +103,6 @@ export function MaximizableCodeViewer({
     }
   }, [])
 
-  const handleViewerKeyDown = (e: React.KeyboardEvent, preRef: React.RefObject<HTMLPreElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-      e.preventDefault()
-      selectAllInViewer(preRef)
-      return
-    }
-    if ((e.metaKey || e.ctrlKey) && e.key === '8') {
-      e.preventDefault()
-      applyWildcard()
-    }
-  }
-
   // Use controlled state if provided, otherwise use internal state
   const [internalJmespathEnabled, setInternalJmespathEnabled] = useState(false)
   const [internalJmespathQuery, setInternalJmespathQuery] = useState('')
@@ -152,6 +142,68 @@ export function MaximizableCodeViewer({
       onJMESPathStateChange({ enabled: jmespathEnabled, query: jmespathQuery, mode })
     } else {
       setInternalJmespathMode(mode)
+    }
+  }
+
+  const toggleHighlightMode = useCallback(() => {
+    if (onJMESPathStateChange) {
+      const enabled = !(jmespathState?.enabled && jmespathState?.mode === 'highlight')
+      onJMESPathStateChange({ enabled, query: jmespathState?.query ?? '', mode: 'highlight' })
+    } else {
+      if (internalJmespathEnabled && internalJmespathMode === 'highlight') {
+        setInternalJmespathEnabled(false)
+      } else {
+        setInternalJmespathEnabled(true)
+        setInternalJmespathMode('highlight')
+      }
+    }
+  }, [jmespathState, onJMESPathStateChange, internalJmespathEnabled, internalJmespathMode])
+
+  const toggleFilterMode = useCallback(() => {
+    if (onJMESPathStateChange) {
+      const enabled = !(jmespathState?.enabled && jmespathState?.mode === 'filter')
+      onJMESPathStateChange({ enabled, query: jmespathState?.query ?? '', mode: 'filter' })
+    } else {
+      if (internalJmespathEnabled && internalJmespathMode === 'filter') {
+        setInternalJmespathEnabled(false)
+      } else {
+        setInternalJmespathEnabled(true)
+        setInternalJmespathMode('filter')
+      }
+    }
+  }, [jmespathState, onJMESPathStateChange, internalJmespathEnabled, internalJmespathMode])
+
+  useEffect(() => {
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'h') return
+      const tag = document.activeElement?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'pre') return
+      e.preventDefault()
+      setShowHotkeyInfo(true)
+    }
+    document.addEventListener('keydown', handleGlobalKey)
+    return () => document.removeEventListener('keydown', handleGlobalKey)
+  }, [])
+
+  const handleViewerKeyDown = (e: React.KeyboardEvent, preRef: React.RefObject<HTMLPreElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+      e.preventDefault()
+      toggleHighlightMode()
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+      e.preventDefault()
+      toggleFilterMode()
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+      e.preventDefault()
+      selectAllInViewer(preRef)
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === '8') {
+      e.preventDefault()
+      applyWildcard()
     }
   }
 
@@ -716,6 +768,16 @@ export function MaximizableCodeViewer({
             if (jmespathHistory.length > 0) setShowHistory(true)
           }}
           onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+              e.preventDefault()
+              toggleHighlightMode()
+              return
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+              e.preventDefault()
+              toggleFilterMode()
+              return
+            }
             if ((e.metaKey || e.ctrlKey) && e.key === '8') {
               e.preventDefault()
               applyWildcard()
@@ -823,8 +885,17 @@ export function MaximizableCodeViewer({
         className={`bg-background rounded-lg border border-border overflow-hidden flex flex-col ${className}`}
       >
         <div className="flex items-center justify-between p-2 border-b border-border">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <FileCode className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowHotkeyInfo(true)}
+              title="Keyboard shortcuts"
+            >
+              <Keyboard className="h-3 w-3" />
+            </Button>
           </div>
           <div className="flex items-center gap-2">
             {actionButtons(false)}
@@ -921,6 +992,68 @@ export function MaximizableCodeViewer({
             <div className="flex items-center gap-4">
               <span>Ln {lineCount}</span>
               <span>{displayContent.length} chars</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hotkey info dialog */}
+      <Dialog open={showHotkeyInfo} onOpenChange={setShowHotkeyInfo}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Keyboard className="h-4 w-4" />
+              Keyboard Shortcuts
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">JSON Viewer</p>
+              <div className="space-y-0.5">
+                {([
+                  ['⌘ H', 'Toggle Highlight Mode'],
+                  ['⌘ P', 'Toggle Filter Mode'],
+                  ['⌘ 8', 'Wildcard array indices ([0] → [*])'],
+                  ['⌘ A', 'Select all content'],
+                  ['⌘ Click', 'Use value as JMESPath expression'],
+                ] as [string, string][]).map(([key, desc]) => (
+                  <div key={key} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50">
+                    <span className="text-muted-foreground">{desc}</span>
+                    <kbd className="ml-4 shrink-0 px-1.5 py-0.5 text-xs font-mono bg-muted border border-border rounded">{key}</kbd>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">JMESPath Input</p>
+              <div className="space-y-0.5">
+                {([
+                  ['↑ / ↓', 'Browse query history'],
+                  ['Enter', 'Save query to history'],
+                  ['Esc', 'Close history / revert query'],
+                  ['Double-click', 'Show query history'],
+                ] as [string, string][]).map(([key, desc]) => (
+                  <div key={key} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50">
+                    <span className="text-muted-foreground">{desc}</span>
+                    <kbd className="ml-4 shrink-0 px-1.5 py-0.5 text-xs font-mono bg-muted border border-border rounded">{key}</kbd>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Viewer Controls</p>
+              <div className="space-y-0.5">
+                {([
+                  ['↔', 'Expand to bottom panel'],
+                  ['⤢', 'Maximize / fullscreen'],
+                  ['⌘ H', 'Show this help (when viewer not focused)'],
+                ] as [string, string][]).map(([key, desc]) => (
+                  <div key={key} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50">
+                    <span className="text-muted-foreground">{desc}</span>
+                    <kbd className="ml-4 shrink-0 px-1.5 py-0.5 text-xs font-mono bg-muted border border-border rounded">{key}</kbd>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </DialogContent>
