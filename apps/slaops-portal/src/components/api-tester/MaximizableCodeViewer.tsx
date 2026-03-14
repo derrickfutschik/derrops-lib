@@ -1006,6 +1006,20 @@ export function MaximizableCodeViewer({
     }
   }, [displayContent, isJson])
 
+  // Percentage of original response currently displayed (only meaningful when JMESPath filter is active).
+  // Both sides are compacted to the same format so whitespace differences don't skew the ratio.
+  const filterPercent = useMemo(() => {
+    if (!jmespathEnabled || jmespathMode !== 'filter' || filteredContent === null) return null
+    try {
+      const originalCompact = JSON.stringify(JSON.parse(content))
+      const filteredCompact = JSON.stringify(JSON.parse(filteredContent))
+      if (originalCompact.length === 0) return null
+      return Math.round((filteredCompact.length / originalCompact.length) * 1000) / 10
+    } catch {
+      return null
+    }
+  }, [jmespathEnabled, jmespathMode, filteredContent, content])
+
   return (
     <>
       {/* Normal view */}
@@ -1085,6 +1099,7 @@ export function MaximizableCodeViewer({
             )}
             <span>Ln {lineCount.toLocaleString()}</span>
             <span>{displayContent.length.toLocaleString()} chars</span>
+            {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
           </div>
         </div>
       </div>
@@ -1135,15 +1150,17 @@ export function MaximizableCodeViewer({
           <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
             <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
             <div className="flex items-center gap-4">
-              {jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>}
+              {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+              {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
               {jsonStats?.type === 'object' && (
                 <>
-                  <span>{jsonStats.keys} keys</span>
+                  <span>{jsonStats.keys.toLocaleString()} keys</span>
                   <span>depth {jsonStats.depth}</span>
                 </>
               )}
-              <span>Ln {lineCount}</span>
-              <span>{displayContent.length} chars</span>
+              <span>Ln {lineCount.toLocaleString()}</span>
+              <span>{displayContent.length.toLocaleString()} chars</span>
+              {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
             </div>
           </div>
         </DialogContent>
