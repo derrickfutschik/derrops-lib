@@ -10,7 +10,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
 
   // Enable text body parsing for YAML/plain-text OpenAPI specs
-  app.useBodyParser('text', { type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'] })
+  app.useBodyParser('text', {
+    type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'],
+  })
 
   if (process.argv.includes('opensearch:migrate')) {
     const cmd = app.get(OpenSearchMigrateCommand)
@@ -19,10 +21,11 @@ async function bootstrap() {
     return
   }
 
-  // Enable CORS for frontend integration
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
+  // Enable CORS for any domain, including private network access (loopback)
+  app.enableCors({ origin: '*' })
+  app.use((_req: Request, res: any, next: () => void) => {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true')
+    next()
   })
 
   // Global validation pipe
