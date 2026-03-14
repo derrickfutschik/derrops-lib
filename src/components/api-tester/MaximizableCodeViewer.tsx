@@ -14,10 +14,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import alasql from 'alasql'
 import jmespath from 'jmespath'
 import {
   AlignLeft,
   ArrowLeftRight,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   BookOpen,
   Code,
   Copy,
@@ -106,6 +110,17 @@ export function MaximizableCodeViewer({
   const [truncateValues, setTruncateValues] = useState(false)
   const [uniqueFilter, setUniqueFilter] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('json')
+  const [sortColumn, setSortColumn] = useState<number | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [sqlQuery, setSqlQuery] = useState<string>('')
+  const [sqlError, setSqlError] = useState<string | null>(null)
+  const [sqlHistory, setSqlHistory] = useState<string[]>([])
+  const [sqlHistoryIndex, setSqlHistoryIndex] = useState(-1)
+  const [showSqlHistory, setShowSqlHistory] = useState(false)
+  const savedSqlRef = useRef('')
+  const sqlInputRef = useRef<HTMLInputElement>(null)
+  const tableDataRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
+  const sqlResultRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
@@ -162,6 +177,22 @@ export function MaximizableCodeViewer({
   const jmespathEnabled = jmespathState?.enabled ?? internalJmespathEnabled
   const jmespathQuery = jmespathState?.query ?? internalJmespathQuery
   const jmespathMode = jmespathState?.mode ?? internalJmespathMode
+
+  // Debounced query: lags behind jmespathQuery so expensive computations
+  // only run after the user stops typing for 400ms.
+  const [debouncedQuery, setDebouncedQuery] = useState(jmespathQuery)
+  const queryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (queryDebounceRef.current) clearTimeout(queryDebounceRef.current)
+    queryDebounceRef.current = setTimeout(() => {
+      setDebouncedQuery(jmespathQuery)
+      queryDebounceRef.current = null
+    }, 600)
+    return () => {
+      if (queryDebounceRef.current) clearTimeout(queryDebounceRef.current)
+    }
+  }, [jmespathQuery])
 
   const setJmespathEnabled = (enabled: boolean) => {
     if (onJMESPathStateChange) {
@@ -326,10 +357,10 @@ export function MaximizableCodeViewer({
 
   // Get effective content (filtered if JMESPath filter is active)
   const getEffectiveContent = () => {
-    if (jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim() && isJson) {
+    if (jmespathEnabled && jmespathMode === 'filter' && debouncedQuery.trim() && isJson) {
       try {
         const parsed = JSON.parse(content)
-        const result = jmespath.search(parsed, jmespathQuery)
+        const result = jmespath.search(parsed, debouncedQuery)
         return JSON.stringify(result, null, 2)
       } catch {
         return content
@@ -348,7 +379,33 @@ export function MaximizableCodeViewer({
     )
   }
 
+  const getTableCsv = () => {
+    const data = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+    if (!data) return null
+    const escape = (val: string) => {
+      return val.includes(',') || val.includes('"') || val.includes('\n')
+        ? `"${val.replace(/"/g, '""')}"`
+        : val
+    }
+    return [data.columns.map(escape).join(','), ...data.rows.map(row => row.map(escape).join(','))].join('\n')
+  }
+
   const handleDownload = () => {
+    if (viewMode === 'table') {
+      const csv = getTableCsv()
+      if (!csv) { toast.error('No table data to download'); return }
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = sqlQuery.trim() ? 'response-filtered.csv' : 'response.csv'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Downloaded as CSV')
+      return
+    }
     const effectiveContent = getEffectiveContent()
     const extension = isJson ? 'json' : 'txt'
     const mimeType = isJson ? 'application/json' : 'text/plain'
@@ -422,13 +479,13 @@ export function MaximizableCodeViewer({
 
   // JMESPath filtering/highlighting logic
   const { filteredContent, matchedPaths, jmespathError } = useMemo(() => {
-    if (!jmespathEnabled || !jmespathQuery.trim() || !isJson) {
+    if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) {
       return { filteredContent: null, matchedPaths: new Set<string>(), jmespathError: null }
     }
 
     try {
       const parsed = JSON.parse(content)
-      const result = jmespath.search(parsed, jmespathQuery)
+      const result = jmespath.search(parsed, debouncedQuery)
 
       if (jmespathMode === 'filter') {
         return {
@@ -443,7 +500,6 @@ export function MaximizableCodeViewer({
           try {
             const res = jmespath.search(obj, query)
             if (res !== null && res !== undefined) {
-              // Collect the values that match for highlighting
               collectMatchingValues(parsed, result, paths, '')
             }
           } catch {
@@ -460,7 +516,6 @@ export function MaximizableCodeViewer({
           if (matched === null || matched === undefined) return
 
           if (typeof matched !== 'object') {
-            // It's a primitive - find where it exists in the original
             findValuePaths(original, matched, paths, '')
           } else if (Array.isArray(matched)) {
             matched.forEach((item, idx) => {
@@ -491,7 +546,7 @@ export function MaximizableCodeViewer({
           }
         }
 
-        findPaths(parsed, jmespathQuery)
+        findPaths(parsed, debouncedQuery)
         return { filteredContent: null, matchedPaths: paths, jmespathError: null }
       }
     } catch (e: unknown) {
@@ -501,7 +556,7 @@ export function MaximizableCodeViewer({
         jmespathError: e instanceof Error ? e.message : 'Invalid JMESPath query',
       }
     }
-  }, [content, jmespathQuery, jmespathEnabled, jmespathMode, isJson])
+  }, [content, debouncedQuery, jmespathEnabled, jmespathMode, isJson])
 
   /**
    * Helper function to check deep structural equality between two values
@@ -850,30 +905,189 @@ export function MaximizableCodeViewer({
     }
   }
 
-
-  // tableData is computed later (after displayContent is available)
+  // tableData and sortedRows are computed later (after displayContent is available)
 
   const renderTableView = () => {
     if (!tableData) return <span className="text-muted-foreground text-sm">No tabular data available</span>
+
+    const addToSqlHistory = (query: string) => {
+      const trimmed = query.trim()
+      if (!trimmed) return
+      setSqlHistory(prev => {
+        const filtered = prev.filter(h => h !== trimmed)
+        return [trimmed, ...filtered].slice(0, 20)
+      })
+    }
+
+    const handleCellClick = (colName: string, value: string) => (e: React.MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault()
+        const escapedValue = value.replace(/'/g, "''")
+        const clause = `${colName} = '${escapedValue}'`
+
+        if (sqlQuery.trim()) {
+          // Append AND clause to existing query, but skip if already present
+          const whereMatch = sqlQuery.match(/^(SELECT\s+.+?\s+FROM\s+\?\s+WHERE\s+)(.+)$/i)
+          if (whereMatch) {
+            // Check if this exact clause already exists in the WHERE conditions
+            const existingClauses = whereMatch[2].split(/\s+AND\s+/i).map(c => c.trim())
+            if (existingClauses.some(c => c.toLowerCase() === clause.toLowerCase())) {
+              return // Duplicate clause, skip
+            }
+            const newQuery = `${whereMatch[1]}${whereMatch[2]} AND ${clause}`
+            setSqlQuery(newQuery)
+            addToSqlHistory(newQuery)
+          } else {
+            const query = `SELECT * FROM ? WHERE ${clause}`
+            setSqlQuery(query)
+            addToSqlHistory(query)
+          }
+        } else {
+          const query = `SELECT * FROM ? WHERE ${clause}`
+          setSqlQuery(query)
+          addToSqlHistory(query)
+        }
+        setSqlError(null)
+      }
+    }
+
+    // Use SQL result if available, otherwise use sorted rows
+    const displayData = sqlResult || { columns: tableData.columns, rows: sortedRows }
+
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {tableData.columns.map((col, i) => (
-              <TableHead key={i}>{col}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tableData.rows.map((row, ri) => (
-            <TableRow key={ri}>
-              {row.map((cell, ci) => (
-                <TableCell key={ci} className="font-mono text-xs">{cell}</TableCell>
+      <div>
+        {/* SQL Query Bar */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary shrink-0">
+            <FileCode className="h-3.5 w-3.5" />
+            SQL
+          </div>
+          <div className="flex-1 relative">
+            <Input
+              ref={sqlInputRef}
+              placeholder="e.g. SELECT * FROM ? WHERE status = 'active' — ⌘+Click cells to build filters"
+              value={sqlQuery}
+              onChange={(e) => { setSqlQuery(e.target.value); setSqlError(null); setSqlHistoryIndex(-1) }}
+              onFocus={() => {}}
+              onBlur={() => { setShowSqlHistory(false) }}
+              onDoubleClick={() => { if (sqlHistory.length > 0) setShowSqlHistory(true) }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  if (showSqlHistory) { setShowSqlHistory(false); return }
+                  if (sqlHistoryIndex !== -1) {
+                    setSqlHistoryIndex(-1)
+                    setSqlQuery(savedSqlRef.current)
+                    return
+                  }
+                  setSqlQuery('')
+                  setSqlError(null)
+                }
+                if (e.key === 'Enter') {
+                  if (sqlQuery.trim()) addToSqlHistory(sqlQuery)
+                  setSqlHistoryIndex(-1)
+                  setShowSqlHistory(false)
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  if (sqlHistory.length === 0) return
+                  if (sqlHistoryIndex === -1) savedSqlRef.current = sqlQuery
+                  const newIdx = Math.min(sqlHistoryIndex + 1, sqlHistory.length - 1)
+                  setSqlHistoryIndex(newIdx)
+                  setSqlQuery(sqlHistory[newIdx])
+                }
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  if (sqlHistoryIndex === -1) return
+                  const newIdx = sqlHistoryIndex - 1
+                  setSqlHistoryIndex(newIdx)
+                  setSqlQuery(newIdx === -1 ? savedSqlRef.current : sqlHistory[newIdx])
+                }
+              }}
+              className={`h-7 text-xs font-mono ${sqlError ? 'border-destructive' : ''}`}
+              title="↑↓ to browse history | Double-click to show history | Enter to commit"
+            />
+            {showSqlHistory && sqlHistory.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-48 overflow-y-auto">
+                {sqlHistory.map((expr, i) => (
+                  <button
+                    key={i}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === sqlHistoryIndex ? 'bg-muted' : ''}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      setSqlQuery(expr)
+                      setSqlHistoryIndex(-1)
+                      setShowSqlHistory(false)
+                    }}
+                  >
+                    {expr}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {sqlQuery && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs shrink-0"
+              onClick={() => { setSqlQuery(''); setSqlError(null); setSqlHistoryIndex(-1) }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+        {/* SQL Error */}
+        {sqlError && (
+          <div className="px-3 py-1.5 border-b border-border bg-destructive/10 text-xs text-destructive font-mono">
+            {sqlError}
+          </div>
+        )}
+        {/* Results info */}
+        {sqlResult && (
+          <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
+            <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
+            <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
+          </div>
+        )}
+        <Table>
+          <TableHeader className="bg-primary/10">
+            <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
+              {displayData.columns.map((col, i) => (
+                <TableHead
+                  key={i}
+                  className="cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors"
+                  onClick={() => !sqlResult && handleColumnSort(i)}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {col}
+                    {!sqlResult && sortColumn === i ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    ) : !sqlResult ? (
+                      <ArrowUpDown className="h-3 w-3 opacity-30" />
+                    ) : null}
+                  </span>
+                </TableHead>
               ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {displayData.rows.map((row, ri) => (
+              <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
+                {row.map((cell, ci) => (
+                  <TableCell
+                    key={ci}
+                    className="font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5"
+                    onClick={handleCellClick(displayData.columns[ci], cell)}
+                    title="⌘+Click to add SQL filter"
+                  >
+                    {cell}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     )
   }
 
@@ -1355,8 +1569,70 @@ export function MaximizableCodeViewer({
     }
     return null
   }, [displayContent])
+  tableDataRef.current = tableData
 
-  // Compute JSON stats for the status ribbon
+  const handleColumnSort = (colIndex: number) => {
+    if (sortColumn === colIndex) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(colIndex)
+      setSortDirection('asc')
+    }
+  }
+
+  const sortedRows = useMemo(() => {
+    if (!tableData || sortColumn === null) return tableData?.rows ?? []
+    const col = sortColumn
+    return [...tableData.rows].sort((a, b) => {
+      const aVal = a[col] ?? ''
+      const bVal = b[col] ?? ''
+      const aNum = Number(aVal)
+      const bNum = Number(bVal)
+      const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
+      const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  }, [tableData, sortColumn, sortDirection])
+
+  // Execute SQL query against table data using AlaSQL
+  const sqlResult = useMemo(() => {
+    if (!sqlQuery.trim() || !tableData) return null
+    try {
+      const data = tableData.rows.map(row => {
+        const obj: Record<string, string> = {}
+        tableData.columns.forEach((col, i) => {
+          obj[col] = row[i]
+        })
+        return obj
+      })
+      const result = alasql(sqlQuery, [data])
+      setSqlError(null)
+      if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
+        const cols = Object.keys(result[0])
+        const rows = result.map((r: any) => cols.map(c => {
+          const v = r[c]
+          return v === null || v === undefined ? '' : String(v)
+        }))
+        return { columns: cols, rows }
+      }
+      // For aggregation results like COUNT, SUM etc that return a single value
+      if (Array.isArray(result) && result.length > 0) {
+        const first = result[0]
+        if (typeof first === 'object' && first !== null) {
+          const cols = Object.keys(first)
+          const rows = result.map((r: any) => cols.map(c => String(r[c] ?? '')))
+          return { columns: cols, rows }
+        }
+      }
+      return null
+    } catch (e: any) {
+      setSqlError(e?.message || 'Invalid SQL query')
+      return null
+    }
+  }, [sqlQuery, tableData])
+  sqlResultRef.current = sqlResult
+
+
   const jsonStats = useMemo(() => {
     if (!isJson) return null
     try {
