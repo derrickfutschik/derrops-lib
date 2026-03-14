@@ -7,6 +7,7 @@ interface JsonResponseViewerProps {
   responseSchema: any
   validationErrors?: Record<string, string> // Map of field names to validation error messages
   onJmespathSelect?: (path: string) => void // Called on Cmd/Ctrl+click with JMESPath expression
+  truncateValues?: boolean // When true, long string values are truncated; click to expand individually
 }
 
 interface PropertySchema {
@@ -15,6 +16,8 @@ interface PropertySchema {
   properties?: Record<string, PropertySchema>
   items?: PropertySchema
 }
+
+const TRUNCATE_LENGTH = 255
 
 // Recursively get property schema from a path
 const getPropertySchema = (
@@ -49,6 +52,50 @@ const childJmesPath = (parent: string, key: string | number): string => {
   return parent ? `${parent}.${key}` : key
 }
 
+// Component for a string value that can be individually expanded when truncation is active
+const TruncatableString: React.FC<{
+  value: string
+  truncateValues: boolean
+  onJmespathSelect?: (path: string) => void
+  jmesPath: string
+}> = ({ value, truncateValues, onJmespathSelect, jmesPath }) => {
+  const [expanded, setExpanded] = useState(false)
+  const isTruncatable = truncateValues && value.length > TRUNCATE_LENGTH
+
+  const handleClick = (e: React.MouseEvent) => {
+    if ((e.metaKey || e.ctrlKey) && jmesPath && onJmespathSelect) {
+      e.preventDefault()
+      onJmespathSelect(jmesPath)
+      return
+    }
+    if (isTruncatable && !expanded) {
+      setExpanded(true)
+    } else if (truncateValues && expanded) {
+      setExpanded(false)
+    }
+  }
+
+  const displayValue = isTruncatable && !expanded ? `${value.slice(0, TRUNCATE_LENGTH)}\u2026` : value
+  const isClickable = onJmespathSelect || isTruncatable || (truncateValues && expanded)
+  const titleText =
+    isTruncatable && !expanded
+      ? 'Click to expand | Cmd/Ctrl+click to use as JMESPath'
+      : truncateValues && expanded
+        ? 'Click to collapse | Cmd/Ctrl+click to use as JMESPath'
+        : onJmespathSelect
+          ? 'Cmd/Ctrl+click to use as JMESPath'
+          : undefined
+
+  return (
+    <span
+      className={`text-green-400 ${isClickable ? 'cursor-pointer' : ''}`}
+      onClick={handleClick}
+      title={titleText}
+    >
+      "{displayValue}"
+    </span>
+  )
+}
 
 // Component for property key with popover tooltip
 const PropertyKeyWithTooltip: React.FC<{
@@ -127,7 +174,8 @@ const CollapsibleArray: React.FC<{
   jmesPath: string
   indent: number
   onJmespathSelect?: (path: string) => void
-}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect }) => {
+  truncateValues?: boolean
+}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect, truncateValues }) => {
   const [collapsed, setCollapsed] = useState(false)
   const indentStr = '  '.repeat(indent)
   const nextIndent = indent + 1
@@ -167,6 +215,7 @@ const CollapsibleArray: React.FC<{
             childJmesPath(jmesPath, index),
             nextIndent,
             onJmespathSelect,
+            truncateValues,
           )}
           {index < value.length - 1 ? ',\n' : '\n'}
         </React.Fragment>
@@ -185,7 +234,8 @@ const CollapsibleObject: React.FC<{
   jmesPath: string
   indent: number
   onJmespathSelect?: (path: string) => void
-}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect }) => {
+  truncateValues?: boolean
+}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect, truncateValues }) => {
   const [collapsed, setCollapsed] = useState(false)
   const indentStr = '  '.repeat(indent)
   const nextIndent = indent + 1
@@ -258,7 +308,7 @@ const CollapsibleObject: React.FC<{
               plainKey
             )}
             {': '}
-            {renderJsonNode(val, propSchema, validationErrors, propPath, propJmesPath, nextIndent, onJmespathSelect)}
+            {renderJsonNode(val, propSchema, validationErrors, propPath, propJmesPath, nextIndent, onJmespathSelect, truncateValues)}
             {index < entries.length - 1 ? ',\n' : '\n'}
           </React.Fragment>
         )
@@ -278,6 +328,7 @@ const renderJsonNode = (
   jmesPath: string = '',
   indent: number = 0,
   onJmespathSelect?: (path: string) => void,
+  truncateValues?: boolean,
 ): React.ReactNode => {
   const handlePrimitiveClick = (e: React.MouseEvent) => {
     if ((e.metaKey || e.ctrlKey) && jmesPath && onJmespathSelect) {
@@ -303,7 +354,14 @@ const renderJsonNode = (
   }
 
   if (typeof value === 'string') {
-    return <span className={`text-green-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>"{value}"</span>
+    return (
+      <TruncatableString
+        value={value}
+        truncateValues={truncateValues ?? false}
+        onJmespathSelect={onJmespathSelect}
+        jmesPath={jmesPath}
+      />
+    )
   }
 
   if (Array.isArray(value)) {
@@ -316,6 +374,7 @@ const renderJsonNode = (
         jmesPath={jmesPath}
         indent={indent}
         onJmespathSelect={onJmespathSelect}
+        truncateValues={truncateValues}
       />
     )
   }
@@ -330,6 +389,7 @@ const renderJsonNode = (
         jmesPath={jmesPath}
         indent={indent}
         onJmespathSelect={onJmespathSelect}
+        truncateValues={truncateValues}
       />
     )
   }
@@ -342,10 +402,11 @@ export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
   responseSchema,
   validationErrors,
   onJmespathSelect,
+  truncateValues,
 }) => {
   try {
     const parsed = JSON.parse(jsonString)
-    return <>{renderJsonNode(parsed, responseSchema, validationErrors, [], '', 0, onJmespathSelect)}</>
+    return <>{renderJsonNode(parsed, responseSchema, validationErrors, [], '', 0, onJmespathSelect, truncateValues)}</>
   } catch {
     // If parsing fails, return the raw string
     return <>{jsonString}</>

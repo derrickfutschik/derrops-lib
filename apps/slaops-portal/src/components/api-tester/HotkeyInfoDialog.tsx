@@ -13,6 +13,7 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
       ['⌘ K', 'Toggle Highlight Mode'],
       ['⌘ J', 'Toggle Filter Mode'],
       ['⌘ 8', 'Wildcard array indices ([0] → [*])'],
+      ['⌘ I', 'Toggle value truncation (click value to expand)'],
       ['⌘ A', 'Select all content'],
       ['⌘ Click', 'Use value as JMESPath expression'],
     ],

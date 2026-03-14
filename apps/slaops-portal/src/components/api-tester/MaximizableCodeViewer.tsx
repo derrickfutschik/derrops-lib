@@ -20,6 +20,7 @@ import {
   Keyboard,
   Maximize2,
   Minimize2,
+  WrapText,
 } from 'lucide-react'
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -64,6 +65,7 @@ export function MaximizableCodeViewer({
 }: MaximizableCodeViewerProps) {
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
+  const [truncateValues, setTruncateValues] = useState(false)
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
@@ -195,6 +197,8 @@ export function MaximizableCodeViewer({
     }
   }, [jmespathEnabled, jmespathMode, jmespathQuery, onJMESPathStateChange])
 
+  const toggleTruncateValues = useCallback(() => setTruncateValues((v) => !v), [])
+
   const toggleFilterMode = useCallback(() => {
     // Enable JMESPath in filter mode (like ⌘Click), or toggle off if already active
     const isActiveFilter = jmespathEnabled && jmespathMode === 'filter'
@@ -241,6 +245,11 @@ export function MaximizableCodeViewer({
     if ((e.metaKey || e.ctrlKey) && e.key === '8') {
       e.preventDefault()
       applyWildcard()
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+      e.preventDefault()
+      toggleTruncateValues()
     }
   }
 
@@ -653,6 +662,7 @@ export function MaximizableCodeViewer({
             responseSchema={undefined}
             validationErrors={undefined}
             onJmespathSelect={setJmespathQuery}
+            truncateValues={truncateValues}
           />
         )
       } catch {
@@ -686,6 +696,7 @@ export function MaximizableCodeViewer({
             responseSchema={responseSchema}
             validationErrors={validationErrors}
             onJmespathSelect={setJmespathQuery}
+            truncateValues={truncateValues}
           />
         )
       } catch {
@@ -737,6 +748,18 @@ export function MaximizableCodeViewer({
         >
           <AlignLeft className="h-3.5 w-3.5" />
           {showText && <span>Format</span>}
+        </Button>
+      )}
+      {isJson && (
+        <Button
+          variant={truncateValues ? 'default' : 'outline'}
+          size="sm"
+          className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
+          onClick={toggleTruncateValues}
+          title="Toggle value truncation (⌘I)"
+        >
+          <WrapText className="h-3.5 w-3.5" />
+          {showText && <span>Truncate</span>}
         </Button>
       )}
       {schemaButton(showText)}
@@ -810,6 +833,11 @@ export function MaximizableCodeViewer({
             if ((e.metaKey || e.ctrlKey) && e.key === '8') {
               e.preventDefault()
               applyWildcard()
+              return
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+              e.preventDefault()
+              toggleTruncateValues()
               return
             }
             // Undo: Cmd+Z
