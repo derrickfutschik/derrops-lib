@@ -103,10 +103,12 @@ const PropertyKeyWithTooltip: React.FC<{
   description?: string
   propType?: string
   validationError?: string
+  truncated?: boolean
   onJmespathSelect?: (path: string) => void
   jmesPath: string
-}> = ({ keyName, description, propType, validationError, onJmespathSelect, jmesPath }) => {
+}> = ({ keyName, description, propType, validationError, truncated, onJmespathSelect, jmesPath }) => {
   const [open, setOpen] = useState(false)
+  const isRed = !!(validationError || truncated)
 
   const handleClick = (e: React.MouseEvent) => {
     if ((e.metaKey || e.ctrlKey) && onJmespathSelect) {
@@ -117,7 +119,7 @@ const PropertyKeyWithTooltip: React.FC<{
 
   const keyElement = (
     <span
-      className={`${validationError ? 'text-red-400' : 'text-purple-400'} ${onJmespathSelect ? 'cursor-pointer' : ''}`}
+      className={`${isRed ? 'text-red-400' : 'text-purple-400'} ${onJmespathSelect ? 'cursor-pointer' : ''}`}
       onClick={handleClick}
       title={onJmespathSelect ? 'Cmd/Ctrl+click to use as JMESPath' : undefined}
     >
@@ -130,7 +132,7 @@ const PropertyKeyWithTooltip: React.FC<{
       <PopoverTrigger asChild>
         <span
           className={`cursor-help border-b border-dashed ${
-            validationError
+            isRed
               ? 'border-red-400/50 hover:border-red-400'
               : 'border-purple-400/50 hover:border-purple-400'
           }`}
@@ -271,11 +273,13 @@ const CollapsibleObject: React.FC<{
         const description = propSchema?.description
         const propType = propSchema?.type
         const validationError = validationErrors?.[key]
+        const isTruncatedValue = !!(truncateValues && typeof val === 'string' && val.length > TRUNCATE_LENGTH)
         const hasTooltip = description || validationError
+        const isKeyRed = !!(validationError || isTruncatedValue)
 
         const plainKey = (
           <span
-            className={`${validationError ? 'text-red-400' : 'text-purple-400'} ${onJmespathSelect ? 'cursor-pointer' : ''}`}
+            className={`${isKeyRed ? 'text-red-400' : 'text-purple-400'} ${onJmespathSelect ? 'cursor-pointer' : ''}`}
             onClick={
               onJmespathSelect
                 ? (e) => {
@@ -301,6 +305,7 @@ const CollapsibleObject: React.FC<{
                 description={description}
                 propType={propType}
                 validationError={validationError}
+                truncated={isTruncatedValue}
                 onJmespathSelect={onJmespathSelect}
                 jmesPath={propJmesPath}
               />

@@ -972,6 +972,40 @@ export function MaximizableCodeViewer({
       : content
   const lineCount = displayContent.split('\n').length
 
+  // Compute JSON stats for the status ribbon
+  const jsonStats = useMemo(() => {
+    if (!isJson) return null
+    try {
+      const parsed = JSON.parse(displayContent)
+      const getMaxDepth = (val: any): number => {
+        if (typeof val !== 'object' || val === null) return 0
+        const children = Array.isArray(val) ? val : Object.values(val)
+        if (children.length === 0) return 1
+        return 1 + Math.max(...children.map(getMaxDepth))
+      }
+      const countTotalKeys = (val: any): number => {
+        if (typeof val !== 'object' || val === null) return 0
+        if (Array.isArray(val)) return val.reduce((sum, item) => sum + countTotalKeys(item), 0)
+        const keys = Object.keys(val)
+        return keys.length + keys.reduce((sum, key) => sum + countTotalKeys(val[key]), 0)
+      }
+      if (Array.isArray(parsed)) {
+        return { type: 'array' as const, count: parsed.length, totalKeys: countTotalKeys(parsed) }
+      }
+      if (typeof parsed === 'object') {
+        return {
+          type: 'object' as const,
+          keys: Object.keys(parsed).length,
+          totalKeys: countTotalKeys(parsed),
+          depth: getMaxDepth(parsed),
+        }
+      }
+      return null
+    } catch {
+      return null
+    }
+  }, [displayContent, isJson])
+
   return (
     <>
       {/* Normal view */}
@@ -1041,8 +1075,16 @@ export function MaximizableCodeViewer({
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
           <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
           <div className="flex items-center gap-4">
-            <span>Ln {lineCount}</span>
-            <span>{displayContent.length} chars</span>
+            {jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>}
+            {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
+            {jsonStats?.type === 'object' && (
+              <>
+                <span>{jsonStats.keys.toLocaleString()} keys</span>
+                <span>depth {jsonStats.depth}</span>
+              </>
+            )}
+            <span>Ln {lineCount.toLocaleString()}</span>
+            <span>{displayContent.length.toLocaleString()} chars</span>
           </div>
         </div>
       </div>
@@ -1093,6 +1135,13 @@ export function MaximizableCodeViewer({
           <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
             <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
             <div className="flex items-center gap-4">
+              {jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>}
+              {jsonStats?.type === 'object' && (
+                <>
+                  <span>{jsonStats.keys} keys</span>
+                  <span>depth {jsonStats.depth}</span>
+                </>
+              )}
               <span>Ln {lineCount}</span>
               <span>{displayContent.length} chars</span>
             </div>
