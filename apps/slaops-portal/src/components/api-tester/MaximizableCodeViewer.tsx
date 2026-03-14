@@ -504,7 +504,19 @@ export function MaximizableCodeViewer({
   const renderContent = (unlimitedHeight = false) => {
     // If JMESPath filter mode and we have filtered content
     if (jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null) {
-      return filteredContent
+      try {
+        JSON.parse(filteredContent)
+        return (
+          <JsonResponseViewer
+            jsonString={filteredContent}
+            responseSchema={undefined}
+            validationErrors={undefined}
+            onJmespathSelect={setJmespathQuery}
+          />
+        )
+      } catch {
+        return filteredContent
+      }
     }
 
     // If JMESPath highlight mode
