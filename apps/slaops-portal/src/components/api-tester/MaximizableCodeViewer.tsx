@@ -964,6 +964,15 @@ export function MaximizableCodeViewer({
               <DialogTitle className="flex items-center gap-2">
                 <FileCode className="h-5 w-5" />
                 {title}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowHotkeyInfo(true)}
+                  title="Keyboard shortcuts"
+                >
+                  <Keyboard className="h-3.5 w-3.5" />
+                </Button>
               </DialogTitle>
               <div className="flex items-center gap-2">
                 {actionButtons(true)}
