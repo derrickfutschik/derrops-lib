@@ -1,5 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -331,6 +337,55 @@ export function MaximizableCodeViewer({
         ? 'Downloaded filtered response'
         : 'Downloaded response',
     )
+  }
+
+  const handleDownloadCsv = () => {
+    const effectiveContent = getEffectiveContent()
+    let csvContent = ''
+    try {
+      const parsed = JSON.parse(effectiveContent)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+          // Array of objects: use keys as headers
+          const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
+          const escape = (val: any) => {
+            const str = val === null || val === undefined ? '' : String(val)
+            return str.includes(',') || str.includes('"') || str.includes('\n')
+              ? `"${str.replace(/"/g, '""')}"`
+              : str
+          }
+          csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(','))].join('\n')
+        } else {
+          // Array of primitives: single column
+          const escape = (val: any) => {
+            const str = val === null || val === undefined ? '' : String(val)
+            return str.includes(',') || str.includes('"') || str.includes('\n')
+              ? `"${str.replace(/"/g, '""')}"`
+              : str
+          }
+          csvContent = ['value', ...parsed.map(escape)].join('\n')
+        }
+      } else {
+        toast.error('CSV export requires a JSON array')
+        return
+      }
+    } catch {
+      toast.error('Failed to parse JSON for CSV export')
+      return
+    }
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download =
+      jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
+        ? 'response-filtered.csv'
+        : 'response.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success('Downloaded as CSV')
   }
 
   // JMESPath filtering/highlighting logic
@@ -843,16 +898,28 @@ export function MaximizableCodeViewer({
         <Copy className="h-3.5 w-3.5" />
         {showText && <span>Copy</span>}
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-        onClick={handleDownload}
-        title="Download"
-      >
-        <Download className="h-3.5 w-3.5" />
-        {showText && <span>Download</span>}
-      </Button>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
+            onClick={handleDownload}
+            title="Download (right-click for more options)"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {showText && <span>Download</span>}
+          </Button>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleDownload}>
+            Download as JSON
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleDownloadCsv}>
+            Download as CSV
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </>
   )
 
