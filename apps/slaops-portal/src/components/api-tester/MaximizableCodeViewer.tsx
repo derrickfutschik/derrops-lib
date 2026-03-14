@@ -70,9 +70,6 @@ export function MaximizableCodeViewer({
   const dialogPreRef = useRef<HTMLPreElement>(null)
 
   const applyWildcard = () => {
-    const input = (isMaximized ? dialogInputRef : normalInputRef).current
-    if (!input) return
-
     const wildcarded = jmespathQuery.replace(/\[\d+\]/g, '[*]')
     const isCurrentlyWildcarded =
       savedPreWildcardRef.current !== null &&
@@ -87,9 +84,7 @@ export function MaximizableCodeViewer({
       newValue = wildcarded
     }
 
-    input.focus()
-    input.select()
-    document.execCommand('insertText', false, newValue)
+    applyQueryProgrammatic(newValue)
   }
 
   const selectAllInViewer = useCallback((preRef: React.RefObject<HTMLPreElement>) => {
@@ -117,6 +112,10 @@ export function MaximizableCodeViewer({
   const prevQueryRef = useRef('')
   const activeInputRef = useRef<HTMLInputElement | null>(null)
   const savedPreWildcardRef = useRef<string | null>(null)
+  const undoStackRef = useRef<string[]>([])
+  const redoStackRef = useRef<string[]>([])
+  const typingStartRef = useRef<string | null>(null)
+  const undoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const jmespathEnabled = jmespathState?.enabled ?? internalJmespathEnabled
   const jmespathQuery = jmespathState?.query ?? internalJmespathQuery
@@ -144,6 +143,41 @@ export function MaximizableCodeViewer({
     } else {
       setInternalJmespathMode(mode)
     }
+  }
+
+  // Applies a query change programmatically (history selection, wildcard, cmd+click).
+  // Always pushes the current value onto the undo stack before changing.
+  const applyQueryProgrammatic = (newValue: string) => {
+    if (undoDebounceRef.current) {
+      clearTimeout(undoDebounceRef.current)
+      undoDebounceRef.current = null
+    }
+    const prev = typingStartRef.current ?? jmespathQuery
+    typingStartRef.current = null
+    if (prev !== newValue) {
+      undoStackRef.current = [...undoStackRef.current, prev].slice(-100)
+      redoStackRef.current = []
+    }
+    setHistoryIndex(-1)
+    setJmespathQuery(newValue)
+  }
+
+  // Handles user typing: debounces pushing the pre-typing value onto the undo stack.
+  const handleQueryChange = (newValue: string) => {
+    if (typingStartRef.current === null) {
+      typingStartRef.current = jmespathQuery
+    }
+    if (undoDebounceRef.current) clearTimeout(undoDebounceRef.current)
+    undoDebounceRef.current = setTimeout(() => {
+      if (typingStartRef.current !== null) {
+        undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
+        redoStackRef.current = []
+        typingStartRef.current = null
+      }
+      undoDebounceRef.current = null
+    }, 600)
+    setHistoryIndex(-1)
+    setJmespathQuery(newValue)
   }
 
   const toggleHighlightMode = useCallback(() => {
@@ -210,17 +244,6 @@ export function MaximizableCodeViewer({
     }
   }
 
-  // Apply a history value via execCommand so it enters the browser's native undo stack,
-  // letting Ctrl/Cmd+Z naturally undo history navigation.
-  const applyHistoryValue = useCallback((query: string) => {
-    const input = activeInputRef.current
-    if (input) {
-      input.focus()
-      input.select()
-      document.execCommand('insertText', false, query)
-    }
-  }, [])
-
   const addToHistory = useCallback((query: string) => {
     const trimmed = query.trim()
     if (!trimmed) return
@@ -230,9 +253,15 @@ export function MaximizableCodeViewer({
     })
   }, [])
 
-  // Add to history when query changes externally (e.g. cmd+click from JSON viewer)
+  // Add to history when query changes externally (e.g. cmd+click from JSON viewer).
+  // Also push the old value onto the undo stack so Cmd+Z can revert it.
   useEffect(() => {
     if (prevQueryRef.current !== jmespathQuery && !isInputFocusedRef.current) {
+      const old = prevQueryRef.current
+      if (old !== jmespathQuery) {
+        undoStackRef.current = [...undoStackRef.current, old].slice(-100)
+        redoStackRef.current = []
+      }
       addToHistory(jmespathQuery)
       setHistoryIndex(-1)
     }
@@ -755,10 +784,7 @@ export function MaximizableCodeViewer({
           ref={inputRef}
           placeholder="e.g. data[0].name, items[?status=='active']"
           value={jmespathQuery}
-          onChange={(e) => {
-            setHistoryIndex(-1)
-            setJmespathQuery(e.target.value)
-          }}
+          onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => {
             isInputFocusedRef.current = true
             activeInputRef.current = inputRef.current
@@ -786,7 +812,42 @@ export function MaximizableCodeViewer({
               applyWildcard()
               return
             }
+            // Undo: Cmd+Z
+            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
+              e.preventDefault()
+              // Flush any pending debounce first
+              if (undoDebounceRef.current) {
+                clearTimeout(undoDebounceRef.current)
+                undoDebounceRef.current = null
+                if (typingStartRef.current !== null) {
+                  undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
+                  typingStartRef.current = null
+                }
+              }
+              if (undoStackRef.current.length === 0) return
+              const prev = undoStackRef.current[undoStackRef.current.length - 1]
+              undoStackRef.current = undoStackRef.current.slice(0, -1)
+              redoStackRef.current = [...redoStackRef.current, jmespathQuery]
+              setHistoryIndex(-1)
+              setJmespathQuery(prev)
+              return
+            }
+            // Redo: Cmd+Shift+Z or Cmd+Y
+            if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+              e.preventDefault()
+              if (redoStackRef.current.length === 0) return
+              const next = redoStackRef.current[redoStackRef.current.length - 1]
+              redoStackRef.current = redoStackRef.current.slice(0, -1)
+              undoStackRef.current = [...undoStackRef.current, jmespathQuery]
+              setHistoryIndex(-1)
+              setJmespathQuery(next)
+              return
+            }
             if (e.key === 'Enter') {
+              if (historyIndex !== -1) {
+                // Committing a history navigation — push saved query to undo stack
+                applyQueryProgrammatic(jmespathQuery)
+              }
               addToHistory(jmespathQuery)
               setHistoryIndex(-1)
               return
@@ -798,7 +859,8 @@ export function MaximizableCodeViewer({
               }
               if (historyIndex !== -1) {
                 setHistoryIndex(-1)
-                applyHistoryValue(savedQueryRef.current)
+                // Revert to the saved query without affecting undo stack
+                setJmespathQuery(savedQueryRef.current)
               }
               return
             }
@@ -810,7 +872,8 @@ export function MaximizableCodeViewer({
               }
               const newIndex = Math.min(historyIndex + 1, jmespathHistory.length - 1)
               setHistoryIndex(newIndex)
-              applyHistoryValue(jmespathHistory[newIndex])
+              // Temporary navigation — no undo push
+              setJmespathQuery(jmespathHistory[newIndex])
               return
             }
             if (e.key === 'ArrowDown') {
@@ -818,7 +881,8 @@ export function MaximizableCodeViewer({
               if (historyIndex === -1) return
               const newIndex = historyIndex - 1
               setHistoryIndex(newIndex)
-              applyHistoryValue(newIndex === -1 ? savedQueryRef.current : jmespathHistory[newIndex])
+              // Temporary navigation — no undo push
+              setJmespathQuery(newIndex === -1 ? savedQueryRef.current : jmespathHistory[newIndex])
               return
             }
           }}
@@ -834,8 +898,7 @@ export function MaximizableCodeViewer({
                 className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === historyIndex ? 'bg-muted' : ''}`}
                 onMouseDown={(e) => {
                   e.preventDefault()
-                  applyHistoryValue(expr)
-                  setHistoryIndex(-1)
+                  applyQueryProgrammatic(expr)
                   setShowHistory(false)
                 }}
               >
