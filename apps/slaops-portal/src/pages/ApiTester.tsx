@@ -333,6 +333,7 @@ const ApiTester = () => {
   // Ref to read openAPIServerUrl without triggering effect re-runs
   const openAPIServerUrlRef = useRef(openAPIServerUrl)
   openAPIServerUrlRef.current = openAPIServerUrl
+  const urlInputFocusedRef = useRef(false)
   const [activeTab, setActiveTab] = useState<string>('params')
 
   // Mobile panel tab for switching between Request and Response
@@ -2528,6 +2529,19 @@ const ApiTester = () => {
                                 placeholder="Enter request URL (e.g., https://api.example.com/v1/users)"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
+                                onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
+                                onBlur={() => { urlInputFocusedRef.current = false; }}
+                                onPaste={(e) => {
+                                  const pasted = e.clipboardData.getData('text')
+                                  const match = pasted.match(/(https?:\/\/\S+)/)
+                                  if (match) {
+                                    e.preventDefault()
+                                    // Extract URL, then collapse any whitespace/newlines in query portion
+                                    const raw = pasted.slice(pasted.indexOf(match[1]))
+                                    const cleaned = raw.replace(/[\s\r\n]+/g, '')
+                                    handleUrlChange(cleaned)
+                                  }
+                                }}
                                 className={`bg-background pr-8 ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                               />
                               {!urlValidation.isValid && !urlValidation.isEmpty && (
@@ -4125,6 +4139,8 @@ const ApiTester = () => {
                               placeholder="Enter request URL (e.g., https://api.example.com/users)"
                               value={url}
                               onChange={(e) => handleUrlChange(e.target.value)}
+                              onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
+                              onBlur={() => { urlInputFocusedRef.current = false; }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
                                   handleActionButton()
@@ -4178,6 +4194,8 @@ const ApiTester = () => {
                                 placeholder="Enter request URL (e.g., https://api.example.com/users)"
                                 value={url}
                                 onChange={(e) => handleUrlChange(e.target.value)}
+                                onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
+                                onBlur={() => { urlInputFocusedRef.current = false; }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
                                     handleActionButton()

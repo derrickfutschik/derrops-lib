@@ -402,7 +402,7 @@ const renderJsonNode = (
   return <span>{String(value)}</span>
 }
 
-export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
+const JsonResponseViewerComponent: React.FC<JsonResponseViewerProps> = ({
   jsonString,
   responseSchema,
   validationErrors,
@@ -417,3 +417,6 @@ export const JsonResponseViewer: React.FC<JsonResponseViewerProps> = ({
     return <>{jsonString}</>
   }
 }
+
+export const JsonResponseViewer = React.memo(JsonResponseViewerComponent)
+JsonResponseViewer.displayName = 'JsonResponseViewer'
