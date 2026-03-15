@@ -1248,7 +1248,7 @@ export function MaximizableCodeViewer({
     try {
       return (
         <MarkdownErrorBoundary key={mdContent}>
-          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-primary prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-table:text-sm prose-th:text-primary prose-th:font-semibold prose-th:text-left prose-th:px-4 prose-th:py-2 prose-td:px-4 prose-td:py-2 prose-td:text-foreground prose-tr:border-b prose-tr:border-border prose-thead:border-b-2 prose-thead:border-primary/30">
+          <div className="prose prose-sm dark:prose-invert max-w-none p-4 prose-headings:text-primary prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-table:text-sm prose-th:text-primary prose-th:font-semibold prose-th:text-left prose-th:px-4 prose-th:py-2 prose-td:px-4 prose-td:py-2 prose-td:text-foreground prose-tr:border-b prose-tr:border-border prose-thead:border-b-2 prose-thead:border-primary/30">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{mdContent}</ReactMarkdown>
           </div>
         </MarkdownErrorBoundary>
@@ -1924,13 +1924,13 @@ export function MaximizableCodeViewer({
         </div>
         {isJson && jmespathRow(normalInputRef, viewMode !== 'json')}
         <div
-          className={`p-4 overflow-auto flex-1 outline-none`}
+          className="p-0 overflow-auto flex-1 outline-none"
           style={{ maxHeight }}
           tabIndex={0}
           onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, normalPreRef) : undefined}
         >
           {viewMode === 'json' && (
-            <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+            <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all p-4">
               <code>{renderContent()}</code>
             </pre>
           )}
@@ -1990,12 +1990,12 @@ export function MaximizableCodeViewer({
           </DialogHeader>
           {isJson && jmespathRow(dialogInputRef, viewMode !== 'json')}
           <div
-            className="flex-1 overflow-auto p-6 outline-none"
+            className="flex-1 overflow-auto p-0 outline-none"
             tabIndex={0}
             onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, dialogPreRef) : undefined}
           >
             {viewMode === 'json' && (
-              <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+              <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all p-6">
                 <code>{renderContent(true)}</code>
               </pre>
             )}

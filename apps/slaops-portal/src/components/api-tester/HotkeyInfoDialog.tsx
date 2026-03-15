@@ -8,6 +8,15 @@ interface HotkeyInfoDialogProps {
 
 const SECTIONS: { title: string; rows: [string, string][] }[] = [
   {
+    title: 'URL Input (Standard Mode)',
+    rows: [
+      ['↑ / ↓', 'Browse URL history'],
+      ['Enter', 'Send request & save URL to history'],
+      ['Esc', 'Close history / revert URL'],
+      ['Double-click', 'Show URL history'],
+    ],
+  },
+  {
     title: 'JSON Viewer',
     rows: [
       ['⌘ K', 'Toggle Highlight Mode'],

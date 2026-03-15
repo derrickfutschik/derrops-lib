@@ -336,6 +336,17 @@ const ApiTester = () => {
   const urlInputFocusedRef = useRef(false)
   const [activeTab, setActiveTab] = useState<string>('params')
 
+  // URL history (similar to JMESPath history)
+  const [urlHistory, setUrlHistory] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('apiTester_urlHistory')
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [urlHistoryIndex, setUrlHistoryIndex] = useState(-1)
+  const [showUrlHistory, setShowUrlHistory] = useState(false)
+  const savedUrlRef = useRef('')
+
   // Mobile panel tab for switching between Request and Response
   const [mobilePanelTab, setMobilePanelTab] = useState<'request' | 'response'>('request')
   const isMobile = useIsMobile()
@@ -687,7 +698,56 @@ const ApiTester = () => {
     }
   }, [queryParams])
 
-  // Parse URL query params when URL changes manually
+  // URL history helpers
+  const addUrlToHistory = (urlToAdd: string) => {
+    if (!urlToAdd.trim()) return
+    setUrlHistory(prev => {
+      const filtered = prev.filter(u => u !== urlToAdd)
+      const updated = [urlToAdd, ...filtered].slice(0, 50)
+      localStorage.setItem('apiTester_urlHistory', JSON.stringify(updated))
+      return updated
+    })
+    setUrlHistoryIndex(-1)
+  }
+
+  const handleUrlKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      if (showUrlHistory) {
+        setShowUrlHistory(false)
+        return
+      }
+      if (urlHistoryIndex !== -1) {
+        setUrlHistoryIndex(-1)
+        setUrl(savedUrlRef.current)
+      }
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (urlHistory.length === 0) return
+      if (urlHistoryIndex === -1) {
+        savedUrlRef.current = url
+      }
+      const newIndex = Math.min(urlHistoryIndex + 1, urlHistory.length - 1)
+      setUrlHistoryIndex(newIndex)
+      setUrl(urlHistory[newIndex])
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (urlHistoryIndex === -1) return
+      const newIndex = urlHistoryIndex - 1
+      setUrlHistoryIndex(newIndex)
+      setUrl(newIndex === -1 ? savedUrlRef.current : urlHistory[newIndex])
+      return
+    }
+    if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
+      addUrlToHistory(url)
+      handleActionButton()
+    }
+  }
+
+
   const handleUrlChange = (newUrl: string) => {
     setUrl(newUrl)
 
@@ -1352,6 +1412,9 @@ const ApiTester = () => {
         body: responseBody,
         duration: Math.round(endTime - startTime),
       })
+
+      // Save URL to history on any request
+      addUrlToHistory(requestUrl)
 
       // Save successful request state to localStorage
       if (response.ok) {
@@ -2528,24 +2591,44 @@ const ApiTester = () => {
                               <Input
                                 placeholder="Enter request URL (e.g., https://api.example.com/v1/users)"
                                 value={url}
-                                onChange={(e) => setUrl(e.target.value)}
+                                onChange={(e) => { setUrl(e.target.value); setUrlHistoryIndex(-1) }}
                                 onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
-                                onBlur={() => { urlInputFocusedRef.current = false; }}
+                                onBlur={() => { urlInputFocusedRef.current = false; setShowUrlHistory(false) }}
+                                onDoubleClick={() => { if (urlHistory.length > 0) setShowUrlHistory(prev => !prev) }}
+                                onKeyDown={handleUrlKeyDown}
                                 onPaste={(e) => {
                                   const pasted = e.clipboardData.getData('text')
                                   const match = pasted.match(/(https?:\/\/\S+)/)
                                   if (match) {
                                     e.preventDefault()
-                                    // Extract URL, then collapse any whitespace/newlines in query portion
                                     const raw = pasted.slice(pasted.indexOf(match[1]))
                                     const cleaned = raw.replace(/[\s\r\n]+/g, '')
                                     handleUrlChange(cleaned)
                                   }
                                 }}
                                 className={`bg-background pr-8 ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                title="↑↓ to browse URL history | Double-click to show history"
                               />
                               {!urlValidation.isValid && !urlValidation.isEmpty && (
                                 <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+                              )}
+                              {showUrlHistory && urlHistory.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
+                                  {urlHistory.map((histUrl, i) => (
+                                    <button
+                                      key={i}
+                                      className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === urlHistoryIndex ? 'bg-muted' : ''}`}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        setUrl(histUrl)
+                                        setUrlHistoryIndex(-1)
+                                        setShowUrlHistory(false)
+                                      }}
+                                    >
+                                      {histUrl}
+                                    </button>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           </TooltipTrigger>
@@ -4135,19 +4218,37 @@ const ApiTester = () => {
                         </div>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Input
-                              placeholder="Enter request URL (e.g., https://api.example.com/users)"
-                              value={url}
-                              onChange={(e) => handleUrlChange(e.target.value)}
-                              onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
-                              onBlur={() => { urlInputFocusedRef.current = false; }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
-                                  handleActionButton()
-                                }
-                              }}
-                              className={`bg-background xl:hidden ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                            />
+                            <div className="relative xl:hidden">
+                              <Input
+                                placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                                value={url}
+                                onChange={(e) => { handleUrlChange(e.target.value); setUrlHistoryIndex(-1) }}
+                                onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
+                                onBlur={() => { urlInputFocusedRef.current = false; setShowUrlHistory(false) }}
+                                onDoubleClick={() => { if (urlHistory.length > 0) setShowUrlHistory(prev => !prev) }}
+                                onKeyDown={handleUrlKeyDown}
+                                className={`bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                title="↑↓ to browse URL history | Double-click to show history"
+                              />
+                              {showUrlHistory && urlHistory.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
+                                  {urlHistory.map((histUrl, i) => (
+                                    <button
+                                      key={i}
+                                      className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === urlHistoryIndex ? 'bg-muted' : ''}`}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        handleUrlChange(histUrl)
+                                        setUrlHistoryIndex(-1)
+                                        setShowUrlHistory(false)
+                                      }}
+                                    >
+                                      {histUrl}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </TooltipTrigger>
                           {!urlValidation.isValid && !urlValidation.isEmpty && (
                             <TooltipContent
@@ -4190,19 +4291,37 @@ const ApiTester = () => {
                           </Select>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Input
-                                placeholder="Enter request URL (e.g., https://api.example.com/users)"
-                                value={url}
-                                onChange={(e) => handleUrlChange(e.target.value)}
-                                onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
-                                onBlur={() => { urlInputFocusedRef.current = false; }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !isAnalyzing && !isSendingRequest) {
-                                    handleActionButton()
-                                  }
-                                }}
-                                className={`flex-1 bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                              />
+                              <div className="relative flex-1">
+                                <Input
+                                  placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                                  value={url}
+                                  onChange={(e) => { handleUrlChange(e.target.value); setUrlHistoryIndex(-1) }}
+                                  onFocus={(e) => { if (!urlInputFocusedRef.current) { e.target.select(); urlInputFocusedRef.current = true; } }}
+                                  onBlur={() => { urlInputFocusedRef.current = false; setShowUrlHistory(false) }}
+                                  onDoubleClick={() => { if (urlHistory.length > 0) setShowUrlHistory(prev => !prev) }}
+                                  onKeyDown={handleUrlKeyDown}
+                                  className={`bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                  title="↑↓ to browse URL history | Double-click to show history"
+                                />
+                                {showUrlHistory && urlHistory.length > 0 && (
+                                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
+                                    {urlHistory.map((histUrl, i) => (
+                                      <button
+                                        key={i}
+                                        className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === urlHistoryIndex ? 'bg-muted' : ''}`}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault()
+                                          handleUrlChange(histUrl)
+                                          setUrlHistoryIndex(-1)
+                                          setShowUrlHistory(false)
+                                        }}
+                                      >
+                                        {histUrl}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </TooltipTrigger>
                             {!urlValidation.isValid && !urlValidation.isEmpty && (
                               <TooltipContent
