@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -202,13 +203,13 @@ export function MaximizableCodeViewer({
     }
   }
 
-  const setJmespathQuery = (query: string) => {
+  const setJmespathQuery = useCallback((query: string) => {
     if (onJMESPathStateChange) {
       onJMESPathStateChange({ enabled: jmespathEnabled, query, mode: jmespathMode })
     } else {
       setInternalJmespathQuery(query)
     }
-  }
+  }, [onJMESPathStateChange, jmespathEnabled, jmespathMode])
 
   const setJmespathMode = (mode: 'filter' | 'highlight') => {
     if (onJMESPathStateChange) {
@@ -406,6 +407,22 @@ export function MaximizableCodeViewer({
       toast.success('Downloaded as CSV')
       return
     }
+    if (viewMode === 'markdown') {
+      const effective = getEffectiveContent()
+      let mdContent = effective
+      try { const parsed = JSON.parse(effective); if (typeof parsed === 'string') mdContent = parsed } catch {}
+      const blob = new Blob([mdContent], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'response.md'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Downloaded as Markdown')
+      return
+    }
     const effectiveContent = getEffectiveContent()
     const extension = isJson ? 'json' : 'txt'
     const mimeType = isJson ? 'application/json' : 'text/plain'
@@ -477,6 +494,29 @@ export function MaximizableCodeViewer({
     toast.success('Downloaded as CSV')
   }
 
+  // LRU cache for JMESPath results (keyed by content hash + query)
+  const jmespathCacheRef = useRef<{ key: string; result: any }[]>([])
+  const JMESPATH_CACHE_SIZE = 10
+
+  const getCachedJmespathResult = (contentStr: string, query: string): any | undefined => {
+    const key = `${contentStr.length}:${query}`
+    const entry = jmespathCacheRef.current.find(e => e.key === key)
+    if (entry) {
+      // Move to front (most recent)
+      jmespathCacheRef.current = [entry, ...jmespathCacheRef.current.filter(e => e !== entry)]
+      return entry.result
+    }
+    return undefined
+  }
+
+  const setCachedJmespathResult = (contentStr: string, query: string, result: any) => {
+    const key = `${contentStr.length}:${query}`
+    jmespathCacheRef.current = [
+      { key, result },
+      ...jmespathCacheRef.current.filter(e => e.key !== key),
+    ].slice(0, JMESPATH_CACHE_SIZE)
+  }
+
   // JMESPath filtering/highlighting logic
   const { filteredContent, matchedPaths, jmespathError } = useMemo(() => {
     if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) {
@@ -484,8 +524,13 @@ export function MaximizableCodeViewer({
     }
 
     try {
-      const parsed = JSON.parse(content)
-      const result = jmespath.search(parsed, debouncedQuery)
+      // Check cache first
+      let result = getCachedJmespathResult(content, debouncedQuery)
+      if (result === undefined) {
+        const parsed = JSON.parse(content)
+        result = jmespath.search(parsed, debouncedQuery)
+        setCachedJmespathResult(content, debouncedQuery, result)
+      }
 
       if (jmespathMode === 'filter') {
         return {
@@ -493,61 +538,13 @@ export function MaximizableCodeViewer({
           matchedPaths: new Set<string>(),
           jmespathError: null,
         }
-      } else {
-        // Highlight mode: find all paths that match
-        const paths = new Set<string>()
-        const findPaths = (obj: any, query: string, currentPath: string = '') => {
-          try {
-            const res = jmespath.search(obj, query)
-            if (res !== null && res !== undefined) {
-              collectMatchingValues(parsed, result, paths, '')
-            }
-          } catch {
-            // Ignore errors in path finding
-          }
-        }
+      }
 
-        const collectMatchingValues = (
-          original: any,
-          matched: any,
-          paths: Set<string>,
-          path: string,
-        ) => {
-          if (matched === null || matched === undefined) return
-
-          if (typeof matched !== 'object') {
-            findValuePaths(original, matched, paths, '')
-          } else if (Array.isArray(matched)) {
-            matched.forEach((item, idx) => {
-              collectMatchingValues(original, item, paths, `${path}[${idx}]`)
-            })
-          } else {
-            Object.keys(matched).forEach((key) => {
-              collectMatchingValues(original, matched[key], paths, path ? `${path}.${key}` : key)
-            })
-          }
-        }
-
-        const findValuePaths = (obj: any, value: any, paths: Set<string>, currentPath: string) => {
-          if (obj === value) {
-            paths.add(currentPath || 'root')
-            return
-          }
-          if (typeof obj !== 'object' || obj === null) return
-
-          if (Array.isArray(obj)) {
-            obj.forEach((item, idx) => {
-              findValuePaths(item, value, paths, `${currentPath}[${idx}]`)
-            })
-          } else {
-            Object.entries(obj).forEach(([key, val]) => {
-              findValuePaths(val, value, paths, currentPath ? `${currentPath}.${key}` : key)
-            })
-          }
-        }
-
-        findPaths(parsed, debouncedQuery)
-        return { filteredContent: null, matchedPaths: paths, jmespathError: null }
+      // Highlight mode: only validate query/result here.
+      return {
+        filteredContent: null,
+        matchedPaths: new Set<string>(),
+        jmespathError: null,
       }
     } catch (e: unknown) {
       return {
@@ -874,14 +871,14 @@ export function MaximizableCodeViewer({
     if (
       jmespathEnabled &&
       jmespathMode === 'highlight' &&
-      jmespathQuery.trim() &&
+      debouncedQuery.trim() &&
       isJson &&
       !jmespathError
     ) {
       try {
         const parsed = JSON.parse(content)
-        const result = jmespath.search(parsed, jmespathQuery)
-        return renderHighlightedJson(content, result, jmespathQuery)
+        const result = jmespath.search(parsed, debouncedQuery)
+        return renderHighlightedJson(content, result, debouncedQuery)
       } catch {
         // Fall through to normal rendering
       }
@@ -1136,40 +1133,7 @@ export function MaximizableCodeViewer({
     }
   }
 
-  const viewModeTabs = () => (
-    <div className="flex items-center gap-0.5">
-      <Button
-        variant={viewMode === 'json' ? 'default' : 'ghost'}
-        size="sm"
-        className="h-6 px-2 text-xs gap-1"
-        onClick={() => setViewMode('json')}
-        title="JSON View"
-      >
-        <Code className="h-3 w-3" />
-        JSON
-      </Button>
-      <Button
-        variant={viewMode === 'markdown' ? 'default' : 'ghost'}
-        size="sm"
-        className="h-6 px-2 text-xs gap-1"
-        onClick={() => setViewMode('markdown')}
-        title="Markdown View"
-      >
-        <FileText className="h-3 w-3" />
-        Markdown
-      </Button>
-      <Button
-        variant={viewMode === 'table' ? 'default' : 'ghost'}
-        size="sm"
-        className="h-6 px-2 text-xs gap-1"
-        onClick={() => setViewMode('table')}
-        title="Table View"
-      >
-        <FileSpreadsheet className="h-3 w-3" />
-        Table
-      </Button>
-    </div>
-  )
+  // viewModeTabs is defined after displayContent below
 
   const schemaButton = (showText: boolean = false) =>
     responseSchema && (
@@ -1513,8 +1477,55 @@ export function MaximizableCodeViewer({
         : content
   const lineCount = displayContent.split('\n').length
 
+  // Lightweight validity checks for each view mode
+  const viewValidity = useMemo(() => {
+    const trimmed = displayContent.trim()
+    const jsonValid = isJson || (() => { try { JSON.parse(trimmed); return true } catch { return false } })()
+    const tableValid = (() => {
+      if (jsonValid) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          return Array.isArray(parsed) && parsed.length > 0
+        } catch { return false }
+      }
+      const lines = trimmed.split('\n').filter(l => l.trim())
+      return lines.length >= 2 && lines[0].includes(',')
+    })()
+    const markdownValid = trimmed.length > 0
+    return { json: jsonValid, markdown: markdownValid, table: tableValid }
+  }, [displayContent, isJson])
+
+  const viewModeOptions: { value: ViewMode; label: string; icon: React.ReactNode; valid: boolean }[] = [
+    { value: 'json', label: 'JSON', icon: <Code className="h-3 w-3" />, valid: viewValidity.json },
+    { value: 'markdown', label: 'Markdown', icon: <FileText className="h-3 w-3" />, valid: viewValidity.markdown },
+    { value: 'table', label: 'Table', icon: <FileSpreadsheet className="h-3 w-3" />, valid: viewValidity.table },
+  ]
+
+  const viewModeTabs = () => (
+    <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+      <SelectTrigger className="h-6 w-auto gap-1.5 px-2 text-xs border-none bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0 [&>svg:last-child]:h-3 [&>svg:last-child]:w-3 [&>svg:last-child]:opacity-50">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {viewModeOptions.map(opt => (
+          <SelectItem key={opt.value} value={opt.value} className="text-xs">
+            <div className="flex items-center gap-2">
+              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>{opt.icon}</span>
+              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>{opt.label}</span>
+              {opt.valid && (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary ml-1" />
+              )}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+
   // Parse table data from displayContent (JSON array of objects or primitives, or CSV string)
+  // Only compute when table view is active to avoid expensive processing during JMESPath editing
   const tableData = useMemo(() => {
+    if (viewMode !== 'table') return null
     // Try JSON first
     try {
       const parsed = JSON.parse(displayContent)
@@ -1568,7 +1579,7 @@ export function MaximizableCodeViewer({
       return { columns, rows }
     }
     return null
-  }, [displayContent])
+  }, [displayContent, viewMode])
   tableDataRef.current = tableData
 
   const handleColumnSort = (colIndex: number) => {
@@ -1581,7 +1592,7 @@ export function MaximizableCodeViewer({
   }
 
   const sortedRows = useMemo(() => {
-    if (!tableData || sortColumn === null) return tableData?.rows ?? []
+    if (viewMode !== 'table' || !tableData || sortColumn === null) return tableData?.rows ?? []
     const col = sortColumn
     return [...tableData.rows].sort((a, b) => {
       const aVal = a[col] ?? ''
@@ -1592,11 +1603,12 @@ export function MaximizableCodeViewer({
       const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
       return sortDirection === 'asc' ? cmp : -cmp
     })
-  }, [tableData, sortColumn, sortDirection])
+  }, [tableData, sortColumn, sortDirection, viewMode])
 
   // Execute SQL query against table data using AlaSQL
+  // Only compute when table view is active
   const sqlResult = useMemo(() => {
-    if (!sqlQuery.trim() || !tableData) return null
+    if (viewMode !== 'table' || !sqlQuery.trim() || !tableData) return null
     try {
       const data = tableData.rows.map(row => {
         const obj: Record<string, string> = {}
@@ -1629,7 +1641,7 @@ export function MaximizableCodeViewer({
       setSqlError(e?.message || 'Invalid SQL query')
       return null
     }
-  }, [sqlQuery, tableData])
+  }, [sqlQuery, tableData, viewMode])
   sqlResultRef.current = sqlResult
 
 
