@@ -44,6 +44,214 @@ import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
 
+// ---------------------------------------------------------------------------
+// Module-level pure helpers (stable references, never recreated per render)
+// ---------------------------------------------------------------------------
+
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true
+  if (a == null || b == null) return false
+  if (typeof a !== typeof b) return false
+
+  if (typeof a === 'object') {
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false
+      return a.every((item, idx) => deepEqual(item, b[idx]))
+    } else {
+      const aKeys = Object.keys(a).sort()
+      const bKeys = Object.keys(b).sort()
+      if (aKeys.length !== bKeys.length) return false
+      if (!aKeys.every((key, idx) => key === bKeys[idx])) return false
+      return aKeys.every((key) => deepEqual(a[key], b[key]))
+    }
+  }
+
+  return false
+}
+
+/**
+ * Stage 1: Find JSON paths in `original` that correspond to the JMESPath `result`.
+ * Returns a Set of path strings (e.g. "hits[0].document.name") to highlight.
+ */
+function findJmespathJsonLocations(original: any, result: any, query: string): Set<string> {
+  const matchedPaths = new Set<string>()
+
+  const addPathAndChildren = (obj: any, currentPath: string): void => {
+    matchedPaths.add(currentPath)
+    if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj)) {
+        obj.forEach((item, idx) => {
+          addPathAndChildren(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
+        })
+      } else {
+        Object.keys(obj).forEach((key) => {
+          addPathAndChildren(obj[key], currentPath ? `${currentPath}.${key}` : key)
+        })
+      }
+    }
+  }
+
+  // Fast-path for simple field-access queries (no wildcards or functions)
+  const simplePathRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\])*$/
+  if (simplePathRegex.test(query.trim())) {
+    const path = query.trim()
+    const pathParts = path.match(/[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\]/g) || []
+    let current = original
+    let valid = true
+
+    for (const part of pathParts) {
+      if (part.startsWith('[')) {
+        const index = parseInt(part.slice(1, -1), 10)
+        if (Array.isArray(current) && index >= 0 && index < current.length) {
+          current = current[index]
+        } else {
+          valid = false
+          break
+        }
+      } else {
+        if (current && typeof current === 'object' && part in current) {
+          current = current[part]
+        } else {
+          valid = false
+          break
+        }
+      }
+    }
+
+    if (valid && deepEqual(current, result)) {
+      addPathAndChildren(current, path)
+      return matchedPaths
+    }
+  }
+
+  // Slow-path for complex queries: structural containment matching
+  const isInResult = (value: any, res: any, checkPartial: boolean = true): boolean => {
+    if (deepEqual(value, res)) return true
+    if (!checkPartial) return false
+    if (Array.isArray(res)) {
+      return res.some((item) => isInResult(value, item, true))
+    }
+    if (res && typeof res === 'object' && !Array.isArray(res)) {
+      return Object.values(res).some((v) => isInResult(value, v, true))
+    }
+    return false
+  }
+
+  const traverse = (obj: any, currentPath: string): void => {
+    if (isInResult(obj, result, true)) {
+      matchedPaths.add(currentPath)
+    }
+    if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj)) {
+        obj.forEach((item, idx) => {
+          traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
+        })
+      } else {
+        Object.keys(obj).forEach((key) => {
+          traverse(obj[key], currentPath ? `${currentPath}.${key}` : key)
+        })
+      }
+    }
+  }
+
+  traverse(original, '')
+  return matchedPaths
+}
+
+/**
+ * Stage 2: Render JSON with highlighting applied to matched paths.
+ * `onClickPath` is called (instead of closing over a setState) so this
+ * function can live at module level with a stable reference.
+ */
+function highlightJson(parsed: any, matchedPaths: Set<string>, onClickPath: (path: string) => void): React.ReactNode {
+  const handleClick = (path: string) => (e: React.MouseEvent) => {
+    if ((e.metaKey || e.ctrlKey) && path) {
+      e.preventDefault()
+      onClickPath(path)
+    }
+  }
+
+  const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
+    const indentStr = '  '.repeat(indent)
+    const isHighlighted = matchedPaths.has(currentPath)
+    const className = isHighlighted ? 'text-primary font-semibold' : 'text-muted-foreground/50'
+    const clickTitle = 'Cmd/Ctrl+click to use as JMESPath'
+
+    if (value === null) {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>null</span>
+    }
+
+    if (typeof value === 'boolean') {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{String(value)}</span>
+    }
+
+    if (typeof value === 'number') {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{value}</span>
+    }
+
+    if (typeof value === 'string') {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>"{value}"</span>
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>
+      return (
+        <>
+          <span className="text-muted-foreground/50">[</span>
+          {'\n'}
+          {value.map((item, idx) => {
+            const itemPath = currentPath ? `${currentPath}[${idx}]` : `[${idx}]`
+            return (
+              <React.Fragment key={idx}>
+                {indentStr}
+                {'  '}
+                {renderValue(item, itemPath, indent + 1)}
+                {idx < value.length - 1 && <span className="text-muted-foreground/50">,</span>}
+                {'\n'}
+              </React.Fragment>
+            )
+          })}
+          {indentStr}
+          <span className="text-muted-foreground/50">]</span>
+        </>
+      )
+    }
+
+    if (typeof value === 'object') {
+      const keys = Object.keys(value)
+      if (keys.length === 0) return <span className="text-muted-foreground/50">{'{}'}</span>
+      return (
+        <>
+          <span className="text-muted-foreground/50">{'{'}</span>
+          {'\n'}
+          {keys.map((key, idx) => {
+            const keyPath = currentPath ? `${currentPath}.${key}` : key
+            return (
+              <React.Fragment key={key}>
+                {indentStr}
+                {'  '}
+                <span className="text-muted-foreground/50 cursor-pointer" onClick={handleClick(keyPath)} title={clickTitle}>"{key}"</span>
+                <span className="text-muted-foreground/50">: </span>
+                {renderValue(value[key], keyPath, indent + 1)}
+                {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
+                {'\n'}
+              </React.Fragment>
+            )
+          })}
+          {indentStr}
+          <span className="text-muted-foreground/50">{'}'}</span>
+        </>
+      )
+    }
+
+    return String(value)
+  }
+
+  return renderValue(parsed, '', 0)
+}
+
 type ViewMode = 'json' | 'markdown' | 'table'
 
 class MarkdownErrorBoundary extends React.Component<
@@ -632,15 +840,28 @@ export function MaximizableCodeViewer({
     toast.success('Downloaded as CSV')
   }
 
-  // LRU cache for JMESPath results (keyed by content hash + query)
-  const jmespathCacheRef = useRef<{ key: string; result: any }[]>([])
+  // Single-entry cache for the parsed JSON object. Avoids re-parsing the same
+  // content string multiple times within a render cycle (e.g. once in the
+  // JMESPath useMemo and again in the renderedContent useMemo).
+  const parsedContentRef = useRef<{ content: string; parsed: any } | null>(null)
+  const getParsedContent = useCallback((contentStr: string): any => {
+    if (parsedContentRef.current?.content === contentStr) {
+      return parsedContentRef.current.parsed
+    }
+    const parsed = JSON.parse(contentStr)
+    parsedContentRef.current = { content: contentStr, parsed }
+    return parsed
+  }, [])
+
+  // LRU cache for JMESPath search results. Key is the content string itself
+  // (not its length) to avoid collisions between responses of the same size.
+  const jmespathCacheRef = useRef<{ content: string; query: string; result: any }[]>([])
   const JMESPATH_CACHE_SIZE = 10
 
   const getCachedJmespathResult = (contentStr: string, query: string): any | undefined => {
-    const key = `${contentStr.length}:${query}`
-    const entry = jmespathCacheRef.current.find(e => e.key === key)
+    const entry = jmespathCacheRef.current.find(e => e.content === contentStr && e.query === query)
     if (entry) {
-      // Move to front (most recent)
+      // Move to front (most recently used)
       jmespathCacheRef.current = [entry, ...jmespathCacheRef.current.filter(e => e !== entry)]
       return entry.result
     }
@@ -648,24 +869,25 @@ export function MaximizableCodeViewer({
   }
 
   const setCachedJmespathResult = (contentStr: string, query: string, result: any) => {
-    const key = `${contentStr.length}:${query}`
     jmespathCacheRef.current = [
-      { key, result },
-      ...jmespathCacheRef.current.filter(e => e.key !== key),
+      { content: contentStr, query, result },
+      ...jmespathCacheRef.current.filter(e => !(e.content === contentStr && e.query === query)),
     ].slice(0, JMESPATH_CACHE_SIZE)
   }
 
-  // JMESPath filtering/highlighting logic
+  // JMESPath filtering/highlighting logic — all expensive computation lives here
+  // so it only re-runs when the actual inputs change (not on every render).
   const { filteredContent, matchedPaths, jmespathError } = useMemo(() => {
     if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) {
       return { filteredContent: null, matchedPaths: new Set<string>(), jmespathError: null }
     }
 
     try {
-      // Check cache first
+      // Use the parse cache so we don't re-parse the same string twice
+      const parsed = getParsedContent(content)
+
       let result = getCachedJmespathResult(content, debouncedQuery)
       if (result === undefined) {
-        const parsed = JSON.parse(content)
         result = jmespath.search(parsed, debouncedQuery)
         setCachedJmespathResult(content, debouncedQuery, result)
       }
@@ -678,12 +900,10 @@ export function MaximizableCodeViewer({
         }
       }
 
-      // Highlight mode: only validate query/result here.
-      return {
-        filteredContent: null,
-        matchedPaths: new Set<string>(),
-        jmespathError: null,
-      }
+      // Highlight mode: compute the full matched-path set here so it is
+      // memoized and not recomputed on every unrelated render.
+      const paths = findJmespathJsonLocations(parsed, result, debouncedQuery)
+      return { filteredContent: null, matchedPaths: paths, jmespathError: null }
     } catch (e: unknown) {
       return {
         filteredContent: null,
@@ -691,256 +911,26 @@ export function MaximizableCodeViewer({
         jmespathError: e instanceof Error ? e.message : 'Invalid JMESPath query',
       }
     }
+  // getParsedContent is stable (useCallback with []) so omitting from deps is safe.
+  // getCached/setCached only access a ref, also safe to omit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, debouncedQuery, jmespathEnabled, jmespathMode, isJson])
 
-  /**
-   * Helper function to check deep structural equality between two values
-   */
-  const deepEqual = (a: any, b: any): boolean => {
-    if (a === b) return true
-    if (a == null || b == null) return false
-    if (typeof a !== typeof b) return false
-
-    if (typeof a === 'object') {
-      if (Array.isArray(a) !== Array.isArray(b)) return false
-
-      if (Array.isArray(a)) {
-        if (a.length !== b.length) return false
-        return a.every((item, idx) => deepEqual(item, b[idx]))
-      } else {
-        const aKeys = Object.keys(a).sort()
-        const bKeys = Object.keys(b).sort()
-        if (aKeys.length !== bKeys.length) return false
-        if (!aKeys.every((key, idx) => key === bKeys[idx])) return false
-        return aKeys.every((key) => deepEqual(a[key], b[key]))
-      }
-    }
-
-    return false
-  }
-
-  /**
-   * Stage 1: Find character locations in JSON string that match the JMESPath result.
-   * Returns a Set of JSON paths (e.g., "a", "items[0].name") that should be highlighted.
-   */
-  const findJmespathJsonLocations = (original: any, result: any, query: string): Set<string> => {
-    const matchedPaths = new Set<string>()
-
-    // Helper to recursively add a path and all its children
-    const addPathAndChildren = (obj: any, currentPath: string): void => {
-      matchedPaths.add(currentPath)
-
-      if (obj && typeof obj === 'object') {
-        if (Array.isArray(obj)) {
-          obj.forEach((item, idx) => {
-            addPathAndChildren(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
-          })
-        } else {
-          Object.keys(obj).forEach((key) => {
-            addPathAndChildren(obj[key], currentPath ? `${currentPath}.${key}` : key)
-          })
-        }
-      }
-    }
-
-    // Try to handle simple field access queries (e.g., "a", "a.b.c", "items[0]", "a.b[1].c")
-    // This regex matches simple path expressions
-    const simplePathRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\])*$/
-
-    if (simplePathRegex.test(query.trim())) {
-      // Convert JMESPath notation to our path notation
-      // e.g., "a.b[0].c" stays as "a.b[0].c"
-      const path = query.trim()
-
-      // Navigate to the value at this path
-      const pathParts = path.match(/[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\]/g) || []
-      let current = original
-      let valid = true
-
-      for (const part of pathParts) {
-        if (part.startsWith('[')) {
-          // Array index
-          const index = parseInt(part.slice(1, -1), 10)
-          if (Array.isArray(current) && index >= 0 && index < current.length) {
-            current = current[index]
-          } else {
-            valid = false
-            break
-          }
-        } else {
-          // Object key
-          if (current && typeof current === 'object' && part in current) {
-            current = current[part]
-          } else {
-            valid = false
-            break
-          }
-        }
-      }
-
-      // If we successfully navigated to the path and it matches the result, highlight it
-      if (valid && deepEqual(current, result)) {
-        addPathAndChildren(current, path)
-        return matchedPaths
-      }
-    }
-
-    // For complex queries, use structural matching
-    // Helper to check if a value is structurally contained in the result
-    const isInResult = (value: any, result: any, checkPartial: boolean = true): boolean => {
-      // Exact structural match
-      if (deepEqual(value, result)) return true
-
-      if (!checkPartial) return false
-
-      // Check if value is contained within result structure
-      if (Array.isArray(result)) {
-        return result.some((item) => isInResult(value, item, true))
-      }
-
-      if (result && typeof result === 'object' && !Array.isArray(result)) {
-        return Object.values(result).some((v) => isInResult(value, v, true))
-      }
-
-      return false
-    }
-
-    // Traverse the original object and mark paths that are in the result
-    const traverse = (obj: any, currentPath: string): void => {
-      // Check if this value is in the result
-      if (isInResult(obj, result, true)) {
-        matchedPaths.add(currentPath)
-      }
-
-      // Continue traversing children
-      if (obj && typeof obj === 'object') {
-        if (Array.isArray(obj)) {
-          obj.forEach((item, idx) => {
-            traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
-          })
-        } else {
-          Object.keys(obj).forEach((key) => {
-            traverse(obj[key], currentPath ? `${currentPath}.${key}` : key)
-          })
-        }
-      }
-    }
-
-    traverse(original, '')
-    return matchedPaths
-  }
-
-  /**
-   * Stage 2: Render JSON with highlighting based on matched paths.
-   * Takes the parsed JSON object and a Set of paths to highlight.
-   */
-  const highlightJson = (parsed: any, matchedPaths: Set<string>): React.ReactNode => {
-    const handleClick = (path: string) => (e: React.MouseEvent) => {
-      if ((e.metaKey || e.ctrlKey) && path) {
-        e.preventDefault()
-        setJmespathQuery(path)
-      }
-    }
-
-    const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
-      const indentStr = '  '.repeat(indent)
-      const isHighlighted = matchedPaths.has(currentPath)
-      const className = isHighlighted ? 'text-primary font-semibold' : 'text-muted-foreground/50'
-      const clickTitle = 'Cmd/Ctrl+click to use as JMESPath'
-
-      if (value === null) {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>null</span>
-      }
-
-      if (typeof value === 'boolean') {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{String(value)}</span>
-      }
-
-      if (typeof value === 'number') {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{value}</span>
-      }
-
-      if (typeof value === 'string') {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>"{value}"</span>
-      }
-
-      if (Array.isArray(value)) {
-        if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>
-        return (
-          <>
-            <span className="text-muted-foreground/50">[</span>
-            {'\n'}
-            {value.map((item, idx) => {
-              const itemPath = currentPath ? `${currentPath}[${idx}]` : `[${idx}]`
-              return (
-                <React.Fragment key={idx}>
-                  {indentStr}
-                  {'  '}
-                  {renderValue(item, itemPath, indent + 1)}
-                  {idx < value.length - 1 && <span className="text-muted-foreground/50">,</span>}
-                  {'\n'}
-                </React.Fragment>
-              )
-            })}
-            {indentStr}
-            <span className="text-muted-foreground/50">]</span>
-          </>
-        )
-      }
-
-      if (typeof value === 'object') {
-        const keys = Object.keys(value)
-        if (keys.length === 0) return <span className="text-muted-foreground/50">{'{}'}</span>
-        return (
-          <>
-            <span className="text-muted-foreground/50">{'{'}</span>
-            {'\n'}
-            {keys.map((key, idx) => {
-              const keyPath = currentPath ? `${currentPath}.${key}` : key
-              return (
-                <React.Fragment key={key}>
-                  {indentStr}
-                  {'  '}
-                  <span className="text-muted-foreground/50 cursor-pointer" onClick={handleClick(keyPath)} title={clickTitle}>"{key}"</span>
-                  <span className="text-muted-foreground/50">: </span>
-                  {renderValue(value[key], keyPath, indent + 1)}
-                  {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
-                  {'\n'}
-                </React.Fragment>
-              )
-            })}
-            {indentStr}
-            <span className="text-muted-foreground/50">{'}'}</span>
-          </>
-        )
-      }
-
-      return String(value)
-    }
-
-    return renderValue(parsed, '', 0)
-  }
-
-  const renderHighlightedJson = (jsonStr: string, matchedResult: any, query: string) => {
-    try {
-      const parsed = JSON.parse(jsonStr)
-
-      // Stage 1: Find the paths in the JSON that match the JMESPath result
-      const matchedPaths = findJmespathJsonLocations(parsed, matchedResult, query)
-
-      // Stage 2: Render the JSON with highlighting applied to matched paths
-      return highlightJson(parsed, matchedPaths)
-    } catch {
-      return jsonStr
-    }
-  }
+  // Stable refs so callbacks passed to child components or useMemo don't need
+  // to be in dependency arrays when they only need the *latest* value.
+  const setJmespathQueryRef = useRef(setJmespathQuery)
+  setJmespathQueryRef.current = setJmespathQuery
+  const jmespathQueryRef = useRef(jmespathQuery)
+  jmespathQueryRef.current = jmespathQuery
 
   // When in filter mode, clicking a node should append to the existing expression
   // rather than replace it. If the current filtered result is an array, clicking a
   // key appends `[].key`; if it's an object, it appends `.key`.
-  const handleFilteredJmespathSelect = (clickedPath: string) => {
-    if (!jmespathQuery.trim() || filteredContent === null) {
-      setJmespathQuery(clickedPath)
+  // Uses refs for query/setter so this callback only changes when filteredContent changes.
+  const handleFilteredJmespathSelect = useCallback((clickedPath: string) => {
+    const currentQuery = jmespathQueryRef.current
+    if (!currentQuery.trim() || filteredContent === null) {
+      setJmespathQueryRef.current(clickedPath)
       return
     }
 
@@ -950,27 +940,35 @@ export function MaximizableCodeViewer({
         // Strip leading [number] or [number]. prefix and use [] wildcard instead
         if (/^\[\d+\]$/.test(clickedPath)) {
           // Clicking directly on an array element (no sub-path) — pipe to that index
-          setJmespathQuery(`${jmespathQuery} | ${clickedPath}`)
+          setJmespathQueryRef.current(`${currentQuery} | ${clickedPath}`)
         } else {
           // Clicking a property within an array element — wildcard projection
           const stripped = clickedPath.replace(/^\[\d+\]\.?/, '')
           const suffix = stripped
             ? stripped.startsWith('[') ? `[]${stripped}` : `[].${stripped}`
             : '[]'
-          setJmespathQuery(`${jmespathQuery}${suffix}`)
+          setJmespathQueryRef.current(`${currentQuery}${suffix}`)
         }
       } else {
         // Object: append with dot separator (or nothing if path starts with '[')
         const separator = clickedPath.startsWith('[') ? '' : '.'
-        setJmespathQuery(`${jmespathQuery}${separator}${clickedPath}`)
+        setJmespathQueryRef.current(`${currentQuery}${separator}${clickedPath}`)
       }
     } catch {
-      setJmespathQuery(clickedPath)
+      setJmespathQueryRef.current(clickedPath)
     }
-  }
+  // jmespathQueryRef and setJmespathQueryRef are stable refs, safe to omit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredContent])
 
-  const renderContent = (unlimitedHeight = false) => {
-    // If JMESPath filter mode and we have filtered content (unique filter applied on top if active)
+  // Memoized rendered content — the single most impactful optimisation.
+  // Previously renderContent() was a plain function called during JSX evaluation,
+  // meaning every state change (SQL input, sort order, history panel, etc.)
+  // would re-run the full JMESPath highlight path including the O(n²)
+  // findJmespathJsonLocations traversal. Now it only re-runs when the actual
+  // inputs to the display change.
+  const renderedContent = useMemo((): React.ReactNode => {
+    // JMESPath filter mode (unique filter applied on top if active)
     if (jmespathEnabled && jmespathMode === 'filter' && effectiveFilteredContent !== null) {
       try {
         JSON.parse(effectiveFilteredContent)
@@ -987,6 +985,7 @@ export function MaximizableCodeViewer({
         return effectiveFilteredContent
       }
     }
+
     // Unique filter active without JMESPath filter — apply to raw content
     if (uniqueFilter && uniqueFilteredContent !== null) {
       try {
@@ -1005,18 +1004,12 @@ export function MaximizableCodeViewer({
       }
     }
 
-    // If JMESPath highlight mode
-    if (
-      jmespathEnabled &&
-      jmespathMode === 'highlight' &&
-      debouncedQuery.trim() &&
-      isJson &&
-      !jmespathError
-    ) {
+    // JMESPath highlight mode — matchedPaths already computed in the useMemo above.
+    // Pass a stable-ref callback so this memo doesn't depend on setJmespathQuery identity.
+    if (jmespathEnabled && jmespathMode === 'highlight' && debouncedQuery.trim() && isJson && !jmespathError) {
       try {
-        const parsed = JSON.parse(content)
-        const result = jmespath.search(parsed, debouncedQuery)
-        return renderHighlightedJson(content, result, debouncedQuery)
+        const parsed = getParsedContent(content)
+        return highlightJson(parsed, matchedPaths, (path) => setJmespathQueryRef.current(path))
       } catch {
         // Fall through to normal rendering
       }
@@ -1038,7 +1031,18 @@ export function MaximizableCodeViewer({
         return content
       }
     }
-  }
+
+    return content
+  // getParsedContent is stable (useCallback []). setJmespathQueryRef is a stable
+  // ref object. Both are safe to omit from deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    jmespathEnabled, jmespathMode, effectiveFilteredContent,
+    uniqueFilter, uniqueFilteredContent,
+    matchedPaths, debouncedQuery, isJson, jmespathError,
+    content, responseSchema, validationErrors, truncateValues,
+    handleFilteredJmespathSelect, selectJmespathQuery,
+  ])
 
   // tableData and sortedRows are computed later (after displayContent is available)
 
@@ -1638,7 +1642,7 @@ export function MaximizableCodeViewer({
     }
   }, [uniqueFilter, preUniqueContent])
 
-  // Effective filtered content for renderContent (unique filter applied on top)
+  // Effective filtered content (unique filter applied on top of JMESPath filter)
   const effectiveFilteredContent =
     uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
 
@@ -1931,7 +1935,7 @@ export function MaximizableCodeViewer({
         >
           {viewMode === 'json' && (
             <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all p-4">
-              <code>{renderContent()}</code>
+              <code>{renderedContent}</code>
             </pre>
           )}
           {viewMode === 'markdown' && renderMarkdownView()}
@@ -1996,7 +2000,7 @@ export function MaximizableCodeViewer({
           >
             {viewMode === 'json' && (
               <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all p-6">
-                <code>{renderContent(true)}</code>
+                <code>{renderedContent}</code>
               </pre>
             )}
             {viewMode === 'markdown' && renderMarkdownView()}
