@@ -211,6 +211,16 @@ export function MaximizableCodeViewer({
     }
   }, [onJMESPathStateChange, jmespathEnabled, jmespathMode])
 
+  // Sets query AND enables JMESPath (used for Cmd+Click from JSON viewer)
+  const selectJmespathQuery = useCallback((query: string) => {
+    if (onJMESPathStateChange) {
+      onJMESPathStateChange({ enabled: true, query, mode: jmespathMode })
+    } else {
+      setInternalJmespathEnabled(true)
+      setInternalJmespathQuery(query)
+    }
+  }, [onJMESPathStateChange, jmespathMode])
+
   const setJmespathMode = (mode: 'filter' | 'highlight') => {
     if (onJMESPathStateChange) {
       onJMESPathStateChange({ enabled: jmespathEnabled, query: jmespathQuery, mode })
@@ -370,7 +380,84 @@ export function MaximizableCodeViewer({
     return content
   }
 
+  // Resolve effective markdown content (converts JSON arrays to markdown tables)
+  const getEffectiveMarkdownContent = (): string | null => {
+    const effective = getEffectiveContent()
+    let mdContent = effective
+    try {
+      const parsed = JSON.parse(effective)
+      if (typeof parsed === 'string') {
+        mdContent = parsed
+      } else if (Array.isArray(parsed) && parsed.length > 0) {
+        // Array of strings → join with horizontal rule separators
+        if (parsed.every((item: any) => typeof item === 'string')) {
+          mdContent = parsed.join('\n\n---\n\n')
+        } else if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+          const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
+          const escapeCell = (val: any) => {
+            const str = val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
+            return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+          }
+          const headerRow = `| ${columns.join(' | ')} |`
+          const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`
+          const dataRows = parsed.map((item: any) =>
+            `| ${columns.map((col) => escapeCell(item[col])).join(' | ')} |`
+          )
+          mdContent = [headerRow, separatorRow, ...dataRows].join('\n')
+        } else {
+          const escapeCell = (val: any) => {
+            const str = val === null || val === undefined ? '' : String(val)
+            return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+          }
+          mdContent = ['| value |', '| --- |', ...parsed.map((v: any) => `| ${escapeCell(v)} |`)].join('\n')
+        }
+      } else {
+        return null
+      }
+    } catch {
+      // Not JSON — use as-is
+    }
+    return mdContent
+  }
+
+  const getTableTsv = () => {
+    const data = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+    if (!data) return null
+    return [data.columns.join('\t'), ...data.rows.map(row => row.join('\t'))].join('\n')
+  }
+
   const handleCopy = () => {
+    if (viewMode === 'table') {
+      const tsv = getTableTsv()
+      if (tsv) {
+        const htmlTable = (() => {
+          const data = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+          if (!data) return ''
+          const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          const headerCells = data.columns.map(c => `<th>${esc(c)}</th>`).join('')
+          const bodyRows = data.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')
+          return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`
+        })()
+        const blob = new Blob([htmlTable], { type: 'text/html' })
+        const textBlob = new Blob([tsv], { type: 'text/plain' })
+        navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': blob,
+            'text/plain': textBlob,
+          }),
+        ])
+        toast.success('Copied table to clipboard')
+        return
+      }
+    }
+    if (viewMode === 'markdown') {
+      const md = getEffectiveMarkdownContent()
+      if (md) {
+        navigator.clipboard.writeText(md)
+        toast.success('Copied Markdown to clipboard')
+        return
+      }
+    }
     const effectiveContent = getEffectiveContent()
     navigator.clipboard.writeText(effectiveContent)
     toast.success(
@@ -380,8 +467,10 @@ export function MaximizableCodeViewer({
     )
   }
 
+  const getTableData = () => sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+
   const getTableCsv = () => {
-    const data = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+    const data = getTableData()
     if (!data) return null
     const escape = (val: string) => {
       return val.includes(',') || val.includes('"') || val.includes('\n')
@@ -389,6 +478,57 @@ export function MaximizableCodeViewer({
         : val
     }
     return [data.columns.map(escape).join(','), ...data.rows.map(row => row.map(escape).join(','))].join('\n')
+  }
+
+  const getTableMarkdown = () => {
+    const data = getTableData()
+    if (!data) return null
+    const esc = (v: string) => v.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+    return [
+      `| ${data.columns.map(esc).join(' | ')} |`,
+      `| ${data.columns.map(() => '---').join(' | ')} |`,
+      ...data.rows.map(row => `| ${row.map(esc).join(' | ')} |`),
+    ].join('\n')
+  }
+
+  const getTableJsCode = () => {
+    const data = getTableData()
+    if (!data) return null
+    const objects = data.rows.map(row => {
+      const obj: Record<string, string> = {}
+      data.columns.forEach((col, i) => { obj[col] = row[i] })
+      return obj
+    })
+    return JSON.stringify(objects, null, 2)
+  }
+
+  const getTableSql = (tableName = 'table_name') => {
+    const data = getTableData()
+    if (!data) return null
+    const escSql = (v: string) => v.replace(/'/g, "''")
+    const cols = data.columns.map(c => `"${c}"`).join(', ')
+    return data.rows.map(row => {
+      const vals = row.map(v => v === '' ? 'NULL' : `'${escSql(v)}'`).join(', ')
+      return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`
+    }).join('\n')
+  }
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text)
+    toast.success(`Copied as ${label}`)
+  }
+
+  const downloadText = (text: string, filename: string, mimeType: string, label: string) => {
+    const blob = new Blob([text], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success(`Downloaded as ${label}`)
   }
 
   const handleDownload = () => {
@@ -408,9 +548,7 @@ export function MaximizableCodeViewer({
       return
     }
     if (viewMode === 'markdown') {
-      const effective = getEffectiveContent()
-      let mdContent = effective
-      try { const parsed = JSON.parse(effective); if (typeof parsed === 'string') mdContent = parsed } catch {}
+      const mdContent = getEffectiveMarkdownContent() || getEffectiveContent()
       const blob = new Blob([mdContent], { type: 'text/markdown' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -858,7 +996,7 @@ export function MaximizableCodeViewer({
             jsonString={uniqueFilteredContent}
             responseSchema={responseSchema}
             validationErrors={validationErrors}
-            onJmespathSelect={setJmespathQuery}
+            onJmespathSelect={selectJmespathQuery}
             truncateValues={truncateValues}
           />
         )
@@ -892,7 +1030,7 @@ export function MaximizableCodeViewer({
             jsonString={content}
             responseSchema={responseSchema}
             validationErrors={validationErrors}
-            onJmespathSelect={setJmespathQuery}
+            onJmespathSelect={selectJmespathQuery}
             truncateValues={truncateValues}
           />
         )
@@ -1089,23 +1227,14 @@ export function MaximizableCodeViewer({
   }
 
   const renderMarkdownView = () => {
-    const effective = getEffectiveContent()
-    // If it's a JSON string, extract the string value
-    let mdContent = effective
-    try {
-      const parsed = JSON.parse(effective)
-      if (typeof parsed === 'string') {
-        mdContent = parsed
-      } else {
-        // Non-string JSON (object, array, number, etc.) — not renderable as markdown
-        return (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-            Content is not valid Markdown. Switch to JSON view to see the data.
-          </div>
-        )
-      }
-    } catch {
-      // Not JSON — use as-is (raw text/markdown)
+    const mdContent = getEffectiveMarkdownContent()
+
+    if (mdContent === null) {
+      return (
+        <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+          Content is not valid Markdown. Switch to JSON view to see the data.
+        </div>
+      )
     }
 
     if (!mdContent || !mdContent.trim()) {
@@ -1119,7 +1248,7 @@ export function MaximizableCodeViewer({
     try {
       return (
         <MarkdownErrorBoundary key={mdContent}>
-          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-primary prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-blockquote:text-muted-foreground prose-blockquote:border-border">
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-primary prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-a:text-primary prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-table:text-sm prose-th:text-primary prose-th:font-semibold prose-th:text-left prose-th:px-4 prose-th:py-2 prose-td:px-4 prose-td:py-2 prose-td:text-foreground prose-tr:border-b prose-tr:border-border prose-thead:border-b-2 prose-thead:border-primary/30">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{mdContent}</ReactMarkdown>
           </div>
         </MarkdownErrorBoundary>
@@ -1204,16 +1333,46 @@ export function MaximizableCodeViewer({
         </Button>
       )}
       {schemaButton(showText)}
-      <Button
-        variant="outline"
-        size="sm"
-        className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-        onClick={handleCopy}
-        title="Copy"
-      >
-        <Copy className="h-3.5 w-3.5" />
-        {showText && <span>Copy</span>}
-      </Button>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
+            onClick={handleCopy}
+            title="Copy (right-click for more options)"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {showText && <span>Copy</span>}
+          </Button>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleCopy}>
+            Copy as Table (Excel/Email)
+          </ContextMenuItem>
+          {viewMode === 'table' && (
+            <>
+              <ContextMenuItem onClick={() => { const md = getTableMarkdown(); if (md) copyText(md, 'Markdown') }}>
+                Copy as Markdown
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => { const csv = getTableCsv(); if (csv) copyText(csv, 'CSV') }}>
+                Copy as CSV
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => { const js = getTableJsCode(); if (js) copyText(js, 'Code') }}>
+                Copy as Code
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => { const sql = getTableSql(); if (sql) copyText(sql, 'SQL') }}>
+                Copy as SQL
+              </ContextMenuItem>
+            </>
+          )}
+          {viewMode !== 'table' && isJson && (
+            <ContextMenuItem onClick={handleDownloadCsv}>
+              Copy as CSV
+            </ContextMenuItem>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <Button
@@ -1229,18 +1388,33 @@ export function MaximizableCodeViewer({
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={handleDownload}>
-            Download as JSON
+            {viewMode === 'table' ? 'Download as CSV' : viewMode === 'markdown' ? 'Download as Markdown' : 'Download as JSON'}
           </ContextMenuItem>
-          <ContextMenuItem onClick={handleDownloadCsv}>
-            Download as CSV
-          </ContextMenuItem>
+          {viewMode === 'table' && (
+            <>
+              <ContextMenuItem onClick={() => { const md = getTableMarkdown(); if (md) downloadText(md, 'response.md', 'text/markdown', 'Markdown') }}>
+                Download as Markdown
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => { const js = getTableJsCode(); if (js) downloadText(js, 'response.json', 'application/json', 'JSON') }}>
+                Download as JSON
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => { const sql = getTableSql(); if (sql) downloadText(sql, 'response.sql', 'text/plain', 'SQL') }}>
+                Download as SQL
+              </ContextMenuItem>
+            </>
+          )}
+          {viewMode !== 'table' && isJson && (
+            <ContextMenuItem onClick={handleDownloadCsv}>
+              Download as CSV
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
     </>
   )
 
-  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>) => (
-    <div className="flex items-center gap-3 px-3 py-2 border-b border-border bg-muted/20">
+  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>, disabled = false) => (
+    <div className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}>
       <div className="flex items-center gap-2">
         <Switch
           id="jmespath-toggle"
@@ -1645,6 +1819,8 @@ export function MaximizableCodeViewer({
   sqlResultRef.current = sqlResult
 
 
+
+
   const jsonStats = useMemo(() => {
     if (!isJson) return null
     try {
@@ -1746,7 +1922,7 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {viewMode === 'json' && isJson && jmespathRow(normalInputRef)}
+        {isJson && jmespathRow(normalInputRef, viewMode !== 'json')}
         <div
           className={`p-4 overflow-auto flex-1 outline-none`}
           style={{ maxHeight }}
@@ -1812,7 +1988,7 @@ export function MaximizableCodeViewer({
               </div>
             </div>
           </DialogHeader>
-          {viewMode === 'json' && isJson && jmespathRow(dialogInputRef)}
+          {isJson && jmespathRow(dialogInputRef, viewMode !== 'json')}
           <div
             className="flex-1 overflow-auto p-6 outline-none"
             tabIndex={0}
