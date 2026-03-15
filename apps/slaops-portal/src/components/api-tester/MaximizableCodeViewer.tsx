@@ -334,6 +334,17 @@ export function MaximizableCodeViewer({
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
   const dialogPreRef = useRef<HTMLPreElement>(null)
+  const dialogContentRef = useRef<HTMLDivElement>(null)
+
+  // Auto-focus the maximized dialog content area so hotkeys work immediately
+  useEffect(() => {
+    if (isMaximized) {
+      // Small delay to let the dialog render
+      requestAnimationFrame(() => {
+        dialogContentRef.current?.focus()
+      })
+    }
+  }, [isMaximized])
 
   const applyWildcard = () => {
     const wildcarded = jmespathQuery.replace(/\[\d+\]/g, '[*]')
@@ -545,6 +556,36 @@ export function MaximizableCodeViewer({
     if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
       e.preventDefault()
       toggleUniqueFilter()
+    }
+    // Undo JMESPath: Cmd+Z
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
+      e.preventDefault()
+      if (undoDebounceRef.current) {
+        clearTimeout(undoDebounceRef.current)
+        undoDebounceRef.current = null
+        if (typingStartRef.current !== null) {
+          undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
+          typingStartRef.current = null
+        }
+      }
+      if (undoStackRef.current.length === 0) return
+      const prev = undoStackRef.current[undoStackRef.current.length - 1]
+      undoStackRef.current = undoStackRef.current.slice(0, -1)
+      redoStackRef.current = [...redoStackRef.current, jmespathQuery]
+      setHistoryIndex(-1)
+      setJmespathQuery(prev)
+      return
+    }
+    // Redo JMESPath: Cmd+Shift+Z or Cmd+Y
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+      e.preventDefault()
+      if (redoStackRef.current.length === 0) return
+      const next = redoStackRef.current[redoStackRef.current.length - 1]
+      redoStackRef.current = redoStackRef.current.slice(0, -1)
+      undoStackRef.current = [...undoStackRef.current, jmespathQuery]
+      setHistoryIndex(-1)
+      setJmespathQuery(next)
+      return
     }
   }
 
@@ -961,6 +1002,52 @@ export function MaximizableCodeViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredContent])
 
+
+  // Compute pre-unique content (JMESPath filtered or original)
+  const preUniqueContent =
+    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
+
+  // Deduplicated content (null when unique filter is off or content is not an array)
+  const uniqueFilteredContent = useMemo(() => {
+    if (!uniqueFilter) return null
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return null
+      const seen = new Set<string>()
+      const unique = parsed.filter((item) => {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      return JSON.stringify(unique, null, 2)
+    } catch {
+      return null
+    }
+  }, [uniqueFilter, preUniqueContent])
+
+  // Effective filtered content (unique filter applied on top of JMESPath filter)
+  const effectiveFilteredContent =
+    uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
+
+  // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
+  const duplicateCount = useMemo(() => {
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return 0
+      const seen = new Set<string>()
+      let dupes = 0
+      for (const item of parsed) {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) dupes++
+        else seen.add(key)
+      }
+      return dupes
+    } catch {
+      return 0
+    }
+  }, [preUniqueContent])
+
   // Memoized rendered content — the single most impactful optimisation.
   // Previously renderContent() was a plain function called during JSX evaluation,
   // meaning every state change (SQL input, sort order, history panel, etc.)
@@ -1094,138 +1181,145 @@ export function MaximizableCodeViewer({
     const displayData = sqlResult || { columns: tableData.columns, rows: sortedRows }
 
     return (
-      <div>
-        {/* SQL Query Bar */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary shrink-0">
-            <FileCode className="h-3.5 w-3.5" />
-            SQL
-          </div>
-          <div className="flex-1 relative">
-            <Input
-              ref={sqlInputRef}
-              placeholder="e.g. SELECT * FROM ? WHERE status = 'active' — ⌘+Click cells to build filters"
-              value={sqlQuery}
-              onChange={(e) => { setSqlQuery(e.target.value); setSqlError(null); setSqlHistoryIndex(-1) }}
-              onFocus={() => {}}
-              onBlur={() => { setShowSqlHistory(false) }}
-              onDoubleClick={() => { if (sqlHistory.length > 0) setShowSqlHistory(true) }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  if (showSqlHistory) { setShowSqlHistory(false); return }
-                  if (sqlHistoryIndex !== -1) {
-                    setSqlHistoryIndex(-1)
-                    setSqlQuery(savedSqlRef.current)
-                    return
-                  }
-                  setSqlQuery('')
-                  setSqlError(null)
-                }
-                if (e.key === 'Enter') {
-                  if (sqlQuery.trim()) addToSqlHistory(sqlQuery)
-                  setSqlHistoryIndex(-1)
-                  setShowSqlHistory(false)
-                }
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  if (sqlHistory.length === 0) return
-                  if (sqlHistoryIndex === -1) savedSqlRef.current = sqlQuery
-                  const newIdx = Math.min(sqlHistoryIndex + 1, sqlHistory.length - 1)
-                  setSqlHistoryIndex(newIdx)
-                  setSqlQuery(sqlHistory[newIdx])
-                }
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault()
-                  if (sqlHistoryIndex === -1) return
-                  const newIdx = sqlHistoryIndex - 1
-                  setSqlHistoryIndex(newIdx)
-                  setSqlQuery(newIdx === -1 ? savedSqlRef.current : sqlHistory[newIdx])
-                }
-              }}
-              className={`h-7 text-xs font-mono ${sqlError ? 'border-destructive' : ''}`}
-              title="↑↓ to browse history | Double-click to show history | Enter to commit"
-            />
-            {showSqlHistory && sqlHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-48 overflow-y-auto">
-                {sqlHistory.map((expr, i) => (
-                  <button
-                    key={i}
-                    className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === sqlHistoryIndex ? 'bg-muted' : ''}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      setSqlQuery(expr)
+      <div className="flex flex-col h-full">
+        {/* SQL Query Bar - fixed, not scrollable */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary shrink-0">
+              <FileCode className="h-3.5 w-3.5" />
+              SQL
+            </div>
+            <div className="flex-1 relative">
+              <Input
+                ref={sqlInputRef}
+                placeholder="e.g. SELECT * FROM ? WHERE status = 'active' — ⌘+Click cells to build filters"
+                value={sqlQuery}
+                onChange={(e) => { setSqlQuery(e.target.value); setSqlError(null); setSqlHistoryIndex(-1) }}
+                onFocus={() => {}}
+                onBlur={() => { setShowSqlHistory(false) }}
+                onDoubleClick={() => { if (sqlHistory.length > 0) setShowSqlHistory(true) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    if (showSqlHistory) { setShowSqlHistory(false); return }
+                    if (sqlHistoryIndex !== -1) {
                       setSqlHistoryIndex(-1)
-                      setShowSqlHistory(false)
-                    }}
-                  >
-                    {expr}
-                  </button>
-                ))}
-              </div>
+                      setSqlQuery(savedSqlRef.current)
+                      return
+                    }
+                    setSqlQuery('')
+                    setSqlError(null)
+                  }
+                  if (e.key === 'Enter') {
+                    if (sqlQuery.trim()) addToSqlHistory(sqlQuery)
+                    setSqlHistoryIndex(-1)
+                    setShowSqlHistory(false)
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    if (sqlHistory.length === 0) return
+                    if (sqlHistoryIndex === -1) savedSqlRef.current = sqlQuery
+                    const newIdx = Math.min(sqlHistoryIndex + 1, sqlHistory.length - 1)
+                    setSqlHistoryIndex(newIdx)
+                    setSqlQuery(sqlHistory[newIdx])
+                  }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    if (sqlHistoryIndex === -1) return
+                    const newIdx = sqlHistoryIndex - 1
+                    setSqlHistoryIndex(newIdx)
+                    setSqlQuery(newIdx === -1 ? savedSqlRef.current : sqlHistory[newIdx])
+                  }
+                }}
+                className={`h-7 text-xs font-mono ${sqlError ? 'border-destructive' : ''}`}
+                title="↑↓ to browse history | Double-click to show history | Enter to commit"
+              />
+              {showSqlHistory && sqlHistory.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-48 overflow-y-auto">
+                  {sqlHistory.map((expr, i) => (
+                    <button
+                      key={i}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === sqlHistoryIndex ? 'bg-muted' : ''}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        setSqlQuery(expr)
+                        setSqlHistoryIndex(-1)
+                        setShowSqlHistory(false)
+                      }}
+                    >
+                      {expr}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {sqlQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs shrink-0"
+                onClick={() => { setSqlQuery(''); setSqlError(null); setSqlHistoryIndex(-1) }}
+              >
+                Clear
+              </Button>
             )}
           </div>
-          {sqlQuery && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs shrink-0"
-              onClick={() => { setSqlQuery(''); setSqlError(null); setSqlHistoryIndex(-1) }}
-            >
-              Clear
-            </Button>
+          {/* SQL Error */}
+          {sqlError && (
+            <div className="px-3 py-1.5 border-b border-border bg-destructive/10 text-xs text-destructive font-mono">
+              {sqlError}
+            </div>
+          )}
+          {/* Results info */}
+          {sqlResult && (
+            <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
+              <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
+              <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
+            </div>
           )}
         </div>
-        {/* SQL Error */}
-        {sqlError && (
-          <div className="px-3 py-1.5 border-b border-border bg-destructive/10 text-xs text-destructive font-mono">
-            {sqlError}
-          </div>
-        )}
-        {/* Results info */}
-        {sqlResult && (
-          <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
-            <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
-            <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
-          </div>
-        )}
-        <Table>
-          <TableHeader className="bg-primary/10">
-            <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
-              {displayData.columns.map((col, i) => (
-                <TableHead
-                  key={i}
-                  className="cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors"
-                  onClick={() => !sqlResult && handleColumnSort(i)}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col}
-                    {!sqlResult && sortColumn === i ? (
-                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                    ) : !sqlResult ? (
-                      <ArrowUpDown className="h-3 w-3 opacity-30" />
-                    ) : null}
-                  </span>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayData.rows.map((row, ri) => (
-              <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
-                {row.map((cell, ci) => (
-                  <TableCell
-                    key={ci}
-                    className="font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5"
-                    onClick={handleCellClick(displayData.columns[ci], cell)}
-                    title="⌘+Click to add SQL filter"
+        {/* Scrollable table content */}
+        <div className="flex-1 overflow-auto">
+          <Table disableContainerOverflow>
+            <TableHeader className="bg-primary/10">
+              <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
+                <TableHead className="sticky top-0 z-20 bg-muted text-muted-foreground font-semibold w-[3ch]">#</TableHead>
+                {displayData.columns.map((col, i) => (
+                  <TableHead
+                    key={i}
+                    className="sticky top-0 z-20 bg-muted cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors"
+                    onClick={() => !sqlResult && handleColumnSort(i)}
                   >
-                    {cell}
-                  </TableCell>
+                    <span className="inline-flex items-center gap-1">
+                      {col}
+                      {!sqlResult && sortColumn === i ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : !sqlResult ? (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                      ) : null}
+                    </span>
+                  </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {displayData.rows.map((row, ri) => (
+                <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
+                  <TableCell className="font-mono text-xs text-muted-foreground/50 py-2.5 w-[3ch]">{ri}</TableCell>
+                  {row.map((cell, ci) => (
+                    <TableCell
+                      key={ci}
+                      className="font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5"
+                      onClick={handleCellClick(displayData.columns[ci], cell)}
+                      title="⌘+Click to add SQL filter"
+                    >
+                      {cell}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     )
   }
@@ -1601,51 +1695,6 @@ export function MaximizableCodeViewer({
     </div>
   )
 
-  // Compute pre-unique content (JMESPath filtered or original)
-  const preUniqueContent =
-    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
-
-  // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
-  const duplicateCount = useMemo(() => {
-    try {
-      const parsed = JSON.parse(preUniqueContent)
-      if (!Array.isArray(parsed)) return 0
-      const seen = new Set<string>()
-      let dupes = 0
-      for (const item of parsed) {
-        const key = JSON.stringify(item)
-        if (seen.has(key)) dupes++
-        else seen.add(key)
-      }
-      return dupes
-    } catch {
-      return 0
-    }
-  }, [preUniqueContent])
-
-  // Deduplicated content (null when unique filter is off or content is not an array)
-  const uniqueFilteredContent = useMemo(() => {
-    if (!uniqueFilter) return null
-    try {
-      const parsed = JSON.parse(preUniqueContent)
-      if (!Array.isArray(parsed)) return null
-      const seen = new Set<string>()
-      const unique = parsed.filter((item) => {
-        const key = JSON.stringify(item)
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      return JSON.stringify(unique, null, 2)
-    } catch {
-      return null
-    }
-  }, [uniqueFilter, preUniqueContent])
-
-  // Effective filtered content (unique filter applied on top of JMESPath filter)
-  const effectiveFilteredContent =
-    uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
-
   // Calculate line count
   const displayContent =
     uniqueFilter && uniqueFilteredContent !== null
@@ -1783,20 +1832,49 @@ export function MaximizableCodeViewer({
     })
   }, [tableData, sortColumn, sortDirection, viewMode])
 
+  // Normalize SQL to support reserved column names (e.g. value)
+  const normalizedSqlQuery = useMemo(() => {
+    if (!tableData || !sqlQuery.trim()) return sqlQuery
+    if (!tableData.columns.includes('value')) return sqlQuery
+
+    // Replace bare identifier `value` outside string literals with `[value]`
+    const segments = sqlQuery.split(/('(?:''|[^'])*')/)
+    return segments
+      .map((segment, index) => (index % 2 === 1 ? segment : segment.replace(/\bvalue\b/gi, '[value]')))
+      .join('')
+  }, [sqlQuery, tableData])
+
   // Execute SQL query against table data using AlaSQL
   // Only compute when table view is active
   const sqlResult = useMemo(() => {
     if (viewMode !== 'table' || !sqlQuery.trim() || !tableData) return null
     try {
       const data = tableData.rows.map(row => {
-        const obj: Record<string, string> = {}
+        const obj: Record<string, string | number | boolean> = {}
         tableData.columns.forEach((col, i) => {
-          obj[col] = row[i]
+          const v = row[i]
+          // Auto-coerce numeric strings so SQL comparisons work correctly
+          if (v === '') {
+            obj[col] = v
+          } else if (v === 'true') {
+            obj[col] = true
+          } else if (v === 'false') {
+            obj[col] = false
+          } else {
+            const num = Number(v)
+            obj[col] = !isNaN(num) && v.trim() !== '' ? num : v
+          }
         })
         return obj
       })
-      const result = alasql(sqlQuery, [data])
+
+      const result = alasql(normalizedSqlQuery, [data])
       setSqlError(null)
+
+      if (Array.isArray(result) && result.length === 0) {
+        return { columns: tableData.columns, rows: [] }
+      }
+
       if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
         const cols = Object.keys(result[0])
         const rows = result.map((r: any) => cols.map(c => {
@@ -1805,6 +1883,7 @@ export function MaximizableCodeViewer({
         }))
         return { columns: cols, rows }
       }
+
       // For aggregation results like COUNT, SUM etc that return a single value
       if (Array.isArray(result) && result.length > 0) {
         const first = result[0]
@@ -1819,7 +1898,7 @@ export function MaximizableCodeViewer({
       setSqlError(e?.message || 'Invalid SQL query')
       return null
     }
-  }, [sqlQuery, tableData, viewMode])
+  }, [sqlQuery, normalizedSqlQuery, tableData, viewMode])
   sqlResultRef.current = sqlResult
 
 
@@ -1994,6 +2073,7 @@ export function MaximizableCodeViewer({
           </DialogHeader>
           {isJson && jmespathRow(dialogInputRef, viewMode !== 'json')}
           <div
+            ref={dialogContentRef}
             className="flex-1 overflow-auto p-0 outline-none"
             tabIndex={0}
             onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, dialogPreRef) : undefined}
