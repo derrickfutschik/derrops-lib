@@ -44,6 +44,214 @@ import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
 
+// ---------------------------------------------------------------------------
+// Module-level pure helpers (stable references, never recreated per render)
+// ---------------------------------------------------------------------------
+
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true
+  if (a == null || b == null) return false
+  if (typeof a !== typeof b) return false
+
+  if (typeof a === 'object') {
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false
+      return a.every((item, idx) => deepEqual(item, b[idx]))
+    } else {
+      const aKeys = Object.keys(a).sort()
+      const bKeys = Object.keys(b).sort()
+      if (aKeys.length !== bKeys.length) return false
+      if (!aKeys.every((key, idx) => key === bKeys[idx])) return false
+      return aKeys.every((key) => deepEqual(a[key], b[key]))
+    }
+  }
+
+  return false
+}
+
+/**
+ * Stage 1: Find JSON paths in `original` that correspond to the JMESPath `result`.
+ * Returns a Set of path strings (e.g. "hits[0].document.name") to highlight.
+ */
+function findJmespathJsonLocations(original: any, result: any, query: string): Set<string> {
+  const matchedPaths = new Set<string>()
+
+  const addPathAndChildren = (obj: any, currentPath: string): void => {
+    matchedPaths.add(currentPath)
+    if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj)) {
+        obj.forEach((item, idx) => {
+          addPathAndChildren(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
+        })
+      } else {
+        Object.keys(obj).forEach((key) => {
+          addPathAndChildren(obj[key], currentPath ? `${currentPath}.${key}` : key)
+        })
+      }
+    }
+  }
+
+  // Fast-path for simple field-access queries (no wildcards or functions)
+  const simplePathRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\])*$/
+  if (simplePathRegex.test(query.trim())) {
+    const path = query.trim()
+    const pathParts = path.match(/[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\]/g) || []
+    let current = original
+    let valid = true
+
+    for (const part of pathParts) {
+      if (part.startsWith('[')) {
+        const index = parseInt(part.slice(1, -1), 10)
+        if (Array.isArray(current) && index >= 0 && index < current.length) {
+          current = current[index]
+        } else {
+          valid = false
+          break
+        }
+      } else {
+        if (current && typeof current === 'object' && part in current) {
+          current = current[part]
+        } else {
+          valid = false
+          break
+        }
+      }
+    }
+
+    if (valid && deepEqual(current, result)) {
+      addPathAndChildren(current, path)
+      return matchedPaths
+    }
+  }
+
+  // Slow-path for complex queries: structural containment matching
+  const isInResult = (value: any, res: any, checkPartial: boolean = true): boolean => {
+    if (deepEqual(value, res)) return true
+    if (!checkPartial) return false
+    if (Array.isArray(res)) {
+      return res.some((item) => isInResult(value, item, true))
+    }
+    if (res && typeof res === 'object' && !Array.isArray(res)) {
+      return Object.values(res).some((v) => isInResult(value, v, true))
+    }
+    return false
+  }
+
+  const traverse = (obj: any, currentPath: string): void => {
+    if (isInResult(obj, result, true)) {
+      matchedPaths.add(currentPath)
+    }
+    if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj)) {
+        obj.forEach((item, idx) => {
+          traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
+        })
+      } else {
+        Object.keys(obj).forEach((key) => {
+          traverse(obj[key], currentPath ? `${currentPath}.${key}` : key)
+        })
+      }
+    }
+  }
+
+  traverse(original, '')
+  return matchedPaths
+}
+
+/**
+ * Stage 2: Render JSON with highlighting applied to matched paths.
+ * `onClickPath` is called (instead of closing over a setState) so this
+ * function can live at module level with a stable reference.
+ */
+function highlightJson(parsed: any, matchedPaths: Set<string>, onClickPath: (path: string) => void): React.ReactNode {
+  const handleClick = (path: string) => (e: React.MouseEvent) => {
+    if ((e.metaKey || e.ctrlKey) && path) {
+      e.preventDefault()
+      onClickPath(path)
+    }
+  }
+
+  const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
+    const indentStr = '  '.repeat(indent)
+    const isHighlighted = matchedPaths.has(currentPath)
+    const className = isHighlighted ? 'text-primary font-semibold' : 'text-muted-foreground/50'
+    const clickTitle = 'Cmd/Ctrl+click to use as JMESPath'
+
+    if (value === null) {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>null</span>
+    }
+
+    if (typeof value === 'boolean') {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{String(value)}</span>
+    }
+
+    if (typeof value === 'number') {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{value}</span>
+    }
+
+    if (typeof value === 'string') {
+      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>"{value}"</span>
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>
+      return (
+        <>
+          <span className="text-muted-foreground/50">[</span>
+          {'\n'}
+          {value.map((item, idx) => {
+            const itemPath = currentPath ? `${currentPath}[${idx}]` : `[${idx}]`
+            return (
+              <React.Fragment key={idx}>
+                {indentStr}
+                {'  '}
+                {renderValue(item, itemPath, indent + 1)}
+                {idx < value.length - 1 && <span className="text-muted-foreground/50">,</span>}
+                {'\n'}
+              </React.Fragment>
+            )
+          })}
+          {indentStr}
+          <span className="text-muted-foreground/50">]</span>
+        </>
+      )
+    }
+
+    if (typeof value === 'object') {
+      const keys = Object.keys(value)
+      if (keys.length === 0) return <span className="text-muted-foreground/50">{'{}'}</span>
+      return (
+        <>
+          <span className="text-muted-foreground/50">{'{'}</span>
+          {'\n'}
+          {keys.map((key, idx) => {
+            const keyPath = currentPath ? `${currentPath}.${key}` : key
+            return (
+              <React.Fragment key={key}>
+                {indentStr}
+                {'  '}
+                <span className="text-muted-foreground/50 cursor-pointer" onClick={handleClick(keyPath)} title={clickTitle}>"{key}"</span>
+                <span className="text-muted-foreground/50">: </span>
+                {renderValue(value[key], keyPath, indent + 1)}
+                {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
+                {'\n'}
+              </React.Fragment>
+            )
+          })}
+          {indentStr}
+          <span className="text-muted-foreground/50">{'}'}</span>
+        </>
+      )
+    }
+
+    return String(value)
+  }
+
+  return renderValue(parsed, '', 0)
+}
+
 type ViewMode = 'json' | 'markdown' | 'table'
 
 class MarkdownErrorBoundary extends React.Component<
@@ -126,6 +334,17 @@ export function MaximizableCodeViewer({
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
   const dialogPreRef = useRef<HTMLPreElement>(null)
+  const dialogContentRef = useRef<HTMLDivElement>(null)
+
+  // Auto-focus the maximized dialog content area so hotkeys work immediately
+  useEffect(() => {
+    if (isMaximized) {
+      // Small delay to let the dialog render
+      requestAnimationFrame(() => {
+        dialogContentRef.current?.focus()
+      })
+    }
+  }, [isMaximized])
 
   const applyWildcard = () => {
     const wildcarded = jmespathQuery.replace(/\[\d+\]/g, '[*]')
@@ -337,6 +556,36 @@ export function MaximizableCodeViewer({
     if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
       e.preventDefault()
       toggleUniqueFilter()
+    }
+    // Undo JMESPath: Cmd+Z
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
+      e.preventDefault()
+      if (undoDebounceRef.current) {
+        clearTimeout(undoDebounceRef.current)
+        undoDebounceRef.current = null
+        if (typingStartRef.current !== null) {
+          undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
+          typingStartRef.current = null
+        }
+      }
+      if (undoStackRef.current.length === 0) return
+      const prev = undoStackRef.current[undoStackRef.current.length - 1]
+      undoStackRef.current = undoStackRef.current.slice(0, -1)
+      redoStackRef.current = [...redoStackRef.current, jmespathQuery]
+      setHistoryIndex(-1)
+      setJmespathQuery(prev)
+      return
+    }
+    // Redo JMESPath: Cmd+Shift+Z or Cmd+Y
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+      e.preventDefault()
+      if (redoStackRef.current.length === 0) return
+      const next = redoStackRef.current[redoStackRef.current.length - 1]
+      redoStackRef.current = redoStackRef.current.slice(0, -1)
+      undoStackRef.current = [...undoStackRef.current, jmespathQuery]
+      setHistoryIndex(-1)
+      setJmespathQuery(next)
+      return
     }
   }
 
@@ -632,15 +881,28 @@ export function MaximizableCodeViewer({
     toast.success('Downloaded as CSV')
   }
 
-  // LRU cache for JMESPath results (keyed by content hash + query)
-  const jmespathCacheRef = useRef<{ key: string; result: any }[]>([])
+  // Single-entry cache for the parsed JSON object. Avoids re-parsing the same
+  // content string multiple times within a render cycle (e.g. once in the
+  // JMESPath useMemo and again in the renderedContent useMemo).
+  const parsedContentRef = useRef<{ content: string; parsed: any } | null>(null)
+  const getParsedContent = useCallback((contentStr: string): any => {
+    if (parsedContentRef.current?.content === contentStr) {
+      return parsedContentRef.current.parsed
+    }
+    const parsed = JSON.parse(contentStr)
+    parsedContentRef.current = { content: contentStr, parsed }
+    return parsed
+  }, [])
+
+  // LRU cache for JMESPath search results. Key is the content string itself
+  // (not its length) to avoid collisions between responses of the same size.
+  const jmespathCacheRef = useRef<{ content: string; query: string; result: any }[]>([])
   const JMESPATH_CACHE_SIZE = 10
 
   const getCachedJmespathResult = (contentStr: string, query: string): any | undefined => {
-    const key = `${contentStr.length}:${query}`
-    const entry = jmespathCacheRef.current.find(e => e.key === key)
+    const entry = jmespathCacheRef.current.find(e => e.content === contentStr && e.query === query)
     if (entry) {
-      // Move to front (most recent)
+      // Move to front (most recently used)
       jmespathCacheRef.current = [entry, ...jmespathCacheRef.current.filter(e => e !== entry)]
       return entry.result
     }
@@ -648,24 +910,25 @@ export function MaximizableCodeViewer({
   }
 
   const setCachedJmespathResult = (contentStr: string, query: string, result: any) => {
-    const key = `${contentStr.length}:${query}`
     jmespathCacheRef.current = [
-      { key, result },
-      ...jmespathCacheRef.current.filter(e => e.key !== key),
+      { content: contentStr, query, result },
+      ...jmespathCacheRef.current.filter(e => !(e.content === contentStr && e.query === query)),
     ].slice(0, JMESPATH_CACHE_SIZE)
   }
 
-  // JMESPath filtering/highlighting logic
+  // JMESPath filtering/highlighting logic — all expensive computation lives here
+  // so it only re-runs when the actual inputs change (not on every render).
   const { filteredContent, matchedPaths, jmespathError } = useMemo(() => {
     if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) {
       return { filteredContent: null, matchedPaths: new Set<string>(), jmespathError: null }
     }
 
     try {
-      // Check cache first
+      // Use the parse cache so we don't re-parse the same string twice
+      const parsed = getParsedContent(content)
+
       let result = getCachedJmespathResult(content, debouncedQuery)
       if (result === undefined) {
-        const parsed = JSON.parse(content)
         result = jmespath.search(parsed, debouncedQuery)
         setCachedJmespathResult(content, debouncedQuery, result)
       }
@@ -678,12 +941,10 @@ export function MaximizableCodeViewer({
         }
       }
 
-      // Highlight mode: only validate query/result here.
-      return {
-        filteredContent: null,
-        matchedPaths: new Set<string>(),
-        jmespathError: null,
-      }
+      // Highlight mode: compute the full matched-path set here so it is
+      // memoized and not recomputed on every unrelated render.
+      const paths = findJmespathJsonLocations(parsed, result, debouncedQuery)
+      return { filteredContent: null, matchedPaths: paths, jmespathError: null }
     } catch (e: unknown) {
       return {
         filteredContent: null,
@@ -691,256 +952,26 @@ export function MaximizableCodeViewer({
         jmespathError: e instanceof Error ? e.message : 'Invalid JMESPath query',
       }
     }
+  // getParsedContent is stable (useCallback with []) so omitting from deps is safe.
+  // getCached/setCached only access a ref, also safe to omit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, debouncedQuery, jmespathEnabled, jmespathMode, isJson])
 
-  /**
-   * Helper function to check deep structural equality between two values
-   */
-  const deepEqual = (a: any, b: any): boolean => {
-    if (a === b) return true
-    if (a == null || b == null) return false
-    if (typeof a !== typeof b) return false
-
-    if (typeof a === 'object') {
-      if (Array.isArray(a) !== Array.isArray(b)) return false
-
-      if (Array.isArray(a)) {
-        if (a.length !== b.length) return false
-        return a.every((item, idx) => deepEqual(item, b[idx]))
-      } else {
-        const aKeys = Object.keys(a).sort()
-        const bKeys = Object.keys(b).sort()
-        if (aKeys.length !== bKeys.length) return false
-        if (!aKeys.every((key, idx) => key === bKeys[idx])) return false
-        return aKeys.every((key) => deepEqual(a[key], b[key]))
-      }
-    }
-
-    return false
-  }
-
-  /**
-   * Stage 1: Find character locations in JSON string that match the JMESPath result.
-   * Returns a Set of JSON paths (e.g., "a", "items[0].name") that should be highlighted.
-   */
-  const findJmespathJsonLocations = (original: any, result: any, query: string): Set<string> => {
-    const matchedPaths = new Set<string>()
-
-    // Helper to recursively add a path and all its children
-    const addPathAndChildren = (obj: any, currentPath: string): void => {
-      matchedPaths.add(currentPath)
-
-      if (obj && typeof obj === 'object') {
-        if (Array.isArray(obj)) {
-          obj.forEach((item, idx) => {
-            addPathAndChildren(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
-          })
-        } else {
-          Object.keys(obj).forEach((key) => {
-            addPathAndChildren(obj[key], currentPath ? `${currentPath}.${key}` : key)
-          })
-        }
-      }
-    }
-
-    // Try to handle simple field access queries (e.g., "a", "a.b.c", "items[0]", "a.b[1].c")
-    // This regex matches simple path expressions
-    const simplePathRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\])*$/
-
-    if (simplePathRegex.test(query.trim())) {
-      // Convert JMESPath notation to our path notation
-      // e.g., "a.b[0].c" stays as "a.b[0].c"
-      const path = query.trim()
-
-      // Navigate to the value at this path
-      const pathParts = path.match(/[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\]/g) || []
-      let current = original
-      let valid = true
-
-      for (const part of pathParts) {
-        if (part.startsWith('[')) {
-          // Array index
-          const index = parseInt(part.slice(1, -1), 10)
-          if (Array.isArray(current) && index >= 0 && index < current.length) {
-            current = current[index]
-          } else {
-            valid = false
-            break
-          }
-        } else {
-          // Object key
-          if (current && typeof current === 'object' && part in current) {
-            current = current[part]
-          } else {
-            valid = false
-            break
-          }
-        }
-      }
-
-      // If we successfully navigated to the path and it matches the result, highlight it
-      if (valid && deepEqual(current, result)) {
-        addPathAndChildren(current, path)
-        return matchedPaths
-      }
-    }
-
-    // For complex queries, use structural matching
-    // Helper to check if a value is structurally contained in the result
-    const isInResult = (value: any, result: any, checkPartial: boolean = true): boolean => {
-      // Exact structural match
-      if (deepEqual(value, result)) return true
-
-      if (!checkPartial) return false
-
-      // Check if value is contained within result structure
-      if (Array.isArray(result)) {
-        return result.some((item) => isInResult(value, item, true))
-      }
-
-      if (result && typeof result === 'object' && !Array.isArray(result)) {
-        return Object.values(result).some((v) => isInResult(value, v, true))
-      }
-
-      return false
-    }
-
-    // Traverse the original object and mark paths that are in the result
-    const traverse = (obj: any, currentPath: string): void => {
-      // Check if this value is in the result
-      if (isInResult(obj, result, true)) {
-        matchedPaths.add(currentPath)
-      }
-
-      // Continue traversing children
-      if (obj && typeof obj === 'object') {
-        if (Array.isArray(obj)) {
-          obj.forEach((item, idx) => {
-            traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
-          })
-        } else {
-          Object.keys(obj).forEach((key) => {
-            traverse(obj[key], currentPath ? `${currentPath}.${key}` : key)
-          })
-        }
-      }
-    }
-
-    traverse(original, '')
-    return matchedPaths
-  }
-
-  /**
-   * Stage 2: Render JSON with highlighting based on matched paths.
-   * Takes the parsed JSON object and a Set of paths to highlight.
-   */
-  const highlightJson = (parsed: any, matchedPaths: Set<string>): React.ReactNode => {
-    const handleClick = (path: string) => (e: React.MouseEvent) => {
-      if ((e.metaKey || e.ctrlKey) && path) {
-        e.preventDefault()
-        setJmespathQuery(path)
-      }
-    }
-
-    const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
-      const indentStr = '  '.repeat(indent)
-      const isHighlighted = matchedPaths.has(currentPath)
-      const className = isHighlighted ? 'text-primary font-semibold' : 'text-muted-foreground/50'
-      const clickTitle = 'Cmd/Ctrl+click to use as JMESPath'
-
-      if (value === null) {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>null</span>
-      }
-
-      if (typeof value === 'boolean') {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{String(value)}</span>
-      }
-
-      if (typeof value === 'number') {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{value}</span>
-      }
-
-      if (typeof value === 'string') {
-        return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>"{value}"</span>
-      }
-
-      if (Array.isArray(value)) {
-        if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>
-        return (
-          <>
-            <span className="text-muted-foreground/50">[</span>
-            {'\n'}
-            {value.map((item, idx) => {
-              const itemPath = currentPath ? `${currentPath}[${idx}]` : `[${idx}]`
-              return (
-                <React.Fragment key={idx}>
-                  {indentStr}
-                  {'  '}
-                  {renderValue(item, itemPath, indent + 1)}
-                  {idx < value.length - 1 && <span className="text-muted-foreground/50">,</span>}
-                  {'\n'}
-                </React.Fragment>
-              )
-            })}
-            {indentStr}
-            <span className="text-muted-foreground/50">]</span>
-          </>
-        )
-      }
-
-      if (typeof value === 'object') {
-        const keys = Object.keys(value)
-        if (keys.length === 0) return <span className="text-muted-foreground/50">{'{}'}</span>
-        return (
-          <>
-            <span className="text-muted-foreground/50">{'{'}</span>
-            {'\n'}
-            {keys.map((key, idx) => {
-              const keyPath = currentPath ? `${currentPath}.${key}` : key
-              return (
-                <React.Fragment key={key}>
-                  {indentStr}
-                  {'  '}
-                  <span className="text-muted-foreground/50 cursor-pointer" onClick={handleClick(keyPath)} title={clickTitle}>"{key}"</span>
-                  <span className="text-muted-foreground/50">: </span>
-                  {renderValue(value[key], keyPath, indent + 1)}
-                  {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
-                  {'\n'}
-                </React.Fragment>
-              )
-            })}
-            {indentStr}
-            <span className="text-muted-foreground/50">{'}'}</span>
-          </>
-        )
-      }
-
-      return String(value)
-    }
-
-    return renderValue(parsed, '', 0)
-  }
-
-  const renderHighlightedJson = (jsonStr: string, matchedResult: any, query: string) => {
-    try {
-      const parsed = JSON.parse(jsonStr)
-
-      // Stage 1: Find the paths in the JSON that match the JMESPath result
-      const matchedPaths = findJmespathJsonLocations(parsed, matchedResult, query)
-
-      // Stage 2: Render the JSON with highlighting applied to matched paths
-      return highlightJson(parsed, matchedPaths)
-    } catch {
-      return jsonStr
-    }
-  }
+  // Stable refs so callbacks passed to child components or useMemo don't need
+  // to be in dependency arrays when they only need the *latest* value.
+  const setJmespathQueryRef = useRef(setJmespathQuery)
+  setJmespathQueryRef.current = setJmespathQuery
+  const jmespathQueryRef = useRef(jmespathQuery)
+  jmespathQueryRef.current = jmespathQuery
 
   // When in filter mode, clicking a node should append to the existing expression
   // rather than replace it. If the current filtered result is an array, clicking a
   // key appends `[].key`; if it's an object, it appends `.key`.
-  const handleFilteredJmespathSelect = (clickedPath: string) => {
-    if (!jmespathQuery.trim() || filteredContent === null) {
-      setJmespathQuery(clickedPath)
+  // Uses refs for query/setter so this callback only changes when filteredContent changes.
+  const handleFilteredJmespathSelect = useCallback((clickedPath: string) => {
+    const currentQuery = jmespathQueryRef.current
+    if (!currentQuery.trim() || filteredContent === null) {
+      setJmespathQueryRef.current(clickedPath)
       return
     }
 
@@ -950,27 +981,80 @@ export function MaximizableCodeViewer({
         // Strip leading [number] or [number]. prefix and use [] wildcard instead
         if (/^\[\d+\]$/.test(clickedPath)) {
           // Clicking directly on an array element (no sub-path) — pipe to that index
-          setJmespathQuery(`${jmespathQuery} | ${clickedPath}`)
+          setJmespathQueryRef.current(`${currentQuery} | ${clickedPath}`)
         } else {
           // Clicking a property within an array element — wildcard projection
           const stripped = clickedPath.replace(/^\[\d+\]\.?/, '')
           const suffix = stripped
             ? stripped.startsWith('[') ? `[]${stripped}` : `[].${stripped}`
             : '[]'
-          setJmespathQuery(`${jmespathQuery}${suffix}`)
+          setJmespathQueryRef.current(`${currentQuery}${suffix}`)
         }
       } else {
         // Object: append with dot separator (or nothing if path starts with '[')
         const separator = clickedPath.startsWith('[') ? '' : '.'
-        setJmespathQuery(`${jmespathQuery}${separator}${clickedPath}`)
+        setJmespathQueryRef.current(`${currentQuery}${separator}${clickedPath}`)
       }
     } catch {
-      setJmespathQuery(clickedPath)
+      setJmespathQueryRef.current(clickedPath)
     }
-  }
+  // jmespathQueryRef and setJmespathQueryRef are stable refs, safe to omit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredContent])
 
-  const renderContent = (unlimitedHeight = false) => {
-    // If JMESPath filter mode and we have filtered content (unique filter applied on top if active)
+  // Compute pre-unique content (JMESPath filtered or original)
+  const preUniqueContent =
+    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
+
+  // Deduplicated content (null when unique filter is off or content is not an array)
+  const uniqueFilteredContent = useMemo(() => {
+    if (!uniqueFilter) return null
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return null
+      const seen = new Set<string>()
+      const unique = parsed.filter((item) => {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      return JSON.stringify(unique, null, 2)
+    } catch {
+      return null
+    }
+  }, [uniqueFilter, preUniqueContent])
+
+  // Effective filtered content (unique filter applied on top of JMESPath filter)
+  const effectiveFilteredContent =
+    uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
+
+  // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
+  const duplicateCount = useMemo(() => {
+    try {
+      const parsed = JSON.parse(preUniqueContent)
+      if (!Array.isArray(parsed)) return 0
+      const seen = new Set<string>()
+      let dupes = 0
+      for (const item of parsed) {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) dupes++
+        else seen.add(key)
+      }
+      return dupes
+    } catch {
+      return 0
+    }
+  }, [preUniqueContent])
+
+  // Memoized rendered content — the single most impactful optimisation.
+  // Previously renderContent() was a plain function called during JSX evaluation,
+  // meaning every state change (SQL input, sort order, history panel, etc.)
+  // would re-run the full JMESPath highlight path including the O(n²)
+  // findJmespathJsonLocations traversal. Now it only re-runs when the actual
+  // inputs to the display change.
+  const renderedContent = useMemo((): React.ReactNode => {
+    // JMESPath filter mode (unique filter applied on top if active)
     if (jmespathEnabled && jmespathMode === 'filter' && effectiveFilteredContent !== null) {
       try {
         JSON.parse(effectiveFilteredContent)
@@ -987,6 +1071,7 @@ export function MaximizableCodeViewer({
         return effectiveFilteredContent
       }
     }
+
     // Unique filter active without JMESPath filter — apply to raw content
     if (uniqueFilter && uniqueFilteredContent !== null) {
       try {
@@ -1005,18 +1090,12 @@ export function MaximizableCodeViewer({
       }
     }
 
-    // If JMESPath highlight mode
-    if (
-      jmespathEnabled &&
-      jmespathMode === 'highlight' &&
-      debouncedQuery.trim() &&
-      isJson &&
-      !jmespathError
-    ) {
+    // JMESPath highlight mode — matchedPaths already computed in the useMemo above.
+    // Pass a stable-ref callback so this memo doesn't depend on setJmespathQuery identity.
+    if (jmespathEnabled && jmespathMode === 'highlight' && debouncedQuery.trim() && isJson && !jmespathError) {
       try {
-        const parsed = JSON.parse(content)
-        const result = jmespath.search(parsed, debouncedQuery)
-        return renderHighlightedJson(content, result, debouncedQuery)
+        const parsed = getParsedContent(content)
+        return highlightJson(parsed, matchedPaths, (path) => setJmespathQueryRef.current(path))
       } catch {
         // Fall through to normal rendering
       }
@@ -1038,7 +1117,18 @@ export function MaximizableCodeViewer({
         return content
       }
     }
-  }
+
+    return content
+  // getParsedContent is stable (useCallback []). setJmespathQueryRef is a stable
+  // ref object. Both are safe to omit from deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    jmespathEnabled, jmespathMode, effectiveFilteredContent,
+    uniqueFilter, uniqueFilteredContent,
+    matchedPaths, debouncedQuery, isJson, jmespathError,
+    content, responseSchema, validationErrors, truncateValues,
+    handleFilteredJmespathSelect, selectJmespathQuery,
+  ])
 
   // tableData and sortedRows are computed later (after displayContent is available)
 
@@ -1090,138 +1180,145 @@ export function MaximizableCodeViewer({
     const displayData = sqlResult || { columns: tableData.columns, rows: sortedRows }
 
     return (
-      <div>
-        {/* SQL Query Bar */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary shrink-0">
-            <FileCode className="h-3.5 w-3.5" />
-            SQL
-          </div>
-          <div className="flex-1 relative">
-            <Input
-              ref={sqlInputRef}
-              placeholder="e.g. SELECT * FROM ? WHERE status = 'active' — ⌘+Click cells to build filters"
-              value={sqlQuery}
-              onChange={(e) => { setSqlQuery(e.target.value); setSqlError(null); setSqlHistoryIndex(-1) }}
-              onFocus={() => {}}
-              onBlur={() => { setShowSqlHistory(false) }}
-              onDoubleClick={() => { if (sqlHistory.length > 0) setShowSqlHistory(true) }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  if (showSqlHistory) { setShowSqlHistory(false); return }
-                  if (sqlHistoryIndex !== -1) {
-                    setSqlHistoryIndex(-1)
-                    setSqlQuery(savedSqlRef.current)
-                    return
-                  }
-                  setSqlQuery('')
-                  setSqlError(null)
-                }
-                if (e.key === 'Enter') {
-                  if (sqlQuery.trim()) addToSqlHistory(sqlQuery)
-                  setSqlHistoryIndex(-1)
-                  setShowSqlHistory(false)
-                }
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  if (sqlHistory.length === 0) return
-                  if (sqlHistoryIndex === -1) savedSqlRef.current = sqlQuery
-                  const newIdx = Math.min(sqlHistoryIndex + 1, sqlHistory.length - 1)
-                  setSqlHistoryIndex(newIdx)
-                  setSqlQuery(sqlHistory[newIdx])
-                }
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault()
-                  if (sqlHistoryIndex === -1) return
-                  const newIdx = sqlHistoryIndex - 1
-                  setSqlHistoryIndex(newIdx)
-                  setSqlQuery(newIdx === -1 ? savedSqlRef.current : sqlHistory[newIdx])
-                }
-              }}
-              className={`h-7 text-xs font-mono ${sqlError ? 'border-destructive' : ''}`}
-              title="↑↓ to browse history | Double-click to show history | Enter to commit"
-            />
-            {showSqlHistory && sqlHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-48 overflow-y-auto">
-                {sqlHistory.map((expr, i) => (
-                  <button
-                    key={i}
-                    className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === sqlHistoryIndex ? 'bg-muted' : ''}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      setSqlQuery(expr)
+      <div className="flex flex-col h-full">
+        {/* SQL Query Bar - fixed, not scrollable */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary shrink-0">
+              <FileCode className="h-3.5 w-3.5" />
+              SQL
+            </div>
+            <div className="flex-1 relative">
+              <Input
+                ref={sqlInputRef}
+                placeholder="e.g. SELECT * FROM ? WHERE status = 'active' — ⌘+Click cells to build filters"
+                value={sqlQuery}
+                onChange={(e) => { setSqlQuery(e.target.value); setSqlError(null); setSqlHistoryIndex(-1) }}
+                onFocus={() => {}}
+                onBlur={() => { setShowSqlHistory(false) }}
+                onDoubleClick={() => { if (sqlHistory.length > 0) setShowSqlHistory(true) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    if (showSqlHistory) { setShowSqlHistory(false); return }
+                    if (sqlHistoryIndex !== -1) {
                       setSqlHistoryIndex(-1)
-                      setShowSqlHistory(false)
-                    }}
-                  >
-                    {expr}
-                  </button>
-                ))}
-              </div>
+                      setSqlQuery(savedSqlRef.current)
+                      return
+                    }
+                    setSqlQuery('')
+                    setSqlError(null)
+                  }
+                  if (e.key === 'Enter') {
+                    if (sqlQuery.trim()) addToSqlHistory(sqlQuery)
+                    setSqlHistoryIndex(-1)
+                    setShowSqlHistory(false)
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    if (sqlHistory.length === 0) return
+                    if (sqlHistoryIndex === -1) savedSqlRef.current = sqlQuery
+                    const newIdx = Math.min(sqlHistoryIndex + 1, sqlHistory.length - 1)
+                    setSqlHistoryIndex(newIdx)
+                    setSqlQuery(sqlHistory[newIdx])
+                  }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    if (sqlHistoryIndex === -1) return
+                    const newIdx = sqlHistoryIndex - 1
+                    setSqlHistoryIndex(newIdx)
+                    setSqlQuery(newIdx === -1 ? savedSqlRef.current : sqlHistory[newIdx])
+                  }
+                }}
+                className={`h-7 text-xs font-mono ${sqlError ? 'border-destructive' : ''}`}
+                title="↑↓ to browse history | Double-click to show history | Enter to commit"
+              />
+              {showSqlHistory && sqlHistory.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-48 overflow-y-auto">
+                  {sqlHistory.map((expr, i) => (
+                    <button
+                      key={i}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === sqlHistoryIndex ? 'bg-muted' : ''}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        setSqlQuery(expr)
+                        setSqlHistoryIndex(-1)
+                        setShowSqlHistory(false)
+                      }}
+                    >
+                      {expr}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {sqlQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs shrink-0"
+                onClick={() => { setSqlQuery(''); setSqlError(null); setSqlHistoryIndex(-1) }}
+              >
+                Clear
+              </Button>
             )}
           </div>
-          {sqlQuery && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs shrink-0"
-              onClick={() => { setSqlQuery(''); setSqlError(null); setSqlHistoryIndex(-1) }}
-            >
-              Clear
-            </Button>
+          {/* SQL Error */}
+          {sqlError && (
+            <div className="px-3 py-1.5 border-b border-border bg-destructive/10 text-xs text-destructive font-mono">
+              {sqlError}
+            </div>
+          )}
+          {/* Results info */}
+          {sqlResult && (
+            <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
+              <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
+              <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
+            </div>
           )}
         </div>
-        {/* SQL Error */}
-        {sqlError && (
-          <div className="px-3 py-1.5 border-b border-border bg-destructive/10 text-xs text-destructive font-mono">
-            {sqlError}
-          </div>
-        )}
-        {/* Results info */}
-        {sqlResult && (
-          <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
-            <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
-            <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
-          </div>
-        )}
-        <Table>
-          <TableHeader className="bg-primary/10">
-            <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
-              {displayData.columns.map((col, i) => (
-                <TableHead
-                  key={i}
-                  className="cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors"
-                  onClick={() => !sqlResult && handleColumnSort(i)}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col}
-                    {!sqlResult && sortColumn === i ? (
-                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                    ) : !sqlResult ? (
-                      <ArrowUpDown className="h-3 w-3 opacity-30" />
-                    ) : null}
-                  </span>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayData.rows.map((row, ri) => (
-              <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
-                {row.map((cell, ci) => (
-                  <TableCell
-                    key={ci}
-                    className="font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5"
-                    onClick={handleCellClick(displayData.columns[ci], cell)}
-                    title="⌘+Click to add SQL filter"
+        {/* Scrollable table content */}
+        <div className="flex-1 overflow-auto">
+          <Table disableContainerOverflow>
+            <TableHeader className="bg-primary/10">
+              <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
+                <TableHead className="sticky top-0 z-20 bg-muted text-muted-foreground font-semibold w-[3ch]">#</TableHead>
+                {displayData.columns.map((col, i) => (
+                  <TableHead
+                    key={i}
+                    className="sticky top-0 z-20 bg-muted cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors"
+                    onClick={() => !sqlResult && handleColumnSort(i)}
                   >
-                    {cell}
-                  </TableCell>
+                    <span className="inline-flex items-center gap-1">
+                      {col}
+                      {!sqlResult && sortColumn === i ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : !sqlResult ? (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                      ) : null}
+                    </span>
+                  </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {displayData.rows.map((row, ri) => (
+                <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
+                  <TableCell className="font-mono text-xs text-muted-foreground/50 py-2.5 w-[3ch]">{ri}</TableCell>
+                  {row.map((cell, ci) => (
+                    <TableCell
+                      key={ci}
+                      className="font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5"
+                      onClick={handleCellClick(displayData.columns[ci], cell)}
+                      title="⌘+Click to add SQL filter"
+                    >
+                      {cell}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     )
   }
@@ -1597,50 +1694,11 @@ export function MaximizableCodeViewer({
     </div>
   )
 
-  // Compute pre-unique content (JMESPath filtered or original)
-  const preUniqueContent =
-    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
 
-  // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
-  const duplicateCount = useMemo(() => {
-    try {
-      const parsed = JSON.parse(preUniqueContent)
-      if (!Array.isArray(parsed)) return 0
-      const seen = new Set<string>()
-      let dupes = 0
-      for (const item of parsed) {
-        const key = JSON.stringify(item)
-        if (seen.has(key)) dupes++
-        else seen.add(key)
-      }
-      return dupes
-    } catch {
-      return 0
-    }
-  }, [preUniqueContent])
 
-  // Deduplicated content (null when unique filter is off or content is not an array)
-  const uniqueFilteredContent = useMemo(() => {
-    if (!uniqueFilter) return null
-    try {
-      const parsed = JSON.parse(preUniqueContent)
-      if (!Array.isArray(parsed)) return null
-      const seen = new Set<string>()
-      const unique = parsed.filter((item) => {
-        const key = JSON.stringify(item)
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      return JSON.stringify(unique, null, 2)
-    } catch {
-      return null
-    }
-  }, [uniqueFilter, preUniqueContent])
 
-  // Effective filtered content for renderContent (unique filter applied on top)
-  const effectiveFilteredContent =
-    uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
+
+
 
   // Calculate line count
   const displayContent =
@@ -1779,20 +1837,49 @@ export function MaximizableCodeViewer({
     })
   }, [tableData, sortColumn, sortDirection, viewMode])
 
+  // Normalize SQL to support reserved column names (e.g. value)
+  const normalizedSqlQuery = useMemo(() => {
+    if (!tableData || !sqlQuery.trim()) return sqlQuery
+    if (!tableData.columns.includes('value')) return sqlQuery
+
+    // Replace bare identifier `value` outside string literals with `[value]`
+    const segments = sqlQuery.split(/('(?:''|[^'])*')/)
+    return segments
+      .map((segment, index) => (index % 2 === 1 ? segment : segment.replace(/\bvalue\b/gi, '[value]')))
+      .join('')
+  }, [sqlQuery, tableData])
+
   // Execute SQL query against table data using AlaSQL
   // Only compute when table view is active
   const sqlResult = useMemo(() => {
     if (viewMode !== 'table' || !sqlQuery.trim() || !tableData) return null
     try {
       const data = tableData.rows.map(row => {
-        const obj: Record<string, string> = {}
+        const obj: Record<string, string | number | boolean> = {}
         tableData.columns.forEach((col, i) => {
-          obj[col] = row[i]
+          const v = row[i]
+          // Auto-coerce numeric strings so SQL comparisons work correctly
+          if (v === '') {
+            obj[col] = v
+          } else if (v === 'true') {
+            obj[col] = true
+          } else if (v === 'false') {
+            obj[col] = false
+          } else {
+            const num = Number(v)
+            obj[col] = !isNaN(num) && v.trim() !== '' ? num : v
+          }
         })
         return obj
       })
-      const result = alasql(sqlQuery, [data])
+
+      const result = alasql(normalizedSqlQuery, [data])
       setSqlError(null)
+
+      if (Array.isArray(result) && result.length === 0) {
+        return { columns: tableData.columns, rows: [] }
+      }
+
       if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
         const cols = Object.keys(result[0])
         const rows = result.map((r: any) => cols.map(c => {
@@ -1801,6 +1888,7 @@ export function MaximizableCodeViewer({
         }))
         return { columns: cols, rows }
       }
+
       // For aggregation results like COUNT, SUM etc that return a single value
       if (Array.isArray(result) && result.length > 0) {
         const first = result[0]
@@ -1815,7 +1903,7 @@ export function MaximizableCodeViewer({
       setSqlError(e?.message || 'Invalid SQL query')
       return null
     }
-  }, [sqlQuery, tableData, viewMode])
+  }, [sqlQuery, normalizedSqlQuery, tableData, viewMode])
   sqlResultRef.current = sqlResult
 
 
@@ -1931,7 +2019,7 @@ export function MaximizableCodeViewer({
         >
           {viewMode === 'json' && (
             <pre ref={normalPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all p-4">
-              <code>{renderContent()}</code>
+              <code>{renderedContent}</code>
             </pre>
           )}
           {viewMode === 'markdown' && renderMarkdownView()}
@@ -1990,13 +2078,14 @@ export function MaximizableCodeViewer({
           </DialogHeader>
           {isJson && jmespathRow(dialogInputRef, viewMode !== 'json')}
           <div
+            ref={dialogContentRef}
             className="flex-1 overflow-auto p-0 outline-none"
             tabIndex={0}
             onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, dialogPreRef) : undefined}
           >
             {viewMode === 'json' && (
               <pre ref={dialogPreRef} className="text-sm font-mono text-foreground whitespace-pre-wrap break-all p-6">
-                <code>{renderContent(true)}</code>
+                <code>{renderedContent}</code>
               </pre>
             )}
             {viewMode === 'markdown' && renderMarkdownView()}

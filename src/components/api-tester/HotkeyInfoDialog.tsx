@@ -26,6 +26,8 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
       ['⌘ U', 'Filter duplicate values (arrays only)'],
       ['⌘ A', 'Select all content'],
       ['⌘ Click', 'Use value as JMESPath expression'],
+      ['⌘ Z', 'Undo JMESPath query change'],
+      ['⌘ ⇧ Z / ⌘ Y', 'Redo JMESPath query change'],
     ],
   },
   {
