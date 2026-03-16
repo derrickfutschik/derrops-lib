@@ -1167,8 +1167,8 @@ export function MaximizableCodeViewer({
       }
     }
 
-    // Use SQL result if available, otherwise use sorted rows; apply hidden columns filter
-    const rawDisplayData = sqlResult || { columns: tableData.columns, rows: sortedRows }
+    // Use SQL result columns if available (rows are already sorted via sortedRows); apply hidden columns filter
+    const rawDisplayData = { columns: (sqlResult || tableData).columns, rows: sortedRows }
     const displayData = hiddenColumns.size === 0 ? rawDisplayData : (() => {
       const visibleIndices = rawDisplayData.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumns.has(c)).map(({ i }) => i)
       return {
@@ -1299,15 +1299,15 @@ export function MaximizableCodeViewer({
                   <TableHead
                     key={i}
                     className="sticky top-0 z-20 bg-muted cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors group/col"
-                    onClick={() => !sqlResult && handleColumnSort(i)}
+                    onClick={() => handleColumnSort(i)}
                   >
                     <span className="inline-flex items-center gap-1">
                       {col}
-                      {!sqlResult && sortColumn === i ? (
+                      {sortColumn === i ? (
                         sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : !sqlResult ? (
+                      ) : (
                         <ArrowUpDown className="h-3 w-3 opacity-30" />
-                      ) : null}
+                      )}
                       <button
                         className="opacity-0 group-hover/col:opacity-100 ml-0.5 text-muted-foreground hover:text-destructive transition-opacity"
                         title="Hide column"
@@ -1805,6 +1805,22 @@ export function MaximizableCodeViewer({
     } catch { return null }
   }, [content, displayContent, viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery])
 
+  // Auto-append [] to JMESPath when in table view and result is an array of arrays
+  useEffect(() => {
+    if (viewMode !== 'table' || !jmespathEnabled || jmespathMode !== 'filter' || !filteredContent) return
+    try {
+      const parsed = JSON.parse(filteredContent)
+      if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+        const trimmed = debouncedQuery.trim()
+        if (!trimmed.endsWith('[]')) {
+          setJmespathQuery(trimmed + '[]')
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [viewMode, jmespathEnabled, jmespathMode, filteredContent, debouncedQuery, setJmespathQuery])
+
   // Parse table data from displayContent (JSON array of objects or primitives, or CSV string)
   // Only compute when table view is active to avoid expensive processing during JMESPath editing
   const tableData = useMemo(() => {
@@ -1907,20 +1923,6 @@ export function MaximizableCodeViewer({
     setHiddenColumns(new Set())
   }, [tableData?.columns.join('\0')])
 
-  const sortedRows = useMemo(() => {
-    if (viewMode !== 'table' || !tableData || sortColumn === null) return tableData?.rows ?? []
-    const col = sortColumn
-    return [...tableData.rows].sort((a, b) => {
-      const aVal = a[col] ?? ''
-      const bVal = b[col] ?? ''
-      const aNum = Number(aVal)
-      const bNum = Number(bVal)
-      const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
-      const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
-      return sortDirection === 'asc' ? cmp : -cmp
-    })
-  }, [tableData, sortColumn, sortDirection, viewMode])
-
   // Normalize SQL to support reserved column names (e.g. value)
   const normalizedSqlQuery = useMemo(() => {
     if (!tableData || !sqlQuery.trim()) return sqlQuery
@@ -1993,6 +1995,21 @@ export function MaximizableCodeViewer({
     }
   }, [sqlQuery, normalizedSqlQuery, tableData, viewMode])
   sqlResultRef.current = sqlResult
+
+  const sortedRows = useMemo(() => {
+    const baseRows = sqlResult ? sqlResult.rows : tableData?.rows
+    if (viewMode !== 'table' || !baseRows || sortColumn === null) return baseRows ?? tableData?.rows ?? []
+    const col = sortColumn
+    return [...baseRows].sort((a, b) => {
+      const aVal = a[col] ?? ''
+      const bVal = b[col] ?? ''
+      const aNum = Number(aVal)
+      const bNum = Number(bVal)
+      const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
+      const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  }, [tableData, sqlResult, sortColumn, sortDirection, viewMode])
 
 
 
