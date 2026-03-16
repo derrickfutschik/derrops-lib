@@ -30,6 +30,7 @@ import {
   FileCode,
   FileSpreadsheet,
   FileText,
+  EyeOff,
   Filter,
   Fingerprint,
   Highlighter,
@@ -43,33 +44,11 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
+import { deepEqual, detectJoiningContext, type JoiningContext } from './joining-utils'
 
 // ---------------------------------------------------------------------------
 // Module-level pure helpers (stable references, never recreated per render)
 // ---------------------------------------------------------------------------
-
-function deepEqual(a: any, b: any): boolean {
-  if (a === b) return true
-  if (a == null || b == null) return false
-  if (typeof a !== typeof b) return false
-
-  if (typeof a === 'object') {
-    if (Array.isArray(a) !== Array.isArray(b)) return false
-
-    if (Array.isArray(a)) {
-      if (a.length !== b.length) return false
-      return a.every((item, idx) => deepEqual(item, b[idx]))
-    } else {
-      const aKeys = Object.keys(a).sort()
-      const bKeys = Object.keys(b).sort()
-      if (aKeys.length !== bKeys.length) return false
-      if (!aKeys.every((key, idx) => key === bKeys[idx])) return false
-      return aKeys.every((key) => deepEqual(a[key], b[key]))
-    }
-  }
-
-  return false
-}
 
 /**
  * Stage 1: Find JSON paths in `original` that correspond to the JMESPath `result`.
@@ -326,6 +305,9 @@ export function MaximizableCodeViewer({
   const [sqlHistory, setSqlHistory] = useState<string[]>([])
   const [sqlHistoryIndex, setSqlHistoryIndex] = useState(-1)
   const [showSqlHistory, setShowSqlHistory] = useState(false)
+  const [joiningEnabled, setJoiningEnabled] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
+  const hiddenColumnsRef = useRef<Set<string>>(new Set())
   const savedSqlRef = useRef('')
   const sqlInputRef = useRef<HTMLInputElement>(null)
   const tableDataRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
@@ -669,8 +651,18 @@ export function MaximizableCodeViewer({
     return mdContent
   }
 
+  const getTableData = () => {
+    const raw = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+    if (!raw || hiddenColumnsRef.current.size === 0) return raw
+    const visibleIndices = raw.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumnsRef.current.has(c)).map(({ i }) => i)
+    return {
+      columns: visibleIndices.map(i => raw.columns[i]),
+      rows: raw.rows.map(row => visibleIndices.map(i => row[i])),
+    }
+  }
+
   const getTableTsv = () => {
-    const data = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+    const data = getTableData()
     if (!data) return null
     return [data.columns.join('\t'), ...data.rows.map(row => row.join('\t'))].join('\n')
   }
@@ -680,7 +672,7 @@ export function MaximizableCodeViewer({
       const tsv = getTableTsv()
       if (tsv) {
         const htmlTable = (() => {
-          const data = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
+          const data = getTableData()
           if (!data) return ''
           const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           const headerCells = data.columns.map(c => `<th>${esc(c)}</th>`).join('')
@@ -715,8 +707,6 @@ export function MaximizableCodeViewer({
         : 'Copied to clipboard',
     )
   }
-
-  const getTableData = () => sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
 
   const getTableCsv = () => {
     const data = getTableData()
@@ -1177,11 +1167,20 @@ export function MaximizableCodeViewer({
       }
     }
 
-    // Use SQL result if available, otherwise use sorted rows
-    const displayData = sqlResult || { columns: tableData.columns, rows: sortedRows }
+    // Use SQL result columns if available (rows are already sorted via sortedRows); apply hidden columns filter
+    const rawDisplayData = { columns: (sqlResult || tableData).columns, rows: sortedRows }
+    const displayData = hiddenColumns.size === 0 ? rawDisplayData : (() => {
+      const visibleIndices = rawDisplayData.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumns.has(c)).map(({ i }) => i)
+      return {
+        columns: visibleIndices.map(i => rawDisplayData.columns[i]),
+        rows: rawDisplayData.rows.map(row => visibleIndices.map(i => row[i])),
+      }
+    })()
 
     return (
       <div className="flex flex-col h-full">
+        {/* Joining Column Controls — between JMESPath row and SQL bar */}
+        {joiningColumnsRow()}
         {/* SQL Query Bar - fixed, not scrollable */}
         <div className="flex-shrink-0">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
@@ -1276,6 +1275,19 @@ export function MaximizableCodeViewer({
               <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
             </div>
           )}
+          {/* Hidden columns indicator */}
+          {hiddenColumns.size > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 text-xs text-muted-foreground">
+              <EyeOff className="h-3 w-3 shrink-0" />
+              <span>{hiddenColumns.size} column{hiddenColumns.size > 1 ? 's' : ''} hidden</span>
+              <button
+                className="text-primary hover:underline ml-1"
+                onClick={() => setHiddenColumns(new Set())}
+              >
+                Show all
+              </button>
+            </div>
+          )}
         </div>
         {/* Scrollable table content */}
         <div className="flex-1 overflow-auto">
@@ -1286,16 +1298,27 @@ export function MaximizableCodeViewer({
                 {displayData.columns.map((col, i) => (
                   <TableHead
                     key={i}
-                    className="sticky top-0 z-20 bg-muted cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors"
-                    onClick={() => !sqlResult && handleColumnSort(i)}
+                    className="sticky top-0 z-20 bg-muted cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors group/col"
+                    onClick={() => handleColumnSort(i)}
                   >
                     <span className="inline-flex items-center gap-1">
                       {col}
-                      {!sqlResult && sortColumn === i ? (
+                      {sortColumn === i ? (
                         sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : !sqlResult ? (
+                      ) : (
                         <ArrowUpDown className="h-3 w-3 opacity-30" />
-                      ) : null}
+                      )}
+                      <button
+                        className="opacity-0 group-hover/col:opacity-100 ml-0.5 text-muted-foreground hover:text-destructive transition-opacity"
+                        title="Hide column"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHiddenColumns(prev => new Set([...prev, col]))
+                          setSortColumn(null)
+                        }}
+                      >
+                        <EyeOff className="h-3 w-3" />
+                      </button>
                     </span>
                   </TableHead>
                 ))}
@@ -1695,6 +1718,25 @@ export function MaximizableCodeViewer({
     </div>
   )
 
+  const joiningColumnsRow = () => {
+    if (!joiningContext) return null
+    return (
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-border bg-muted/20">
+        <div className="flex items-center gap-2 shrink-0">
+          <Switch checked={joiningEnabled} onCheckedChange={setJoiningEnabled} className="scale-75" />
+          <Label className="text-xs font-medium text-muted-foreground">Join</Label>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {joiningContext.joiningColumns.map((col) => (
+            <span key={col} className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs text-muted-foreground">
+              {col}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   // Calculate line count
   const displayContent =
     uniqueFilter && uniqueFilteredContent !== null
@@ -1749,6 +1791,36 @@ export function MaximizableCodeViewer({
     </Select>
   )
 
+  // Detect joining context by parsing the JMESPath expression structure.
+  // Each [*] / [] traversal in the path (except the last) becomes a joining column
+  // whose value is the index of the element at that traversal level.
+  const joiningContext = useMemo((): JoiningContext | null => {
+    if (viewMode !== 'table' || !isJson) return null
+    if (!jmespathEnabled || jmespathMode !== 'filter' || !debouncedQuery.trim()) return null
+    try {
+      const originalParsed = JSON.parse(content)
+      const displayParsed = JSON.parse(displayContent)
+      if (!Array.isArray(displayParsed) || !displayParsed.length) return null
+      return detectJoiningContext(originalParsed, debouncedQuery, displayParsed.length)
+    } catch { return null }
+  }, [content, displayContent, viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery])
+
+  // Auto-append [] to JMESPath when in table view and result is an array of arrays
+  useEffect(() => {
+    if (viewMode !== 'table' || !jmespathEnabled || jmespathMode !== 'filter' || !filteredContent) return
+    try {
+      const parsed = JSON.parse(filteredContent)
+      if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+        const trimmed = debouncedQuery.trim()
+        if (!trimmed.endsWith('[]')) {
+          setJmespathQuery(trimmed + '[]')
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [viewMode, jmespathEnabled, jmespathMode, filteredContent, debouncedQuery, setJmespathQuery])
+
   // Parse table data from displayContent (JSON array of objects or primitives, or CSV string)
   // Only compute when table view is active to avoid expensive processing during JMESPath editing
   const tableData = useMemo(() => {
@@ -1763,10 +1835,27 @@ export function MaximizableCodeViewer({
             const val = item[col]
             return val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
           }))
+          // Add joining columns if active
+          if (joiningEnabled && joiningContext && joiningContext.joiningColumns.length > 0) {
+            const enhancedColumns = [...joiningContext.joiningColumns, ...columns]
+            const enhancedRows = rows.map((row, i) => [
+              ...(joiningContext.rowIndices[i] ?? joiningContext.joiningColumns.map(() => '')),
+              ...row,
+            ])
+            return { columns: enhancedColumns, rows: enhancedRows }
+          }
           return { columns, rows }
         }
         // Array of primitives
         const rows = parsed.map((v: any) => [v === null || v === undefined ? '' : String(v)])
+        if (joiningEnabled && joiningContext && joiningContext.joiningColumns.length > 0) {
+          const enhancedColumns = [...joiningContext.joiningColumns, 'value']
+          const enhancedRows = rows.map((row, i) => [
+            ...(joiningContext.rowIndices[i] ?? joiningContext.joiningColumns.map(() => '')),
+            ...row,
+          ])
+          return { columns: enhancedColumns, rows: enhancedRows }
+        }
         return { columns: ['value'], rows }
       }
     } catch {
@@ -1806,7 +1895,7 @@ export function MaximizableCodeViewer({
       return { columns, rows }
     }
     return null
-  }, [displayContent, viewMode])
+  }, [displayContent, viewMode, joiningEnabled, joiningContext])
   tableDataRef.current = tableData
 
   const handleColumnSort = (colIndex: number) => {
@@ -1818,19 +1907,21 @@ export function MaximizableCodeViewer({
     }
   }
 
-  const sortedRows = useMemo(() => {
-    if (viewMode !== 'table' || !tableData || sortColumn === null) return tableData?.rows ?? []
-    const col = sortColumn
-    return [...tableData.rows].sort((a, b) => {
-      const aVal = a[col] ?? ''
-      const bVal = b[col] ?? ''
-      const aNum = Number(aVal)
-      const bNum = Number(bVal)
-      const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
-      const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
-      return sortDirection === 'asc' ? cmp : -cmp
-    })
-  }, [tableData, sortColumn, sortDirection, viewMode])
+  // Auto-enable joining when context becomes available, auto-disable when it disappears
+  useEffect(() => {
+    setJoiningEnabled(joiningContext !== null && joiningContext.joiningColumns.length > 0)
+  }, [joiningContext])
+
+  // Reset sort column when joining enabled state changes to avoid index shift bugs
+  useEffect(() => { setSortColumn(null) }, [joiningEnabled])
+
+  // Keep hiddenColumnsRef in sync (used in copy/export callbacks that close over the ref)
+  useEffect(() => { hiddenColumnsRef.current = hiddenColumns }, [hiddenColumns])
+
+  // Reset hidden columns when the set of column names changes
+  useEffect(() => {
+    setHiddenColumns(new Set())
+  }, [tableData?.columns.join('\0')])
 
   // Normalize SQL to support reserved column names (e.g. value)
   const normalizedSqlQuery = useMemo(() => {
@@ -1849,12 +1940,16 @@ export function MaximizableCodeViewer({
   const sqlResult = useMemo(() => {
     if (viewMode !== 'table' || !sqlQuery.trim() || !tableData) return null
     try {
+      const joiningColSet = new Set(joiningContext?.joiningColumns ?? [])
       const data = tableData.rows.map(row => {
         const obj: Record<string, string | number | boolean> = {}
         tableData.columns.forEach((col, i) => {
           const v = row[i]
-          // Auto-coerce numeric strings so SQL comparisons work correctly
-          if (v === '') {
+          // Joining columns are positional indices — keep as strings so
+          // SQL string comparisons like `WHERE hits = '2'` work correctly.
+          if (joiningColSet.has(col)) {
+            obj[col] = v
+          } else if (v === '') {
             obj[col] = v
           } else if (v === 'true') {
             obj[col] = true
@@ -1900,6 +1995,21 @@ export function MaximizableCodeViewer({
     }
   }, [sqlQuery, normalizedSqlQuery, tableData, viewMode])
   sqlResultRef.current = sqlResult
+
+  const sortedRows = useMemo(() => {
+    const baseRows = sqlResult ? sqlResult.rows : tableData?.rows
+    if (viewMode !== 'table' || !baseRows || sortColumn === null) return baseRows ?? tableData?.rows ?? []
+    const col = sortColumn
+    return [...baseRows].sort((a, b) => {
+      const aVal = a[col] ?? ''
+      const bVal = b[col] ?? ''
+      const aNum = Number(aVal)
+      const bNum = Number(bVal)
+      const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
+      const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  }, [tableData, sqlResult, sortColumn, sortDirection, viewMode])
 
 
 
@@ -2071,7 +2181,7 @@ export function MaximizableCodeViewer({
               </div>
             </div>
           </DialogHeader>
-          {isJson && jmespathRow(dialogInputRef, viewMode !== 'json')}
+          {isJson && jmespathRow(dialogInputRef)}
           <div
             ref={dialogContentRef}
             className="flex-1 overflow-auto p-0 outline-none"
