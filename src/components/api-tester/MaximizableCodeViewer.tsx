@@ -1002,6 +1002,7 @@ export function MaximizableCodeViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredContent])
 
+
   // Compute pre-unique content (JMESPath filtered or original)
   const preUniqueContent =
     jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
@@ -1693,12 +1694,6 @@ export function MaximizableCodeViewer({
       </ToggleGroup>
     </div>
   )
-
-
-
-
-
-
 
   // Calculate line count
   const displayContent =
