@@ -1507,16 +1507,17 @@ export function MaximizableCodeViewer({
     } catch { return null }
   }, [content, displayContent, viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery])
 
-  // Candidate join columns for the first joining segment (unique-valued scalar attributes)
-  const joinColumnCandidates = useMemo((): JoinColumnCandidate[] => {
+  // Candidate join columns for all joining segments (unique-valued scalar attributes)
+  const joinColumnCandidates = useMemo((): JoinColumnCandidate[][] => {
     if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter' || !debouncedQuery.trim()) return []
+    if (!joiningContext) return []
     try {
       const originalParsed = JSON.parse(content)
-      return detectJoinColumnCandidates(originalParsed, debouncedQuery)
+      return detectJoinColumnCandidates(originalParsed, debouncedQuery, joiningContext)
     } catch {
       return []
     }
-  }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, content])
+  }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, content, joiningContext])
 
   // Auto-append [] to JMESPath when in table view and result is an array of arrays
   useEffect(() => {
@@ -1635,7 +1636,7 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && jmespathRow(normalInputRef, viewMode !== 'json')}
+        {isJson && jmespathRow(normalInputRef)}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
           style={{ maxHeight }}

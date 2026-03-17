@@ -35,7 +35,7 @@ interface TableViewPanelProps {
   /** The effective content (jmespath filtered or raw) */
   displayContent: string
   joiningContext: JoiningContext | null
-  joinColumnCandidates: JoinColumnCandidate[]
+  joinColumnCandidates: JoinColumnCandidate[][]
   /** Ref for parent copy/download to access computed table data */
   tableDataRef: React.MutableRefObject<{ columns: string[]; rows: string[][] } | null>
   /** Ref for parent copy/download to access SQL result data */
@@ -104,7 +104,7 @@ export function TableViewPanel({
           effectiveJoinCols.push(joiningContext.joiningColumns[j])
           continue
         }
-        const cand = joinColumnCandidates.find((c) => c.path === path)
+        const cand = (joinColumnCandidates[j] ?? []).find((c) => c.path === path)
         if (!cand) {
           effectiveJoinCols.push(joiningContext.joiningColumns[j])
           continue
@@ -124,10 +124,9 @@ export function TableViewPanel({
           const defaultVal = joiningContext.rowIndices[i]?.[j] ?? ''
           const path = selectedJoinPaths[j] ?? null
           if (!path || path === '__default__') return defaultVal
-          const cand = joinColumnCandidates.find((c) => c.path === path)
+          const cand = (joinColumnCandidates[j] ?? []).find((c) => c.path === path)
           if (!cand) return defaultVal
-          const elemIdx = parseInt(defaultVal, 10)
-          return !isNaN(elemIdx) ? (cand.values[elemIdx] ?? '') : ''
+          return cand.values[i] ?? ''
         })
         return [...joinVals, ...row]
       })
@@ -393,9 +392,9 @@ export function TableViewPanel({
   // When candidates change, preserve any selection that is still valid; fall back to default otherwise
   useEffect(() => {
     setSelectedJoinPaths((prev) =>
-      prev.map((path) => {
+      prev.map((path, j) => {
         if (!path || path === '__default__') return path
-        return joinColumnCandidates.some((c) => c.path === path) ? path : null
+        return (joinColumnCandidates[j] ?? []).some((c) => c.path === path) ? path : null
       }),
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -468,8 +467,7 @@ export function TableViewPanel({
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {joiningContext.joiningColumns.map((col, j) => {
-            // Only the first joining column gets the candidate combobox for now
-            const candidates = j === 0 ? joinColumnCandidates : []
+            const candidates = joinColumnCandidates[j] ?? []
             const selectedPath = selectedJoinPaths[j] ?? null
 
             if (candidates.length <= 1) {
@@ -506,11 +504,14 @@ export function TableViewPanel({
                     <SelectItem key={cand.path} value={cand.path} textValue={cand.label} className="text-xs font-mono">
                       <div className="flex flex-col">
                         <span>{cand.label}</span>
-                        {joinSelectOpen === j && !cand.isDefault && cand.values.length > 0 && (
-                          <span className="text-muted-foreground text-[10px]">
-                            {cand.values.slice(0, 3).join(', ')}{cand.values.length > 3 ? '…' : ''}
-                          </span>
-                        )}
+                        {joinSelectOpen === j && !cand.isDefault && cand.values.length > 0 && (() => {
+                          const unique = [...new Set(cand.values)].filter(v => v !== '')
+                          return unique.length > 0 ? (
+                            <span className="text-muted-foreground text-[10px]">
+                              {unique.slice(0, 3).join(', ')}{unique.length > 3 ? '…' : ''}
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                     </SelectItem>
                   ))}

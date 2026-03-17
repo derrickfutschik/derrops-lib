@@ -39,7 +39,7 @@ export interface ResponseViewerState {
 const initialState: ResponseViewerState = {
   selectedView: 'json',
   json: {
-    jmespathEnabled: false,
+    jmespathEnabled: true,
     jmespathQuery: '',
     jmespathMode: 'filter',
     truncateValues: false,
