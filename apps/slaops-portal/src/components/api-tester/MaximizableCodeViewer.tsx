@@ -2239,28 +2239,29 @@ export function MaximizableCodeViewer({
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
           <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
           <div className="flex items-center gap-4">
-            {viewMode === 'table' && tableData ? (
-              (() => {
-                const total = tableData.rows.length
-                const selected = sqlQuery.trim()
-                  ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
-                  : null
-                return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
-              })()
-            ) : (
-              jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>
-            )}
-            {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
-            {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
-            {jsonStats?.type === 'object' && (
-              <>
+            {viewMode === 'table' && tableData && (() => {
+              const total = tableData.rows.length
+              const selected = sqlQuery.trim()
+                ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
+                : null
+              return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
+            })()}
+            {viewMode === 'json' && <>
+              {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+              {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
+              {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
+              {jsonStats?.type === 'object' && <>
                 <span>{jsonStats.keys.toLocaleString()} keys</span>
                 <span>depth {jsonStats.depth}</span>
-              </>
-            )}
-            <span>Ln {lineCount.toLocaleString()}</span>
-            <span>{displayContent.length.toLocaleString()} chars</span>
-            {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
+              </>}
+              <span>Ln {lineCount.toLocaleString()}</span>
+              <span>{displayContent.length.toLocaleString()} chars</span>
+              {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
+            </>}
+            {viewMode === 'markdown' && <>
+              <span>Ln {lineCount.toLocaleString()}</span>
+              <span>{displayContent.length.toLocaleString()} chars</span>
+            </>}
           </div>
         </div>
       </div>
@@ -2315,28 +2316,29 @@ export function MaximizableCodeViewer({
           <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
             <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
             <div className="flex items-center gap-4">
-              {viewMode === 'table' && tableData ? (
-                (() => {
-                  const total = tableData.rows.length
-                  const selected = sqlQuery.trim()
-                    ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
-                    : null
-                  return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
-                })()
-              ) : (
-                jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>
-              )}
-              {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
-              {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
-              {jsonStats?.type === 'object' && (
-                <>
+              {viewMode === 'table' && tableData && (() => {
+                const total = tableData.rows.length
+                const selected = sqlQuery.trim()
+                  ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
+                  : null
+                return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
+              })()}
+              {viewMode === 'json' && <>
+                {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+                {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
+                {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
+                {jsonStats?.type === 'object' && <>
                   <span>{jsonStats.keys.toLocaleString()} keys</span>
                   <span>depth {jsonStats.depth}</span>
-                </>
-              )}
-              <span>Ln {lineCount.toLocaleString()}</span>
-              <span>{displayContent.length.toLocaleString()} chars</span>
-              {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
+                </>}
+                <span>Ln {lineCount.toLocaleString()}</span>
+                <span>{displayContent.length.toLocaleString()} chars</span>
+                {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
+              </>}
+              {viewMode === 'markdown' && <>
+                <span>Ln {lineCount.toLocaleString()}</span>
+                <span>{displayContent.length.toLocaleString()} chars</span>
+              </>}
             </div>
           </div>
         </DialogContent>
