@@ -1295,24 +1295,6 @@ export function MaximizableCodeViewer({
               {sqlError}
             </div>
           )}
-          {/* Results info */}
-          {sqlResult && sqlMode === 'filter' && (
-            <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
-              <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
-              <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
-            </div>
-          )}
-          {sqlQuery.trim() && sqlMode === 'highlight' && (
-            <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
-              <span className="text-primary font-medium">{sqlHighlightInfo.matchedRowIndices.size}</span> rows matched
-              <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
-              {sqlHighlightInfo.selectedColumns && (
-                <span className="text-muted-foreground/60">
-                  · columns: <span className="text-primary/80">{sqlHighlightInfo.selectedColumns.join(', ')}</span>
-                </span>
-              )}
-            </div>
-          )}
           {/* Hidden columns indicator */}
           {hiddenColumns.size > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 text-xs text-muted-foreground">
@@ -2257,7 +2239,17 @@ export function MaximizableCodeViewer({
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
           <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
           <div className="flex items-center gap-4">
-            {jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>}
+            {viewMode === 'table' && tableData ? (
+              (() => {
+                const total = tableData.rows.length
+                const selected = sqlQuery.trim()
+                  ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
+                  : null
+                return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
+              })()
+            ) : (
+              jsonStats?.type === 'array' && <span>{jsonStats.count} items</span>
+            )}
             {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
             {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
             {jsonStats?.type === 'object' && (
@@ -2323,7 +2315,17 @@ export function MaximizableCodeViewer({
           <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
             <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
             <div className="flex items-center gap-4">
-              {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+              {viewMode === 'table' && tableData ? (
+                (() => {
+                  const total = tableData.rows.length
+                  const selected = sqlQuery.trim()
+                    ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
+                    : null
+                  return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
+                })()
+              ) : (
+                jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>
+              )}
               {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
               {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
               {jsonStats?.type === 'object' && (
