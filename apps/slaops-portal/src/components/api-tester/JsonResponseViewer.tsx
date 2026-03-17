@@ -17,9 +17,9 @@ interface PropertySchema {
   items?: PropertySchema
 }
 
-const TRUNCATE_LENGTH = 255
-const TRUNCATE_ARRAY_LENGTH = 20
-const TRUNCATE_ARRAY_OBJECT_LENGTH = 10
+export const TRUNCATE_LENGTH = 255
+export const TRUNCATE_ARRAY_LENGTH = 20
+export const TRUNCATE_ARRAY_OBJECT_LENGTH = 10
 
 // Recursively get property schema from a path
 const getPropertySchema = (

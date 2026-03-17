@@ -40,6 +40,7 @@ import {
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
+import { applyTruncationToJson, jsonToStyledHtml, writeTextToClipboard, writeHtmlToClipboard } from './json-copy-utils'
 import { deepEqual, detectJoiningContext, detectJoinColumnCandidates, type JoiningContext, type JoinColumnCandidate } from './joining-utils'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
@@ -300,6 +301,8 @@ export function MaximizableCodeViewer({
 
   const tableDataRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
   const sqlResultRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
+  // Tracks current displayContent for use in click handlers (defined after state/memos below)
+  const displayContentRef = useRef(content)
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
@@ -656,41 +659,49 @@ export function MaximizableCodeViewer({
   const handleCopy = () => {
     if (viewMode === 'table') {
       const tsv = getTableTsv()
-      if (tsv) {
-        const htmlTable = (() => {
-          const data = getTableData()
-          if (!data) return ''
-          const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-          const headerCells = data.columns.map(c => `<th>${esc(c)}</th>`).join('')
-          const bodyRows = data.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')
-          return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`
-        })()
-        const blob = new Blob([htmlTable], { type: 'text/html' })
-        const textBlob = new Blob([tsv], { type: 'text/plain' })
-        navigator.clipboard.write([
-          new ClipboardItem({
-            'text/html': blob,
-            'text/plain': textBlob,
-          }),
-        ])
-        toast.success('Copied table to clipboard')
-        return
-      }
+      if (!tsv) { toast.error('No table data to copy'); return }
+      const data = getTableData()!
+      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const headerCells = data.columns.map(c => `<th>${esc(c)}</th>`).join('')
+      const bodyRows = data.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')
+      const htmlTable = `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`
+      const blob = new Blob([htmlTable], { type: 'text/html' })
+      const textBlob = new Blob([tsv], { type: 'text/plain' })
+      writeHtmlToClipboard(htmlTable, tsv).then(
+        () => toast.success('Copied table to clipboard'),
+        () => toast.error('Failed to copy — check browser clipboard permissions'),
+      )
+      return
     }
     if (viewMode === 'markdown') {
       const md = getEffectiveMarkdownContent()
       if (md) {
-        navigator.clipboard.writeText(md)
-        toast.success('Copied Markdown to clipboard')
+        copyText(md, 'Markdown')
         return
       }
     }
-    const effectiveContent = getEffectiveContent()
-    navigator.clipboard.writeText(effectiveContent)
-    toast.success(
-      jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
-        ? 'Copied filtered content to clipboard'
-        : 'Copied to clipboard',
+    // JSON / plain text — use displayContentRef which respects all active filters
+    const jsonContent = truncateValues
+      ? applyTruncationToJson(displayContentRef.current)
+      : displayContentRef.current
+    writeTextToClipboard(jsonContent).then(
+      () => toast.success(
+        jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
+          ? 'Copied filtered content to clipboard'
+          : 'Copied to clipboard',
+      ),
+      () => toast.error('Failed to copy — check browser clipboard permissions'),
+    )
+  }
+
+  const handleCopyJsonAsHtml = () => {
+    const jsonContent = truncateValues
+      ? applyTruncationToJson(displayContentRef.current)
+      : displayContentRef.current
+    const html = jsonToStyledHtml(jsonContent)
+    writeHtmlToClipboard(html, jsonContent).then(
+      () => toast.success('Copied as HTML with syntax highlighting'),
+      () => toast.error('Failed to copy — check browser clipboard permissions'),
     )
   }
 
@@ -739,8 +750,10 @@ export function MaximizableCodeViewer({
   }
 
   const copyText = (text: string, label: string) => {
-    navigator.clipboard.writeText(text)
-    toast.success(`Copied as ${label}`)
+    writeTextToClipboard(text).then(
+      () => toast.success(`Copied as ${label}`),
+      () => toast.error('Failed to copy — check browser clipboard permissions'),
+    )
   }
 
   const downloadText = (text: string, filename: string, mimeType: string, label: string) => {
@@ -855,6 +868,33 @@ export function MaximizableCodeViewer({
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     toast.success('Downloaded as CSV')
+  }
+
+  const handleCopyCsvFromJson = () => {
+    const effectiveContent = getEffectiveContent()
+    try {
+      const parsed = JSON.parse(effectiveContent)
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        toast.error('CSV export requires a JSON array')
+        return
+      }
+      const escape = (val: any) => {
+        const str = val === null || val === undefined ? '' : String(val)
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str
+      }
+      let csvContent: string
+      if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+        const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item)))) as string[]
+        csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(','))].join('\n')
+      } else {
+        csvContent = ['value', ...parsed.map(escape)].join('\n')
+      }
+      copyText(csvContent, 'CSV')
+    } catch {
+      toast.error('Failed to parse JSON for CSV export')
+    }
   }
 
   // Single-entry cache for the parsed JSON object. Avoids re-parsing the same
@@ -1208,29 +1248,26 @@ export function MaximizableCodeViewer({
           </Button>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleCopy}>
-            Copy as Table (Excel/Email)
-          </ContextMenuItem>
-          {viewMode === 'table' && (
+          {viewMode === 'json' && (
             <>
-              <ContextMenuItem onClick={() => { const md = getTableMarkdown(); if (md) copyText(md, 'Markdown') }}>
-                Copy as Markdown
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const csv = getTableCsv(); if (csv) copyText(csv, 'CSV') }}>
-                Copy as CSV
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const js = getTableJsCode(); if (js) copyText(js, 'Code') }}>
-                Copy as Code
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const sql = getTableSql(); if (sql) copyText(sql, 'SQL') }}>
-                Copy as SQL
-              </ContextMenuItem>
+              <ContextMenuItem onClick={handleCopy}>Copy JSON</ContextMenuItem>
+              <ContextMenuItem onClick={handleCopyJsonAsHtml}>Copy as HTML (with colors)</ContextMenuItem>
             </>
           )}
-          {viewMode !== 'table' && isJson && (
-            <ContextMenuItem onClick={handleDownloadCsv}>
-              Copy as CSV
-            </ContextMenuItem>
+          {viewMode === 'table' && (
+            <>
+              <ContextMenuItem onClick={handleCopy}>Copy as Table (Excel/Email)</ContextMenuItem>
+              <ContextMenuItem onClick={() => { const md = getTableMarkdown(); if (md) copyText(md, 'Markdown'); else toast.error('No table data to copy') }}>Copy as Markdown</ContextMenuItem>
+              <ContextMenuItem onClick={() => { const csv = getTableCsv(); if (csv) copyText(csv, 'CSV'); else toast.error('No table data to copy') }}>Copy as CSV</ContextMenuItem>
+              <ContextMenuItem onClick={() => { const js = getTableJsCode(); if (js) copyText(js, 'Code'); else toast.error('No table data to copy') }}>Copy as Code</ContextMenuItem>
+              <ContextMenuItem onClick={() => { const sql = getTableSql(); if (sql) copyText(sql, 'SQL'); else toast.error('No table data to copy') }}>Copy as SQL</ContextMenuItem>
+            </>
+          )}
+          {viewMode === 'markdown' && (
+            <ContextMenuItem onClick={handleCopy}>Copy Markdown</ContextMenuItem>
+          )}
+          {viewMode !== 'table' && viewMode !== 'json' && isJson && (
+            <ContextMenuItem onClick={handleCopyCsvFromJson}>Copy as CSV</ContextMenuItem>
           )}
         </ContextMenuContent>
       </ContextMenu>
@@ -1465,6 +1502,7 @@ export function MaximizableCodeViewer({
       : jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
         ? filteredContent
         : content
+  displayContentRef.current = displayContent
   const lineCount = displayContent.split('\n').length
 
   // Lightweight validity checks for each view mode
