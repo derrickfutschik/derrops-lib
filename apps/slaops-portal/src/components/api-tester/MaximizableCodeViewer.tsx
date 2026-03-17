@@ -45,10 +45,12 @@ import { deepEqual, detectJoiningContext, detectJoinColumnCandidates, type Joini
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   selectSelectedView,
+  selectHighlightDuplicates,
   selectJsonState,
   selectTableState,
   selectHiddenColumnIds,
   setSelectedView,
+  setHighlightDuplicates as setHighlightDuplicatesRedux,
   setJmespathEnabled,
   setJmespathQuery as setJmespathQueryRedux,
   setJmespathMode,
@@ -327,6 +329,7 @@ export function MaximizableCodeViewer({
 }: MaximizableCodeViewerProps) {
   const dispatch = useAppDispatch()
   const selectedView = useAppSelector(selectSelectedView)
+  const highlightDuplicates = useAppSelector(selectHighlightDuplicates)
   const jsonState = useAppSelector(selectJsonState)
   const tableState = useAppSelector(selectTableState)
   const hiddenColumnIds = useAppSelector(selectHiddenColumnIds)
@@ -335,7 +338,7 @@ export function MaximizableCodeViewer({
 
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
-  const [highlightDuplicates, setHighlightDuplicates] = useState(false)
+  const setHighlightDuplicates = (val: boolean) => dispatch(setHighlightDuplicatesRedux(val))
   // truncateValues and uniqueFilter now come from Redux (jsonState)
   const truncateValues = jsonState.truncateValues
   const uniqueFilter = jsonState.uniqueFilter

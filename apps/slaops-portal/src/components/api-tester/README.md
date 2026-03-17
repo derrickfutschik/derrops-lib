@@ -8,11 +8,58 @@ Redux `responseViewer` slice so they survive request/response cycles. Transient 
 
 ---
 
+## Why Redux (Not Local State) for Viewer Preferences
+
+`MaximizableCodeViewer` **unmounts and remounts between API requests**. In `ApiTester.tsx` the
+viewer is inside a ternary: while `isSendingRequest` is `true`, the spinner is shown and
+`MaximizableCodeViewer` is not rendered; when the request completes it remounts with the new
+response body. Any preference stored in local `useState` is therefore **silently reset to its
+initial value on every request**.
+
+Redux survives unmount/remount because the store lives outside the component tree.
+
+### The Bug Pattern to Avoid
+
+```tsx
+// ❌ BUG: local state is wiped on every request because the component unmounts
+const [myPref, setMyPref] = useState(false)
+
+// ✅ CORRECT: Redux state persists across request/remount cycles
+const myPref = useAppSelector(selectMyPref)
+const setMyPref = (val: boolean) => dispatch(setMyPrefAction(val))
+```
+
+This was the root cause of bugs like "sorting column lost between requests" and
+"highlight duplicates reset between requests".
+
+### Secondary Pitfall: Effects That Fire on Mount
+
+Even when a preference *is* in Redux, a `useEffect` that resets it can still fire
+on every remount. For example:
+
+```tsx
+// ❌ BUG: joiningEnabled starts false on every mount; when it is set to true
+// by the joiningContext effect, this runs and clears the Redux sort state.
+useEffect(() => {
+  if (activeSortColumn) dispatch(setColumnSort({ id: activeSortColumn.id, direction: null }))
+}, [joiningEnabled])
+```
+
+Because `joiningEnabled` is local state (`useState(false)`), it always starts as `false` on
+mount. When the joining context arrives via props, `joiningEnabled` transitions `false → true`,
+triggering the effect above and erasing the sort preference stored in Redux.
+
+**Rule:** Any `useEffect` that resets persisted (Redux) state must guard against triggering on
+initial mount, or the reset logic must be removed if it is not needed.
+
+---
+
 ## Redux vs Local State Decision Table
 
 | State | Location | Reason |
 |-------|----------|--------|
 | `selectedView` (json/markdown/table) | Redux | Durable: user sets it once per session |
+| `highlightDuplicates` | Redux | Survives new requests (component unmounts between requests) |
 | `jmespathEnabled/Query/Mode` | Redux | Survives new requests |
 | `truncateValues` / `uniqueFilter` | Redux | Durable viewer preferences |
 | `sqlQuery` / `sqlMode` | Redux | Durable filter/highlight preference |
@@ -56,7 +103,11 @@ This operation:
 - **Adds** default prefs (`hidden: false, sortDirection: null`) for new columns.
 - **Drops** column prefs for columns no longer present.
 
-This means a user who hid the `id` column will keep it hidden after sending a new request, as long as the response still contains an `id` column.
+This means a user who sorted by `id` or hid the `id` column will keep that preference after
+sending a new request, as long as the response still contains an `id` column.
+
+The sort uses the **column name** (not its index position) to locate the column in the current
+data, so adding or removing joining columns (which are prepended) does not break sort.
 
 ---
 
@@ -86,6 +137,8 @@ in local state across the component's lifetime. It does not interact with undo.
    - Read via `useAppSelector`.
    - Dispatch the action creator instead of calling `setState`.
 6. The preference now survives request/response cycles automatically.
+
+**Never use `useState` for a preference the user sets in the viewer** — if in doubt, use Redux.
 
 ---
 
