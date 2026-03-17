@@ -2,8 +2,10 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
@@ -288,6 +290,7 @@ export function MaximizableCodeViewer({
 
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
+  const [highlightDuplicates, setHighlightDuplicates] = useState(false)
   // truncateValues and uniqueFilter now come from Redux (jsonState)
   const truncateValues = jsonState.truncateValues
   const uniqueFilter = jsonState.uniqueFilter
@@ -1163,16 +1166,32 @@ export function MaximizableCodeViewer({
         </Button>
       )}
       {isJson && (
-        <Button
-          variant={uniqueFilter && duplicateCount > 0 ? 'destructive' : uniqueFilter ? 'default' : 'outline'}
-          size="sm"
-          className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-          onClick={toggleUniqueFilter}
-          title="Filter duplicate values (⌘U)"
-        >
-          <Fingerprint className="h-3.5 w-3.5" />
-          {showText && <span>Unique</span>}
-        </Button>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <Button
+              variant={uniqueFilter && duplicateCount > 0 ? 'destructive' : (uniqueFilter || highlightDuplicates) ? 'default' : 'outline'}
+              size="sm"
+              className={`${showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}${highlightDuplicates && !uniqueFilter ? ' border-amber-500 text-amber-500' : ''}`}
+              onClick={toggleUniqueFilter}
+              title="Filter duplicate values (⌘U) — right-click for more options"
+            >
+              <Fingerprint className="h-3.5 w-3.5" />
+              {showText && <span>Unique</span>}
+            </Button>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={toggleUniqueFilter}>
+              {uniqueFilter ? 'Show all (remove filter)' : 'Filter out duplicates'}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuCheckboxItem
+              checked={highlightDuplicates}
+              onCheckedChange={setHighlightDuplicates}
+            >
+              Highlight duplicates
+            </ContextMenuCheckboxItem>
+          </ContextMenuContent>
+        </ContextMenu>
       )}
       {schemaButton(showText)}
       <ContextMenu>
@@ -1654,6 +1673,7 @@ export function MaximizableCodeViewer({
               joinColumnCandidates={joinColumnCandidates}
               tableDataRef={tableDataRef}
               sqlResultRef={sqlResultRef}
+              highlightDuplicates={highlightDuplicates}
             />
           )}
         </div>
@@ -1731,6 +1751,7 @@ export function MaximizableCodeViewer({
                 joinColumnCandidates={joinColumnCandidates}
                 tableDataRef={tableDataRef}
                 sqlResultRef={sqlResultRef}
+                highlightDuplicates={highlightDuplicates}
               />
             )}
           </div>

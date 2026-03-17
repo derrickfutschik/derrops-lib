@@ -40,6 +40,8 @@ interface TableViewPanelProps {
   tableDataRef: React.MutableRefObject<{ columns: string[]; rows: string[][] } | null>
   /** Ref for parent copy/download to access SQL result data */
   sqlResultRef: React.MutableRefObject<{ columns: string[]; rows: string[][] } | null>
+  /** When true, highlight duplicate rows (excluding join columns from comparison) */
+  highlightDuplicates?: boolean
 }
 
 export function TableViewPanel({
@@ -48,6 +50,7 @@ export function TableViewPanel({
   joinColumnCandidates,
   tableDataRef,
   sqlResultRef,
+  highlightDuplicates = false,
 }: TableViewPanelProps) {
   const dispatch = useAppDispatch()
   const tableState = useAppSelector(selectTableState)
@@ -336,6 +339,29 @@ export function TableViewPanel({
     }
     return dupes
   }, [tableData, joiningEnabled, joiningContext])
+
+  // Set of indices (into the same baseRows used for sorting) that are duplicates when highlightDuplicates is on.
+  // Join columns are excluded from the comparison by matching on column name.
+  const duplicateOriginalIndices = useMemo(() => {
+    if (!highlightDuplicates || !tableData) return new Set<number>()
+    const baseColumns = (sqlMode === 'highlight' ? tableData : (sqlResult || tableData))?.columns ?? []
+    const baseRows = (sqlMode === 'highlight' ? tableData?.rows : (sqlResult ? sqlResult.rows : tableData?.rows)) ?? []
+    const joinColNames = new Set(
+      joiningEnabled && joiningContext ? tableData.columns.slice(0, joiningContext.joiningColumns.length) : []
+    )
+    const dataIndices = baseColumns.map((col, i) => ({ col, i })).filter(({ col }) => !joinColNames.has(col)).map(({ i }) => i)
+    const keyCount = new Map<string, number>()
+    for (const row of baseRows) {
+      const key = JSON.stringify(dataIndices.map(i => row[i]))
+      keyCount.set(key, (keyCount.get(key) ?? 0) + 1)
+    }
+    const dupes = new Set<number>()
+    for (let i = 0; i < baseRows.length; i++) {
+      const key = JSON.stringify(dataIndices.map(ci => baseRows[i][ci]))
+      if ((keyCount.get(key) ?? 0) > 1) dupes.add(i)
+    }
+    return dupes
+  }, [highlightDuplicates, tableData, sqlMode, sqlResult, joiningEnabled, joiningContext])
 
   const { sortedRows, sortedOriginalIndices } = useMemo(() => {
     const baseColumns = (sqlMode === 'highlight' ? tableData : (sqlResult || tableData))?.columns ?? []
@@ -695,16 +721,24 @@ export function TableViewPanel({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayData.rows.map((row, ri) => {
+            {(() => {
+              const joinColNameSet = new Set(
+                joiningEnabled && joiningContext
+                  ? tableData.columns.slice(0, joiningContext.joiningColumns.length)
+                  : []
+              )
+              return displayData.rows.map((row, ri) => {
               const originalIdx = sqlMode === 'highlight' ? sortedOriginalIndices[ri] : ri
               const isHighlightMatch = sqlMode === 'highlight' && sqlQuery.trim() ? sqlHighlightInfo.matchedRowIndices.has(originalIdx) : false
               const isHighlightActive = sqlMode === 'highlight' && sqlQuery.trim()
+              const isDuplicateRow = highlightDuplicates && duplicateOriginalIndices.has(sortedOriginalIndices[ri])
               return (
               <TableRow
                 key={ri}
                 className={
                   isHighlightActive
                     ? isHighlightMatch ? '' : 'opacity-30'
+                    : isDuplicateRow ? 'bg-amber-500/15'
                     : ri % 2 === 0 ? 'bg-muted/20' : ''
                 }
               >
@@ -714,9 +748,12 @@ export function TableViewPanel({
                   const isCellHighlighted = isHighlightMatch && (
                     !sqlHighlightInfo.selectedColumns || sqlHighlightInfo.selectedColumns.includes(displayData.columns[ci])
                   )
+                  const isJoinCol = joinColNameSet.has(displayData.columns[ci])
                   const cellBg = isCellHighlighted
                     ? 'bg-primary/30 font-semibold'
-                    : isHighlightMatch ? 'opacity-30' : ''
+                    : isHighlightMatch ? 'opacity-30'
+                    : isDuplicateRow && !isJoinCol ? 'bg-amber-500/20'
+                    : ''
                   return (
                   <TableCell
                     key={ci}
@@ -730,7 +767,8 @@ export function TableViewPanel({
                 })}
               </TableRow>
               )
-            })}
+            })
+            })()}
           </TableBody>
         </Table>
       </div>
