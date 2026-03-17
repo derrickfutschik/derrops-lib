@@ -308,7 +308,8 @@ export function MaximizableCodeViewer({
   const [showSqlHistory, setShowSqlHistory] = useState(false)
   const [joiningEnabled, setJoiningEnabled] = useState(false)
   const [selectedJoinPaths, setSelectedJoinPaths] = useState<(string | null)[]>([])
-  const [joinSelectOpen, setJoinSelectOpen] = useState<number | null>(null)
+  const [joinSelectOpenNormal, setJoinSelectOpenNormal] = useState<number | null>(null)
+  const [joinSelectOpenDialog, setJoinSelectOpenDialog] = useState<number | null>(null)
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
   const hiddenColumnsRef = useRef<Set<string>>(new Set())
   const savedSqlRef = useRef('')
@@ -1126,7 +1127,10 @@ export function MaximizableCodeViewer({
 
   // tableData and sortedRows are computed later (after displayContent is available)
 
-  const renderTableView = () => {
+  const renderTableView = (
+    joinSelectOpen: number | null,
+    setJoinSelectOpen: (v: number | null) => void,
+  ) => {
     if (!tableData) return <span className="text-muted-foreground text-sm">No tabular data available</span>
 
     const addToSqlHistory = (query: string) => {
@@ -1184,7 +1188,7 @@ export function MaximizableCodeViewer({
     return (
       <div className="flex flex-col h-full">
         {/* Joining Column Controls — between JMESPath row and SQL bar */}
-        {joiningColumnsRow()}
+        {joiningColumnsRow(joinSelectOpen, setJoinSelectOpen)}
         {/* SQL Query Bar - fixed, not scrollable */}
         <div className="flex-shrink-0">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
@@ -1764,7 +1768,10 @@ export function MaximizableCodeViewer({
     </div>
   )
 
-  const joiningColumnsRow = () => {
+  const joiningColumnsRow = (
+    joinSelectOpen: number | null,
+    setJoinSelectOpen: (v: number | null) => void,
+  ) => {
     if (!joiningContext) return null
     return (
       <div className="flex items-center gap-3 px-3 py-2 border-b border-border bg-muted/20">
@@ -1777,7 +1784,6 @@ export function MaximizableCodeViewer({
             // Only the first joining column gets the candidate combobox for now
             const candidates = j === 0 ? joinColumnCandidates : []
             const selectedPath = selectedJoinPaths[j] ?? null
-            const selectedCandidate = candidates.find((c) => c.path === (selectedPath ?? '__default__')) ?? candidates[0]
 
             if (candidates.length <= 1) {
               // No alternatives — show plain badge
@@ -2194,6 +2200,18 @@ export function MaximizableCodeViewer({
     }
   }, [viewMode, sqlQuery, normalizedSqlQuery, tableData, sqlMode, joiningContext])
 
+  const tableDuplicateCount = useMemo(() => {
+    if (!tableData || viewMode !== 'table') return 0
+    const seen = new Set<string>()
+    let dupes = 0
+    for (const row of tableData.rows) {
+      const key = JSON.stringify(row)
+      if (seen.has(key)) dupes++
+      else seen.add(key)
+    }
+    return dupes
+  }, [tableData, viewMode])
+
   const { sortedRows, sortedOriginalIndices } = useMemo(() => {
     const baseRows = (sqlMode === 'highlight' ? tableData?.rows : (sqlResult ? sqlResult.rows : tableData?.rows)) ?? []
     if (viewMode !== 'table' || !baseRows.length || sortColumn === null) {
@@ -2330,7 +2348,7 @@ export function MaximizableCodeViewer({
             </pre>
           )}
           {viewMode === 'markdown' && renderMarkdownView()}
-          {viewMode === 'table' && renderTableView()}
+          {viewMode === 'table' && renderTableView(joinSelectOpenNormal, setJoinSelectOpenNormal)}
         </div>
         {/* Status ribbon */}
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
@@ -2341,7 +2359,7 @@ export function MaximizableCodeViewer({
               const selected = sqlQuery.trim()
                 ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
                 : null
-              return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
+              return <><span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>{tableDuplicateCount > 0 && <span className="text-red-400">{tableDuplicateCount} duplicate{tableDuplicateCount !== 1 ? 's' : ''}</span>}</>
             })()}
             {viewMode === 'json' && <>
               {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
@@ -2407,7 +2425,7 @@ export function MaximizableCodeViewer({
               </pre>
             )}
             {viewMode === 'markdown' && renderMarkdownView()}
-            {viewMode === 'table' && renderTableView()}
+            {viewMode === 'table' && renderTableView(joinSelectOpenDialog, setJoinSelectOpenDialog)}
           </div>
           {/* Status ribbon in maximized view */}
           <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
@@ -2418,7 +2436,7 @@ export function MaximizableCodeViewer({
                 const selected = sqlQuery.trim()
                   ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
                   : null
-                return <span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>
+                return <><span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>{tableDuplicateCount > 0 && <span className="text-red-400">{tableDuplicateCount} duplicate{tableDuplicateCount !== 1 ? 's' : ''}</span>}</>
               })()}
               {viewMode === 'json' && <>
                 {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
