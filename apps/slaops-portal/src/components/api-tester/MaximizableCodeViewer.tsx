@@ -301,6 +301,7 @@ export function MaximizableCodeViewer({
   const [sortColumn, setSortColumn] = useState<number | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [sqlQuery, setSqlQuery] = useState<string>('')
+  const [sqlMode, setSqlMode] = useState<'filter' | 'highlight'>('filter')
   const [sqlError, setSqlError] = useState<string | null>(null)
   const [sqlHistory, setSqlHistory] = useState<string[]>([])
   const [sqlHistoryIndex, setSqlHistoryIndex] = useState(-1)
@@ -1168,7 +1169,8 @@ export function MaximizableCodeViewer({
     }
 
     // Use SQL result columns if available (rows are already sorted via sortedRows); apply hidden columns filter
-    const rawDisplayData = { columns: (sqlResult || tableData).columns, rows: sortedRows }
+    // In highlight mode, always show all original columns
+    const rawDisplayData = { columns: (sqlMode === 'highlight' ? tableData : (sqlResult || tableData)).columns, rows: sortedRows }
     const displayData = hiddenColumns.size === 0 ? rawDisplayData : (() => {
       const visibleIndices = rawDisplayData.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumns.has(c)).map(({ i }) => i)
       return {
@@ -1261,6 +1263,31 @@ export function MaximizableCodeViewer({
                 Clear
               </Button>
             )}
+            <ToggleGroup
+              type="single"
+              value={sqlMode}
+              onValueChange={(val) => val && setSqlMode(val as 'filter' | 'highlight')}
+              className="gap-0 shrink-0"
+            >
+              <ToggleGroupItem
+                value="filter"
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                title="Filter: Show only matched rows"
+              >
+                <Filter className="h-3 w-3" />
+                <span className="hidden sm:inline">Filter</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="highlight"
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                title="Highlight: Show all rows, highlight matches"
+              >
+                <Highlighter className="h-3 w-3" />
+                <span className="hidden sm:inline">Highlight</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
           {/* SQL Error */}
           {sqlError && (
@@ -1269,10 +1296,21 @@ export function MaximizableCodeViewer({
             </div>
           )}
           {/* Results info */}
-          {sqlResult && (
+          {sqlResult && sqlMode === 'filter' && (
             <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
               <span className="text-primary font-medium">{sqlResult.rows.length}</span> rows returned
               <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
+            </div>
+          )}
+          {sqlQuery.trim() && sqlMode === 'highlight' && (
+            <div className="flex items-center gap-2 px-3 py-1 border-b border-border bg-primary/5 text-xs text-muted-foreground">
+              <span className="text-primary font-medium">{sqlHighlightInfo.matchedRowIndices.size}</span> rows matched
+              <span className="text-muted-foreground/60">({tableData.rows.length} total)</span>
+              {sqlHighlightInfo.selectedColumns && (
+                <span className="text-muted-foreground/60">
+                  · columns: <span className="text-primary/80">{sqlHighlightInfo.selectedColumns.join(', ')}</span>
+                </span>
+              )}
             </div>
           )}
           {/* Hidden columns indicator */}
@@ -1295,10 +1333,12 @@ export function MaximizableCodeViewer({
             <TableHeader className="bg-primary/10">
               <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
                 <TableHead className="sticky top-0 z-20 bg-muted text-muted-foreground font-semibold w-[3ch]">#</TableHead>
-                {displayData.columns.map((col, i) => (
+                {displayData.columns.map((col, i) => {
+                  const isSelectedCol = sqlMode === 'highlight' && sqlHighlightInfo.selectedColumns?.includes(col)
+                  return (
                   <TableHead
                     key={i}
-                    className="sticky top-0 z-20 bg-muted cursor-pointer select-none text-primary font-semibold hover:text-primary/80 transition-colors group/col"
+                    className={`sticky top-0 z-20 bg-muted cursor-pointer select-none font-semibold hover:text-primary/80 transition-colors group/col ${isSelectedCol ? 'text-yellow-400' : 'text-primary'}`}
                     onClick={() => handleColumnSort(i)}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -1321,25 +1361,47 @@ export function MaximizableCodeViewer({
                       </button>
                     </span>
                   </TableHead>
-                ))}
+                  )
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayData.rows.map((row, ri) => (
-                <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
+              {displayData.rows.map((row, ri) => {
+                const originalIdx = sqlMode === 'highlight' ? sortedOriginalIndices[ri] : ri
+                const isHighlightMatch = sqlMode === 'highlight' && sqlQuery.trim() ? sqlHighlightInfo.matchedRowIndices.has(originalIdx) : false
+                const isHighlightActive = sqlMode === 'highlight' && sqlQuery.trim()
+                return (
+                <TableRow
+                  key={ri}
+                  className={
+                    isHighlightActive
+                      ? isHighlightMatch ? '' : 'opacity-30'
+                      : ri % 2 === 0 ? 'bg-muted/20' : ''
+                  }
+                >
                   <TableCell className="font-mono text-xs text-muted-foreground/50 py-2.5 w-[3ch]">{ri}</TableCell>
-                  {row.map((cell, ci) => (
+                  {row.map((cell, ci) => {
+                    // selectedColumns=null means SELECT * → highlight all cells; otherwise only the named columns
+                    const isCellHighlighted = isHighlightMatch && (
+                      !sqlHighlightInfo.selectedColumns || sqlHighlightInfo.selectedColumns.includes(displayData.columns[ci])
+                    )
+                    const cellBg = isCellHighlighted
+                      ? 'bg-primary/30 font-semibold'
+                      : isHighlightMatch ? 'opacity-30' : ''
+                    return (
                     <TableCell
                       key={ci}
-                      className="font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5"
+                      className={`font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5 ${cellBg}`}
                       onClick={handleCellClick(displayData.columns[ci], cell)}
                       title="⌘+Click to add SQL filter"
                     >
                       {cell}
                     </TableCell>
-                  ))}
+                    )
+                  })}
                 </TableRow>
-              ))}
+                )
+              })}
             </TableBody>
           </Table>
         </div>
@@ -1996,20 +2058,81 @@ export function MaximizableCodeViewer({
   }, [sqlQuery, normalizedSqlQuery, tableData, viewMode])
   sqlResultRef.current = sqlResult
 
-  const sortedRows = useMemo(() => {
-    const baseRows = sqlResult ? sqlResult.rows : tableData?.rows
-    if (viewMode !== 'table' || !baseRows || sortColumn === null) return baseRows ?? tableData?.rows ?? []
+  // Compute highlight info for SQL highlight mode: which original row indices match and which columns are selected
+  const sqlHighlightInfo = useMemo(() => {
+    if (viewMode !== 'table' || !sqlQuery.trim() || !tableData || sqlMode !== 'highlight') {
+      return { matchedRowIndices: new Set<number>(), selectedColumns: null as string[] | null }
+    }
+    try {
+      const joiningColSet = new Set(joiningContext?.joiningColumns ?? [])
+      const data = tableData.rows.map((row, rowIdx) => {
+        const obj: Record<string, any> = { __rowIdx: rowIdx }
+        tableData.columns.forEach((col, i) => {
+          const v = row[i]
+          if (joiningColSet.has(col)) {
+            obj[col] = v
+          } else if (v === '') {
+            obj[col] = v
+          } else if (v === 'true') {
+            obj[col] = true
+          } else if (v === 'false') {
+            obj[col] = false
+          } else {
+            const num = Number(v)
+            obj[col] = !isNaN(num) && v.trim() !== '' ? num : v
+          }
+        })
+        return obj
+      })
+
+      // Extract selected columns from SELECT clause (null means *)
+      const selectMatch = normalizedSqlQuery.match(/^SELECT\s+(.*?)\s+FROM\s+\?/i)
+      let selectedColumns: string[] | null = null
+      if (selectMatch) {
+        const selectCols = selectMatch[1].trim()
+        if (selectCols !== '*') {
+          selectedColumns = selectCols
+            .split(',')
+            .map(c => c.trim().replace(/^\[|\]$/g, '').split(/\s+as\s+/i)[0].trim())
+        }
+      }
+
+      // Build a query using everything after FROM ? (keeps WHERE, ORDER BY, etc.) but selects only __rowIdx
+      const fromMatch = normalizedSqlQuery.match(/\bFROM\s+\?\s*(.*?)$/i)
+      const conditionsClause = fromMatch ? fromMatch[1].trim() : ''
+      const highlightQuery = `SELECT __rowIdx FROM ? ${conditionsClause}`
+
+      const result = alasql(highlightQuery, [data])
+      const matchedRowIndices = new Set<number>()
+      if (Array.isArray(result)) {
+        result.forEach((r: any) => {
+          if (typeof r.__rowIdx === 'number') matchedRowIndices.add(r.__rowIdx)
+        })
+      }
+      return { matchedRowIndices, selectedColumns }
+    } catch {
+      return { matchedRowIndices: new Set<number>(), selectedColumns: null as string[] | null }
+    }
+  }, [viewMode, sqlQuery, normalizedSqlQuery, tableData, sqlMode, joiningContext])
+
+  const { sortedRows, sortedOriginalIndices } = useMemo(() => {
+    const baseRows = (sqlMode === 'highlight' ? tableData?.rows : (sqlResult ? sqlResult.rows : tableData?.rows)) ?? []
+    if (viewMode !== 'table' || !baseRows.length || sortColumn === null) {
+      return { sortedRows: baseRows, sortedOriginalIndices: baseRows.map((_, i) => i) }
+    }
     const col = sortColumn
-    return [...baseRows].sort((a, b) => {
-      const aVal = a[col] ?? ''
-      const bVal = b[col] ?? ''
+    const indexed = baseRows.map((row, i) => ({ row, origIdx: i }))
+    const sorted = [...indexed].sort((a, b) => {
+      const aVal = a.row[col] ?? ''
+      const bVal = b.row[col] ?? ''
       const aNum = Number(aVal)
       const bNum = Number(bVal)
       const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
       const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
       return sortDirection === 'asc' ? cmp : -cmp
     })
-  }, [tableData, sqlResult, sortColumn, sortDirection, viewMode])
+    return { sortedRows: sorted.map(s => s.row), sortedOriginalIndices: sorted.map(s => s.origIdx) }
+  }, [tableData, sqlResult, sqlMode, sortColumn, sortDirection, viewMode])
 
 
 
