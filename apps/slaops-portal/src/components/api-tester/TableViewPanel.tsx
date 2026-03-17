@@ -326,15 +326,16 @@ export function TableViewPanel({
 
   const tableDuplicateCount = useMemo(() => {
     if (!tableData) return 0
+    const joinColCount = joiningEnabled && joiningContext ? joiningContext.joiningColumns.length : 0
     const seen = new Set<string>()
     let dupes = 0
     for (const row of tableData.rows) {
-      const key = JSON.stringify(row)
+      const key = JSON.stringify(joinColCount > 0 ? row.slice(joinColCount) : row)
       if (seen.has(key)) dupes++
       else seen.add(key)
     }
     return dupes
-  }, [tableData])
+  }, [tableData, joiningEnabled, joiningContext])
 
   const { sortedRows, sortedOriginalIndices } = useMemo(() => {
     const baseColumns = (sqlMode === 'highlight' ? tableData : (sqlResult || tableData))?.columns ?? []
