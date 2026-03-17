@@ -1909,10 +1909,15 @@ export function MaximizableCodeViewer({
     }
   }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, content])
 
-  // Reset selected join paths when the joining context changes (new query or content)
+  // When candidates change, preserve any selection that is still valid; fall back to default otherwise
   useEffect(() => {
-    setSelectedJoinPaths([])
-  }, [joiningContext])
+    setSelectedJoinPaths((prev) =>
+      prev.map((path) => {
+        if (!path || path === '__default__') return path
+        return joinColumnCandidates.some((c) => c.path === path) ? path : null
+      }),
+    )
+  }, [joinColumnCandidates])
 
   // Auto-append [] to JMESPath when in table view and result is an array of arrays
   useEffect(() => {
@@ -1938,12 +1943,29 @@ export function MaximizableCodeViewer({
     // Helper: build enhanced columns/rows when joining is active, applying any custom join path selection
     const applyJoining = (baseColumns: string[], baseRows: string[][]): { columns: string[]; rows: string[][] } | null => {
       if (!joiningEnabled || !joiningContext || joiningContext.joiningColumns.length === 0) return null
-      const effectiveJoinCols = joiningContext.joiningColumns.map((col, j) => {
+      // Build effective column names: custom selections get a SQL-safe "join_column" name
+      // that doesn't conflict with any existing data column or previously assigned join column.
+      const effectiveJoinCols: string[] = []
+      for (let j = 0; j < joiningContext.joiningColumns.length; j++) {
         const path = selectedJoinPaths[j] ?? null
-        if (!path || path === '__default__') return col
+        if (!path || path === '__default__') {
+          effectiveJoinCols.push(joiningContext.joiningColumns[j])
+          continue
+        }
         const cand = joinColumnCandidates.find((c) => c.path === path)
-        return cand ? cand.path : col
-      })
+        if (!cand) {
+          effectiveJoinCols.push(joiningContext.joiningColumns[j])
+          continue
+        }
+        const taken = new Set([...baseColumns, ...effectiveJoinCols])
+        let name = 'join_column'
+        if (taken.has(name)) {
+          let suffix = 2
+          while (taken.has(`join_column_${suffix}`)) suffix++
+          name = `join_column_${suffix}`
+        }
+        effectiveJoinCols.push(name)
+      }
       const enhancedColumns = [...effectiveJoinCols, ...baseColumns]
       const enhancedRows = baseRows.map((row, i) => {
         const joinVals = joiningContext.joiningColumns.map((_, j) => {
