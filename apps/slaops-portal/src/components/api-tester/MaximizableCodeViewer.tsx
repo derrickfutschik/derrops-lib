@@ -45,6 +45,28 @@ import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
 import { deepEqual, detectJoiningContext, detectJoinColumnCandidates, type JoiningContext, type JoinColumnCandidate } from './joining-utils'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import {
+  selectSelectedView,
+  selectJsonState,
+  selectTableState,
+  selectActiveSortColumn,
+  selectHiddenColumnIds,
+  setSelectedView,
+  setJmespathEnabled,
+  setJmespathQuery as setJmespathQueryRedux,
+  setJmespathMode,
+  setTruncateValues as setTruncateValuesRedux,
+  setUniqueFilter as setUniqueFilterRedux,
+  setSqlQuery as setSqlQueryRedux,
+  setSqlMode as setSqlModeRedux,
+  setJoinColumn,
+  reconcileColumns,
+  toggleColumnHidden,
+  showAllColumns,
+  setColumnSort,
+  setJsonState,
+} from '@/store/responseViewerSlice'
 
 // ---------------------------------------------------------------------------
 // Module-level pure helpers (stable references, never recreated per render)
@@ -293,25 +315,63 @@ export function MaximizableCodeViewer({
   onExpandToBottom,
   onCollapseFromBottom,
 }: MaximizableCodeViewerProps) {
+  const dispatch = useAppDispatch()
+  const selectedView = useAppSelector(selectSelectedView)
+  const jsonState = useAppSelector(selectJsonState)
+  const tableState = useAppSelector(selectTableState)
+  const activeSortColumn = useAppSelector(selectActiveSortColumn)
+  const hiddenColumnIds = useAppSelector(selectHiddenColumnIds)
+
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
-  const [truncateValues, setTruncateValues] = useState(false)
-  const [uniqueFilter, setUniqueFilter] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>('json')
-  const [sortColumn, setSortColumn] = useState<number | null>(null)
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [sqlQuery, setSqlQuery] = useState<string>('')
-  const [sqlMode, setSqlMode] = useState<'filter' | 'highlight'>('filter')
+  // truncateValues and uniqueFilter now come from Redux (jsonState)
+  const truncateValues = jsonState.truncateValues
+  const uniqueFilter = jsonState.uniqueFilter
+  // viewMode from Redux
+  const viewMode = selectedView as ViewMode
+  const setViewMode = (v: ViewMode) => dispatch(setSelectedView(v))
+
+  // Table sort from Redux (single active column)
+  // sortColumn is now an index into the *visible* columns array; we derive it on render
   const [sqlError, setSqlError] = useState<string | null>(null)
   const [sqlHistory, setSqlHistory] = useState<string[]>([])
   const [sqlHistoryIndex, setSqlHistoryIndex] = useState(-1)
   const [showSqlHistory, setShowSqlHistory] = useState(false)
   const [joiningEnabled, setJoiningEnabled] = useState(false)
-  const [selectedJoinPaths, setSelectedJoinPaths] = useState<(string | null)[]>([])
+  // joinColumn (first joining path) from Redux; other joining paths remain local
+  const [additionalJoinPaths, setAdditionalJoinPaths] = useState<(string | null)[]>([])
   const [joinSelectOpenNormal, setJoinSelectOpenNormal] = useState<number | null>(null)
   const [joinSelectOpenDialog, setJoinSelectOpenDialog] = useState<number | null>(null)
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
+  // hiddenColumns derived from Redux store
+  const hiddenColumns = hiddenColumnIds
   const hiddenColumnsRef = useRef<Set<string>>(new Set())
+
+  // SQL state from Redux
+  const sqlQuery = tableState.sqlQuery
+  const setSqlQuery = (q: string) => dispatch(setSqlQueryRedux(q))
+  const sqlMode = tableState.sqlMode
+  const setSqlMode = (m: 'filter' | 'highlight') => dispatch(setSqlModeRedux(m))
+
+  // Join column from Redux (first join path)
+  const joinColumn = tableState.joinColumn
+
+  // Unified selectedJoinPaths: [joinColumn, ...additionalJoinPaths]
+  // j=0 is stored in Redux, j>=1 are local state
+  const selectedJoinPaths = useMemo(
+    () => [joinColumn, ...additionalJoinPaths],
+    [joinColumn, additionalJoinPaths],
+  )
+
+  const setSelectedJoinPaths = (updater: ((prev: (string | null)[]) => (string | null)[])) => {
+    const current = [joinColumn, ...additionalJoinPaths]
+    const next = updater(current)
+    // Apply first element to Redux, rest to local state
+    if (next[0] !== joinColumn) {
+      dispatch(setJoinColumn(next[0] ?? null))
+    }
+    setAdditionalJoinPaths(next.slice(1))
+  }
+
   const savedSqlRef = useRef('')
   const sqlInputRef = useRef<HTMLInputElement>(null)
   const tableDataRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
@@ -362,11 +422,7 @@ export function MaximizableCodeViewer({
     }
   }, [])
 
-  // Use controlled state if provided, otherwise use internal state
-  const [internalJmespathEnabled, setInternalJmespathEnabled] = useState(false)
-  const [internalJmespathQuery, setInternalJmespathQuery] = useState('')
-  const [internalJmespathMode, setInternalJmespathMode] = useState<'filter' | 'highlight'>('filter')
-
+  // JMESPath state now lives in Redux; props provide backward compat initialization
   const [jmespathHistory, setJmespathHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [showHistory, setShowHistory] = useState(false)
@@ -380,9 +436,33 @@ export function MaximizableCodeViewer({
   const typingStartRef = useRef<string | null>(null)
   const undoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const jmespathEnabled = jmespathState?.enabled ?? internalJmespathEnabled
-  const jmespathQuery = jmespathState?.query ?? internalJmespathQuery
-  const jmespathMode = jmespathState?.mode ?? internalJmespathMode
+  // Read JMESPath state from Redux
+  const jmespathEnabled = jsonState.jmespathEnabled
+  const jmespathQuery = jsonState.jmespathQuery
+  const jmespathMode = jsonState.jmespathMode
+
+  // Initialize Redux from props on first mount only (backward compat)
+  const propsInitializedRef = useRef(false)
+  useEffect(() => {
+    if (propsInitializedRef.current) return
+    propsInitializedRef.current = true
+    if (jmespathState) {
+      dispatch(setJsonState({
+        jmespathEnabled: jmespathState.enabled,
+        jmespathQuery: jmespathState.query,
+        jmespathMode: jmespathState.mode,
+      }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Notify parent when Redux JMESPath state changes (backward compat)
+  const onJMESPathStateChangeRef = useRef(onJMESPathStateChange)
+  onJMESPathStateChangeRef.current = onJMESPathStateChange
+  useEffect(() => {
+    if (!onJMESPathStateChangeRef.current) return
+    onJMESPathStateChangeRef.current({ enabled: jmespathEnabled, query: jmespathQuery, mode: jmespathMode })
+  }, [jmespathEnabled, jmespathQuery, jmespathMode])
 
   // Debounced query: lags behind jmespathQuery so expensive computations
   // only run after the user stops typing for 400ms.
@@ -400,38 +480,21 @@ export function MaximizableCodeViewer({
     }
   }, [jmespathQuery])
 
-  const setJmespathEnabled = (enabled: boolean) => {
-    if (onJMESPathStateChange) {
-      onJMESPathStateChange({ enabled, query: jmespathQuery, mode: jmespathMode })
-    } else {
-      setInternalJmespathEnabled(enabled)
-    }
+  const setJmespathEnabledLocal = (enabled: boolean) => {
+    dispatch(setJmespathEnabled(enabled))
   }
 
   const setJmespathQuery = useCallback((query: string) => {
-    if (onJMESPathStateChange) {
-      onJMESPathStateChange({ enabled: jmespathEnabled, query, mode: jmespathMode })
-    } else {
-      setInternalJmespathQuery(query)
-    }
-  }, [onJMESPathStateChange, jmespathEnabled, jmespathMode])
+    dispatch(setJmespathQueryRedux(query))
+  }, [dispatch])
 
   // Sets query AND enables JMESPath (used for Cmd+Click from JSON viewer)
   const selectJmespathQuery = useCallback((query: string) => {
-    if (onJMESPathStateChange) {
-      onJMESPathStateChange({ enabled: true, query, mode: jmespathMode })
-    } else {
-      setInternalJmespathEnabled(true)
-      setInternalJmespathQuery(query)
-    }
-  }, [onJMESPathStateChange, jmespathMode])
+    dispatch(setJsonState({ jmespathEnabled: true, jmespathQuery: query }))
+  }, [dispatch])
 
-  const setJmespathMode = (mode: 'filter' | 'highlight') => {
-    if (onJMESPathStateChange) {
-      onJMESPathStateChange({ enabled: jmespathEnabled, query: jmespathQuery, mode })
-    } else {
-      setInternalJmespathMode(mode)
-    }
+  const setJmespathModeLocal = (mode: 'filter' | 'highlight') => {
+    dispatch(setJmespathMode(mode))
   }
 
   // Applies a query change programmatically (history selection, wildcard, cmd+click).
@@ -472,35 +535,30 @@ export function MaximizableCodeViewer({
   const toggleHighlightMode = useCallback(() => {
     // Enable JMESPath in highlight mode (like ⌘Click), or toggle off if already active
     const isActiveHighlight = jmespathEnabled && jmespathMode === 'highlight'
-    if (onJMESPathStateChange) {
-      onJMESPathStateChange({ enabled: !isActiveHighlight, query: jmespathQuery, mode: 'highlight' })
+    if (isActiveHighlight) {
+      dispatch(setJmespathEnabled(false))
     } else {
-      if (isActiveHighlight) {
-        setInternalJmespathEnabled(false)
-      } else {
-        setInternalJmespathEnabled(true)
-        setInternalJmespathMode('highlight')
-      }
+      dispatch(setJsonState({ jmespathEnabled: true, jmespathMode: 'highlight' }))
     }
-  }, [jmespathEnabled, jmespathMode, jmespathQuery, onJMESPathStateChange])
+  }, [jmespathEnabled, jmespathMode, dispatch])
 
-  const toggleTruncateValues = useCallback(() => setTruncateValues((v) => !v), [])
-  const toggleUniqueFilter = useCallback(() => setUniqueFilter((v) => !v), [])
+  const toggleTruncateValues = useCallback(() => {
+    dispatch(setTruncateValuesRedux(!truncateValues))
+  }, [dispatch, truncateValues])
+
+  const toggleUniqueFilter = useCallback(() => {
+    dispatch(setUniqueFilterRedux(!uniqueFilter))
+  }, [dispatch, uniqueFilter])
 
   const toggleFilterMode = useCallback(() => {
     // Enable JMESPath in filter mode (like ⌘Click), or toggle off if already active
     const isActiveFilter = jmespathEnabled && jmespathMode === 'filter'
-    if (onJMESPathStateChange) {
-      onJMESPathStateChange({ enabled: !isActiveFilter, query: jmespathQuery, mode: 'filter' })
+    if (isActiveFilter) {
+      dispatch(setJmespathEnabled(false))
     } else {
-      if (isActiveFilter) {
-        setInternalJmespathEnabled(false)
-      } else {
-        setInternalJmespathEnabled(true)
-        setInternalJmespathMode('filter')
-      }
+      dispatch(setJsonState({ jmespathEnabled: true, jmespathMode: 'filter' }))
     }
-  }, [jmespathEnabled, jmespathMode, jmespathQuery, onJMESPathStateChange])
+  }, [jmespathEnabled, jmespathMode, dispatch])
 
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
@@ -1308,7 +1366,7 @@ export function MaximizableCodeViewer({
               <span>{hiddenColumns.size} column{hiddenColumns.size > 1 ? 's' : ''} hidden</span>
               <button
                 className="text-primary hover:underline ml-1"
-                onClick={() => setHiddenColumns(new Set())}
+                onClick={() => dispatch(showAllColumns())}
               >
                 Show all
               </button>
@@ -1327,12 +1385,12 @@ export function MaximizableCodeViewer({
                   <TableHead
                     key={i}
                     className={`sticky top-0 z-20 bg-muted cursor-pointer select-none font-semibold hover:text-primary/80 transition-colors group/col ${isSelectedCol ? 'text-yellow-400' : 'text-primary'}`}
-                    onClick={() => handleColumnSort(i)}
+                    onClick={() => handleColumnSort(i, col)}
                   >
                     <span className="inline-flex items-center gap-1">
                       {col}
-                      {sortColumn === i ? (
-                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      {activeSortColumn?.id === col ? (
+                        activeSortColumn.direction === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowUpDown className="h-3 w-3 opacity-30" />
                       )}
@@ -1341,8 +1399,9 @@ export function MaximizableCodeViewer({
                         title="Hide column"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setHiddenColumns(prev => new Set([...prev, col]))
-                          setSortColumn(null)
+                          dispatch(toggleColumnHidden(col))
+                          // Clear sort for this column when hiding
+                          dispatch(setColumnSort({ id: col, direction: null }))
                         }}
                       >
                         <EyeOff className="h-3 w-3" />
@@ -1590,7 +1649,7 @@ export function MaximizableCodeViewer({
         <Switch
           id="jmespath-toggle"
           checked={jmespathEnabled}
-          onCheckedChange={setJmespathEnabled}
+          onCheckedChange={setJmespathEnabledLocal}
           className="scale-75"
         />
         <Label
@@ -1742,7 +1801,7 @@ export function MaximizableCodeViewer({
       <ToggleGroup
         type="single"
         value={jmespathMode}
-        onValueChange={(val) => val && setJmespathMode(val as 'filter' | 'highlight')}
+        onValueChange={(val) => val && setJmespathModeLocal(val as 'filter' | 'highlight')}
         disabled={!jmespathEnabled}
         className="gap-0"
       >
@@ -2045,12 +2104,14 @@ export function MaximizableCodeViewer({
   }, [displayContent, viewMode, joiningEnabled, joiningContext, selectedJoinPaths, joinColumnCandidates])
   tableDataRef.current = tableData
 
-  const handleColumnSort = (colIndex: number) => {
-    if (sortColumn === colIndex) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+  // Derive sortColumn index from activeSortColumn name and current visible columns
+  // This is computed inside sortedRows useMemo to avoid stale closure
+
+  const handleColumnSort = (colIndex: number, colName: string) => {
+    if (activeSortColumn?.id === colName) {
+      dispatch(setColumnSort({ id: colName, direction: activeSortColumn.direction === 'asc' ? 'desc' : 'asc' }))
     } else {
-      setSortColumn(colIndex)
-      setSortDirection('asc')
+      dispatch(setColumnSort({ id: colName, direction: 'asc' }))
     }
   }
 
@@ -2060,14 +2121,22 @@ export function MaximizableCodeViewer({
   }, [joiningContext])
 
   // Reset sort column when joining enabled state changes to avoid index shift bugs
-  useEffect(() => { setSortColumn(null) }, [joiningEnabled])
+  useEffect(() => {
+    if (activeSortColumn) {
+      dispatch(setColumnSort({ id: activeSortColumn.id, direction: null }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joiningEnabled])
 
   // Keep hiddenColumnsRef in sync (used in copy/export callbacks that close over the ref)
   useEffect(() => { hiddenColumnsRef.current = hiddenColumns }, [hiddenColumns])
 
-  // Reset hidden columns when the set of column names changes
+  // When tableData columns change, reconcile Redux column prefs (preserves hidden/sort for existing, adds defaults for new, drops missing)
   useEffect(() => {
-    setHiddenColumns(new Set())
+    if (tableData?.columns) {
+      dispatch(reconcileColumns(tableData.columns))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableData?.columns.join('\0')])
 
   // Normalize SQL to support reserved column names (e.g. value)
@@ -2213,11 +2282,16 @@ export function MaximizableCodeViewer({
   }, [tableData, viewMode])
 
   const { sortedRows, sortedOriginalIndices } = useMemo(() => {
+    const baseColumns = (sqlMode === 'highlight' ? tableData : (sqlResult || tableData))?.columns ?? []
     const baseRows = (sqlMode === 'highlight' ? tableData?.rows : (sqlResult ? sqlResult.rows : tableData?.rows)) ?? []
-    if (viewMode !== 'table' || !baseRows.length || sortColumn === null) {
+    if (viewMode !== 'table' || !baseRows.length || !activeSortColumn) {
       return { sortedRows: baseRows, sortedOriginalIndices: baseRows.map((_, i) => i) }
     }
-    const col = sortColumn
+    const col = baseColumns.indexOf(activeSortColumn.id)
+    if (col === -1) {
+      return { sortedRows: baseRows, sortedOriginalIndices: baseRows.map((_, i) => i) }
+    }
+    const sortDir = activeSortColumn.direction
     const indexed = baseRows.map((row, i) => ({ row, origIdx: i }))
     const sorted = [...indexed].sort((a, b) => {
       const aVal = a.row[col] ?? ''
@@ -2226,10 +2300,10 @@ export function MaximizableCodeViewer({
       const bNum = Number(bVal)
       const isNumeric = aVal !== '' && bVal !== '' && !isNaN(aNum) && !isNaN(bNum)
       const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
-      return sortDirection === 'asc' ? cmp : -cmp
+      return sortDir === 'asc' ? cmp : -cmp
     })
     return { sortedRows: sorted.map(s => s.row), sortedOriginalIndices: sorted.map(s => s.origIdx) }
-  }, [tableData, sqlResult, sqlMode, sortColumn, sortDirection, viewMode])
+  }, [tableData, sqlResult, sqlMode, activeSortColumn, viewMode])
 
 
 

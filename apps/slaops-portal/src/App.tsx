@@ -8,7 +8,9 @@ import { Amplify } from 'aws-amplify'
 import { getCurrentUser } from 'aws-amplify/auth'
 import { Hub } from 'aws-amplify/utils'
 import React from 'react'
+import { Provider } from 'react-redux'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { store } from './store'
 import AddService from './pages/AddService'
 import ApiTester from './pages/ApiTester'
 import Dashboard from './pages/Dashboard'
@@ -148,6 +150,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 }
 
 const App = () => (
+  <Provider store={store}>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -194,6 +197,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </Provider>
 )
 
 export default App
