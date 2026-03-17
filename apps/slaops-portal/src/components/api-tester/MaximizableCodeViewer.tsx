@@ -62,6 +62,50 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
+ * Returns true if the query contains tokens that will be colored —
+ * used to decide whether to activate the overlay. Trailing `[]` at the end
+ * of the expression are not highlighted, so they don't count.
+ */
+function hasColoredJmespathTokens(query: string): boolean {
+  if (/\[(\d+|\*)\]/.test(query)) return true
+  // [] is green only when not trailing; strip trailing []s and check what remains
+  return /\[\]/.test(query.replace(/(\[\])+$/, ''))
+}
+
+/**
+ * Renders a JMESPath query string as React nodes:
+ *  - `[0]`, `[12]` → red  (concrete indices)
+ *  - `[*]`, `[]`   → green (wildcards), EXCEPT `[]` tokens at the very end of
+ *                    the expression (one or more) which are left unstyled.
+ */
+function highlightJmespathQuery(query: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = []
+  // Determine where the trailing []...[] sequence starts so we can skip them.
+  const trailingStart = query.replace(/(\[\])+$/, '').length
+  const regex = /\[(\d+|\*|)\]/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(query)) !== null) {
+    if (match.index > lastIndex) parts.push(query.slice(lastIndex, match.index))
+    const content = match[1]
+    if (content === '') {
+      // [] — green only when not part of the trailing sequence
+      if (match.index < trailingStart) {
+        parts.push(<span key={match.index} className="text-green-500">[]</span>)
+      } else {
+        parts.push('[]')
+      }
+    } else {
+      const isWildcard = content === '*'
+      parts.push(<span key={match.index} className={isWildcard ? 'text-green-500' : 'text-orange-500'}>[{content}]</span>)
+    }
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < query.length) parts.push(query.slice(lastIndex))
+  return parts
+}
+
+/**
  * Stage 1: Find JSON paths in `original` that correspond to the JMESPath `result`.
  * Returns a Set of path strings (e.g. "hits[0].document.name") to highlight.
  */
@@ -305,6 +349,8 @@ export function MaximizableCodeViewer({
   const displayContentRef = useRef(content)
   const normalInputRef = useRef<HTMLInputElement>(null)
   const dialogInputRef = useRef<HTMLInputElement>(null)
+  const normalOverlayRef = useRef<HTMLDivElement>(null)
+  const dialogOverlayRef = useRef<HTMLDivElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
   const dialogPreRef = useRef<HTMLPreElement>(null)
   const dialogContentRef = useRef<HTMLDivElement>(null)
@@ -337,6 +383,11 @@ export function MaximizableCodeViewer({
     applyQueryProgrammatic(newValue)
   }
 
+  // Stable ref so the global keydown handler (registered once with [] deps)
+  // always calls the latest version of applyWildcard.
+  const applyWildcardRef = useRef(applyWildcard)
+  applyWildcardRef.current = applyWildcard
+
   const selectAllInViewer = useCallback((preRef: React.RefObject<HTMLPreElement>) => {
     const pre = preRef.current
     if (!pre) return
@@ -353,6 +404,7 @@ export function MaximizableCodeViewer({
   const [jmespathHistory, setJmespathHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [showHistory, setShowHistory] = useState(false)
+  const [jmespathInputFocused, setJmespathInputFocused] = useState(false)
   const isInputFocusedRef = useRef(false)
   const savedQueryRef = useRef('')
   const prevQueryRef = useRef('')
@@ -489,11 +541,19 @@ export function MaximizableCodeViewer({
 
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key !== 'h') return
+      if (!(e.metaKey || e.ctrlKey)) return
       const tag = document.activeElement?.tagName?.toLowerCase()
-      if (tag === 'input' || tag === 'textarea' || tag === 'pre') return
-      e.preventDefault()
-      setShowHotkeyInfo(true)
+      if (e.key === 'h') {
+        if (tag === 'input' || tag === 'textarea' || tag === 'pre') return
+        e.preventDefault()
+        setShowHotkeyInfo(true)
+      } else if (e.key === '8') {
+        // Fire applyWildcard when not in any text input/textarea and not already
+        // handled by a focused element (e.g. the viewer div or the JMESPath input).
+        if (tag === 'input' || tag === 'textarea' || e.defaultPrevented) return
+        e.preventDefault()
+        applyWildcardRef.current()
+      }
     }
     document.addEventListener('keydown', handleGlobalKey)
     return () => document.removeEventListener('keydown', handleGlobalKey)
@@ -934,9 +994,9 @@ export function MaximizableCodeViewer({
 
   // JMESPath filtering/highlighting logic — all expensive computation lives here
   // so it only re-runs when the actual inputs change (not on every render).
-  const { filteredContent, matchedPaths, jmespathError } = useMemo(() => {
+  const { filteredContent, matchedPaths, jmespathError, jmespathNullResult } = useMemo(() => {
     if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) {
-      return { filteredContent: null, matchedPaths: new Set<string>(), jmespathError: null }
+      return { filteredContent: null, matchedPaths: new Set<string>(), jmespathError: null, jmespathNullResult: false }
     }
 
     try {
@@ -949,23 +1009,27 @@ export function MaximizableCodeViewer({
         setCachedJmespathResult(content, debouncedQuery, result)
       }
 
+      const isNull = result === null
+
       if (jmespathMode === 'filter') {
         return {
           filteredContent: JSON.stringify(result, null, 2),
           matchedPaths: new Set<string>(),
           jmespathError: null,
+          jmespathNullResult: isNull,
         }
       }
 
       // Highlight mode: compute the full matched-path set here so it is
       // memoized and not recomputed on every unrelated render.
       const paths = findJmespathJsonLocations(parsed, result, debouncedQuery)
-      return { filteredContent: null, matchedPaths: paths, jmespathError: null }
+      return { filteredContent: null, matchedPaths: paths, jmespathError: null, jmespathNullResult: isNull }
     } catch (e: unknown) {
       return {
         filteredContent: null,
         matchedPaths: new Set<string>(),
         jmespathError: e instanceof Error ? e.message : 'Invalid JMESPath query',
+        jmespathNullResult: false,
       }
     }
   // getParsedContent is stable (useCallback with []) so omitting from deps is safe.
@@ -1311,7 +1375,7 @@ export function MaximizableCodeViewer({
     </>
   )
 
-  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>, disabled = false) => (
+  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>, overlayRef: React.RefObject<HTMLDivElement>, disabled = false) => (
     <div className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}>
       <div className="flex items-center gap-2">
         <Switch
@@ -1336,10 +1400,12 @@ export function MaximizableCodeViewer({
           onFocus={() => {
             isInputFocusedRef.current = true
             activeInputRef.current = inputRef.current
+            setJmespathInputFocused(true)
           }}
           onBlur={() => {
             isInputFocusedRef.current = false
             setShowHistory(false)
+            setJmespathInputFocused(false)
           }}
           onDoubleClick={() => {
             if (jmespathHistory.length > 0) setShowHistory(true)
@@ -1445,9 +1511,20 @@ export function MaximizableCodeViewer({
             }
           }}
           disabled={!jmespathEnabled}
-          className={`h-7 text-xs font-mono ${jmespathError ? 'border-destructive' : ''}`}
+          className={`h-7 text-xs font-mono ${jmespathError || jmespathNullResult ? 'border-destructive' : ''}`}
+          style={!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
+          onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollLeft = e.currentTarget.scrollLeft }}
           title="Cmd/Ctrl+8 to wildcard array indices | ↑↓ to browse history | Double-click to show history"
         />
+        {!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) && (
+          <div
+            ref={overlayRef}
+            aria-hidden
+            className="pointer-events-none absolute inset-0 px-3 flex items-center text-xs font-mono overflow-hidden whitespace-pre"
+          >
+            {highlightJmespathQuery(jmespathQuery)}
+          </div>
+        )}
         {showHistory && jmespathHistory.length > 0 && (
           <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden">
             {jmespathHistory.map((expr, i) => (
@@ -1693,7 +1770,7 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && jmespathRow(normalInputRef)}
+        {isJson && jmespathRow(normalInputRef, normalOverlayRef)}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
           style={{ maxHeight }}
@@ -1771,7 +1848,7 @@ export function MaximizableCodeViewer({
               </div>
             </div>
           </DialogHeader>
-          {isJson && jmespathRow(dialogInputRef)}
+          {isJson && jmespathRow(dialogInputRef, dialogOverlayRef)}
           <div
             ref={dialogContentRef}
             className="flex-1 overflow-auto p-0 outline-none"
