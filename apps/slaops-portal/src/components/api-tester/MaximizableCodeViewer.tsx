@@ -44,7 +44,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
-import { deepEqual, detectJoiningContext, type JoiningContext } from './joining-utils'
+import { deepEqual, detectJoiningContext, detectJoinColumnCandidates, type JoiningContext, type JoinColumnCandidate } from './joining-utils'
 
 // ---------------------------------------------------------------------------
 // Module-level pure helpers (stable references, never recreated per render)
@@ -307,6 +307,8 @@ export function MaximizableCodeViewer({
   const [sqlHistoryIndex, setSqlHistoryIndex] = useState(-1)
   const [showSqlHistory, setShowSqlHistory] = useState(false)
   const [joiningEnabled, setJoiningEnabled] = useState(false)
+  const [selectedJoinPaths, setSelectedJoinPaths] = useState<(string | null)[]>([])
+  const [joinSelectOpen, setJoinSelectOpen] = useState<number | null>(null)
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
   const hiddenColumnsRef = useRef<Set<string>>(new Set())
   const savedSqlRef = useRef('')
@@ -1771,11 +1773,58 @@ export function MaximizableCodeViewer({
           <Label className="text-xs font-medium text-muted-foreground">Join</Label>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          {joiningContext.joiningColumns.map((col) => (
-            <span key={col} className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs text-muted-foreground">
-              {col}
-            </span>
-          ))}
+          {joiningContext.joiningColumns.map((col, j) => {
+            // Only the first joining column gets the candidate combobox for now
+            const candidates = j === 0 ? joinColumnCandidates : []
+            const selectedPath = selectedJoinPaths[j] ?? null
+            const selectedCandidate = candidates.find((c) => c.path === (selectedPath ?? '__default__')) ?? candidates[0]
+
+            if (candidates.length <= 1) {
+              // No alternatives — show plain badge
+              return (
+                <span key={j} className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs text-muted-foreground">
+                  {col}
+                </span>
+              )
+            }
+
+            return (
+              <Select
+                key={j}
+                value={selectedPath ?? '__default__'}
+                open={joinSelectOpen === j}
+                onOpenChange={(open) => setJoinSelectOpen(open ? j : null)}
+                onValueChange={(value) => {
+                  setSelectedJoinPaths((prev) => {
+                    const next = [...prev]
+                    next[j] = value
+                    return next
+                  })
+                }}
+              >
+                <SelectTrigger
+                  className="h-6 w-auto gap-1 px-1.5 text-xs font-mono border-none bg-muted hover:bg-muted/70 focus:ring-0 focus:ring-offset-0 [&>svg:last-child]:h-3 [&>svg:last-child]:w-3 max-w-[280px]"
+                  title="Choose join column"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidates.map((cand) => (
+                    <SelectItem key={cand.path} value={cand.path} textValue={cand.label} className="text-xs font-mono">
+                      <div className="flex flex-col">
+                        <span>{cand.label}</span>
+                        {joinSelectOpen === j && !cand.isDefault && cand.values.length > 0 && (
+                          <span className="text-muted-foreground text-[10px]">
+                            {cand.values.slice(0, 3).join(', ')}{cand.values.length > 3 ? '…' : ''}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )
+          })}
         </div>
       </div>
     )
@@ -1849,6 +1898,22 @@ export function MaximizableCodeViewer({
     } catch { return null }
   }, [content, displayContent, viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery])
 
+  // Candidate join columns for the first joining segment (unique-valued scalar attributes)
+  const joinColumnCandidates = useMemo((): JoinColumnCandidate[] => {
+    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter' || !debouncedQuery.trim()) return []
+    try {
+      const originalParsed = JSON.parse(content)
+      return detectJoinColumnCandidates(originalParsed, debouncedQuery)
+    } catch {
+      return []
+    }
+  }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, content])
+
+  // Reset selected join paths when the joining context changes (new query or content)
+  useEffect(() => {
+    setSelectedJoinPaths([])
+  }, [joiningContext])
+
   // Auto-append [] to JMESPath when in table view and result is an array of arrays
   useEffect(() => {
     if (viewMode !== 'table' || !jmespathEnabled || jmespathMode !== 'filter' || !filteredContent) return
@@ -1869,6 +1934,32 @@ export function MaximizableCodeViewer({
   // Only compute when table view is active to avoid expensive processing during JMESPath editing
   const tableData = useMemo(() => {
     if (viewMode !== 'table') return null
+
+    // Helper: build enhanced columns/rows when joining is active, applying any custom join path selection
+    const applyJoining = (baseColumns: string[], baseRows: string[][]): { columns: string[]; rows: string[][] } | null => {
+      if (!joiningEnabled || !joiningContext || joiningContext.joiningColumns.length === 0) return null
+      const effectiveJoinCols = joiningContext.joiningColumns.map((col, j) => {
+        const path = selectedJoinPaths[j] ?? null
+        if (!path || path === '__default__') return col
+        const cand = joinColumnCandidates.find((c) => c.path === path)
+        return cand ? cand.path : col
+      })
+      const enhancedColumns = [...effectiveJoinCols, ...baseColumns]
+      const enhancedRows = baseRows.map((row, i) => {
+        const joinVals = joiningContext.joiningColumns.map((_, j) => {
+          const defaultVal = joiningContext.rowIndices[i]?.[j] ?? ''
+          const path = selectedJoinPaths[j] ?? null
+          if (!path || path === '__default__') return defaultVal
+          const cand = joinColumnCandidates.find((c) => c.path === path)
+          if (!cand) return defaultVal
+          const elemIdx = parseInt(defaultVal, 10)
+          return !isNaN(elemIdx) ? (cand.values[elemIdx] ?? '') : ''
+        })
+        return [...joinVals, ...row]
+      })
+      return { columns: enhancedColumns, rows: enhancedRows }
+    }
+
     // Try JSON first
     try {
       const parsed = JSON.parse(displayContent)
@@ -1879,28 +1970,11 @@ export function MaximizableCodeViewer({
             const val = item[col]
             return val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
           }))
-          // Add joining columns if active
-          if (joiningEnabled && joiningContext && joiningContext.joiningColumns.length > 0) {
-            const enhancedColumns = [...joiningContext.joiningColumns, ...columns]
-            const enhancedRows = rows.map((row, i) => [
-              ...(joiningContext.rowIndices[i] ?? joiningContext.joiningColumns.map(() => '')),
-              ...row,
-            ])
-            return { columns: enhancedColumns, rows: enhancedRows }
-          }
-          return { columns, rows }
+          return applyJoining(columns, rows) ?? { columns, rows }
         }
         // Array of primitives
         const rows = parsed.map((v: any) => [v === null || v === undefined ? '' : String(v)])
-        if (joiningEnabled && joiningContext && joiningContext.joiningColumns.length > 0) {
-          const enhancedColumns = [...joiningContext.joiningColumns, 'value']
-          const enhancedRows = rows.map((row, i) => [
-            ...(joiningContext.rowIndices[i] ?? joiningContext.joiningColumns.map(() => '')),
-            ...row,
-          ])
-          return { columns: enhancedColumns, rows: enhancedRows }
-        }
-        return { columns: ['value'], rows }
+        return applyJoining(['value'], rows) ?? { columns: ['value'], rows }
       }
     } catch {
       // Not JSON — try CSV
@@ -1939,7 +2013,8 @@ export function MaximizableCodeViewer({
       return { columns, rows }
     }
     return null
-  }, [displayContent, viewMode, joiningEnabled, joiningContext])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayContent, viewMode, joiningEnabled, joiningContext, selectedJoinPaths, joinColumnCandidates])
   tableDataRef.current = tableData
 
   const handleColumnSort = (colIndex: number) => {

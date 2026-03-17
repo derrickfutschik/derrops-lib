@@ -148,6 +148,124 @@ function computeRowIndices(
 }
 
 // ---------------------------------------------------------------------------
+// Join column candidates
+// ---------------------------------------------------------------------------
+
+/**
+ * A candidate attribute that can be used as a join column instead of the default index.
+ * Only attributes whose values are unique across all elements of the joining array are included.
+ */
+export interface JoinColumnCandidate {
+  /** Display label shown in the combobox (e.g. "hits[*].document.id"). */
+  label: string
+  /** Unique key; '__default__' for the index-based default. */
+  path: string
+  /** True for the index-based default option. */
+  isDefault: boolean
+  /**
+   * Per-element values indexed by position in the joining array.
+   * values[elementIdx] is the string value to use for that element.
+   */
+  values: string[]
+}
+
+/**
+ * Discovers candidate join columns for the first joining segment of a JMESPath query.
+ *
+ * For `hits[*].document.sampleOperations[]` the chain explored is:
+ *   hits[*].*           (direct attributes of each hit)
+ *   hits[*].document.*  (attributes at the intermediate navigation level)
+ *
+ * Only scalar-valued attributes whose values are non-empty and unique across
+ * all elements are returned. The default index-based candidate is always first.
+ */
+export function detectJoinColumnCandidates(
+  original: any,
+  query: string,
+): JoinColumnCandidate[] {
+  const segments = parseArraySegments(query)
+  if (!segments || segments.length < 2) return []
+
+  const joiningSegment = segments[0]
+  const nextSegment = segments[1]
+
+  const firstArray = navigateProperties(original, joiningSegment.properties)
+  if (!Array.isArray(firstArray) || firstArray.length === 0) return []
+
+  const n = firstArray.length
+  const candidates: JoinColumnCandidate[] = []
+
+  // Default: use the positional index
+  candidates.push({
+    label: `${joiningSegment.label} (index)`,
+    path: '__default__',
+    isDefault: true,
+    values: firstArray.map((_, i) => String(i)),
+  })
+
+  // The chain to explore: navigate through nextSegment's properties one step at a
+  // time, stopping before the final property (which is the array being flattened).
+  // e.g. nextSegment.properties = ['document', 'sampleOperations']
+  //   → intermediateProps = ['document']
+  //   → explore at hits[*].* and hits[*].document.*
+  const intermediateProps = nextSegment.properties.slice(0, -1)
+  const basePathPrefix = joiningSegment.properties.join('.') + '[*]'
+
+  for (let step = 0; step <= intermediateProps.length; step++) {
+    const pathPrefix =
+      step === 0
+        ? basePathPrefix
+        : basePathPrefix + '.' + intermediateProps.slice(0, step).join('.')
+
+    // The element at this depth for each item in firstArray
+    const elementAtStep = firstArray.map((item) => {
+      let current = item
+      for (let p = 0; p < step; p++) {
+        if (current == null || typeof current !== 'object') return undefined
+        current = current[intermediateProps[p]]
+      }
+      return current
+    })
+
+    // Collect all keys that hold scalar values at this level
+    const keysSet = new Set<string>()
+    for (const el of elementAtStep) {
+      if (el != null && typeof el === 'object' && !Array.isArray(el)) {
+        for (const k of Object.keys(el)) {
+          const v = el[k]
+          if (v !== null && v !== undefined && typeof v !== 'object') {
+            keysSet.add(k)
+          }
+        }
+      }
+    }
+
+    for (const key of keysSet) {
+      const values = elementAtStep.map((el) => {
+        if (el == null || typeof el !== 'object') return ''
+        const v = el[key]
+        return v === null || v === undefined ? '' : String(v)
+      })
+
+      // Only include if all values are non-empty, short (≤72 chars), and unique across all elements
+      const allNonEmpty = values.every((v) => v !== '')
+      const allShort = values.every((v) => v.length <= 72)
+      const valueSet = new Set(values)
+      if (allNonEmpty && allShort && valueSet.size === n) {
+        candidates.push({
+          label: pathPrefix + '.' + key,
+          path: pathPrefix + '.' + key,
+          isDefault: false,
+          values,
+        })
+      }
+    }
+  }
+
+  return candidates
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
