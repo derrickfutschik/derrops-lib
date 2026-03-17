@@ -17,7 +17,9 @@ interface PropertySchema {
   items?: PropertySchema
 }
 
-const TRUNCATE_LENGTH = 255
+export const TRUNCATE_LENGTH = 255
+export const TRUNCATE_ARRAY_LENGTH = 20
+export const TRUNCATE_ARRAY_OBJECT_LENGTH = 10
 
 // Recursively get property schema from a path
 const getPropertySchema = (
@@ -75,7 +77,8 @@ const TruncatableString: React.FC<{
     }
   }
 
-  const displayValue = isTruncatable && !expanded ? `${value.slice(0, TRUNCATE_LENGTH)}\u2026` : value
+  const hiddenChars = value.length - TRUNCATE_LENGTH
+  const displayValue = isTruncatable && !expanded ? value.slice(0, TRUNCATE_LENGTH) : value
   const isClickable = onJmespathSelect || isTruncatable || (truncateValues && expanded)
   const titleText =
     isTruncatable && !expanded
@@ -92,7 +95,11 @@ const TruncatableString: React.FC<{
       onClick={handleClick}
       title={titleText}
     >
-      "{displayValue}"
+      "{displayValue}
+      {isTruncatable && !expanded && (
+        <span className="text-red-400">{` \u2026 ${hiddenChars.toLocaleString()} more char${hiddenChars !== 1 ? 's' : ''}`}</span>
+      )}
+      "
     </span>
   )
 }
@@ -179,10 +186,18 @@ const CollapsibleArray: React.FC<{
   truncateValues?: boolean
 }> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect, truncateValues }) => {
   const [collapsed, setCollapsed] = useState(false)
+  const [arrayExpanded, setArrayExpanded] = useState(false)
   const indentStr = '  '.repeat(indent)
   const nextIndent = indent + 1
   const nextIndentStr = '  '.repeat(nextIndent)
   const itemSchema = schema?.items
+
+  const isArrayOfObjects =
+    value.length > 0 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])
+  const arrayLimit = isArrayOfObjects ? TRUNCATE_ARRAY_OBJECT_LENGTH : TRUNCATE_ARRAY_LENGTH
+  const isTruncatableArray = !!(truncateValues && value.length > arrayLimit)
+  const displayedItems = isTruncatableArray && !arrayExpanded ? value.slice(0, arrayLimit) : value
+  const hiddenCount = value.length - arrayLimit
 
   if (value.length === 0) {
     return <span>[]</span>
@@ -206,7 +221,7 @@ const CollapsibleArray: React.FC<{
     <>
       <CollapseToggle collapsed={collapsed} onClick={() => setCollapsed(true)} />
       {'[\n'}
-      {value.map((item, index) => (
+      {displayedItems.map((item, index) => (
         <React.Fragment key={index}>
           {nextIndentStr}
           {renderJsonNode(
@@ -219,9 +234,35 @@ const CollapsibleArray: React.FC<{
             onJmespathSelect,
             truncateValues,
           )}
-          {index < value.length - 1 ? ',\n' : '\n'}
+          {index < displayedItems.length - 1 || isTruncatableArray ? ',\n' : '\n'}
         </React.Fragment>
       ))}
+      {isTruncatableArray && !arrayExpanded && (
+        <>
+          {nextIndentStr}
+          <span
+            className="text-red-400 cursor-pointer hover:text-red-300"
+            onClick={() => setArrayExpanded(true)}
+            title="Click to show all items"
+          >
+            {`\u2026 ${hiddenCount} more item${hiddenCount !== 1 ? 's' : ''}`}
+          </span>
+          {'\n'}
+        </>
+      )}
+      {isTruncatableArray && arrayExpanded && (
+        <>
+          {nextIndentStr}
+          <span
+            className="text-red-400 cursor-pointer hover:text-red-300"
+            onClick={() => setArrayExpanded(false)}
+            title="Click to collapse"
+          >
+            {`\u2026 collapse`}
+          </span>
+          {'\n'}
+        </>
+      )}
       {indentStr}]
     </>
   )
@@ -273,7 +314,18 @@ const CollapsibleObject: React.FC<{
         const description = propSchema?.description
         const propType = propSchema?.type
         const validationError = validationErrors?.[key]
-        const isTruncatedValue = !!(truncateValues && typeof val === 'string' && val.length > TRUNCATE_LENGTH)
+        const isValArrayOfObjects =
+          Array.isArray(val) &&
+          val.length > 0 &&
+          typeof val[0] === 'object' &&
+          val[0] !== null &&
+          !Array.isArray(val[0])
+        const isTruncatedValue = !!(
+          truncateValues &&
+          ((typeof val === 'string' && val.length > TRUNCATE_LENGTH) ||
+            (isValArrayOfObjects && val.length > TRUNCATE_ARRAY_OBJECT_LENGTH) ||
+            (!isValArrayOfObjects && Array.isArray(val) && val.length > TRUNCATE_ARRAY_LENGTH))
+        )
         const hasTooltip = description || validationError
         const isKeyRed = !!(validationError || isTruncatedValue)
 

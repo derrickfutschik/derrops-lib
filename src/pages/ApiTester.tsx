@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Configuration, ServiceApi } from '@/client/slaops-cloud'
 import { Service } from '@/client/slaops-cloud/models/service'
 import { ExpandableParameterRow } from '@/components/api-tester/ExpandableParameterRow'
-import { JMESPathState, MaximizableCodeViewer } from '@/components/api-tester/MaximizableCodeViewer'
+import { MaximizableCodeViewer } from '@/components/api-tester/MaximizableCodeViewer'
 import { MobileExpandableParameter } from '@/components/api-tester/MobileExpandableParameter'
 import { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
 import { OpenAPISelection } from '@/components/api-tester/OpenAPISelection'
@@ -371,12 +371,7 @@ const ApiTester = () => {
     direction: SortDirection
   }>({ column: 'name', direction: 'asc' })
 
-  // JMESPath state - persists across tab changes and requests
-  const [jmespathState, setJmespathState] = useState<JMESPathState>({
-    enabled: false,
-    query: '',
-    mode: 'filter',
-  })
+  // JMESPath state is now managed by Redux (via MaximizableCodeViewer's Redux slice)
 
   const urlValidation = useMemo(() => {
     if (!url.trim()) return { isValid: true, isEmpty: true, message: '' } // Empty is OK, show placeholder
@@ -3895,8 +3890,6 @@ const ApiTester = () => {
                               requestResponse.status,
                             )}
                             validationErrors={extractValidationErrors(matchResult)}
-                            jmespathState={jmespathState}
-                            onJMESPathStateChange={setJmespathState}
                             onFormat={() => {
                               try {
                                 const parsed = JSON.parse(requestResponse.body)
@@ -6266,8 +6259,6 @@ const ApiTester = () => {
                                 requestResponse.status,
                               )}
                               validationErrors={extractValidationErrors(matchResult)}
-                              jmespathState={jmespathState}
-                              onJMESPathStateChange={setJmespathState}
                               onFormat={() => {
                                 try {
                                   const parsed = JSON.parse(requestResponse.body)
@@ -6469,8 +6460,6 @@ const ApiTester = () => {
                   }
                   responseSchema={getResponseSchemaForStatus(matchResult, requestResponse.status)}
                   validationErrors={extractValidationErrors(matchResult)}
-                  jmespathState={jmespathState}
-                  onJMESPathStateChange={setJmespathState}
                   onFormat={() => {
                     try {
                       const parsed = JSON.parse(requestResponse.body)
