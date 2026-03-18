@@ -13,7 +13,7 @@
  * dot-separated path, using `[*]` for array traversal (never `[0]`).
  *
  * Example output for `{ hits: [{ document: { name: "x" } }] }`:
- *   ["hits", "hits[*]", "hits[*].document", "hits[*].document.name"]
+ *   ["hits[*]", "hits[*].document", "hits[*].document.name"]
  */
 function removeBareArrayPaths(paths: string[]): string[] {
   const pathSet = new Set(paths)
