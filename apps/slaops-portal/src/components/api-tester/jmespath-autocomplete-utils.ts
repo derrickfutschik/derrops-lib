@@ -60,11 +60,19 @@ export function extractWildcardPaths(data: unknown): string[] {
 // Fuzzy search
 // ---------------------------------------------------------------------------
 
+/** Replace all numeric indices like [0], [123] with [*] for normalization. */
+function normalizeNumericIndices(expr: string): string {
+  return expr.replace(/\[\d+\]/g, '[*]')
+}
+
 /**
  * Case-insensitive fuzzy match supporting space-separated terms.
  * Each term must appear somewhere in the path (in any order).
- * Also supports camelCase boundary matching — a term like "path"
- * will match "pathPrefixes" or "somePath".
+ *
+ * When the query contains numeric array indices (e.g. `hits[0].document`),
+ * normalizes them to `[*]`, does prefix matching against stored paths, then
+ * substitutes the original expression back so suggestions show the real indices.
+ * Works for multiple indices (e.g. `a[0].b[1].c`).
  *
  * Returns paths sorted by relevance (shorter paths first, then alphabetical).
  */
@@ -76,6 +84,18 @@ export function fuzzySearchPaths(
 
   const raw = query.trim()
   if (!raw) return deduped
+
+  // If the query contains numeric indices, do prefix matching with [*] normalization
+  const normalized = normalizeNumericIndices(raw)
+  if (normalized !== raw) {
+    const normalizedLower = normalized.toLowerCase()
+    const matches = deduped
+      .filter((p) => p.toLowerCase().startsWith(normalizedLower))
+      // Replace the normalized prefix with the original expression (preserving real indices)
+      .map((p) => raw + p.slice(normalized.length))
+    matches.sort((a, b) => a.length - b.length || a.localeCompare(b))
+    return matches
+  }
 
   const terms = raw.toLowerCase().split(/\s+/).filter(Boolean)
   if (terms.length === 0) return deduped
