@@ -46,6 +46,7 @@ interface MaximizedViewDialogProps {
   redoStackRef: React.MutableRefObject<string[]>
   typingStartRef: React.MutableRefObject<string | null>
   undoDebounceRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
+  jsonContent?: string
   // Content
   renderedContent: React.ReactNode
   displayContent: string
@@ -89,6 +90,7 @@ export function MaximizedViewDialog({
   redoStackRef,
   typingStartRef,
   undoDebounceRef,
+  jsonContent,
   renderedContent,
   displayContent,
   joiningContext,
@@ -114,8 +116,13 @@ export function MaximizedViewDialog({
   }, [open])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col p-0">
+    <Dialog open={open} onOpenChange={() => { /* only close via X button */ }}>
+      <DialogContent
+        className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] rounded-none border-none flex flex-col p-0"
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between pr-8">
             <DialogTitle className="flex items-center gap-2">
@@ -168,6 +175,7 @@ export function MaximizedViewDialog({
             redoStackRef={redoStackRef}
             typingStartRef={typingStartRef}
             undoDebounceRef={undoDebounceRef}
+            jsonContent={jsonContent}
           />
         )}
         <div

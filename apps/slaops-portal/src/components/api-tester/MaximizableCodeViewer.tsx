@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
 import { JsonViewPanel } from './JsonViewPanel'
-import { JMESPathInputRow } from './JMESPathInputRow'
+import { JMESPathInputRow, type JMESPathState } from './JMESPathInputRow'
 import { MarkdownViewPanel } from './MarkdownViewPanel'
 import { MaximizedViewDialog } from './MaximizedViewDialog'
 import { ResultsActionButtons } from './ResultsActionButtons'
@@ -41,7 +41,7 @@ import {
   setJsonState,
 } from '@/store/responseViewerSlice'
 
-export type { JMESPathState } from './JMESPathInputRow'
+export type { JMESPathState }
 
 type ViewMode = 'json' | 'markdown' | 'table'
 
@@ -739,6 +739,7 @@ export function MaximizableCodeViewer({
           redoStackRef={redoStackRef}
           typingStartRef={typingStartRef}
           undoDebounceRef={undoDebounceRef}
+          jsonContent={content}
         />}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
@@ -800,6 +801,7 @@ export function MaximizableCodeViewer({
         redoStackRef={redoStackRef}
         typingStartRef={typingStartRef}
         undoDebounceRef={undoDebounceRef}
+        jsonContent={content}
         renderedContent={renderedContent}
         displayContent={displayContent}
         joiningContext={joiningContext}

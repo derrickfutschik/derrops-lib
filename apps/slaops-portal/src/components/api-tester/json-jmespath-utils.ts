@@ -116,6 +116,19 @@ export function evaluateJmespathQuery(
   query: string,
   mode: 'filter' | 'highlight',
 ): JmespathQueryResult {
+  // Quick syntax check — run against a tiny object to validate syntax
+  // without the expensive structural traversal on real data.
+  try {
+    jmespath.search({}, query)
+  } catch (e: unknown) {
+    return {
+      filteredContent: null,
+      matchedPaths: new Set<string>(),
+      jmespathError: e instanceof Error ? e.message : 'Invalid JMESPath syntax',
+      jmespathNullResult: false,
+    }
+  }
+
   try {
     const result = jmespath.search(parsedContent, query)
     const isNull = result === null

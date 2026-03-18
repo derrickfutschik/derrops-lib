@@ -3,32 +3,20 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Filter, Highlighter } from 'lucide-react'
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { extractWildcardPaths, fuzzySearchPaths } from './jmespath-autocomplete-utils'
 
 // ---------------------------------------------------------------------------
 // Module-level pure helpers (stable references, never recreated per render)
 // ---------------------------------------------------------------------------
 
-/**
- * Returns true if the query contains tokens that will be colored —
- * used to decide whether to activate the overlay. Trailing `[]` at the end
- * of the expression are not highlighted, so they don't count.
- */
 export function hasColoredJmespathTokens(query: string): boolean {
   if (/\[(\d+|\*)\]/.test(query)) return true
-  // [] is green only when not trailing; strip trailing []s and check what remains
   return /\[\]/.test(query.replace(/(\[\])+$/, ''))
 }
 
-/**
- * Renders a JMESPath query string as React nodes:
- *  - `[0]`, `[12]` → red  (concrete indices)
- *  - `[*]`, `[]`   → green (wildcards), EXCEPT `[]` tokens at the very end of
- *                    the expression (one or more) which are left unstyled.
- */
 export function highlightJmespathQuery(query: string): React.ReactNode[] {
   const parts: React.ReactNode[] = []
-  // Determine where the trailing []...[] sequence starts so we can skip them.
   const trailingStart = query.replace(/(\[\])+$/, '').length
   const regex = /\[(\d+|\*|)\]/g
   let lastIndex = 0
@@ -37,7 +25,6 @@ export function highlightJmespathQuery(query: string): React.ReactNode[] {
     if (match.index > lastIndex) parts.push(query.slice(lastIndex, match.index))
     const content = match[1]
     if (content === '') {
-      // [] — green only when not part of the trailing sequence
       if (match.index < trailingStart) {
         parts.push(<span key={match.index} className="text-green-500">[]</span>)
       } else {
@@ -60,16 +47,13 @@ export interface JMESPathState {
 }
 
 export interface JMESPathInputRowProps {
-  // Redux-derived (read)
   jmespathEnabled: boolean
   jmespathQuery: string
   jmespathMode: 'filter' | 'highlight'
   jmespathError: string | null
   jmespathNullResult: boolean
-  // Undo-aware mutations (parent owns undo stacks)
   onQueryChange: (value: string) => void
   onQueryProgrammatic: (value: string) => void
-  // Toggle / dispatch callbacks
   onEnabledChange: (enabled: boolean) => void
   onModeChange: (mode: 'filter' | 'highlight') => void
   onToggleHighlight: () => void
@@ -77,12 +61,13 @@ export interface JMESPathInputRowProps {
   onApplyWildcard: () => void
   onToggleTruncateValues: () => void
   onToggleUniqueFilter: () => void
-  // Undo stack refs (owned by parent, used for undo/redo in key handler)
   undoStackRef: React.MutableRefObject<string[]>
   redoStackRef: React.MutableRefObject<string[]>
   typingStartRef: React.MutableRefObject<string | null>
   undoDebounceRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
   disabled?: boolean
+  /** Raw JSON string — used to extract autocomplete paths */
+  jsonContent?: string
 }
 
 export function JMESPathInputRow({
@@ -105,39 +90,59 @@ export function JMESPathInputRow({
   typingStartRef,
   undoDebounceRef,
   disabled = false,
+  jsonContent,
 }: JMESPathInputRowProps) {
-  const [jmespathHistory, setJmespathHistory] = useState<string[]>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
-  const [showHistory, setShowHistory] = useState(false)
   const [jmespathInputFocused, setJmespathInputFocused] = useState(false)
+  const [showAutocomplete, setShowAutocomplete] = useState(false)
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0)
 
   const isInputFocusedRef = useRef(false)
-  const savedQueryRef = useRef('')
   const inputRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const autocompleteRef = useRef<HTMLDivElement>(null)
+  const autocompleteItemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // Stable ref so we can call setJmespathQuery without it being in dep arrays
   const setJmespathQueryRef = useRef(onQueryChange)
   setJmespathQueryRef.current = onQueryChange
 
-  const addToHistory = useCallback((query: string) => {
-    const trimmed = query.trim()
-    if (!trimmed) return
-    setJmespathHistory((prev) => {
-      const filtered = prev.filter((h) => h !== trimmed)
-      return [trimmed, ...filtered].slice(0, 10)
-    })
-  }, [])
-
-  // Track previous query to detect external changes (cmd+click from JSON viewer)
-  const prevQueryRef = useRef(jmespathQuery)
-  useEffect(() => {
-    if (prevQueryRef.current !== jmespathQuery && !isInputFocusedRef.current) {
-      addToHistory(jmespathQuery)
-      setHistoryIndex(-1)
+  // ---------------------------------------------------------------------------
+  // Extract all wildcard paths from JSON content
+  // ---------------------------------------------------------------------------
+  const allPaths = useMemo(() => {
+    if (!jsonContent) return []
+    try {
+      const parsed = JSON.parse(jsonContent)
+      return extractWildcardPaths(parsed)
+    } catch {
+      return []
     }
-    prevQueryRef.current = jmespathQuery
-  }, [jmespathQuery, addToHistory])
+  }, [jsonContent])
+
+  // ---------------------------------------------------------------------------
+  // Fuzzy-filtered autocomplete suggestions
+  // ---------------------------------------------------------------------------
+  const autocompleteSuggestions = useMemo(() => {
+    if (!jmespathEnabled || !jmespathInputFocused || allPaths.length === 0) return []
+    const query = jmespathQuery.trim()
+    const results = fuzzySearchPaths(allPaths, query)
+    if (results.length === 1 && results[0] === query) return []
+    return results.slice(0, 15)
+  }, [allPaths, jmespathQuery, jmespathEnabled, jmespathInputFocused])
+
+  useEffect(() => {
+    if (!showAutocomplete || autocompleteSuggestions.length === 0) return
+    const nextIndex = Math.min(autocompleteIndex, autocompleteSuggestions.length - 1)
+    if (nextIndex !== autocompleteIndex) {
+      setAutocompleteIndex(nextIndex)
+      return
+    }
+    autocompleteItemRefs.current[nextIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [autocompleteIndex, autocompleteSuggestions, showAutocomplete])
+
+  const selectAutocomplete = useCallback((path: string) => {
+    onQueryProgrammatic(path)
+    setShowAutocomplete(false)
+  }, [onQueryProgrammatic])
 
   return (
     <div className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}>
@@ -160,18 +165,59 @@ export function JMESPathInputRow({
           ref={inputRef}
           placeholder="e.g. data[0].name, items[?status=='active']"
           value={jmespathQuery}
-          onChange={(e) => onQueryChange(e.target.value)}
+          onChange={(e) => {
+            onQueryChange(e.target.value)
+            setShowAutocomplete(true)
+            setAutocompleteIndex(0)
+          }}
           onFocus={() => {
             isInputFocusedRef.current = true
             setJmespathInputFocused(true)
+            setShowAutocomplete(true)
+            setAutocompleteIndex(0)
           }}
           onBlur={() => {
             isInputFocusedRef.current = false
-            setShowHistory(false)
-            setJmespathInputFocused(false)
+            setTimeout(() => {
+              setShowAutocomplete(false)
+              setJmespathInputFocused(false)
+            }, 150)
           }}
-          onDoubleClick={() => {
-            if (jmespathHistory.length > 0) setShowHistory(true)
+          onKeyDownCapture={(e) => {
+            const hasSuggestions = autocompleteSuggestions.length > 0
+
+            if (hasSuggestions && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+              e.preventDefault()
+              e.stopPropagation()
+              if (!showAutocomplete) {
+                setShowAutocomplete(true)
+                setAutocompleteIndex(e.key === 'ArrowDown' ? 0 : autocompleteSuggestions.length - 1)
+                return
+              }
+              setAutocompleteIndex((prev) => {
+                if (e.key === 'ArrowDown') {
+                  return Math.min(prev + 1, autocompleteSuggestions.length - 1)
+                }
+                return Math.max(prev - 1, 0)
+              })
+              return
+            }
+
+            // --- Autocomplete navigation ---
+            if (showAutocomplete && hasSuggestions) {
+              if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                selectAutocomplete(autocompleteSuggestions[autocompleteIndex])
+                return
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowAutocomplete(false)
+                return
+              }
+            }
           }}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -202,7 +248,6 @@ export function JMESPathInputRow({
             // Undo: Cmd+Z
             if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
               e.preventDefault()
-              // Flush any pending debounce first
               if (undoDebounceRef.current) {
                 clearTimeout(undoDebounceRef.current)
                 undoDebounceRef.current = null
@@ -215,7 +260,6 @@ export function JMESPathInputRow({
               const prev = undoStackRef.current[undoStackRef.current.length - 1]
               undoStackRef.current = undoStackRef.current.slice(0, -1)
               redoStackRef.current = [...redoStackRef.current, jmespathQuery]
-              setHistoryIndex(-1)
               setJmespathQueryRef.current(prev)
               return
             }
@@ -226,50 +270,7 @@ export function JMESPathInputRow({
               const next = redoStackRef.current[redoStackRef.current.length - 1]
               redoStackRef.current = redoStackRef.current.slice(0, -1)
               undoStackRef.current = [...undoStackRef.current, jmespathQuery]
-              setHistoryIndex(-1)
               setJmespathQueryRef.current(next)
-              return
-            }
-            if (e.key === 'Enter') {
-              if (historyIndex !== -1) {
-                // Committing a history navigation — push saved query to undo stack
-                onQueryProgrammatic(jmespathQuery)
-              }
-              addToHistory(jmespathQuery)
-              setHistoryIndex(-1)
-              return
-            }
-            if (e.key === 'Escape') {
-              if (showHistory) {
-                setShowHistory(false)
-                return
-              }
-              if (historyIndex !== -1) {
-                setHistoryIndex(-1)
-                // Revert to the saved query without affecting undo stack
-                setJmespathQueryRef.current(savedQueryRef.current)
-              }
-              return
-            }
-            if (e.key === 'ArrowUp') {
-              e.preventDefault()
-              if (jmespathHistory.length === 0) return
-              if (historyIndex === -1) {
-                savedQueryRef.current = jmespathQuery
-              }
-              const newIndex = Math.min(historyIndex + 1, jmespathHistory.length - 1)
-              setHistoryIndex(newIndex)
-              // Temporary navigation — no undo push
-              setJmespathQueryRef.current(jmespathHistory[newIndex])
-              return
-            }
-            if (e.key === 'ArrowDown') {
-              e.preventDefault()
-              if (historyIndex === -1) return
-              const newIndex = historyIndex - 1
-              setHistoryIndex(newIndex)
-              // Temporary navigation — no undo push
-              setJmespathQueryRef.current(newIndex === -1 ? savedQueryRef.current : jmespathHistory[newIndex])
               return
             }
           }}
@@ -277,7 +278,7 @@ export function JMESPathInputRow({
           className={`h-7 text-xs font-mono ${jmespathError || jmespathNullResult ? 'border-destructive' : ''}`}
           style={!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
           onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollLeft = e.currentTarget.scrollLeft }}
-          title="Cmd/Ctrl+8 to wildcard array indices | ↑↓ to browse history | Double-click to show history"
+          title="Tab to accept suggestion | ↑↓ navigate suggestions | Esc dismiss"
         />
         {!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) && (
           <div
@@ -288,21 +289,36 @@ export function JMESPathInputRow({
             {highlightJmespathQuery(jmespathQuery)}
           </div>
         )}
-        {showHistory && jmespathHistory.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden">
-            {jmespathHistory.map((expr, i) => (
-              <button
-                key={i}
-                className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === historyIndex ? 'bg-muted' : ''}`}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onQueryProgrammatic(expr)
-                  setShowHistory(false)
-                }}
-              >
-                {expr}
-              </button>
-            ))}
+        {/* Autocomplete dropdown */}
+        {showAutocomplete && autocompleteSuggestions.length > 0 && (
+          <div
+            ref={autocompleteRef}
+            className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-y-auto max-h-[240px]"
+          >
+            {autocompleteSuggestions.map((path, i) => {
+              const isSelected = i === autocompleteIndex
+              return (
+                <button
+                  key={path}
+                  ref={(node) => {
+                    autocompleteItemRefs.current[i] = node
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs font-mono truncate block transition-colors ${
+                    isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+                  }`}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    selectAutocomplete(path)
+                  }}
+                  onMouseEnter={() => setAutocompleteIndex(i)}
+                >
+                  {highlightPathMatch(path, jmespathQuery)}
+                </button>
+              )
+            })}
+            <div className="px-3 py-1 text-[10px] text-muted-foreground border-t border-border">
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Tab</kbd> accept · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">↑↓</kbd> navigate · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Esc</kbd> dismiss
+            </div>
           </div>
         )}
       </div>
@@ -334,4 +350,42 @@ export function JMESPathInputRow({
       </ToggleGroup>
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Helper: highlight matching terms in a path for the autocomplete dropdown
+// ---------------------------------------------------------------------------
+function highlightPathMatch(path: string, query: string): React.ReactNode {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (terms.length === 0) return path
+
+  const highlights = new Set<number>()
+  const lowerPath = path.toLowerCase()
+  for (const term of terms) {
+    let searchFrom = 0
+    while (searchFrom < lowerPath.length) {
+      const idx = lowerPath.indexOf(term, searchFrom)
+      if (idx === -1) break
+      for (let i = idx; i < idx + term.length; i++) highlights.add(i)
+      searchFrom = idx + 1
+    }
+  }
+
+  if (highlights.size === 0) return path
+
+  const parts: React.ReactNode[] = []
+  let i = 0
+  while (i < path.length) {
+    const isHighlighted = highlights.has(i)
+    let j = i + 1
+    while (j < path.length && highlights.has(j) === isHighlighted) j++
+    const segment = path.slice(i, j)
+    if (isHighlighted) {
+      parts.push(<span key={i} className="font-bold underline decoration-primary underline-offset-2">{segment}</span>)
+    } else {
+      parts.push(segment)
+    }
+    i = j
+  }
+  return <>{parts}</>
 }
