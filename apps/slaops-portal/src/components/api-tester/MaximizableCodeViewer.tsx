@@ -10,15 +10,12 @@ import {
 } from '@/components/ui/context-menu'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
 import { JsonViewPanel } from './JsonViewPanel'
+import { JMESPathInputRow } from './JMESPathInputRow'
 import { MarkdownViewPanel } from './MarkdownViewPanel'
 import { TableViewPanel } from './TableViewPanel'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import jmespath from 'jmespath'
 import {
   AlignLeft,
@@ -29,9 +26,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
-  Filter,
   Fingerprint,
-  Highlighter,
   Keyboard,
   Maximize2,
   Minimize2,
@@ -58,54 +53,6 @@ import {
   setUniqueFilter as setUniqueFilterRedux,
   setJsonState,
 } from '@/store/responseViewerSlice'
-
-// ---------------------------------------------------------------------------
-// Module-level pure helpers (stable references, never recreated per render)
-// ---------------------------------------------------------------------------
-
-/**
- * Returns true if the query contains tokens that will be colored —
- * used to decide whether to activate the overlay. Trailing `[]` at the end
- * of the expression are not highlighted, so they don't count.
- */
-function hasColoredJmespathTokens(query: string): boolean {
-  if (/\[(\d+|\*)\]/.test(query)) return true
-  // [] is green only when not trailing; strip trailing []s and check what remains
-  return /\[\]/.test(query.replace(/(\[\])+$/, ''))
-}
-
-/**
- * Renders a JMESPath query string as React nodes:
- *  - `[0]`, `[12]` → red  (concrete indices)
- *  - `[*]`, `[]`   → green (wildcards), EXCEPT `[]` tokens at the very end of
- *                    the expression (one or more) which are left unstyled.
- */
-function highlightJmespathQuery(query: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = []
-  // Determine where the trailing []...[] sequence starts so we can skip them.
-  const trailingStart = query.replace(/(\[\])+$/, '').length
-  const regex = /\[(\d+|\*|)\]/g
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(query)) !== null) {
-    if (match.index > lastIndex) parts.push(query.slice(lastIndex, match.index))
-    const content = match[1]
-    if (content === '') {
-      // [] — green only when not part of the trailing sequence
-      if (match.index < trailingStart) {
-        parts.push(<span key={match.index} className="text-green-500">[]</span>)
-      } else {
-        parts.push('[]')
-      }
-    } else {
-      const isWildcard = content === '*'
-      parts.push(<span key={match.index} className={isWildcard ? 'text-green-500' : 'text-orange-500'}>[{content}]</span>)
-    }
-    lastIndex = match.index + match[0].length
-  }
-  if (lastIndex < query.length) parts.push(query.slice(lastIndex))
-  return parts
-}
 
 /**
  * Stage 1: Find JSON paths in `original` that correspond to the JMESPath `result`.
@@ -288,13 +235,9 @@ function highlightJson(parsed: any, matchedPaths: Set<string>, onClickPath: (pat
   return renderValue(parsed, '', 0)
 }
 
-type ViewMode = 'json' | 'markdown' | 'table'
+export type { JMESPathState } from './JMESPathInputRow'
 
-export interface JMESPathState {
-  enabled: boolean
-  query: string
-  mode: 'filter' | 'highlight'
-}
+type ViewMode = 'json' | 'markdown' | 'table'
 
 interface MaximizableCodeViewerProps {
   title: string
@@ -350,10 +293,6 @@ export function MaximizableCodeViewer({
   const sqlResultRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
   // Tracks current displayContent for use in click handlers (defined after state/memos below)
   const displayContentRef = useRef(content)
-  const normalInputRef = useRef<HTMLInputElement>(null)
-  const dialogInputRef = useRef<HTMLInputElement>(null)
-  const normalOverlayRef = useRef<HTMLDivElement>(null)
-  const dialogOverlayRef = useRef<HTMLDivElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
   const dialogPreRef = useRef<HTMLPreElement>(null)
   const dialogContentRef = useRef<HTMLDivElement>(null)
@@ -404,14 +343,7 @@ export function MaximizableCodeViewer({
   }, [])
 
   // JMESPath state now lives in Redux; props provide backward compat initialization
-  const [jmespathHistory, setJmespathHistory] = useState<string[]>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
-  const [showHistory, setShowHistory] = useState(false)
-  const [jmespathInputFocused, setJmespathInputFocused] = useState(false)
-  const isInputFocusedRef = useRef(false)
-  const savedQueryRef = useRef('')
   const prevQueryRef = useRef('')
-  const activeInputRef = useRef<HTMLInputElement | null>(null)
   const savedPreWildcardRef = useRef<string | null>(null)
   const undoStackRef = useRef<string[]>([])
   const redoStackRef = useRef<string[]>([])
@@ -492,7 +424,6 @@ export function MaximizableCodeViewer({
       undoStackRef.current = [...undoStackRef.current, prev].slice(-100)
       redoStackRef.current = []
     }
-    setHistoryIndex(-1)
     setJmespathQuery(newValue)
   }
 
@@ -510,7 +441,6 @@ export function MaximizableCodeViewer({
       }
       undoDebounceRef.current = null
     }, 600)
-    setHistoryIndex(-1)
     setJmespathQuery(newValue)
   }
 
@@ -606,7 +536,6 @@ export function MaximizableCodeViewer({
       const prev = undoStackRef.current[undoStackRef.current.length - 1]
       undoStackRef.current = undoStackRef.current.slice(0, -1)
       redoStackRef.current = [...redoStackRef.current, jmespathQuery]
-      setHistoryIndex(-1)
       setJmespathQuery(prev)
       return
     }
@@ -617,35 +546,23 @@ export function MaximizableCodeViewer({
       const next = redoStackRef.current[redoStackRef.current.length - 1]
       redoStackRef.current = redoStackRef.current.slice(0, -1)
       undoStackRef.current = [...undoStackRef.current, jmespathQuery]
-      setHistoryIndex(-1)
       setJmespathQuery(next)
       return
     }
   }
 
-  const addToHistory = useCallback((query: string) => {
-    const trimmed = query.trim()
-    if (!trimmed) return
-    setJmespathHistory((prev) => {
-      const filtered = prev.filter((h) => h !== trimmed)
-      return [trimmed, ...filtered].slice(0, 10)
-    })
-  }, [])
-
-  // Add to history when query changes externally (e.g. cmd+click from JSON viewer).
-  // Also push the old value onto the undo stack so Cmd+Z can revert it.
+  // Push the old value onto the undo stack when query changes externally
+  // (e.g. cmd+click from JSON viewer). History management is handled by JMESPathInputRow.
   useEffect(() => {
-    if (prevQueryRef.current !== jmespathQuery && !isInputFocusedRef.current) {
+    if (prevQueryRef.current !== jmespathQuery) {
       const old = prevQueryRef.current
       if (old !== jmespathQuery) {
         undoStackRef.current = [...undoStackRef.current, old].slice(-100)
         redoStackRef.current = []
       }
-      addToHistory(jmespathQuery)
-      setHistoryIndex(-1)
     }
     prevQueryRef.current = jmespathQuery
-  }, [jmespathQuery, addToHistory])
+  }, [jmespathQuery])
 
   const isJson = contentType.includes('application/json')
 
@@ -1378,203 +1295,6 @@ export function MaximizableCodeViewer({
     </>
   )
 
-  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>, overlayRef: React.RefObject<HTMLDivElement>, disabled = false) => (
-    <div className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}>
-      <div className="flex items-center gap-2">
-        <Switch
-          id="jmespath-toggle"
-          checked={jmespathEnabled}
-          onCheckedChange={setJmespathEnabledLocal}
-          className="scale-75"
-        />
-        <Label
-          htmlFor="jmespath-toggle"
-          className="text-xs font-medium text-muted-foreground cursor-pointer"
-        >
-          JMESPath
-        </Label>
-      </div>
-      <div className="flex-1 relative">
-        <Input
-          ref={inputRef}
-          placeholder="e.g. data[0].name, items[?status=='active']"
-          value={jmespathQuery}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          onFocus={() => {
-            isInputFocusedRef.current = true
-            activeInputRef.current = inputRef.current
-            setJmespathInputFocused(true)
-          }}
-          onBlur={() => {
-            isInputFocusedRef.current = false
-            setShowHistory(false)
-            setJmespathInputFocused(false)
-          }}
-          onDoubleClick={() => {
-            if (jmespathHistory.length > 0) setShowHistory(true)
-          }}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-              e.preventDefault()
-              toggleHighlightMode()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
-              e.preventDefault()
-              toggleFilterMode()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === '8') {
-              e.preventDefault()
-              applyWildcard()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
-              e.preventDefault()
-              toggleTruncateValues()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
-              e.preventDefault()
-              toggleUniqueFilter()
-              return
-            }
-            // Undo: Cmd+Z
-            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
-              e.preventDefault()
-              // Flush any pending debounce first
-              if (undoDebounceRef.current) {
-                clearTimeout(undoDebounceRef.current)
-                undoDebounceRef.current = null
-                if (typingStartRef.current !== null) {
-                  undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
-                  typingStartRef.current = null
-                }
-              }
-              if (undoStackRef.current.length === 0) return
-              const prev = undoStackRef.current[undoStackRef.current.length - 1]
-              undoStackRef.current = undoStackRef.current.slice(0, -1)
-              redoStackRef.current = [...redoStackRef.current, jmespathQuery]
-              setHistoryIndex(-1)
-              setJmespathQuery(prev)
-              return
-            }
-            // Redo: Cmd+Shift+Z or Cmd+Y
-            if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
-              e.preventDefault()
-              if (redoStackRef.current.length === 0) return
-              const next = redoStackRef.current[redoStackRef.current.length - 1]
-              redoStackRef.current = redoStackRef.current.slice(0, -1)
-              undoStackRef.current = [...undoStackRef.current, jmespathQuery]
-              setHistoryIndex(-1)
-              setJmespathQuery(next)
-              return
-            }
-            if (e.key === 'Enter') {
-              if (historyIndex !== -1) {
-                // Committing a history navigation — push saved query to undo stack
-                applyQueryProgrammatic(jmespathQuery)
-              }
-              addToHistory(jmespathQuery)
-              setHistoryIndex(-1)
-              return
-            }
-            if (e.key === 'Escape') {
-              if (showHistory) {
-                setShowHistory(false)
-                return
-              }
-              if (historyIndex !== -1) {
-                setHistoryIndex(-1)
-                // Revert to the saved query without affecting undo stack
-                setJmespathQuery(savedQueryRef.current)
-              }
-              return
-            }
-            if (e.key === 'ArrowUp') {
-              e.preventDefault()
-              if (jmespathHistory.length === 0) return
-              if (historyIndex === -1) {
-                savedQueryRef.current = jmespathQuery
-              }
-              const newIndex = Math.min(historyIndex + 1, jmespathHistory.length - 1)
-              setHistoryIndex(newIndex)
-              // Temporary navigation — no undo push
-              setJmespathQuery(jmespathHistory[newIndex])
-              return
-            }
-            if (e.key === 'ArrowDown') {
-              e.preventDefault()
-              if (historyIndex === -1) return
-              const newIndex = historyIndex - 1
-              setHistoryIndex(newIndex)
-              // Temporary navigation — no undo push
-              setJmespathQuery(newIndex === -1 ? savedQueryRef.current : jmespathHistory[newIndex])
-              return
-            }
-          }}
-          disabled={!jmespathEnabled}
-          className={`h-7 text-xs font-mono ${jmespathError || jmespathNullResult ? 'border-destructive' : ''}`}
-          style={!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
-          onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollLeft = e.currentTarget.scrollLeft }}
-          title="Cmd/Ctrl+8 to wildcard array indices | ↑↓ to browse history | Double-click to show history"
-        />
-        {!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) && (
-          <div
-            ref={overlayRef}
-            aria-hidden
-            className="pointer-events-none absolute inset-0 px-3 flex items-center text-xs font-mono overflow-hidden whitespace-pre"
-          >
-            {highlightJmespathQuery(jmespathQuery)}
-          </div>
-        )}
-        {showHistory && jmespathHistory.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden">
-            {jmespathHistory.map((expr, i) => (
-              <button
-                key={i}
-                className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === historyIndex ? 'bg-muted' : ''}`}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  applyQueryProgrammatic(expr)
-                  setShowHistory(false)
-                }}
-              >
-                {expr}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <ToggleGroup
-        type="single"
-        value={jmespathMode}
-        onValueChange={(val) => val && setJmespathModeLocal(val as 'filter' | 'highlight')}
-        disabled={!jmespathEnabled}
-        className="gap-0"
-      >
-        <ToggleGroupItem
-          value="filter"
-          size="sm"
-          className="h-7 px-2 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-          title="Filter: Show only matched data"
-        >
-          <Filter className="h-3 w-3" />
-          <span className="hidden sm:inline">Filter</span>
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="highlight"
-          size="sm"
-          className="h-7 px-2 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-          title="Highlight: Show all, highlight matches"
-        >
-          <Highlighter className="h-3 w-3" />
-          <span className="hidden sm:inline">Highlight</span>
-        </ToggleGroupItem>
-      </ToggleGroup>
-    </div>
-  )
-
   // Calculate line count
   const displayContent =
     uniqueFilter && uniqueFilteredContent !== null
@@ -1773,7 +1493,26 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && jmespathRow(normalInputRef, normalOverlayRef)}
+        {isJson && <JMESPathInputRow
+          jmespathEnabled={jmespathEnabled}
+          jmespathQuery={jmespathQuery}
+          jmespathMode={jmespathMode}
+          jmespathError={jmespathError}
+          jmespathNullResult={jmespathNullResult}
+          onQueryChange={handleQueryChange}
+          onQueryProgrammatic={applyQueryProgrammatic}
+          onEnabledChange={setJmespathEnabledLocal}
+          onModeChange={setJmespathModeLocal}
+          onToggleHighlight={toggleHighlightMode}
+          onToggleFilter={toggleFilterMode}
+          onApplyWildcard={applyWildcard}
+          onToggleTruncateValues={toggleTruncateValues}
+          onToggleUniqueFilter={toggleUniqueFilter}
+          undoStackRef={undoStackRef}
+          redoStackRef={redoStackRef}
+          typingStartRef={typingStartRef}
+          undoDebounceRef={undoDebounceRef}
+        />}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
           style={{ maxHeight }}
@@ -1851,7 +1590,26 @@ export function MaximizableCodeViewer({
               </div>
             </div>
           </DialogHeader>
-          {isJson && jmespathRow(dialogInputRef, dialogOverlayRef)}
+          {isJson && <JMESPathInputRow
+            jmespathEnabled={jmespathEnabled}
+            jmespathQuery={jmespathQuery}
+            jmespathMode={jmespathMode}
+            jmespathError={jmespathError}
+            jmespathNullResult={jmespathNullResult}
+            onQueryChange={handleQueryChange}
+            onQueryProgrammatic={applyQueryProgrammatic}
+            onEnabledChange={setJmespathEnabledLocal}
+            onModeChange={setJmespathModeLocal}
+            onToggleHighlight={toggleHighlightMode}
+            onToggleFilter={toggleFilterMode}
+            onApplyWildcard={applyWildcard}
+            onToggleTruncateValues={toggleTruncateValues}
+            onToggleUniqueFilter={toggleUniqueFilter}
+            undoStackRef={undoStackRef}
+            redoStackRef={redoStackRef}
+            typingStartRef={typingStartRef}
+            undoDebounceRef={undoDebounceRef}
+          />}
           <div
             ref={dialogContentRef}
             className="flex-1 overflow-auto p-0 outline-none"

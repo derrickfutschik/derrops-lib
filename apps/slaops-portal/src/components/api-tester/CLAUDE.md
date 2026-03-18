@@ -1,5 +1,25 @@
 # api-tester Components
 
+## Component Size and Composition
+
+**Keep components focused and small.** Each file should do one thing well. When a component grows beyond ~300–400 lines, or contains a large inline render function (e.g. `const fooRow = () => <div>...195 lines...</div>`), extract it into its own sibling file.
+
+### Rules
+
+- **No inline render functions** that span more than ~20 lines. Extract them into named components in sibling files.
+- **Extract by responsibility.** If a chunk of JSX has its own local state, refs, and callbacks, it belongs in its own component file.
+- **Sibling files over barrel files.** Extracted components live next to the file they came from (e.g. `JMESPathInputRow.tsx` alongside `MaximizableCodeViewer.tsx`), not in a generic `components/` subdirectory.
+- **Pass only what's needed as props.** The parent owns shared state (e.g. undo stacks); the child owns its own state (e.g. input history). Don't hoist state unnecessarily.
+- **Pure helpers travel with their consumer.** Module-level utility functions used only by one component move to that component's file when extracting.
+
+### Anti-patterns to avoid
+
+- A single `.tsx` file exceeding ~500 lines without a clear reason.
+- Inline JSX functions assigned to variables (`const jmespathRow = (ref, overlay) => <div>...</div>`) — these are components; make them components.
+- Dumping all logic into one parent and passing dozens of props/refs through layers — prefer co-location.
+
+---
+
 ## Keyboard Shortcuts
 
 When adding new keyboard shortcuts to any component in this directory (e.g. `MaximizableCodeViewer.tsx`, `JsonResponseViewer.tsx`), you **must** also update [`HotkeyInfoDialog.tsx`](./HotkeyInfoDialog.tsx) to document the new shortcut.
