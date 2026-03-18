@@ -28,6 +28,7 @@ interface TableState {
 
 export interface ResponseViewerState {
   selectedView: 'json' | 'markdown' | 'table'
+  highlightDuplicates: boolean
   json: JsonState
   table: TableState
 }
@@ -38,6 +39,7 @@ export interface ResponseViewerState {
 
 const initialState: ResponseViewerState = {
   selectedView: 'json',
+  highlightDuplicates: false,
   json: {
     jmespathEnabled: true,
     jmespathQuery: '',
@@ -64,6 +66,10 @@ const responseViewerSlice = createSlice({
     // View mode
     setSelectedView(state, action: PayloadAction<'json' | 'markdown' | 'table'>) {
       state.selectedView = action.payload
+    },
+
+    setHighlightDuplicates(state, action: PayloadAction<boolean>) {
+      state.highlightDuplicates = action.payload
     },
 
     // JSON state
@@ -141,6 +147,7 @@ const responseViewerSlice = createSlice({
 
 export const {
   setSelectedView,
+  setHighlightDuplicates,
   setJmespathEnabled,
   setJmespathQuery,
   setJmespathMode,
@@ -163,6 +170,7 @@ export const responseViewerReducer = responseViewerSlice.reducer
 // ---------------------------------------------------------------------------
 
 export const selectSelectedView = (state: RootState) => state.responseViewer.selectedView
+export const selectHighlightDuplicates = (state: RootState) => state.responseViewer.highlightDuplicates
 export const selectJsonState = (state: RootState) => state.responseViewer.json
 export const selectTableState = (state: RootState) => state.responseViewer.table
 

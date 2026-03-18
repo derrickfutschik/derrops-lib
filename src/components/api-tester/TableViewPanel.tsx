@@ -400,14 +400,6 @@ export function TableViewPanel({
     setJoiningEnabled(joiningContext !== null && joiningContext.joiningColumns.length > 0)
   }, [joiningContext])
 
-  // Reset sort column when joining enabled state changes to avoid index shift bugs
-  useEffect(() => {
-    if (activeSortColumn) {
-      dispatch(setColumnSort({ id: activeSortColumn.id, direction: null }))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joiningEnabled])
-
   // When tableData columns change, reconcile Redux column prefs
   useEffect(() => {
     if (tableData?.columns) {

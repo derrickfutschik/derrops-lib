@@ -1,54 +1,38 @@
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  ContextMenu,
-  ContextMenuCheckboxItem,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
 import { JsonViewPanel } from './JsonViewPanel'
+import { JMESPathInputRow, type JMESPathState } from './JMESPathInputRow'
 import { MarkdownViewPanel } from './MarkdownViewPanel'
+import { MaximizedViewDialog } from './MaximizedViewDialog'
+import { ResultsActionButtons } from './ResultsActionButtons'
+import { StatusRibbon } from './StatusRibbon'
 import { TableViewPanel } from './TableViewPanel'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import jmespath from 'jmespath'
-import {
-  AlignLeft,
-  ArrowLeftRight,
-  BookOpen,
-  Code,
-  Copy,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  Filter,
-  Fingerprint,
-  Highlighter,
-  Keyboard,
-  Maximize2,
-  Minimize2,
-  WrapText,
-} from 'lucide-react'
+import { ViewModeTabs } from './ViewModeTabs'
+import { ArrowLeftRight, Keyboard, Maximize2 } from 'lucide-react'
+import { useResultsActions } from './useResultsActions'
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { toast } from 'sonner'
 import { JsonResponseViewer } from './JsonResponseViewer'
-import { applyTruncationToJson, jsonToStyledHtml, writeTextToClipboard, writeHtmlToClipboard } from './json-copy-utils'
-import { deepEqual, detectJoiningContext, detectJoinColumnCandidates, type JoiningContext, type JoinColumnCandidate } from './joining-utils'
+import { detectJoiningContext, detectJoinColumnCandidates, type JoiningContext, type JoinColumnCandidate } from './joining-utils'
+import {
+  evaluateJmespathQuery,
+  buildFilteredJmespathExpression,
+  deduplicateJsonArray,
+  countDuplicates,
+  computeJsonStats,
+  computeFilterPercent,
+  EMPTY_JMESPATH_RESULT,
+  type JmespathQueryResult,
+} from './json-jmespath-utils'
+import { highlightJson } from './json-highlight-renderer'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   selectSelectedView,
+  selectHighlightDuplicates,
   selectJsonState,
   selectTableState,
   selectHiddenColumnIds,
   setSelectedView,
+  setHighlightDuplicates as setHighlightDuplicatesRedux,
   setJmespathEnabled,
   setJmespathQuery as setJmespathQueryRedux,
   setJmespathMode,
@@ -57,198 +41,9 @@ import {
   setJsonState,
 } from '@/store/responseViewerSlice'
 
-// ---------------------------------------------------------------------------
-// Module-level pure helpers (stable references, never recreated per render)
-// ---------------------------------------------------------------------------
-
-/**
- * Stage 1: Find JSON paths in `original` that correspond to the JMESPath `result`.
- * Returns a Set of path strings (e.g. "hits[0].document.name") to highlight.
- */
-function findJmespathJsonLocations(original: any, result: any, query: string): Set<string> {
-  const matchedPaths = new Set<string>()
-
-  const addPathAndChildren = (obj: any, currentPath: string): void => {
-    matchedPaths.add(currentPath)
-    if (obj && typeof obj === 'object') {
-      if (Array.isArray(obj)) {
-        obj.forEach((item, idx) => {
-          addPathAndChildren(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
-        })
-      } else {
-        Object.keys(obj).forEach((key) => {
-          addPathAndChildren(obj[key], currentPath ? `${currentPath}.${key}` : key)
-        })
-      }
-    }
-  }
-
-  // Fast-path for simple field-access queries (no wildcards or functions)
-  const simplePathRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\])*$/
-  if (simplePathRegex.test(query.trim())) {
-    const path = query.trim()
-    const pathParts = path.match(/[a-zA-Z_$][a-zA-Z0-9_$]*|\[\d+\]/g) || []
-    let current = original
-    let valid = true
-
-    for (const part of pathParts) {
-      if (part.startsWith('[')) {
-        const index = parseInt(part.slice(1, -1), 10)
-        if (Array.isArray(current) && index >= 0 && index < current.length) {
-          current = current[index]
-        } else {
-          valid = false
-          break
-        }
-      } else {
-        if (current && typeof current === 'object' && part in current) {
-          current = current[part]
-        } else {
-          valid = false
-          break
-        }
-      }
-    }
-
-    if (valid && deepEqual(current, result)) {
-      addPathAndChildren(current, path)
-      return matchedPaths
-    }
-  }
-
-  // Slow-path for complex queries: structural containment matching
-  const isInResult = (value: any, res: any, checkPartial: boolean = true): boolean => {
-    if (deepEqual(value, res)) return true
-    if (!checkPartial) return false
-    if (Array.isArray(res)) {
-      return res.some((item) => isInResult(value, item, true))
-    }
-    if (res && typeof res === 'object' && !Array.isArray(res)) {
-      return Object.values(res).some((v) => isInResult(value, v, true))
-    }
-    return false
-  }
-
-  const traverse = (obj: any, currentPath: string): void => {
-    if (isInResult(obj, result, true)) {
-      matchedPaths.add(currentPath)
-    }
-    if (obj && typeof obj === 'object') {
-      if (Array.isArray(obj)) {
-        obj.forEach((item, idx) => {
-          traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`)
-        })
-      } else {
-        Object.keys(obj).forEach((key) => {
-          traverse(obj[key], currentPath ? `${currentPath}.${key}` : key)
-        })
-      }
-    }
-  }
-
-  traverse(original, '')
-  return matchedPaths
-}
-
-/**
- * Stage 2: Render JSON with highlighting applied to matched paths.
- * `onClickPath` is called (instead of closing over a setState) so this
- * function can live at module level with a stable reference.
- */
-function highlightJson(parsed: any, matchedPaths: Set<string>, onClickPath: (path: string) => void): React.ReactNode {
-  const handleClick = (path: string) => (e: React.MouseEvent) => {
-    if ((e.metaKey || e.ctrlKey) && path) {
-      e.preventDefault()
-      onClickPath(path)
-    }
-  }
-
-  const renderValue = (value: any, currentPath: string, indent: number = 0): React.ReactNode => {
-    const indentStr = '  '.repeat(indent)
-    const isHighlighted = matchedPaths.has(currentPath)
-    const className = isHighlighted ? 'text-primary font-semibold' : 'text-muted-foreground/50'
-    const clickTitle = 'Cmd/Ctrl+click to use as JMESPath'
-
-    if (value === null) {
-      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>null</span>
-    }
-
-    if (typeof value === 'boolean') {
-      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{String(value)}</span>
-    }
-
-    if (typeof value === 'number') {
-      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>{value}</span>
-    }
-
-    if (typeof value === 'string') {
-      return <span className={`${className} cursor-pointer`} onClick={handleClick(currentPath)} title={clickTitle}>"{value}"</span>
-    }
-
-    if (Array.isArray(value)) {
-      if (value.length === 0) return <span className="text-muted-foreground/50">[]</span>
-      return (
-        <>
-          <span className="text-muted-foreground/50">[</span>
-          {'\n'}
-          {value.map((item, idx) => {
-            const itemPath = currentPath ? `${currentPath}[${idx}]` : `[${idx}]`
-            return (
-              <React.Fragment key={idx}>
-                {indentStr}
-                {'  '}
-                {renderValue(item, itemPath, indent + 1)}
-                {idx < value.length - 1 && <span className="text-muted-foreground/50">,</span>}
-                {'\n'}
-              </React.Fragment>
-            )
-          })}
-          {indentStr}
-          <span className="text-muted-foreground/50">]</span>
-        </>
-      )
-    }
-
-    if (typeof value === 'object') {
-      const keys = Object.keys(value)
-      if (keys.length === 0) return <span className="text-muted-foreground/50">{'{}'}</span>
-      return (
-        <>
-          <span className="text-muted-foreground/50">{'{'}</span>
-          {'\n'}
-          {keys.map((key, idx) => {
-            const keyPath = currentPath ? `${currentPath}.${key}` : key
-            return (
-              <React.Fragment key={key}>
-                {indentStr}
-                {'  '}
-                <span className="text-muted-foreground/50 cursor-pointer" onClick={handleClick(keyPath)} title={clickTitle}>"{key}"</span>
-                <span className="text-muted-foreground/50">: </span>
-                {renderValue(value[key], keyPath, indent + 1)}
-                {idx < keys.length - 1 && <span className="text-muted-foreground/50">,</span>}
-                {'\n'}
-              </React.Fragment>
-            )
-          })}
-          {indentStr}
-          <span className="text-muted-foreground/50">{'}'}</span>
-        </>
-      )
-    }
-
-    return String(value)
-  }
-
-  return renderValue(parsed, '', 0)
-}
+export type { JMESPathState }
 
 type ViewMode = 'json' | 'markdown' | 'table'
-
-export interface JMESPathState {
-  enabled: boolean
-  query: string
-  mode: 'filter' | 'highlight'
-}
 
 interface MaximizableCodeViewerProps {
   title: string
@@ -283,6 +78,7 @@ export function MaximizableCodeViewer({
 }: MaximizableCodeViewerProps) {
   const dispatch = useAppDispatch()
   const selectedView = useAppSelector(selectSelectedView)
+  const highlightDuplicates = useAppSelector(selectHighlightDuplicates)
   const jsonState = useAppSelector(selectJsonState)
   const tableState = useAppSelector(selectTableState)
   const hiddenColumnIds = useAppSelector(selectHiddenColumnIds)
@@ -291,7 +87,7 @@ export function MaximizableCodeViewer({
 
   const [isMaximized, setIsMaximized] = useState(false)
   const [showHotkeyInfo, setShowHotkeyInfo] = useState(false)
-  const [highlightDuplicates, setHighlightDuplicates] = useState(false)
+  const setHighlightDuplicates = (val: boolean) => dispatch(setHighlightDuplicatesRedux(val))
   // truncateValues and uniqueFilter now come from Redux (jsonState)
   const truncateValues = jsonState.truncateValues
   const uniqueFilter = jsonState.uniqueFilter
@@ -303,21 +99,7 @@ export function MaximizableCodeViewer({
   const sqlResultRef = useRef<{ columns: string[]; rows: string[][] } | null>(null)
   // Tracks current displayContent for use in click handlers (defined after state/memos below)
   const displayContentRef = useRef(content)
-  const normalInputRef = useRef<HTMLInputElement>(null)
-  const dialogInputRef = useRef<HTMLInputElement>(null)
   const normalPreRef = useRef<HTMLPreElement>(null)
-  const dialogPreRef = useRef<HTMLPreElement>(null)
-  const dialogContentRef = useRef<HTMLDivElement>(null)
-
-  // Auto-focus the maximized dialog content area so hotkeys work immediately
-  useEffect(() => {
-    if (isMaximized) {
-      // Small delay to let the dialog render
-      requestAnimationFrame(() => {
-        dialogContentRef.current?.focus()
-      })
-    }
-  }, [isMaximized])
 
   const applyWildcard = () => {
     const wildcarded = jmespathQuery.replace(/\[\d+\]/g, '[*]')
@@ -337,6 +119,11 @@ export function MaximizableCodeViewer({
     applyQueryProgrammatic(newValue)
   }
 
+  // Stable ref so the global keydown handler (registered once with [] deps)
+  // always calls the latest version of applyWildcard.
+  const applyWildcardRef = useRef(applyWildcard)
+  applyWildcardRef.current = applyWildcard
+
   const selectAllInViewer = useCallback((preRef: React.RefObject<HTMLPreElement>) => {
     const pre = preRef.current
     if (!pre) return
@@ -350,13 +137,7 @@ export function MaximizableCodeViewer({
   }, [])
 
   // JMESPath state now lives in Redux; props provide backward compat initialization
-  const [jmespathHistory, setJmespathHistory] = useState<string[]>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
-  const [showHistory, setShowHistory] = useState(false)
-  const isInputFocusedRef = useRef(false)
-  const savedQueryRef = useRef('')
   const prevQueryRef = useRef('')
-  const activeInputRef = useRef<HTMLInputElement | null>(null)
   const savedPreWildcardRef = useRef<string | null>(null)
   const undoStackRef = useRef<string[]>([])
   const redoStackRef = useRef<string[]>([])
@@ -437,7 +218,6 @@ export function MaximizableCodeViewer({
       undoStackRef.current = [...undoStackRef.current, prev].slice(-100)
       redoStackRef.current = []
     }
-    setHistoryIndex(-1)
     setJmespathQuery(newValue)
   }
 
@@ -455,7 +235,6 @@ export function MaximizableCodeViewer({
       }
       undoDebounceRef.current = null
     }, 600)
-    setHistoryIndex(-1)
     setJmespathQuery(newValue)
   }
 
@@ -489,11 +268,19 @@ export function MaximizableCodeViewer({
 
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key !== 'h') return
+      if (!(e.metaKey || e.ctrlKey)) return
       const tag = document.activeElement?.tagName?.toLowerCase()
-      if (tag === 'input' || tag === 'textarea' || tag === 'pre') return
-      e.preventDefault()
-      setShowHotkeyInfo(true)
+      if (e.key === 'h') {
+        if (tag === 'input' || tag === 'textarea' || tag === 'pre') return
+        e.preventDefault()
+        setShowHotkeyInfo(true)
+      } else if (e.key === '8') {
+        // Fire applyWildcard when not in any text input/textarea and not already
+        // handled by a focused element (e.g. the viewer div or the JMESPath input).
+        if (tag === 'input' || tag === 'textarea' || e.defaultPrevented) return
+        e.preventDefault()
+        applyWildcardRef.current()
+      }
     }
     document.addEventListener('keydown', handleGlobalKey)
     return () => document.removeEventListener('keydown', handleGlobalKey)
@@ -543,7 +330,6 @@ export function MaximizableCodeViewer({
       const prev = undoStackRef.current[undoStackRef.current.length - 1]
       undoStackRef.current = undoStackRef.current.slice(0, -1)
       redoStackRef.current = [...redoStackRef.current, jmespathQuery]
-      setHistoryIndex(-1)
       setJmespathQuery(prev)
       return
     }
@@ -554,348 +340,56 @@ export function MaximizableCodeViewer({
       const next = redoStackRef.current[redoStackRef.current.length - 1]
       redoStackRef.current = redoStackRef.current.slice(0, -1)
       undoStackRef.current = [...undoStackRef.current, jmespathQuery]
-      setHistoryIndex(-1)
       setJmespathQuery(next)
       return
     }
   }
 
-  const addToHistory = useCallback((query: string) => {
-    const trimmed = query.trim()
-    if (!trimmed) return
-    setJmespathHistory((prev) => {
-      const filtered = prev.filter((h) => h !== trimmed)
-      return [trimmed, ...filtered].slice(0, 10)
-    })
-  }, [])
-
-  // Add to history when query changes externally (e.g. cmd+click from JSON viewer).
-  // Also push the old value onto the undo stack so Cmd+Z can revert it.
+  // Push the old value onto the undo stack when query changes externally
+  // (e.g. cmd+click from JSON viewer). History management is handled by JMESPathInputRow.
   useEffect(() => {
-    if (prevQueryRef.current !== jmespathQuery && !isInputFocusedRef.current) {
+    if (prevQueryRef.current !== jmespathQuery) {
       const old = prevQueryRef.current
       if (old !== jmespathQuery) {
         undoStackRef.current = [...undoStackRef.current, old].slice(-100)
         redoStackRef.current = []
       }
-      addToHistory(jmespathQuery)
-      setHistoryIndex(-1)
     }
     prevQueryRef.current = jmespathQuery
-  }, [jmespathQuery, addToHistory])
+  }, [jmespathQuery])
 
   const isJson = contentType.includes('application/json')
 
-  // Get effective content (filtered if JMESPath filter is active)
-  const getEffectiveContent = () => {
-    if (jmespathEnabled && jmespathMode === 'filter' && debouncedQuery.trim() && isJson) {
-      try {
-        const parsed = JSON.parse(content)
-        const result = jmespath.search(parsed, debouncedQuery)
-        return JSON.stringify(result, null, 2)
-      } catch {
-        return content
-      }
-    }
-    return content
-  }
-
-  // Resolve effective markdown content (converts JSON arrays to markdown tables)
-  const getEffectiveMarkdownContent = (): string | null => {
-    const effective = getEffectiveContent()
-    let mdContent = effective
-    try {
-      const parsed = JSON.parse(effective)
-      if (typeof parsed === 'string') {
-        mdContent = parsed
-      } else if (Array.isArray(parsed) && parsed.length > 0) {
-        // Array of strings → join with horizontal rule separators
-        if (parsed.every((item: any) => typeof item === 'string')) {
-          mdContent = parsed.join('\n\n---\n\n')
-        } else if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
-          const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
-          const escapeCell = (val: any) => {
-            const str = val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
-            return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
-          }
-          const headerRow = `| ${columns.join(' | ')} |`
-          const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`
-          const dataRows = parsed.map((item: any) =>
-            `| ${columns.map((col) => escapeCell(item[col])).join(' | ')} |`
-          )
-          mdContent = [headerRow, separatorRow, ...dataRows].join('\n')
-        } else {
-          const escapeCell = (val: any) => {
-            const str = val === null || val === undefined ? '' : String(val)
-            return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
-          }
-          mdContent = ['| value |', '| --- |', ...parsed.map((v: any) => `| ${escapeCell(v)} |`)].join('\n')
-        }
-      } else {
-        return null
-      }
-    } catch {
-      // Not JSON — use as-is
-    }
-    return mdContent
-  }
-
-  const getTableData = () => {
-    const raw = sqlResultRef.current || (tableDataRef.current ? { columns: tableDataRef.current.columns, rows: tableDataRef.current.rows } : null)
-    if (!raw || hiddenColumnIds.size === 0) return raw
-    const visibleIndices = raw.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumnIds.has(c)).map(({ i }) => i)
-    return {
-      columns: visibleIndices.map(i => raw.columns[i]),
-      rows: raw.rows.map(row => visibleIndices.map(i => row[i])),
-    }
-  }
-
-  const getTableTsv = () => {
-    const data = getTableData()
-    if (!data) return null
-    return [data.columns.join('\t'), ...data.rows.map(row => row.join('\t'))].join('\n')
-  }
-
-  const handleCopy = () => {
-    if (viewMode === 'table') {
-      const tsv = getTableTsv()
-      if (!tsv) { toast.error('No table data to copy'); return }
-      const data = getTableData()!
-      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      const headerCells = data.columns.map(c => `<th>${esc(c)}</th>`).join('')
-      const bodyRows = data.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')
-      const htmlTable = `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`
-      const blob = new Blob([htmlTable], { type: 'text/html' })
-      const textBlob = new Blob([tsv], { type: 'text/plain' })
-      writeHtmlToClipboard(htmlTable, tsv).then(
-        () => toast.success('Copied table to clipboard'),
-        () => toast.error('Failed to copy — check browser clipboard permissions'),
-      )
-      return
-    }
-    if (viewMode === 'markdown') {
-      const md = getEffectiveMarkdownContent()
-      if (md) {
-        copyText(md, 'Markdown')
-        return
-      }
-    }
-    // JSON / plain text — use displayContentRef which respects all active filters
-    const jsonContent = truncateValues
-      ? applyTruncationToJson(displayContentRef.current)
-      : displayContentRef.current
-    writeTextToClipboard(jsonContent).then(
-      () => toast.success(
-        jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
-          ? 'Copied filtered content to clipboard'
-          : 'Copied to clipboard',
-      ),
-      () => toast.error('Failed to copy — check browser clipboard permissions'),
-    )
-  }
-
-  const handleCopyJsonAsHtml = () => {
-    const jsonContent = truncateValues
-      ? applyTruncationToJson(displayContentRef.current)
-      : displayContentRef.current
-    const html = jsonToStyledHtml(jsonContent)
-    writeHtmlToClipboard(html, jsonContent).then(
-      () => toast.success('Copied as HTML with syntax highlighting'),
-      () => toast.error('Failed to copy — check browser clipboard permissions'),
-    )
-  }
-
-  const getTableCsv = () => {
-    const data = getTableData()
-    if (!data) return null
-    const escape = (val: string) => {
-      return val.includes(',') || val.includes('"') || val.includes('\n')
-        ? `"${val.replace(/"/g, '""')}"`
-        : val
-    }
-    return [data.columns.map(escape).join(','), ...data.rows.map(row => row.map(escape).join(','))].join('\n')
-  }
-
-  const getTableMarkdown = () => {
-    const data = getTableData()
-    if (!data) return null
-    const esc = (v: string) => v.replace(/\|/g, '\\|').replace(/\n/g, ' ')
-    return [
-      `| ${data.columns.map(esc).join(' | ')} |`,
-      `| ${data.columns.map(() => '---').join(' | ')} |`,
-      ...data.rows.map(row => `| ${row.map(esc).join(' | ')} |`),
-    ].join('\n')
-  }
-
-  const getTableJsCode = () => {
-    const data = getTableData()
-    if (!data) return null
-    const objects = data.rows.map(row => {
-      const obj: Record<string, string> = {}
-      data.columns.forEach((col, i) => { obj[col] = row[i] })
-      return obj
-    })
-    return JSON.stringify(objects, null, 2)
-  }
-
-  const getTableSql = (tableName = 'table_name') => {
-    const data = getTableData()
-    if (!data) return null
-    const escSql = (v: string) => v.replace(/'/g, "''")
-    const cols = data.columns.map(c => `"${c}"`).join(', ')
-    return data.rows.map(row => {
-      const vals = row.map(v => v === '' ? 'NULL' : `'${escSql(v)}'`).join(', ')
-      return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`
-    }).join('\n')
-  }
-
-  const copyText = (text: string, label: string) => {
-    writeTextToClipboard(text).then(
-      () => toast.success(`Copied as ${label}`),
-      () => toast.error('Failed to copy — check browser clipboard permissions'),
-    )
-  }
-
-  const downloadText = (text: string, filename: string, mimeType: string, label: string) => {
-    const blob = new Blob([text], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    toast.success(`Downloaded as ${label}`)
-  }
-
-  const handleDownload = () => {
-    if (viewMode === 'table') {
-      const csv = getTableCsv()
-      if (!csv) { toast.error('No table data to download'); return }
-      const blob = new Blob([csv], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = sqlQuery.trim() ? 'response-filtered.csv' : 'response.csv'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      toast.success('Downloaded as CSV')
-      return
-    }
-    if (viewMode === 'markdown') {
-      const mdContent = getEffectiveMarkdownContent() || getEffectiveContent()
-      const blob = new Blob([mdContent], { type: 'text/markdown' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'response.md'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      toast.success('Downloaded as Markdown')
-      return
-    }
-    const effectiveContent = getEffectiveContent()
-    const extension = isJson ? 'json' : 'txt'
-    const mimeType = isJson ? 'application/json' : 'text/plain'
-    const blob = new Blob([effectiveContent], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download =
-      jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
-        ? `response-filtered.${extension}`
-        : `response.${extension}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    toast.success(
-      jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
-        ? 'Downloaded filtered response'
-        : 'Downloaded response',
-    )
-  }
-
-  const handleDownloadCsv = () => {
-    const effectiveContent = getEffectiveContent()
-    let csvContent = ''
-    try {
-      const parsed = JSON.parse(effectiveContent)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
-          // Array of objects: use keys as headers
-          const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
-          const escape = (val: any) => {
-            const str = val === null || val === undefined ? '' : String(val)
-            return str.includes(',') || str.includes('"') || str.includes('\n')
-              ? `"${str.replace(/"/g, '""')}"`
-              : str
-          }
-          csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(','))].join('\n')
-        } else {
-          // Array of primitives: single column
-          const escape = (val: any) => {
-            const str = val === null || val === undefined ? '' : String(val)
-            return str.includes(',') || str.includes('"') || str.includes('\n')
-              ? `"${str.replace(/"/g, '""')}"`
-              : str
-          }
-          csvContent = ['value', ...parsed.map(escape)].join('\n')
-        }
-      } else {
-        toast.error('CSV export requires a JSON array')
-        return
-      }
-    } catch {
-      toast.error('Failed to parse JSON for CSV export')
-      return
-    }
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download =
-      jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
-        ? 'response-filtered.csv'
-        : 'response.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    toast.success('Downloaded as CSV')
-  }
-
-  const handleCopyCsvFromJson = () => {
-    const effectiveContent = getEffectiveContent()
-    try {
-      const parsed = JSON.parse(effectiveContent)
-      if (!Array.isArray(parsed) || parsed.length === 0) {
-        toast.error('CSV export requires a JSON array')
-        return
-      }
-      const escape = (val: any) => {
-        const str = val === null || val === undefined ? '' : String(val)
-        return str.includes(',') || str.includes('"') || str.includes('\n')
-          ? `"${str.replace(/"/g, '""')}"`
-          : str
-      }
-      let csvContent: string
-      if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
-        const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item)))) as string[]
-        csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(','))].join('\n')
-      } else {
-        csvContent = ['value', ...parsed.map(escape)].join('\n')
-      }
-      copyText(csvContent, 'CSV')
-    } catch {
-      toast.error('Failed to parse JSON for CSV export')
-    }
-  }
+  const {
+    getEffectiveContent,
+    getEffectiveMarkdownContent,
+    getTableData,
+    getTableCsv,
+    getTableMarkdown,
+    getTableJsCode,
+    getTableSql,
+    copyText,
+    downloadText,
+    handleCopy,
+    handleCopyJsonAsHtml,
+    handleCopyCsvFromJson,
+    handleDownload,
+    handleDownloadCsv,
+  } = useResultsActions({
+    viewMode,
+    content,
+    isJson,
+    jmespathEnabled,
+    jmespathQuery,
+    jmespathMode,
+    debouncedQuery,
+    truncateValues,
+    displayContentRef,
+    tableDataRef,
+    sqlResultRef,
+    hiddenColumnIds,
+    sqlQuery,
+  })
 
   // Single-entry cache for the parsed JSON object. Avoids re-parsing the same
   // content string multiple times within a render cycle (e.g. once in the
@@ -910,66 +404,36 @@ export function MaximizableCodeViewer({
     return parsed
   }, [])
 
-  // LRU cache for JMESPath search results. Key is the content string itself
-  // (not its length) to avoid collisions between responses of the same size.
-  const jmespathCacheRef = useRef<{ content: string; query: string; result: any }[]>([])
+  // LRU cache for JMESPath query results (keyed by content + query + mode).
+  // Prevents re-evaluating expensive queries when the user undoes/redoes.
+  const jmespathCacheRef = useRef<{ content: string; query: string; mode: string; result: JmespathQueryResult }[]>([])
   const JMESPATH_CACHE_SIZE = 10
 
-  const getCachedJmespathResult = (contentStr: string, query: string): any | undefined => {
-    const entry = jmespathCacheRef.current.find(e => e.content === contentStr && e.query === query)
+  const getCachedJmespathResult = (contentStr: string, query: string, mode: string): JmespathQueryResult | undefined => {
+    const entry = jmespathCacheRef.current.find(e => e.content === contentStr && e.query === query && e.mode === mode)
     if (entry) {
-      // Move to front (most recently used)
       jmespathCacheRef.current = [entry, ...jmespathCacheRef.current.filter(e => e !== entry)]
       return entry.result
     }
     return undefined
   }
 
-  const setCachedJmespathResult = (contentStr: string, query: string, result: any) => {
+  const setCachedJmespathResult = (contentStr: string, query: string, mode: string, result: JmespathQueryResult) => {
     jmespathCacheRef.current = [
-      { content: contentStr, query, result },
-      ...jmespathCacheRef.current.filter(e => !(e.content === contentStr && e.query === query)),
+      { content: contentStr, query, mode, result },
+      ...jmespathCacheRef.current.filter(e => !(e.content === contentStr && e.query === query && e.mode === mode)),
     ].slice(0, JMESPATH_CACHE_SIZE)
   }
 
-  // JMESPath filtering/highlighting logic — all expensive computation lives here
-  // so it only re-runs when the actual inputs change (not on every render).
-  const { filteredContent, matchedPaths, jmespathError } = useMemo(() => {
-    if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) {
-      return { filteredContent: null, matchedPaths: new Set<string>(), jmespathError: null }
-    }
-
-    try {
-      // Use the parse cache so we don't re-parse the same string twice
-      const parsed = getParsedContent(content)
-
-      let result = getCachedJmespathResult(content, debouncedQuery)
-      if (result === undefined) {
-        result = jmespath.search(parsed, debouncedQuery)
-        setCachedJmespathResult(content, debouncedQuery, result)
-      }
-
-      if (jmespathMode === 'filter') {
-        return {
-          filteredContent: JSON.stringify(result, null, 2),
-          matchedPaths: new Set<string>(),
-          jmespathError: null,
-        }
-      }
-
-      // Highlight mode: compute the full matched-path set here so it is
-      // memoized and not recomputed on every unrelated render.
-      const paths = findJmespathJsonLocations(parsed, result, debouncedQuery)
-      return { filteredContent: null, matchedPaths: paths, jmespathError: null }
-    } catch (e: unknown) {
-      return {
-        filteredContent: null,
-        matchedPaths: new Set<string>(),
-        jmespathError: e instanceof Error ? e.message : 'Invalid JMESPath query',
-      }
-    }
-  // getParsedContent is stable (useCallback with []) so omitting from deps is safe.
-  // getCached/setCached only access a ref, also safe to omit.
+  // JMESPath filtering/highlighting — only re-runs when actual inputs change.
+  const { filteredContent, matchedPaths, jmespathError, jmespathNullResult } = useMemo(() => {
+    if (!jmespathEnabled || !debouncedQuery.trim() || !isJson) return EMPTY_JMESPATH_RESULT
+    const cached = getCachedJmespathResult(content, debouncedQuery, jmespathMode)
+    if (cached) return cached
+    const result = evaluateJmespathQuery(getParsedContent(content), debouncedQuery, jmespathMode)
+    setCachedJmespathResult(content, debouncedQuery, jmespathMode, result)
+    return result
+  // getParsedContent/getCached/setCached only access refs — safe to omit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, debouncedQuery, jmespathEnabled, jmespathMode, isJson])
 
@@ -980,40 +444,11 @@ export function MaximizableCodeViewer({
   const jmespathQueryRef = useRef(jmespathQuery)
   jmespathQueryRef.current = jmespathQuery
 
-  // When in filter mode, clicking a node should append to the existing expression
-  // rather than replace it. If the current filtered result is an array, clicking a
-  // key appends `[].key`; if it's an object, it appends `.key`.
+  // When in filter mode, clicking a node appends to the existing expression.
   // Uses refs for query/setter so this callback only changes when filteredContent changes.
   const handleFilteredJmespathSelect = useCallback((clickedPath: string) => {
-    const currentQuery = jmespathQueryRef.current
-    if (!currentQuery.trim() || filteredContent === null) {
-      setJmespathQueryRef.current(clickedPath)
-      return
-    }
-
-    try {
-      const parsed = JSON.parse(filteredContent)
-      if (Array.isArray(parsed)) {
-        // Strip leading [number] or [number]. prefix and use [] wildcard instead
-        if (/^\[\d+\]$/.test(clickedPath)) {
-          // Clicking directly on an array element (no sub-path) — pipe to that index
-          setJmespathQueryRef.current(`${currentQuery} | ${clickedPath}`)
-        } else {
-          // Clicking a property within an array element — wildcard projection
-          const stripped = clickedPath.replace(/^\[\d+\]\.?/, '')
-          const suffix = stripped
-            ? stripped.startsWith('[') ? `[]${stripped}` : `[].${stripped}`
-            : '[]'
-          setJmespathQueryRef.current(`${currentQuery}${suffix}`)
-        }
-      } else {
-        // Object: append with dot separator (or nothing if path starts with '[')
-        const separator = clickedPath.startsWith('[') ? '' : '.'
-        setJmespathQueryRef.current(`${currentQuery}${separator}${clickedPath}`)
-      }
-    } catch {
-      setJmespathQueryRef.current(clickedPath)
-    }
+    const newQuery = buildFilteredJmespathExpression(jmespathQueryRef.current, filteredContent, clickedPath)
+    setJmespathQueryRef.current(newQuery)
   // jmespathQueryRef and setJmespathQueryRef are stable refs, safe to omit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredContent])
@@ -1024,45 +459,17 @@ export function MaximizableCodeViewer({
     jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
 
   // Deduplicated content (null when unique filter is off or content is not an array)
-  const uniqueFilteredContent = useMemo(() => {
-    if (!uniqueFilter) return null
-    try {
-      const parsed = JSON.parse(preUniqueContent)
-      if (!Array.isArray(parsed)) return null
-      const seen = new Set<string>()
-      const unique = parsed.filter((item) => {
-        const key = JSON.stringify(item)
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      return JSON.stringify(unique, null, 2)
-    } catch {
-      return null
-    }
-  }, [uniqueFilter, preUniqueContent])
+  const uniqueFilteredContent = useMemo(
+    () => uniqueFilter ? deduplicateJsonArray(preUniqueContent) : null,
+    [uniqueFilter, preUniqueContent],
+  )
 
   // Effective filtered content (unique filter applied on top of JMESPath filter)
   const effectiveFilteredContent =
     uniqueFilter && uniqueFilteredContent !== null ? uniqueFilteredContent : filteredContent
 
   // Count duplicates from the pre-unique content (unaffected by unique filter toggle)
-  const duplicateCount = useMemo(() => {
-    try {
-      const parsed = JSON.parse(preUniqueContent)
-      if (!Array.isArray(parsed)) return 0
-      const seen = new Set<string>()
-      let dupes = 0
-      for (const item of parsed) {
-        const key = JSON.stringify(item)
-        if (seen.has(key)) dupes++
-        else seen.add(key)
-      }
-      return dupes
-    } catch {
-      return 0
-    }
-  }, [preUniqueContent])
+  const duplicateCount = useMemo(() => countDuplicates(preUniqueContent), [preUniqueContent])
 
   // Memoized rendered content — the single most impactful optimisation.
   // Previously renderContent() was a plain function called during JSX evaluation,
@@ -1147,354 +554,6 @@ export function MaximizableCodeViewer({
     handleFilteredJmespathSelect, selectJmespathQuery,
   ])
 
-  // viewModeTabs is defined after displayContent below
-
-  const schemaButton = (showText: boolean = false) =>
-    responseSchema && (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-            title="Schema"
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            {showText && <span>Schema</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[400px] max-w-[90vw] p-0" align="end" side="bottom">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Response Schema</span>
-          </div>
-          <ScrollArea className="h-[400px]">
-            <div className="p-3">
-              <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all">
-                {JSON.stringify(responseSchema, null, 2)}
-              </pre>
-            </div>
-          </ScrollArea>
-        </PopoverContent>
-      </Popover>
-    )
-
-  const actionButtons = (showText: boolean = false) => (
-    <>
-      {showFormatButton && onFormat && (
-        <Button
-          variant="outline"
-          size="sm"
-          className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-          onClick={onFormat}
-          title="Format"
-        >
-          <AlignLeft className="h-3.5 w-3.5" />
-          {showText && <span>Format</span>}
-        </Button>
-      )}
-      {isJson && (
-        <Button
-          variant={truncateValues ? 'default' : 'outline'}
-          size="sm"
-          className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-          onClick={toggleTruncateValues}
-          title="Toggle value truncation (⌘I)"
-        >
-          <WrapText className="h-3.5 w-3.5" />
-          {showText && <span>Truncate</span>}
-        </Button>
-      )}
-      {isJson && (
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <Button
-              variant={uniqueFilter && duplicateCount > 0 ? 'destructive' : (uniqueFilter || highlightDuplicates) ? 'default' : 'outline'}
-              size="sm"
-              className={`${showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}${highlightDuplicates && !uniqueFilter ? ' border-amber-500 text-amber-500' : ''}`}
-              onClick={toggleUniqueFilter}
-              title="Filter duplicate values (⌘U) — right-click for more options"
-            >
-              <Fingerprint className="h-3.5 w-3.5" />
-              {showText && <span>Unique</span>}
-            </Button>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onClick={toggleUniqueFilter}>
-              {uniqueFilter ? 'Show all (remove filter)' : 'Filter out duplicates'}
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuCheckboxItem
-              checked={highlightDuplicates}
-              onCheckedChange={setHighlightDuplicates}
-            >
-              Highlight duplicates
-            </ContextMenuCheckboxItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      )}
-      {schemaButton(showText)}
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-            onClick={handleCopy}
-            title="Copy (right-click for more options)"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            {showText && <span>Copy</span>}
-          </Button>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          {viewMode === 'json' && (
-            <>
-              <ContextMenuItem onClick={handleCopy}>Copy JSON</ContextMenuItem>
-              <ContextMenuItem onClick={handleCopyJsonAsHtml}>Copy as HTML (with colors)</ContextMenuItem>
-            </>
-          )}
-          {viewMode === 'table' && (
-            <>
-              <ContextMenuItem onClick={handleCopy}>Copy as Table (Excel/Email)</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const md = getTableMarkdown(); if (md) copyText(md, 'Markdown'); else toast.error('No table data to copy') }}>Copy as Markdown</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const csv = getTableCsv(); if (csv) copyText(csv, 'CSV'); else toast.error('No table data to copy') }}>Copy as CSV</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const js = getTableJsCode(); if (js) copyText(js, 'Code'); else toast.error('No table data to copy') }}>Copy as Code</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const sql = getTableSql(); if (sql) copyText(sql, 'SQL'); else toast.error('No table data to copy') }}>Copy as SQL</ContextMenuItem>
-            </>
-          )}
-          {viewMode === 'markdown' && (
-            <ContextMenuItem onClick={handleCopy}>Copy Markdown</ContextMenuItem>
-          )}
-          {viewMode !== 'table' && viewMode !== 'json' && isJson && (
-            <ContextMenuItem onClick={handleCopyCsvFromJson}>Copy as CSV</ContextMenuItem>
-          )}
-        </ContextMenuContent>
-      </ContextMenu>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className={showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}
-            onClick={handleDownload}
-            title="Download (right-click for more options)"
-          >
-            <Download className="h-3.5 w-3.5" />
-            {showText && <span>Download</span>}
-          </Button>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={handleDownload}>
-            {viewMode === 'table' ? 'Download as CSV' : viewMode === 'markdown' ? 'Download as Markdown' : 'Download as JSON'}
-          </ContextMenuItem>
-          {viewMode === 'table' && (
-            <>
-              <ContextMenuItem onClick={() => { const md = getTableMarkdown(); if (md) downloadText(md, 'response.md', 'text/markdown', 'Markdown') }}>
-                Download as Markdown
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const js = getTableJsCode(); if (js) downloadText(js, 'response.json', 'application/json', 'JSON') }}>
-                Download as JSON
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const sql = getTableSql(); if (sql) downloadText(sql, 'response.sql', 'text/plain', 'SQL') }}>
-                Download as SQL
-              </ContextMenuItem>
-            </>
-          )}
-          {viewMode !== 'table' && isJson && (
-            <ContextMenuItem onClick={handleDownloadCsv}>
-              Download as CSV
-            </ContextMenuItem>
-          )}
-        </ContextMenuContent>
-      </ContextMenu>
-    </>
-  )
-
-  const jmespathRow = (inputRef: React.RefObject<HTMLInputElement>, disabled = false) => (
-    <div className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}>
-      <div className="flex items-center gap-2">
-        <Switch
-          id="jmespath-toggle"
-          checked={jmespathEnabled}
-          onCheckedChange={setJmespathEnabledLocal}
-          className="scale-75"
-        />
-        <Label
-          htmlFor="jmespath-toggle"
-          className="text-xs font-medium text-muted-foreground cursor-pointer"
-        >
-          JMESPath
-        </Label>
-      </div>
-      <div className="flex-1 relative">
-        <Input
-          ref={inputRef}
-          placeholder="e.g. data[0].name, items[?status=='active']"
-          value={jmespathQuery}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          onFocus={() => {
-            isInputFocusedRef.current = true
-            activeInputRef.current = inputRef.current
-          }}
-          onBlur={() => {
-            isInputFocusedRef.current = false
-            setShowHistory(false)
-          }}
-          onDoubleClick={() => {
-            if (jmespathHistory.length > 0) setShowHistory(true)
-          }}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-              e.preventDefault()
-              toggleHighlightMode()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
-              e.preventDefault()
-              toggleFilterMode()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === '8') {
-              e.preventDefault()
-              applyWildcard()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
-              e.preventDefault()
-              toggleTruncateValues()
-              return
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
-              e.preventDefault()
-              toggleUniqueFilter()
-              return
-            }
-            // Undo: Cmd+Z
-            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
-              e.preventDefault()
-              // Flush any pending debounce first
-              if (undoDebounceRef.current) {
-                clearTimeout(undoDebounceRef.current)
-                undoDebounceRef.current = null
-                if (typingStartRef.current !== null) {
-                  undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
-                  typingStartRef.current = null
-                }
-              }
-              if (undoStackRef.current.length === 0) return
-              const prev = undoStackRef.current[undoStackRef.current.length - 1]
-              undoStackRef.current = undoStackRef.current.slice(0, -1)
-              redoStackRef.current = [...redoStackRef.current, jmespathQuery]
-              setHistoryIndex(-1)
-              setJmespathQuery(prev)
-              return
-            }
-            // Redo: Cmd+Shift+Z or Cmd+Y
-            if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
-              e.preventDefault()
-              if (redoStackRef.current.length === 0) return
-              const next = redoStackRef.current[redoStackRef.current.length - 1]
-              redoStackRef.current = redoStackRef.current.slice(0, -1)
-              undoStackRef.current = [...undoStackRef.current, jmespathQuery]
-              setHistoryIndex(-1)
-              setJmespathQuery(next)
-              return
-            }
-            if (e.key === 'Enter') {
-              if (historyIndex !== -1) {
-                // Committing a history navigation — push saved query to undo stack
-                applyQueryProgrammatic(jmespathQuery)
-              }
-              addToHistory(jmespathQuery)
-              setHistoryIndex(-1)
-              return
-            }
-            if (e.key === 'Escape') {
-              if (showHistory) {
-                setShowHistory(false)
-                return
-              }
-              if (historyIndex !== -1) {
-                setHistoryIndex(-1)
-                // Revert to the saved query without affecting undo stack
-                setJmespathQuery(savedQueryRef.current)
-              }
-              return
-            }
-            if (e.key === 'ArrowUp') {
-              e.preventDefault()
-              if (jmespathHistory.length === 0) return
-              if (historyIndex === -1) {
-                savedQueryRef.current = jmespathQuery
-              }
-              const newIndex = Math.min(historyIndex + 1, jmespathHistory.length - 1)
-              setHistoryIndex(newIndex)
-              // Temporary navigation — no undo push
-              setJmespathQuery(jmespathHistory[newIndex])
-              return
-            }
-            if (e.key === 'ArrowDown') {
-              e.preventDefault()
-              if (historyIndex === -1) return
-              const newIndex = historyIndex - 1
-              setHistoryIndex(newIndex)
-              // Temporary navigation — no undo push
-              setJmespathQuery(newIndex === -1 ? savedQueryRef.current : jmespathHistory[newIndex])
-              return
-            }
-          }}
-          disabled={!jmespathEnabled}
-          className={`h-7 text-xs font-mono ${jmespathError ? 'border-destructive' : ''}`}
-          title="Cmd/Ctrl+8 to wildcard array indices | ↑↓ to browse history | Double-click to show history"
-        />
-        {showHistory && jmespathHistory.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden">
-            {jmespathHistory.map((expr, i) => (
-              <button
-                key={i}
-                className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === historyIndex ? 'bg-muted' : ''}`}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  applyQueryProgrammatic(expr)
-                  setShowHistory(false)
-                }}
-              >
-                {expr}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <ToggleGroup
-        type="single"
-        value={jmespathMode}
-        onValueChange={(val) => val && setJmespathModeLocal(val as 'filter' | 'highlight')}
-        disabled={!jmespathEnabled}
-        className="gap-0"
-      >
-        <ToggleGroupItem
-          value="filter"
-          size="sm"
-          className="h-7 px-2 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-          title="Filter: Show only matched data"
-        >
-          <Filter className="h-3 w-3" />
-          <span className="hidden sm:inline">Filter</span>
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="highlight"
-          size="sm"
-          className="h-7 px-2 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-          title="Highlight: Show all, highlight matches"
-        >
-          <Highlighter className="h-3 w-3" />
-          <span className="hidden sm:inline">Highlight</span>
-        </ToggleGroupItem>
-      </ToggleGroup>
-    </div>
-  )
-
   // Calculate line count
   const displayContent =
     uniqueFilter && uniqueFilteredContent !== null
@@ -1522,33 +581,6 @@ export function MaximizableCodeViewer({
     const markdownValid = trimmed.length > 0
     return { json: jsonValid, markdown: markdownValid, table: tableValid }
   }, [displayContent, isJson])
-
-  const viewModeOptions: { value: ViewMode; label: string; icon: React.ReactNode; valid: boolean }[] = [
-    { value: 'json', label: 'JSON', icon: <Code className="h-3 w-3" />, valid: viewValidity.json },
-    { value: 'markdown', label: 'Markdown', icon: <FileText className="h-3 w-3" />, valid: viewValidity.markdown },
-    { value: 'table', label: 'Table', icon: <FileSpreadsheet className="h-3 w-3" />, valid: viewValidity.table },
-  ]
-
-  const viewModeTabs = () => (
-    <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-      <SelectTrigger className="h-6 w-auto gap-1.5 px-2 text-xs border-none bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0 [&>svg:last-child]:h-3 [&>svg:last-child]:w-3 [&>svg:last-child]:opacity-50">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {viewModeOptions.map(opt => (
-          <SelectItem key={opt.value} value={opt.value} className="text-xs">
-            <div className="flex items-center gap-2">
-              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>{opt.icon}</span>
-              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>{opt.label}</span>
-              {opt.valid && (
-                <span className="h-1.5 w-1.5 rounded-full bg-primary ml-1" />
-              )}
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
 
   // Detect joining context by parsing the JMESPath expression structure.
   // Each [*] / [] traversal in the path (except the last) becomes a joining column
@@ -1592,52 +624,43 @@ export function MaximizableCodeViewer({
     }
   }, [viewMode, jmespathEnabled, jmespathMode, filteredContent, debouncedQuery, setJmespathQuery])
 
-  const jsonStats = useMemo(() => {
-    if (!isJson) return null
-    try {
-      const parsed = JSON.parse(displayContent)
-      const getMaxDepth = (val: any): number => {
-        if (typeof val !== 'object' || val === null) return 0
-        const children = Array.isArray(val) ? val : Object.values(val)
-        if (children.length === 0) return 1
-        return 1 + Math.max(...children.map(getMaxDepth))
-      }
-      const countTotalKeys = (val: any): number => {
-        if (typeof val !== 'object' || val === null) return 0
-        if (Array.isArray(val)) return val.reduce((sum, item) => sum + countTotalKeys(item), 0)
-        const keys = Object.keys(val)
-        return keys.length + keys.reduce((sum, key) => sum + countTotalKeys(val[key]), 0)
-      }
-      if (Array.isArray(parsed)) {
-        return { type: 'array' as const, count: parsed.length, totalKeys: countTotalKeys(parsed) }
-      }
-      if (typeof parsed === 'object') {
-        return {
-          type: 'object' as const,
-          keys: Object.keys(parsed).length,
-          totalKeys: countTotalKeys(parsed),
-          depth: getMaxDepth(parsed),
-        }
-      }
-      return null
-    } catch {
-      return null
-    }
-  }, [displayContent, isJson])
+  const jsonStats = useMemo(
+    () => isJson ? computeJsonStats(displayContent) : null,
+    [displayContent, isJson],
+  )
 
-  // Percentage of original response currently displayed (only meaningful when JMESPath filter is active).
-  // Both sides are compacted to the same format so whitespace differences don't skew the ratio.
-  const filterPercent = useMemo(() => {
-    if (!jmespathEnabled || jmespathMode !== 'filter' || filteredContent === null) return null
-    try {
-      const originalCompact = JSON.stringify(JSON.parse(content))
-      const filteredCompact = JSON.stringify(JSON.parse(filteredContent))
-      if (originalCompact.length === 0) return null
-      return Math.round((filteredCompact.length / originalCompact.length) * 1000) / 10
-    } catch {
-      return null
-    }
-  }, [jmespathEnabled, jmespathMode, filteredContent, content])
+  const filterPercent = useMemo(
+    () => jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
+      ? computeFilterPercent(content, filteredContent)
+      : null,
+    [jmespathEnabled, jmespathMode, filteredContent, content],
+  )
+
+  const actionButtonProps = {
+    viewMode,
+    isJson,
+    showFormatButton,
+    onFormat,
+    truncateValues,
+    onToggleTruncateValues: toggleTruncateValues,
+    uniqueFilter,
+    duplicateCount,
+    highlightDuplicates,
+    onToggleUniqueFilter: toggleUniqueFilter,
+    onHighlightDuplicatesChange: setHighlightDuplicates,
+    responseSchema,
+    onCopy: handleCopy,
+    onCopyJsonAsHtml: handleCopyJsonAsHtml,
+    onCopyCsvFromJson: handleCopyCsvFromJson,
+    onGetTableMarkdown: getTableMarkdown,
+    onGetTableCsv: getTableCsv,
+    onGetTableJsCode: getTableJsCode,
+    onGetTableSql: getTableSql,
+    onCopyText: copyText,
+    onDownload: handleDownload,
+    onDownloadCsv: handleDownloadCsv,
+    onDownloadText: downloadText,
+  }
 
   return (
     <>
@@ -1647,7 +670,11 @@ export function MaximizableCodeViewer({
       >
         <div className="flex items-center justify-between p-2 border-b border-border">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            {viewModeTabs()}
+            <ViewModeTabs
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              viewValidity={viewValidity}
+            />
             <Button
               variant="ghost"
               size="sm"
@@ -1659,7 +686,7 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            {actionButtons(false)}
+            <ResultsActionButtons {...actionButtonProps} showText={false} />
             {onExpandToBottom && (
               <Button
                 variant="ghost"
@@ -1693,7 +720,27 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && jmespathRow(normalInputRef)}
+        {isJson && <JMESPathInputRow
+          jmespathEnabled={jmespathEnabled}
+          jmespathQuery={jmespathQuery}
+          jmespathMode={jmespathMode}
+          jmespathError={jmespathError}
+          jmespathNullResult={jmespathNullResult}
+          onQueryChange={handleQueryChange}
+          onQueryProgrammatic={applyQueryProgrammatic}
+          onEnabledChange={setJmespathEnabledLocal}
+          onModeChange={setJmespathModeLocal}
+          onToggleHighlight={toggleHighlightMode}
+          onToggleFilter={toggleFilterMode}
+          onApplyWildcard={applyWildcard}
+          onToggleTruncateValues={toggleTruncateValues}
+          onToggleUniqueFilter={toggleUniqueFilter}
+          undoStackRef={undoStackRef}
+          redoStackRef={redoStackRef}
+          typingStartRef={typingStartRef}
+          undoDebounceRef={undoDebounceRef}
+          jsonContent={content}
+        />}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
           style={{ maxHeight }}
@@ -1715,109 +762,59 @@ export function MaximizableCodeViewer({
             />
           )}
         </div>
-        {/* Status ribbon */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-muted/30 text-xs text-muted-foreground">
-          <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
-          <div className="flex items-center gap-4">
-            {viewMode === 'json' && <>
-              {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
-              {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
-              {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
-              {jsonStats?.type === 'object' && <>
-                <span>{jsonStats.keys.toLocaleString()} keys</span>
-                <span>depth {jsonStats.depth}</span>
-              </>}
-              <span>Ln {lineCount.toLocaleString()}</span>
-              <span>{displayContent.length.toLocaleString()} chars</span>
-              {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
-            </>}
-            {viewMode === 'markdown' && <>
-              <span>Ln {lineCount.toLocaleString()}</span>
-              <span>{displayContent.length.toLocaleString()} chars</span>
-            </>}
-            {/* table stats are shown inside TableViewPanel */}
-          </div>
-        </div>
+        <StatusRibbon
+          viewMode={viewMode}
+          jmespathError={jmespathError}
+          jsonStats={jsonStats}
+          duplicateCount={duplicateCount}
+          lineCount={lineCount}
+          displayContentLength={displayContent.length}
+          filterPercent={filterPercent}
+        />
       </div>
 
       {/* Maximized dialog */}
-      <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
-        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col p-0">
-          <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-            <div className="flex items-center justify-between pr-8">
-              <DialogTitle className="flex items-center gap-2">
-                {viewModeTabs()}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowHotkeyInfo(true)}
-                  title="Keyboard shortcuts"
-                >
-                  <Keyboard className="h-3.5 w-3.5" />
-                </Button>
-              </DialogTitle>
-              <div className="flex items-center gap-2">
-                {actionButtons(true)}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setIsMaximized(false)}
-                  title="Minimize"
-                >
-                  <Minimize2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-          {isJson && jmespathRow(dialogInputRef)}
-          <div
-            ref={dialogContentRef}
-            className="flex-1 overflow-auto p-0 outline-none"
-            tabIndex={0}
-            onKeyDown={viewMode === 'json' ? (e) => handleViewerKeyDown(e, dialogPreRef) : undefined}
-          >
-            {viewMode === 'json' && (
-              <JsonViewPanel renderedContent={renderedContent} preRef={dialogPreRef} padding="p-6" />
-            )}
-            {viewMode === 'markdown' && <MarkdownViewPanel displayContent={displayContent} />}
-            {viewMode === 'table' && (
-              <TableViewPanel
-                displayContent={displayContent}
-                joiningContext={joiningContext}
-                joinColumnCandidates={joinColumnCandidates}
-                tableDataRef={tableDataRef}
-                sqlResultRef={sqlResultRef}
-                highlightDuplicates={highlightDuplicates}
-              />
-            )}
-          </div>
-          {/* Status ribbon in maximized view */}
-          <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground flex-shrink-0">
-            <div>{jmespathError && <span className="text-destructive">{jmespathError}</span>}</div>
-            <div className="flex items-center gap-4">
-              {viewMode === 'json' && <>
-                {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
-                {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
-                {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
-                {jsonStats?.type === 'object' && <>
-                  <span>{jsonStats.keys.toLocaleString()} keys</span>
-                  <span>depth {jsonStats.depth}</span>
-                </>}
-                <span>Ln {lineCount.toLocaleString()}</span>
-                <span>{displayContent.length.toLocaleString()} chars</span>
-                {filterPercent !== null && <span className="text-primary">{filterPercent}% of response</span>}
-              </>}
-              {viewMode === 'markdown' && <>
-                <span>Ln {lineCount.toLocaleString()}</span>
-                <span>{displayContent.length.toLocaleString()} chars</span>
-              </>}
-              {/* table stats are shown inside TableViewPanel */}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <MaximizedViewDialog
+        open={isMaximized}
+        onOpenChange={setIsMaximized}
+        onShowHotkeyInfo={() => setShowHotkeyInfo(true)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        viewValidity={viewValidity}
+        actionButtons={<ResultsActionButtons {...actionButtonProps} showText={true} />}
+        isJson={isJson}
+        jmespathEnabled={jmespathEnabled}
+        jmespathQuery={jmespathQuery}
+        jmespathMode={jmespathMode}
+        jmespathError={jmespathError}
+        jmespathNullResult={jmespathNullResult}
+        onQueryChange={handleQueryChange}
+        onQueryProgrammatic={applyQueryProgrammatic}
+        onEnabledChange={setJmespathEnabledLocal}
+        onModeChange={setJmespathModeLocal}
+        onToggleHighlight={toggleHighlightMode}
+        onToggleFilter={toggleFilterMode}
+        onApplyWildcard={applyWildcard}
+        onToggleTruncateValues={toggleTruncateValues}
+        onToggleUniqueFilter={toggleUniqueFilter}
+        undoStackRef={undoStackRef}
+        redoStackRef={redoStackRef}
+        typingStartRef={typingStartRef}
+        undoDebounceRef={undoDebounceRef}
+        jsonContent={content}
+        renderedContent={renderedContent}
+        displayContent={displayContent}
+        joiningContext={joiningContext}
+        joinColumnCandidates={joinColumnCandidates}
+        tableDataRef={tableDataRef}
+        sqlResultRef={sqlResultRef}
+        highlightDuplicates={highlightDuplicates}
+        onViewerKeyDown={handleViewerKeyDown}
+        jsonStats={jsonStats}
+        duplicateCount={duplicateCount}
+        lineCount={lineCount}
+        filterPercent={filterPercent}
+      />
 
       <HotkeyInfoDialog open={showHotkeyInfo} onOpenChange={setShowHotkeyInfo} />
     </>

@@ -33,10 +33,9 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
   {
     title: 'JMESPath Input',
     rows: [
-      ['↑ / ↓', 'Browse query history'],
-      ['Enter', 'Save query to history'],
-      ['Esc', 'Close history / revert query'],
-      ['Double-click', 'Show query history'],
+      ['Tab / Enter', 'Accept autocomplete suggestion'],
+      ['↑ / ↓', 'Navigate autocomplete suggestions'],
+      ['Esc', 'Dismiss autocomplete'],
     ],
   },
   {
