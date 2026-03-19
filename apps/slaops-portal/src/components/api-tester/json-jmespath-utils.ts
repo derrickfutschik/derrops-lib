@@ -4,7 +4,7 @@ import { deepEqual } from './joining-utils'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type JsonStats =
-  | { type: 'array'; count: number; totalKeys: number; depth: number }
+  | { type: 'array'; count: number; totalKeys: number; depth: number; flattenedCount: number }
   | { type: 'object'; keys: number; totalKeys: number; depth: number }
   | null
 
@@ -249,9 +249,13 @@ export function computeJsonStats(content: string): JsonStats {
       const keys = Object.keys(val)
       return keys.length + keys.reduce((sum: number, key) => sum + countTotalKeys(val[key]), 0)
     }
+    const countFlattened = (val: any): number => {
+      if (!Array.isArray(val)) return 1
+      return val.reduce((sum: number, item) => sum + countFlattened(item), 0)
+    }
     if (Array.isArray(parsed)) {
       const depth = parsed.length === 0 ? 1 : 1 + getMaxDepth(parsed[0])
-      return { type: 'array', count: parsed.length, totalKeys: countTotalKeys(parsed), depth }
+      return { type: 'array', count: parsed.length, totalKeys: countTotalKeys(parsed), depth, flattenedCount: countFlattened(parsed) }
     }
     if (typeof parsed === 'object' && parsed !== null) {
       return {
