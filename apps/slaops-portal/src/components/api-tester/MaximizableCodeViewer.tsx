@@ -219,29 +219,11 @@ export function MaximizableCodeViewer({
     const prev = typingStartRef.current ?? jmespathQuery
     typingStartRef.current = null
 
-    // In table view, immediately evaluate and append [] if the result is an array of arrays.
-    // This avoids waiting for the 600ms debounce before the auto-append effect fires.
-    let finalValue = newValue
-    if (viewMode === 'table' && isJson && jmespathMode === 'filter') {
-      const trimmed = newValue.trim()
-      if (trimmed && !trimmed.endsWith('[]')) {
-        try {
-          const result = evaluateJmespathQuery(getParsedContent(content), trimmed, jmespathMode)
-          if (result.filteredContent) {
-            const parsed = JSON.parse(result.filteredContent)
-            if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
-              finalValue = trimmed + '[]'
-            }
-          }
-        } catch { /* leave finalValue as-is */ }
-      }
-    }
-
-    if (prev !== finalValue) {
+    if (prev !== newValue) {
       undoStackRef.current = [...undoStackRef.current, prev].slice(-100)
       redoStackRef.current = []
     }
-    setJmespathQuery(finalValue)
+    setJmespathQuery(newValue)
   }
 
   // Handles user typing: debounces pushing the pre-typing value onto the undo stack.
@@ -605,47 +587,78 @@ export function MaximizableCodeViewer({
     return { json: jsonValid, markdown: markdownValid, table: tableValid }
   }, [displayContent, isJson])
 
-  // Detect joining context by parsing the JMESPath expression structure.
-  // Each [*] / [] traversal in the path (except the last) becomes a joining column
-  // whose value is the index of the element at that traversal level.
+  // Determine the effective JMESPath query used for table display.
+  //
+  // When the result is an array-of-arrays, three suffix candidates are compared:
+  //   • as-is           — e.g. hits[*].document.sampleOperations[*]
+  //   • + '[]'          — e.g. hits[*].document.sampleOperations[*][]
+  //   • + '[*][]'       — e.g. hits[*].document.sampleOperations[*][]  (or
+  //                            hits[*].document.sampleOperations[*][]  when the
+  //                            query doesn't already end in [*])
+  //
+  // The suffix that produces the most joining columns wins.  A query ending
+  // with the last segment bare (no [*]) benefits from '[*][]' because the extra
+  // [*] adds one more trackable traversal level; a query already ending in [*]
+  // benefits from '[]' only (adding [*][] would create an unparseable structure).
+  //
+  // The flattened data is the same for '[]' and '[*][]' — only the query parse
+  // changes, which is what drives join-column count.
+  //
+  // This is purely a display transform — the user's input is never mutated.
+  const tableQuery = useMemo((): string => {
+    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter') return debouncedQuery
+    const q = debouncedQuery.trim()
+    if (!q) return debouncedQuery
+    try {
+      const displayParsed = JSON.parse(displayContent)
+      if (!Array.isArray(displayParsed) || !displayParsed.length || !Array.isArray(displayParsed[0])) return debouncedQuery
+      const originalParsed = JSON.parse(content)
+      const flatCount = (displayParsed as unknown[][]).flat().length
+
+      const currentCols     = detectJoiningContext(originalParsed, q,           displayParsed.length)?.joiningColumns.length ?? 0
+      const flatCols        = detectJoiningContext(originalParsed, q + '[]',    flatCount)?.joiningColumns.length ?? 0
+      const wildcardFlatCols = detectJoiningContext(originalParsed, q + '[*][]', flatCount)?.joiningColumns.length ?? 0
+
+      if (wildcardFlatCols > flatCols && wildcardFlatCols > currentCols) return q + '[*][]'
+      if (flatCols > currentCols) return q + '[]'
+      return debouncedQuery
+    } catch { return debouncedQuery }
+  }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, displayContent, content])
+
+  // Content passed to TableViewPanel — flattened one level when tableQuery has [] appended.
+  const tableDisplayContent = useMemo((): string => {
+    if (viewMode !== 'table' || tableQuery === debouncedQuery) return displayContent
+    try {
+      const parsed = JSON.parse(displayContent)
+      if (Array.isArray(parsed)) return JSON.stringify(parsed.flat(), null, 2)
+    } catch { /* leave as-is */ }
+    return displayContent
+  }, [viewMode, tableQuery, debouncedQuery, displayContent])
+
+  // Joining context derived from the effective table query and flattened content.
+  // Each [*] / [] traversal in the path (except the last) becomes a joining column.
   const joiningContext = useMemo((): JoiningContext | null => {
     if (viewMode !== 'table' || !isJson) return null
-    if (!jmespathEnabled || jmespathMode !== 'filter' || !debouncedQuery.trim()) return null
+    if (!jmespathEnabled || jmespathMode !== 'filter' || !tableQuery.trim()) return null
     try {
       const originalParsed = JSON.parse(content)
-      const displayParsed = JSON.parse(displayContent)
-      if (!Array.isArray(displayParsed) || !displayParsed.length) return null
-      return detectJoiningContext(originalParsed, debouncedQuery, displayParsed.length)
+      const tableDisplayParsed = JSON.parse(tableDisplayContent)
+      if (!Array.isArray(tableDisplayParsed) || !tableDisplayParsed.length) return null
+      return detectJoiningContext(originalParsed, tableQuery, tableDisplayParsed.length)
     } catch { return null }
-  }, [content, displayContent, viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery])
+  }, [content, tableDisplayContent, viewMode, isJson, jmespathEnabled, jmespathMode, tableQuery])
 
   // Candidate join columns for all joining segments (unique-valued scalar attributes)
   const joinColumnCandidates = useMemo((): JoinColumnCandidate[][] => {
-    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter' || !debouncedQuery.trim()) return []
+    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter' || !tableQuery.trim()) return []
     if (!joiningContext) return []
     try {
       const originalParsed = JSON.parse(content)
-      return detectJoinColumnCandidates(originalParsed, debouncedQuery, joiningContext)
+      return detectJoinColumnCandidates(originalParsed, tableQuery, joiningContext)
     } catch {
       return []
     }
-  }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, content, joiningContext])
-
-  // Auto-append [] to JMESPath when in table view and result is an array of arrays
-  useEffect(() => {
-    if (viewMode !== 'table' || !jmespathEnabled || jmespathMode !== 'filter' || !filteredContent) return
-    try {
-      const parsed = JSON.parse(filteredContent)
-      if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
-        const trimmed = debouncedQuery.trim()
-        if (!trimmed.endsWith('[]')) {
-          setJmespathQuery(trimmed + '[]')
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, [viewMode, jmespathEnabled, jmespathMode, filteredContent, debouncedQuery, setJmespathQuery])
+  }, [viewMode, isJson, jmespathEnabled, jmespathMode, tableQuery, content, joiningContext])
 
   const jsonStats = useMemo(
     () => isJson ? computeJsonStats(displayContent) : null,
@@ -763,7 +776,6 @@ export function MaximizableCodeViewer({
           typingStartRef={typingStartRef}
           undoDebounceRef={undoDebounceRef}
           jsonContent={content}
-          inTableView={viewMode === 'table'}
         />}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
@@ -777,7 +789,7 @@ export function MaximizableCodeViewer({
           {viewMode === 'markdown' && <MarkdownViewPanel displayContent={displayContent} />}
           {viewMode === 'table' && (
             <TableViewPanel
-              displayContent={displayContent}
+              displayContent={tableDisplayContent}
               joiningContext={joiningContext}
               joinColumnCandidates={joinColumnCandidates}
               tableDataRef={tableDataRef}
@@ -830,6 +842,7 @@ export function MaximizableCodeViewer({
         jsonContent={content}
         renderedContent={renderedContent}
         displayContent={displayContent}
+        tableDisplayContent={tableDisplayContent}
         joiningContext={joiningContext}
         joinColumnCandidates={joinColumnCandidates}
         tableDataRef={tableDataRef}

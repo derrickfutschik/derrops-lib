@@ -53,6 +53,7 @@ interface MaximizedViewDialogProps {
   // Content
   renderedContent: React.ReactNode
   displayContent: string
+  tableDisplayContent: string
   joiningContext: JoiningContext | null
   joinColumnCandidates: JoinColumnCandidate[][]
   tableDataRef: React.MutableRefObject<{ columns: string[]; rows: string[][] } | null>
@@ -98,6 +99,7 @@ export function MaximizedViewDialog({
   jsonContent,
   renderedContent,
   displayContent,
+  tableDisplayContent,
   joiningContext,
   joinColumnCandidates,
   tableDataRef,
@@ -216,7 +218,7 @@ export function MaximizedViewDialog({
           {viewMode === 'markdown' && <MarkdownViewPanel displayContent={displayContent} />}
           {viewMode === 'table' && (
             <TableViewPanel
-              displayContent={displayContent}
+              displayContent={tableDisplayContent}
               joiningContext={joiningContext}
               joinColumnCandidates={joinColumnCandidates}
               tableDataRef={tableDataRef}
