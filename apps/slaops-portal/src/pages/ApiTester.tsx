@@ -1362,7 +1362,6 @@ const ApiTester = () => {
     }
 
     setIsSendingRequest(true)
-    setRequestResponse(null)
     setRightPanelTab('response')
 
     const startTime = performance.now()
@@ -3803,7 +3802,7 @@ const ApiTester = () => {
                     </TabsContent>
 
                     <TabsContent value="response" className="mt-0">
-                      {isSendingRequest ? (
+                      {isSendingRequest && !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
                           <p>Sending request...</p>
@@ -6177,7 +6176,7 @@ const ApiTester = () => {
                   ) : rightPanelTab === 'response' ? (
                     /* Response Tab Content */
                     <>
-                      {isSendingRequest ? (
+                      {isSendingRequest && !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
                           <p>Sending request...</p>
