@@ -118,13 +118,13 @@ export function MaximizedViewDialog({
   return (
     <Dialog open={open} onOpenChange={() => { /* only close via X button */ }}>
       <DialogContent
-        className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] rounded-none border-none flex flex-col p-0"
+        className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] rounded-none border-none flex flex-col p-0 [&>button:last-child]:hidden"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between pr-8">
+          <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <ViewModeTabs
                 viewMode={viewMode}
@@ -176,6 +176,7 @@ export function MaximizedViewDialog({
             typingStartRef={typingStartRef}
             undoDebounceRef={undoDebounceRef}
             jsonContent={jsonContent}
+            inTableView={viewMode === 'table'}
           />
         )}
         <div

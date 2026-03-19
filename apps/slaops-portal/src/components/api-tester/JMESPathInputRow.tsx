@@ -68,6 +68,8 @@ export interface JMESPathInputRowProps {
   disabled?: boolean
   /** Raw JSON string — used to extract autocomplete paths */
   jsonContent?: string
+  /** When true (table view), autocomplete suggestions use [] instead of [*] to prefer table-ready flat expressions */
+  inTableView?: boolean
 }
 
 export function JMESPathInputRow({
@@ -91,6 +93,7 @@ export function JMESPathInputRow({
   undoDebounceRef,
   disabled = false,
   jsonContent,
+  inTableView = false,
 }: JMESPathInputRowProps) {
   const [jmespathInputFocused, setJmespathInputFocused] = useState(false)
   const [showAutocomplete, setShowAutocomplete] = useState(false)
@@ -124,10 +127,20 @@ export function JMESPathInputRow({
   const autocompleteSuggestions = useMemo(() => {
     if (!jmespathEnabled || !jmespathInputFocused || allPaths.length === 0) return []
     const query = jmespathQuery.trim()
-    const results = fuzzySearchPaths(allPaths, query)
+    let results = fuzzySearchPaths(allPaths, query)
+    if (inTableView) {
+      // Replace [*] with [] for non-root paths (paths not starting with [*]).
+      // This surfaces table-ready flat expressions — [] flattens nested arrays
+      // and is equivalent to [*] for already-flat arrays.
+      results = results.map(path =>
+        path.startsWith('[*]') ? path : path.replace(/\[\*\]/g, '[]')
+      )
+      // Deduplicate after transformation (different paths may collapse to the same)
+      results = [...new Set(results)]
+    }
     if (results.length === 1 && results[0] === query) return []
     return results.slice(0, 15)
-  }, [allPaths, jmespathQuery, jmespathEnabled, jmespathInputFocused])
+  }, [allPaths, jmespathQuery, jmespathEnabled, jmespathInputFocused, inTableView])
 
   useEffect(() => {
     if (!showAutocomplete || autocompleteSuggestions.length === 0) return

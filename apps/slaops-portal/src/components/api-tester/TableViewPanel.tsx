@@ -31,6 +31,20 @@ import {
   setColumnSort,
 } from '@/store/responseViewerSlice'
 
+const MAX_TABLE_DEPTH = 4
+const MAX_TABLE_COLUMNS = 100
+
+function getJsonDepth(value: unknown, current = 0, cap = MAX_TABLE_DEPTH + 2): number {
+  if (current >= cap || typeof value !== 'object' || value === null) return current
+  if (Array.isArray(value)) {
+    if (value.length === 0) return current + 1
+    return Math.max(...value.slice(0, 10).map(v => getJsonDepth(v, current + 1, cap)))
+  }
+  const keys = Object.keys(value as object)
+  if (keys.length === 0) return current + 1
+  return Math.max(...keys.slice(0, 10).map(k => getJsonDepth((value as Record<string, unknown>)[k], current + 1, cap)))
+}
+
 interface TableViewPanelProps {
   /** The effective content (jmespath filtered or raw) */
   displayContent: string
@@ -78,6 +92,33 @@ export function TableViewPanel({
   const savedSqlRef = useRef('')
   const sqlInputRef = useRef<HTMLInputElement>(null)
 
+  // Lightweight pre-validation: runs before heavy tableData computation to detect unsupported JSON shapes.
+  // Also detects column overflow for CSV (where depth check doesn't apply).
+  const tableValidationError = useMemo((): string | null => {
+    try {
+      const parsed = JSON.parse(displayContent)
+      if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+        const depth = getJsonDepth(parsed)
+        if (depth > MAX_TABLE_DEPTH) {
+          return `Heavily nested JSON (depth ${depth}) cannot be rendered as a table. Use a JMESPath expression to flatten the data first.`
+        }
+        const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
+        if (columns.length > MAX_TABLE_COLUMNS) {
+          return `This dataset has ${columns.length} columns — tables support a maximum of ${MAX_TABLE_COLUMNS}. Try a JMESPath expression to select specific fields, e.g. [*].{field1: field1, field2: field2}.`
+        }
+      }
+      return null
+    } catch {
+      // Not JSON — check CSV column count from just the first line (fast)
+    }
+    const firstLine = displayContent.trim().split('\n')[0] ?? ''
+    const colCount = firstLine.split(',').length
+    if (colCount > MAX_TABLE_COLUMNS) {
+      return `This dataset has ${colCount} columns — tables support a maximum of ${MAX_TABLE_COLUMNS}. Try a JMESPath expression to select specific fields, e.g. [*].{field1: field1, field2: field2}.`
+    }
+    return null
+  }, [displayContent])
+
   // Unified selectedJoinPaths: [joinColumn, ...additionalJoinPaths]
   const selectedJoinPaths = useMemo(
     () => [joinColumn, ...additionalJoinPaths],
@@ -95,6 +136,9 @@ export function TableViewPanel({
 
   // Parse table data from displayContent (JSON array of objects or primitives, or CSV string)
   const tableData = useMemo(() => {
+    // Skip expensive computation when validation already failed
+    if (tableValidationError) return null
+
     // Helper: build enhanced columns/rows when joining is active, applying any custom join path selection
     const applyJoining = (baseColumns: string[], baseRows: string[][]): { columns: string[]; rows: string[][] } | null => {
       if (!joiningEnabled || !joiningContext || joiningContext.joiningColumns.length === 0) return null
@@ -142,6 +186,7 @@ export function TableViewPanel({
       if (Array.isArray(parsed) && parsed.length > 0) {
         if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
           const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
+          if (columns.length > MAX_TABLE_COLUMNS) return null
           const rows = parsed.map((item: any) => columns.map((col) => {
             const val = item[col]
             return val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
@@ -180,17 +225,19 @@ export function TableViewPanel({
       const headerRow = parseCsvLine(lines[0])
       const hasHeader = headerRow.every((h) => isNaN(Number(h)) && h.trim().length > 0)
       if (hasHeader && lines.length > 1) {
+        if (headerRow.length > MAX_TABLE_COLUMNS) return null
         const rows = lines.slice(1).map(parseCsvLine)
         return { columns: headerRow, rows }
       }
       const colCount = headerRow.length
+      if (colCount > MAX_TABLE_COLUMNS) return null
       const columns = colCount === 1 ? ['value'] : Array.from({ length: colCount }, (_, i) => `col${i + 1}`)
       const rows = lines.map(parseCsvLine)
       return { columns, rows }
     }
     return null
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayContent, joiningEnabled, joiningContext, selectedJoinPaths, joinColumnCandidates])
+  }, [displayContent, tableValidationError, joiningEnabled, joiningContext, selectedJoinPaths, joinColumnCandidates])
 
   // Keep parent refs in sync for copy/download
   tableDataRef.current = tableData
@@ -461,8 +508,24 @@ export function TableViewPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sqlQuery, addToSqlHistory])
 
+  if (tableValidationError) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground text-sm text-center px-8">
+        {tableValidationError}
+      </div>
+    )
+  }
+
   if (!tableData) {
     return <span className="text-muted-foreground text-sm">No tabular data available</span>
+  }
+
+  if (tableData.columns.length > MAX_TABLE_COLUMNS) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground text-sm text-center px-8">
+        This dataset has {tableData.columns.length} columns — tables support a maximum of {MAX_TABLE_COLUMNS}. Try a JMESPath expression to select specific fields, e.g. [*].&#123;field1: field1, field2: field2&#125;
+      </div>
+    )
   }
 
   // Use SQL result columns if available (rows are already sorted via sortedRows); apply hidden columns filter
