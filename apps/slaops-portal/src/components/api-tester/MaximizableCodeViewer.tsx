@@ -589,20 +589,15 @@ export function MaximizableCodeViewer({
 
   // Determine the effective JMESPath query used for table display.
   //
-  // When the result is an array-of-arrays, three suffix candidates are compared:
-  //   • as-is           — e.g. hits[*].document.sampleOperations[*]
-  //   • + '[]'          — e.g. hits[*].document.sampleOperations[*][]
-  //   • + '[*][]'       — e.g. hits[*].document.sampleOperations[*][]  (or
-  //                            hits[*].document.sampleOperations[*][]  when the
-  //                            query doesn't already end in [*])
+  // When the result is an array-of-arrays (at any nesting depth), we iteratively
+  // flatten one level at a time, choosing the best suffix at each step:
+  //   • '[]'    — flatten operator only
+  //   • '[*][]' — wildcard projection + flatten (adds one extra trackable segment,
+  //               yielding one more joining column when the structure supports it)
   //
-  // The suffix that produces the most joining columns wins.  A query ending
-  // with the last segment bare (no [*]) benefits from '[*][]' because the extra
-  // [*] adds one more trackable traversal level; a query already ending in [*]
-  // benefits from '[]' only (adding [*][] would create an unparseable structure).
-  //
-  // The flattened data is the same for '[]' and '[*][]' — only the query parse
-  // changes, which is what drives join-column count.
+  // At each nesting level both candidates are evaluated via detectJoiningContext
+  // and the one producing more joining columns wins.  The loop continues as long
+  // as the result is still an array-of-arrays (handles arbitrary depth).
   //
   // This is purely a display transform — the user's input is never mutated.
   const tableQuery = useMemo((): string => {
@@ -610,27 +605,40 @@ export function MaximizableCodeViewer({
     const q = debouncedQuery.trim()
     if (!q) return debouncedQuery
     try {
-      const displayParsed = JSON.parse(displayContent)
-      if (!Array.isArray(displayParsed) || !displayParsed.length || !Array.isArray(displayParsed[0])) return debouncedQuery
+      let current: unknown[] = JSON.parse(displayContent)
+      if (!Array.isArray(current) || !current.length) return debouncedQuery
+
       const originalParsed = JSON.parse(content)
-      const flatCount = (displayParsed as unknown[][]).flat().length
+      let suffix = ''
+      const MAX_DEPTH = 8 // guard against pathological data
 
-      const currentCols     = detectJoiningContext(originalParsed, q,           displayParsed.length)?.joiningColumns.length ?? 0
-      const flatCols        = detectJoiningContext(originalParsed, q + '[]',    flatCount)?.joiningColumns.length ?? 0
-      const wildcardFlatCols = detectJoiningContext(originalParsed, q + '[*][]', flatCount)?.joiningColumns.length ?? 0
+      for (let depth = 0; depth < MAX_DEPTH; depth++) {
+        if (!Array.isArray(current[0])) break // no longer array-of-arrays; done
 
-      if (wildcardFlatCols > flatCols && wildcardFlatCols > currentCols) return q + '[*][]'
-      if (flatCols > currentCols) return q + '[]'
-      return debouncedQuery
+        const flattened = (current as unknown[][]).flat()
+        if (flattened.length === 0) break
+
+        const base = q + suffix
+        const flatCols        = detectJoiningContext(originalParsed, base + '[]',    flattened.length)?.joiningColumns.length ?? 0
+        const wildcardFlatCols = detectJoiningContext(originalParsed, base + '[*][]', flattened.length)?.joiningColumns.length ?? 0
+
+        suffix   += wildcardFlatCols >= flatCols ? '[*][]' : '[]'
+        current   = flattened
+      }
+
+      return suffix ? q + suffix : debouncedQuery
     } catch { return debouncedQuery }
   }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, displayContent, content])
 
-  // Content passed to TableViewPanel — flattened one level when tableQuery has [] appended.
+  // Content passed to TableViewPanel — iteratively flattened to match tableQuery depth.
   const tableDisplayContent = useMemo((): string => {
     if (viewMode !== 'table' || tableQuery === debouncedQuery) return displayContent
     try {
-      const parsed = JSON.parse(displayContent)
-      if (Array.isArray(parsed)) return JSON.stringify(parsed.flat(), null, 2)
+      let current: unknown = JSON.parse(displayContent)
+      while (Array.isArray(current) && current.length > 0 && Array.isArray(current[0])) {
+        current = (current as unknown[][]).flat()
+      }
+      return JSON.stringify(current, null, 2)
     } catch { /* leave as-is */ }
     return displayContent
   }, [viewMode, tableQuery, debouncedQuery, displayContent])

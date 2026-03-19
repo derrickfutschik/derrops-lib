@@ -58,65 +58,86 @@ Used when Strategy 1 does not apply (empty query, eval fails, or result is an ar
 
 ## Table-View Array Flattening (invisible to the user)
 
-When the user switches to **Table view**, the raw JMESPath result may be an
-**array-of-arrays** that the table cannot display directly as rows.  Rather than
-appending `[]` or `[*][]` to the user's visible query, the system selects the
-best effective query under the hood and passes its flattened output to the table.
-The input field always shows the user's original expression unchanged.
+When the user switches to **Table view**, the raw JMESPath result may be a
+**nested array** (array-of-arrays, or deeper) that the table cannot display
+directly as rows.  Rather than appending operators to the user's visible query,
+the system selects the best effective query under the hood and passes its
+flattened output to the table.  The input field always shows the user's original
+expression unchanged.
 
 ### Decision algorithm (`tableQuery` memo)
 
 Only active in table view with an active JMESPath filter.
 
-1. Evaluate the user's query → parse `displayContent`.
-2. If the result is **not** an array-of-arrays (`Array.isArray(parsed[0])` is
-   false), no adjustment is needed — use the query as-is.
-3. Flatten the outer array one level: `displayParsed.flat()`.  The flat row
-   count is the same for all candidate suffixes.
-4. Run `detectJoiningContext` for three candidate queries and record how many
-   **joining columns** each would produce:
+The algorithm loops one nesting level at a time, choosing the best single-level
+suffix at each step, until the result is a flat array.
 
-   | Candidate          | Example                                        | Typical result               |
-   |--------------------|------------------------------------------------|------------------------------|
-   | `query` (as-is)    | `hits[*].document.sampleOperations[*]`         | 0–1 cols (count mismatch)    |
-   | `query + '[]'`     | `hits[*].document.sampleOperations[*][]`       | N cols (adds one level)      |
-   | `query + '[*][]'`  | `hits[*].document.sampleOperations[*][]`       | N+1 cols (adds two levels)   |
+```
+suffix   = ''
+current  = displayContent (parsed)
 
-   The `[*][]` suffix is valuable when the query **does not already end in `[*]`**
-   because the extra `[*]` creates one additional trackable traversal segment,
-   yielding one more joining column.
+while current[0] is an array:          // still nested
+    flattened = current.flat()
 
-5. Pick the candidate with the **most joining columns**.  Ties are broken in
-   favour of the shorter suffix (`query` > `query+[]` > `query+[*][]`).
+    flatCols        = joinCols(query + suffix + '[]',    flattened)
+    wildcardFlatCols = joinCols(query + suffix + '[*][]', flattened)
 
-### Examples
+    if wildcardFlatCols >= flatCols:
+        suffix  += '[*][]'
+    else:
+        suffix  += '[]'
 
-| User query                                  | Result shape        | tableQuery chosen                            | Join cols |
-|---------------------------------------------|---------------------|----------------------------------------------|-----------|
-| `hits[*].document.sampleOperations`         | `[[op,op],[op]]`    | `hits[*].document.sampleOperations[*][]`     | 2         |
-| `hits[*].document.sampleOperations[*]`      | `[[op,op],[op]]`    | `hits[*].document.sampleOperations[*][]`     | 2         |
-| `hits[*].document.sampleOperations[*][]`    | `[op,op,op]`        | unchanged (already flat)                     | 2         |
-| `hits[*].document`                          | `[{…},{…}]`         | unchanged (not array-of-arrays)              | 0         |
-| `hits[*].doc.ops[*].paths`                  | `[[p,p],[p]]`       | `hits[*].doc.ops[*].paths[*][]`              | 3         |
+    current = flattened
 
-### Why joining columns matter
+tableQuery = query + suffix             // suffix may be '', '[]', '[*][]',
+                                        // '[][*][]', '[*][][*][]', etc.
+```
 
-Each joining column adds a synthetic column to the table (e.g. `hits`, `ops`)
-whose value is the positional index (or a chosen scalar attribute) of the
-ancestor element.  More joining columns = more context visible per row without
-losing information about which parent record each row came from.
+`joinCols(q, data)` = `detectJoiningContext(original, q, data.length)?.joiningColumns.length ?? 0`
+
+A hard cap of 8 iterations prevents pathological infinite loops.
+
+### Why `[*][]` beats `[]` at each level
 
 `detectJoiningContext` parses the query string into array-traversal *segments*;
 `joiningColumns.length = segments.length - 1`.  The last segment produces rows;
-all earlier segments produce joining columns.  Appending `[]` adds one more
-segment (anonymous, label `#N`); appending `[*][]` adds two more.
+all earlier ones produce joining columns.
+
+- `'[]'` adds one segment → one more joining column.
+- `'[*][]'` adds **two** segments → two more joining columns.
+
+The extra `[*]` is only counted when `computeRowIndices` can successfully walk
+the data for that segment.  When it cannot (e.g. because the elements at that
+level are already objects, not arrays), `detectJoiningContext` returns `null`
+(0 cols) and `[]` is chosen instead.
+
+### Suffix-building examples
+
+| User query                              | Nesting depth | Suffix chosen  | tableQuery                                    | Join cols |
+|-----------------------------------------|---------------|----------------|-----------------------------------------------|-----------|
+| `hits[*].doc.ops`                       | 1             | `[*][]`        | `hits[*].doc.ops[*][]`                        | 2         |
+| `hits[*].doc.ops[*]`                    | 1             | `[]`           | `hits[*].doc.ops[*][]`                        | 2         |
+| `hits[*].doc.ops[*][]`                  | 0             | *(none)*       | unchanged                                     | 2         |
+| `hits[*].doc.ops`  (ops is `[[[…]]]`)   | 2             | `[*][][*][]`   | `hits[*].doc.ops[*][][*][]`                   | 4         |
+| `hits[*].doc.ops`  (ops is `[[[…]]]`    | 2             | `[*][][]`      | `hits[*].doc.ops[*][][]`                      | 3         |
+|   — if inner elements are objects)      |               | *(wildcardFlatCols = 0 at level 2)* |                              |           |
+| `hits[*].doc`                           | 0             | *(none)*       | unchanged (not array-of-arrays)               | 0         |
 
 ### `tableDisplayContent`
 
-Once `tableQuery` is chosen, `tableDisplayContent` is computed as:
-- `tableQuery === debouncedQuery` → pass `displayContent` to `TableViewPanel` unchanged.
-- Otherwise → `JSON.stringify(displayParsed.flat(), null, 2)`.
+Once `tableQuery` is chosen, `tableDisplayContent` is computed by iteratively
+calling `.flat()` on the parsed `displayContent` until the result is no longer
+an array-of-arrays:
+
+```
+while current[0] is an array:
+    current = current.flat()
+tableDisplayContent = JSON.stringify(current)
+```
 
 `joiningContext` and `joinColumnCandidates` are then derived from `tableQuery`
 and `tableDisplayContent`, so the join-column UI in the table always reflects
-the effective (possibly suffix-adjusted) query.
+the effective (suffix-adjusted) query.
+
+When `tableQuery === debouncedQuery` (no suffix needed), `tableDisplayContent`
+equals `displayContent` — no computation wasted.
