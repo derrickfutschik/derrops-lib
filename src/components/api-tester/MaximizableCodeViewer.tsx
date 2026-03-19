@@ -59,6 +59,8 @@ interface MaximizableCodeViewerProps {
   onJMESPathStateChange?: (state: JMESPathState) => void
   onExpandToBottom?: () => void
   onCollapseFromBottom?: () => void
+  onSendRequest?: () => void
+  isSendingRequest?: boolean
 }
 
 export function MaximizableCodeViewer({
@@ -75,6 +77,8 @@ export function MaximizableCodeViewer({
   onJMESPathStateChange,
   onExpandToBottom,
   onCollapseFromBottom,
+  onSendRequest,
+  isSendingRequest,
 }: MaximizableCodeViewerProps) {
   const dispatch = useAppDispatch()
   const selectedView = useAppSelector(selectSelectedView)
@@ -214,11 +218,30 @@ export function MaximizableCodeViewer({
     }
     const prev = typingStartRef.current ?? jmespathQuery
     typingStartRef.current = null
-    if (prev !== newValue) {
+
+    // In table view, immediately evaluate and append [] if the result is an array of arrays.
+    // This avoids waiting for the 600ms debounce before the auto-append effect fires.
+    let finalValue = newValue
+    if (viewMode === 'table' && isJson && jmespathMode === 'filter') {
+      const trimmed = newValue.trim()
+      if (trimmed && !trimmed.endsWith('[]')) {
+        try {
+          const result = evaluateJmespathQuery(getParsedContent(content), trimmed, jmespathMode)
+          if (result.filteredContent) {
+            const parsed = JSON.parse(result.filteredContent)
+            if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+              finalValue = trimmed + '[]'
+            }
+          }
+        } catch { /* leave finalValue as-is */ }
+      }
+    }
+
+    if (prev !== finalValue) {
       undoStackRef.current = [...undoStackRef.current, prev].slice(-100)
       redoStackRef.current = []
     }
-    setJmespathQuery(newValue)
+    setJmespathQuery(finalValue)
   }
 
   // Handles user typing: debounces pushing the pre-typing value onto the undo stack.
@@ -740,6 +763,7 @@ export function MaximizableCodeViewer({
           typingStartRef={typingStartRef}
           undoDebounceRef={undoDebounceRef}
           jsonContent={content}
+          inTableView={viewMode === 'table'}
         />}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
@@ -778,6 +802,8 @@ export function MaximizableCodeViewer({
         open={isMaximized}
         onOpenChange={setIsMaximized}
         onShowHotkeyInfo={() => setShowHotkeyInfo(true)}
+        onSendRequest={onSendRequest}
+        isSendingRequest={isSendingRequest}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         viewValidity={viewValidity}

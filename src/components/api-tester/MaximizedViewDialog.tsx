@@ -6,7 +6,7 @@ import { MarkdownViewPanel } from './MarkdownViewPanel'
 import { TableViewPanel } from './TableViewPanel'
 import { StatusRibbon } from './StatusRibbon'
 import { ViewModeTabs } from './ViewModeTabs'
-import { Keyboard, Minimize2 } from 'lucide-react'
+import { Keyboard, Minimize2, Play } from 'lucide-react'
 import React, { useRef, useEffect } from 'react'
 import type { JoiningContext, JoinColumnCandidate } from './joining-utils'
 
@@ -26,6 +26,9 @@ interface MaximizedViewDialogProps {
   onViewModeChange: (mode: ViewMode) => void
   viewValidity: { json: boolean; markdown: boolean; table: boolean }
   actionButtons: React.ReactNode
+  // Send request
+  onSendRequest?: () => void
+  isSendingRequest?: boolean
   // JMESPath row
   isJson: boolean
   jmespathEnabled: boolean
@@ -67,6 +70,8 @@ export function MaximizedViewDialog({
   open,
   onOpenChange,
   onShowHotkeyInfo,
+  onSendRequest,
+  isSendingRequest = false,
   viewMode,
   onViewModeChange,
   viewValidity,
@@ -118,13 +123,13 @@ export function MaximizedViewDialog({
   return (
     <Dialog open={open} onOpenChange={() => { /* only close via X button */ }}>
       <DialogContent
-        className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] rounded-none border-none flex flex-col p-0"
+        className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] rounded-none border-none flex flex-col p-0 [&>button:last-child]:hidden"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between pr-8">
+          <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <ViewModeTabs
                 viewMode={viewMode}
@@ -143,6 +148,26 @@ export function MaximizedViewDialog({
             </DialogTitle>
             <div className="flex items-center gap-2">
               {actionButtons}
+              {onSendRequest && (
+                <>
+                  <div className="w-px h-4 bg-border" />
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 px-3 text-xs gap-1.5"
+                    onClick={onSendRequest}
+                    disabled={isSendingRequest}
+                    title="Send request (⌘ Enter)"
+                  >
+                    {isSendingRequest ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary-foreground" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                    {isSendingRequest ? 'Sending…' : 'Send'}
+                  </Button>
+                </>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -176,6 +201,7 @@ export function MaximizedViewDialog({
             typingStartRef={typingStartRef}
             undoDebounceRef={undoDebounceRef}
             jsonContent={jsonContent}
+            inTableView={viewMode === 'table'}
           />
         )}
         <div

@@ -1111,6 +1111,26 @@ const ApiTester = () => {
     }
   }, [builderMode, openAPIServiceId, openAPIOperationKey, selectedServiceId, selectedOperationKey])
 
+  const cmdEnterHandlerRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    cmdEnterHandlerRef.current = () => {
+      if (!isAnalyzing && !isSendingRequest) {
+        addUrlToHistory(url)
+        handleActionButton()
+      }
+    }
+  })
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        cmdEnterHandlerRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
   const fetchServices = async () => {
     try {
       // TODO this should reference the correct pah in docker
@@ -1342,7 +1362,6 @@ const ApiTester = () => {
     }
 
     setIsSendingRequest(true)
-    setRequestResponse(null)
     setRightPanelTab('response')
 
     const startTime = performance.now()
@@ -3783,7 +3802,7 @@ const ApiTester = () => {
                     </TabsContent>
 
                     <TabsContent value="response" className="mt-0">
-                      {isSendingRequest ? (
+                      {isSendingRequest && !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
                           <p>Sending request...</p>
@@ -3903,6 +3922,8 @@ const ApiTester = () => {
                                 toast.error('Invalid JSON - cannot format')
                               }
                             }}
+                            onSendRequest={handleActionButton}
+                            isSendingRequest={isSendingRequest}
                           />
                         </div>
                       )}
@@ -6157,7 +6178,7 @@ const ApiTester = () => {
                   ) : rightPanelTab === 'response' ? (
                     /* Response Tab Content */
                     <>
-                      {isSendingRequest ? (
+                      {isSendingRequest && !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
                           <p>Sending request...</p>
@@ -6273,6 +6294,8 @@ const ApiTester = () => {
                                 }
                               }}
                               onExpandToBottom={() => setJsonExpandedToBottom(true)}
+                              onSendRequest={handleActionButton}
+                              isSendingRequest={isSendingRequest}
                             />
                           )}
                         </div>
@@ -6471,6 +6494,8 @@ const ApiTester = () => {
                     }
                   }}
                   onCollapseFromBottom={() => setJsonExpandedToBottom(false)}
+                  onSendRequest={handleActionButton}
+                  isSendingRequest={isSendingRequest}
                   maxHeight="none"
                   className="h-full rounded-none border-x-0 border-b-0"
                 />

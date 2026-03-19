@@ -8,6 +8,12 @@ interface HotkeyInfoDialogProps {
 
 const SECTIONS: { title: string; rows: [string, string][] }[] = [
   {
+    title: 'Global',
+    rows: [
+      ['⌘ ↵', 'Run main action (Request / Preview / Match)'],
+    ],
+  },
+  {
     title: 'URL Input (Standard Mode)',
     rows: [
       ['↑ / ↓', 'Browse URL history'],
