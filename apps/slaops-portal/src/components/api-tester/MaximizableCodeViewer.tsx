@@ -59,6 +59,8 @@ interface MaximizableCodeViewerProps {
   onJMESPathStateChange?: (state: JMESPathState) => void
   onExpandToBottom?: () => void
   onCollapseFromBottom?: () => void
+  onSendRequest?: () => void
+  isSendingRequest?: boolean
 }
 
 export function MaximizableCodeViewer({
@@ -75,6 +77,8 @@ export function MaximizableCodeViewer({
   onJMESPathStateChange,
   onExpandToBottom,
   onCollapseFromBottom,
+  onSendRequest,
+  isSendingRequest,
 }: MaximizableCodeViewerProps) {
   const dispatch = useAppDispatch()
   const selectedView = useAppSelector(selectSelectedView)
@@ -798,6 +802,8 @@ export function MaximizableCodeViewer({
         open={isMaximized}
         onOpenChange={setIsMaximized}
         onShowHotkeyInfo={() => setShowHotkeyInfo(true)}
+        onSendRequest={onSendRequest}
+        isSendingRequest={isSendingRequest}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         viewValidity={viewValidity}

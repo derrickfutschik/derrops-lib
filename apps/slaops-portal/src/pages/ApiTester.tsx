@@ -3922,6 +3922,8 @@ const ApiTester = () => {
                                 toast.error('Invalid JSON - cannot format')
                               }
                             }}
+                            onSendRequest={handleActionButton}
+                            isSendingRequest={isSendingRequest}
                           />
                         </div>
                       )}
@@ -6292,6 +6294,8 @@ const ApiTester = () => {
                                 }
                               }}
                               onExpandToBottom={() => setJsonExpandedToBottom(true)}
+                              onSendRequest={handleActionButton}
+                              isSendingRequest={isSendingRequest}
                             />
                           )}
                         </div>
@@ -6490,6 +6494,8 @@ const ApiTester = () => {
                     }
                   }}
                   onCollapseFromBottom={() => setJsonExpandedToBottom(false)}
+                  onSendRequest={handleActionButton}
+                  isSendingRequest={isSendingRequest}
                   maxHeight="none"
                   className="h-full rounded-none border-x-0 border-b-0"
                 />
