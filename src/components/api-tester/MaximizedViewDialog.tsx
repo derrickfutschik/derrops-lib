@@ -147,10 +147,8 @@ export function MaximizedViewDialog({
               </Button>
             </DialogTitle>
             <div className="flex items-center gap-2">
-              {actionButtons}
               {onSendRequest && (
                 <>
-                  <div className="w-px h-4 bg-border" />
                   <Button
                     variant="default"
                     size="sm"
@@ -166,8 +164,10 @@ export function MaximizedViewDialog({
                     )}
                     {isSendingRequest ? 'Sending…' : 'Send'}
                   </Button>
+                  <div className="w-px h-4 bg-border" />
                 </>
               )}
+              {actionButtons}
               <Button
                 variant="ghost"
                 size="sm"
