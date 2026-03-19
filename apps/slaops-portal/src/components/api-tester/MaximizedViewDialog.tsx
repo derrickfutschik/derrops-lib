@@ -152,7 +152,7 @@ export function MaximizedViewDialog({
                   <Button
                     variant="default"
                     size="sm"
-                    className="h-7 px-3 text-xs gap-1.5"
+                    className="h-7 w-[5.75rem] px-3 text-xs gap-1.5 justify-center"
                     onClick={onSendRequest}
                     disabled={isSendingRequest}
                     title="Send request (⌘ Enter)"
