@@ -1111,6 +1111,26 @@ const ApiTester = () => {
     }
   }, [builderMode, openAPIServiceId, openAPIOperationKey, selectedServiceId, selectedOperationKey])
 
+  const cmdEnterHandlerRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    cmdEnterHandlerRef.current = () => {
+      if (!isAnalyzing && !isSendingRequest) {
+        addUrlToHistory(url)
+        handleActionButton()
+      }
+    }
+  })
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        cmdEnterHandlerRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
   const fetchServices = async () => {
     try {
       // TODO this should reference the correct pah in docker
