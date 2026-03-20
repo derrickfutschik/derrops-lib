@@ -25,6 +25,8 @@ import {
   setSqlQuery as setSqlQueryRedux,
   setSqlMode as setSqlModeRedux,
   setJoinColumn,
+  setJoiningEnabled as setJoiningEnabledRedux,
+  setAdditionalJoinPaths as setAdditionalJoinPathsRedux,
   reconcileColumns,
   toggleColumnHidden,
   showAllColumns,
@@ -81,12 +83,15 @@ export function TableViewPanel({
   // Join column from Redux (first join path)
   const joinColumn = tableState.joinColumn
 
+  const joiningEnabled = tableState.joiningEnabled
+  const setJoiningEnabled = (val: boolean) => dispatch(setJoiningEnabledRedux(val))
+  const additionalJoinPaths = tableState.additionalJoinPaths
+  const setAdditionalJoinPaths = (paths: (string | null)[]) => dispatch(setAdditionalJoinPathsRedux(paths))
+
   const [sqlError, setSqlError] = useState<string | null>(null)
   const [sqlHistory, setSqlHistory] = useState<string[]>([])
   const [sqlHistoryIndex, setSqlHistoryIndex] = useState(-1)
   const [showSqlHistory, setShowSqlHistory] = useState(false)
-  const [joiningEnabled, setJoiningEnabled] = useState(false)
-  const [additionalJoinPaths, setAdditionalJoinPaths] = useState<(string | null)[]>([])
   const [joinSelectOpen, setJoinSelectOpen] = useState<number | null>(null)
 
   const savedSqlRef = useRef('')
