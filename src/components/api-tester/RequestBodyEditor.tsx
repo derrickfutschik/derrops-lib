@@ -82,15 +82,15 @@ function highlightJsonWithErrors(content: string, error: JsonError | null): stri
     const patterns = [
       {
         regex: /("(?:[^"\\]|\\.)*")(\s*:)/g,
-        replacement: '<span class="text-purple-400">$1</span>$2',
+        replacement: '<span style="color: hsl(var(--chart-4))">$1</span>$2',
       },
       {
         regex: /:\s*("(?:[^"\\]|\\.)*")/g,
-        replacement: ': <span class="text-green-400">$1</span>',
+        replacement: ': <span style="color: hsl(var(--chart-2))">$1</span>',
       },
-      { regex: /:\s*(-?\d+\.?\d*)/g, replacement: ': <span class="text-amber-400">$1</span>' },
-      { regex: /:\s*(true|false)/g, replacement: ': <span class="text-blue-400">$1</span>' },
-      { regex: /:\s*(null)/g, replacement: ': <span class="text-red-400">$1</span>' },
+      { regex: /:\s*(-?\d+\.?\d*)/g, replacement: ': <span style="color: hsl(var(--chart-3))">$1</span>' },
+      { regex: /:\s*(true|false)/g, replacement: ': <span style="color: hsl(var(--chart-3))">$1</span>' },
+      { regex: /:\s*(null)/g, replacement: ': <span style="color: hsl(var(--muted-foreground) / 0.5)">$1</span>' },
     ]
 
     patterns.forEach(({ regex, replacement }) => {
@@ -124,17 +124,17 @@ function highlightXmlString(content: string): string {
 
   // Highlight tags (opening and closing)
   escaped = escaped.replace(/(&lt;\/?)([\w-]+)/g, (_, prefix, tagName) => {
-    return placeholder(`<span class="text-blue-400">${prefix}${tagName}</span>`)
+    return placeholder(`<span style="color: hsl(var(--chart-4))">${prefix}${tagName}</span>`)
   })
 
   // Highlight attribute names (word followed by =)
   escaped = escaped.replace(/(\s)([\w-]+)(=)/g, (_, space, attrName, eq) => {
-    return `${space}${placeholder(`<span class="text-purple-400">${attrName}</span>`)}${eq}`
+    return `${space}${placeholder(`<span style="color: hsl(var(--chart-3))">${attrName}</span>`)}${eq}`
   })
 
   // Highlight attribute values
   escaped = escaped.replace(/(=)("(?:[^"\\]|\\.)*")/g, (_, eq, value) => {
-    return `${eq}${placeholder(`<span class="text-green-400">${value}</span>`)}`
+    return `${eq}${placeholder(`<span style="color: hsl(var(--chart-2))">${value}</span>`)}`
   })
 
   // Restore placeholders

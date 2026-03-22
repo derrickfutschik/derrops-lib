@@ -41,6 +41,12 @@ interface PathSegment {
   properties: string[]
   /** Display label for this joining column (the last property name, or '#N' if anonymous). */
   label: string
+  /**
+   * Property names after the last array operator (e.g. ['document', 'contact'] for
+   * `hits[*].document.contact`). Only non-empty on the final segment when the query
+   * ends with a plain property path rather than another array operator.
+   */
+  trailingProperties: string[]
 }
 
 /**
@@ -77,7 +83,7 @@ function parseArraySegments(query: string): PathSegment[] | null {
         const label = currentProps.length > 0
           ? currentProps[currentProps.length - 1]
           : `#${segments.length}`
-        segments.push({ properties: currentProps, label })
+        segments.push({ properties: currentProps, label, trailingProperties: [] })
         currentProps = []
         i = close + 1
         continue
@@ -88,6 +94,11 @@ function parseArraySegments(query: string): PathSegment[] | null {
 
     // Any other character (|, ?, {, etc.) — bail out
     return null
+  }
+
+  // Capture any property names after the last array operator as trailing properties.
+  if (segments.length > 0 && currentProps.length > 0) {
+    segments[segments.length - 1].trailingProperties = currentProps
   }
 
   return segments.length > 0 ? segments : null
@@ -132,14 +143,33 @@ function computeRowIndices(
     const isLast = segIndex === segments.length - 1
 
     if (isLast) {
-      if (Array.isArray(value)) {
-        // Final segment is an array: each element produces one result row
-        value.forEach(() => result.push(currentIndices))
-      } else if (value !== null && value !== undefined) {
-        // Final segment is a scalar (e.g. `path` in `sampleOperations[*].path[]`):
-        // the [] flatten operator in JMESPath is applied at the outer level, so
-        // each parent element contributes exactly one result row.
-        result.push(currentIndices)
+      const trailing = segments[segIndex].trailingProperties
+      if (trailing.length > 0) {
+        // This segment has trailing properties (e.g. `.document.contact` after `hits[*]`).
+        // It acts as a joining level: navigate each array element through trailing props
+        // to find the result value, recording the element's index as a joining index.
+        if (Array.isArray(value)) {
+          value.forEach((item, idx) => {
+            const trailedValue = navigateProperties(item, trailing)
+            if (trailedValue !== null && trailedValue !== undefined) {
+              if (Array.isArray(trailedValue)) {
+                trailedValue.forEach(() => result.push([...currentIndices, String(idx)]))
+              } else {
+                result.push([...currentIndices, String(idx)])
+              }
+            }
+          })
+        }
+      } else {
+        if (Array.isArray(value)) {
+          // Final segment is an array: each element produces one result row
+          value.forEach(() => result.push(currentIndices))
+        } else if (value !== null && value !== undefined) {
+          // Final segment is a scalar (e.g. `path` in `sampleOperations[*].path[]`):
+          // the [] flatten operator in JMESPath is applied at the outer level, so
+          // each parent element contributes exactly one result row.
+          result.push(currentIndices)
+        }
       }
       return
     }
@@ -198,9 +228,11 @@ export function detectJoinColumnCandidates(
   joiningContext: JoiningContext,
 ): JoinColumnCandidate[][] {
   const segments = parseArraySegments(query)
-  if (!segments || segments.length < 2) return []
+  if (!segments) return []
 
-  const joiningCount = segments.length - 1
+  const joiningCount = joiningContext.joiningColumns.length
+  if (joiningCount === 0) return []
+
   const resultCount = joiningContext.rowIndices.length
 
   return Array.from({ length: joiningCount }, (_, j) =>
@@ -252,8 +284,9 @@ function computeSegmentCandidates(
   // Intermediate properties to also explore (sub-objects on the path to the next array).
   // e.g. for hits[*] with nextSegment.properties = ['document', 'sampleOperations']:
   //   intermediateProps = ['document'] → also explore hits[*].document.*
+  // When j is the last segment (trailing-props case), there is no nextSegment.
   const nextSegment = segments[j + 1]
-  const intermediateProps = nextSegment.properties.slice(0, -1)
+  const intermediateProps = nextSegment ? nextSegment.properties.slice(0, -1) : []
 
   for (let step = 0; step <= intermediateProps.length; step++) {
     const pathPrefix =
@@ -344,12 +377,22 @@ export function detectJoiningContext(
   resultCount: number,
 ): JoiningContext | null {
   const segments = parseArraySegments(query)
-  // Need at least 2 array ops: one for the result and at least one joining level
-  if (!segments || segments.length < 2) return null
+  if (!segments || segments.length < 1) return null
+
+  const lastSeg = segments[segments.length - 1]
+  const hasTrailing = lastSeg.trailingProperties.length > 0
+
+  // Need either ≥2 array ops, or exactly 1 with trailing properties (e.g. `hits[*].document.contact`)
+  if (segments.length < 2 && !hasTrailing) return null
 
   const rowIndices = computeRowIndices(original, segments, resultCount)
   if (!rowIndices) return null
 
-  const joiningColumns = segments.slice(0, -1).map((s) => s.label)
+  // When trailing properties exist, the last segment acts as a joining level too.
+  // Otherwise the last segment is the result level and is excluded from joining columns.
+  const joiningColumns = hasTrailing
+    ? segments.map((s) => s.label)
+    : segments.slice(0, -1).map((s) => s.label)
+
   return { joiningColumns, rowIndices }
 }

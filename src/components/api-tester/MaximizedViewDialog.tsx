@@ -13,7 +13,7 @@ import type { JoiningContext, JoinColumnCandidate } from './joining-utils'
 type ViewMode = 'json' | 'markdown' | 'table'
 
 type JsonStats =
-  | { type: 'array'; count: number; totalKeys: number }
+  | { type: 'array'; count: number; totalKeys: number; depth: number; flattenedCount: number }
   | { type: 'object'; keys: number; totalKeys: number; depth: number }
   | null
 
@@ -53,6 +53,7 @@ interface MaximizedViewDialogProps {
   // Content
   renderedContent: React.ReactNode
   displayContent: string
+  tableDisplayContent: string
   joiningContext: JoiningContext | null
   joinColumnCandidates: JoinColumnCandidate[][]
   tableDataRef: React.MutableRefObject<{ columns: string[]; rows: string[][] } | null>
@@ -98,6 +99,7 @@ export function MaximizedViewDialog({
   jsonContent,
   renderedContent,
   displayContent,
+  tableDisplayContent,
   joiningContext,
   joinColumnCandidates,
   tableDataRef,
@@ -201,7 +203,7 @@ export function MaximizedViewDialog({
             typingStartRef={typingStartRef}
             undoDebounceRef={undoDebounceRef}
             jsonContent={jsonContent}
-            inTableView={viewMode === 'table'}
+            
           />
         )}
         <div
@@ -216,7 +218,7 @@ export function MaximizedViewDialog({
           {viewMode === 'markdown' && <MarkdownViewPanel displayContent={displayContent} />}
           {viewMode === 'table' && (
             <TableViewPanel
-              displayContent={displayContent}
+              displayContent={tableDisplayContent}
               joiningContext={joiningContext}
               joinColumnCandidates={joinColumnCandidates}
               tableDataRef={tableDataRef}

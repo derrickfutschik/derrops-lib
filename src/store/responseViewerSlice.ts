@@ -24,6 +24,8 @@ interface TableState {
   sqlMode: 'filter' | 'highlight'
   joinColumn: string | null
   columns: ColumnPref[]
+  joiningEnabled: boolean
+  additionalJoinPaths: (string | null)[]
 }
 
 export interface ResponseViewerState {
@@ -52,6 +54,8 @@ const initialState: ResponseViewerState = {
     sqlMode: 'filter',
     joinColumn: null,
     columns: [],
+    joiningEnabled: false,
+    additionalJoinPaths: [],
   },
 }
 
@@ -98,6 +102,12 @@ const responseViewerSlice = createSlice({
     },
     setJoinColumn(state, action: PayloadAction<string | null>) {
       state.table.joinColumn = action.payload
+    },
+    setJoiningEnabled(state, action: PayloadAction<boolean>) {
+      state.table.joiningEnabled = action.payload
+    },
+    setAdditionalJoinPaths(state, action: PayloadAction<(string | null)[]>) {
+      state.table.additionalJoinPaths = action.payload
     },
 
     /**
@@ -156,6 +166,8 @@ export const {
   setSqlQuery,
   setSqlMode,
   setJoinColumn,
+  setJoiningEnabled,
+  setAdditionalJoinPaths,
   reconcileColumns,
   toggleColumnHidden,
   showAllColumns,

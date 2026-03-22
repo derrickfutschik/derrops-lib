@@ -3,7 +3,7 @@ import React from 'react'
 type ViewMode = 'json' | 'markdown' | 'table'
 
 type JsonStats =
-  | { type: 'array'; count: number; totalKeys: number }
+  | { type: 'array'; count: number; totalKeys: number; depth: number; flattenedCount: number }
   | { type: 'object'; keys: number; totalKeys: number; depth: number }
   | null
 
@@ -34,7 +34,13 @@ export function StatusRibbon({
       <div className="flex items-center gap-4">
         {viewMode === 'json' && (
           <>
-            {jsonStats?.type === 'array' && <span>{jsonStats.count.toLocaleString()} items</span>}
+            {jsonStats?.type === 'array' && (
+              <span>
+                {jsonStats.count.toLocaleString()} items
+                {jsonStats.flattenedCount !== jsonStats.count && ` (${jsonStats.flattenedCount.toLocaleString()} flattened)`}
+              </span>
+            )}
+            {jsonStats?.type === 'array' && <span>depth {jsonStats.depth}</span>}
             {duplicateCount > 0 && <span className="text-red-400">{duplicateCount} duplicates</span>}
             {jsonStats && jsonStats.totalKeys > 0 && <span>{jsonStats.totalKeys.toLocaleString()} total keys</span>}
             {jsonStats?.type === 'object' && (

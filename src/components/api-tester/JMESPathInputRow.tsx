@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import jmespath from 'jmespath'
 import { Filter, Highlighter } from 'lucide-react'
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { extractWildcardPaths, fuzzySearchPaths } from './jmespath-autocomplete-utils'
@@ -68,8 +69,6 @@ export interface JMESPathInputRowProps {
   disabled?: boolean
   /** Raw JSON string — used to extract autocomplete paths */
   jsonContent?: string
-  /** When true (table view), autocomplete suggestions use [] instead of [*] to prefer table-ready flat expressions */
-  inTableView?: boolean
 }
 
 export function JMESPathInputRow({
@@ -93,7 +92,6 @@ export function JMESPathInputRow({
   undoDebounceRef,
   disabled = false,
   jsonContent,
-  inTableView = false,
 }: JMESPathInputRowProps) {
   const [jmespathInputFocused, setJmespathInputFocused] = useState(false)
   const [showAutocomplete, setShowAutocomplete] = useState(false)
@@ -109,38 +107,72 @@ export function JMESPathInputRow({
   setJmespathQueryRef.current = onQueryChange
 
   // ---------------------------------------------------------------------------
-  // Extract all wildcard paths from JSON content
+  // Parse JSON content once; derive wildcard paths from it
   // ---------------------------------------------------------------------------
-  const allPaths = useMemo(() => {
-    if (!jsonContent) return []
-    try {
-      const parsed = JSON.parse(jsonContent)
-      return extractWildcardPaths(parsed)
-    } catch {
-      return []
-    }
+  const parsedJsonContent = useMemo(() => {
+    if (!jsonContent) return null
+    try { return JSON.parse(jsonContent) } catch { return null }
   }, [jsonContent])
 
+  const allPaths = useMemo(() => {
+    if (!parsedJsonContent) return []
+    return extractWildcardPaths(parsedJsonContent)
+  }, [parsedJsonContent])
+
   // ---------------------------------------------------------------------------
-  // Fuzzy-filtered autocomplete suggestions
+  // Autocomplete suggestions
+  //
+  // Strategy (in order of preference):
+  // 1. Eval approach — when the current query (or query minus trailing `.`/`[`)
+  //    evaluates to a non-null *object* (not array), extract child paths from
+  //    that object and prepend the evaluated query.  This handles numeric-index
+  //    expressions like `hits[2].document` robustly.
+  // 2. Fuzzy search fallback — case-insensitive term search against all
+  //    wildcard paths extracted from the root JSON.  Handles partial typing,
+  //    [*] expressions, and unknown prefixes.
+  //
+  // Options always use [*] to preserve JSON structure.  The caller decides
+  // whether to append [] for table-view flattening after a suggestion is
+  // accepted.
   // ---------------------------------------------------------------------------
   const autocompleteSuggestions = useMemo(() => {
-    if (!jmespathEnabled || !jmespathInputFocused || allPaths.length === 0) return []
+    if (!jmespathEnabled || !jmespathInputFocused) return []
     const query = jmespathQuery.trim()
-    let results = fuzzySearchPaths(allPaths, query)
-    if (inTableView) {
-      // Replace [*] with [] for non-root paths (paths not starting with [*]).
-      // This surfaces table-ready flat expressions — [] flattens nested arrays
-      // and is equivalent to [*] for already-flat arrays.
-      results = results.map(path =>
-        path.startsWith('[*]') ? path : path.replace(/\[\*\]/g, '[]')
-      )
-      // Deduplicate after transformation (different paths may collapse to the same)
-      results = [...new Set(results)]
+
+    // Eval approach: strip trailing `.` or `[` so partial typing still works,
+    // then evaluate the expression against the parsed JSON root.
+    if (query && parsedJsonContent) {
+      let evalQuery = query
+      if (evalQuery.endsWith('.') || evalQuery.endsWith('[')) {
+        evalQuery = evalQuery.slice(0, -1).trim()
+      }
+      if (evalQuery) {
+        try {
+          const result = jmespath.search(parsedJsonContent, evalQuery)
+          // Only use eval approach for object results — for arrays, the fuzzy
+          // search against allPaths (which uses [*] prefixes) is more accurate.
+          if (result !== null && result !== undefined && typeof result === 'object' && !Array.isArray(result)) {
+            const childPaths = extractWildcardPaths(result)
+            if (childPaths.length > 0) {
+              const suggestions = childPaths.map(p =>
+                p.startsWith('[') ? `${evalQuery}${p}` : `${evalQuery}.${p}`
+              )
+              const filtered = [...new Set(suggestions)].filter(s => s !== query)
+              if (filtered.length > 0) {
+                filtered.sort((a, b) => a.length - b.length || a.localeCompare(b))
+                return filtered.slice(0, 15)
+              }
+            }
+          }
+        } catch { /* fall through to fuzzy search */ }
+      }
     }
+
+    if (allPaths.length === 0) return []
+    const results = fuzzySearchPaths(allPaths, query)
     if (results.length === 1 && results[0] === query) return []
     return results.slice(0, 15)
-  }, [allPaths, jmespathQuery, jmespathEnabled, jmespathInputFocused, inTableView])
+  }, [allPaths, parsedJsonContent, jmespathQuery, jmespathEnabled, jmespathInputFocused])
 
   useEffect(() => {
     if (!showAutocomplete || autocompleteSuggestions.length === 0) return
