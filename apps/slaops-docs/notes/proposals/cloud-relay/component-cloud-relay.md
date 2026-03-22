@@ -43,12 +43,33 @@ The current API Tester makes HTTP requests directly from the browser. This creat
 
 **Out of Scope (Iteration 1):**
 
-- Self-hosted Cloud Relay in a customer's own AWS account (planned future iteration — the module is designed with this extraction in mind but not yet packaged for it)
-- Secure credential storage / Secrets Manager integration (future)
+- Self-hosted Cloud Relay in a customer's own AWS account — see **Iteration 2** below
 - Multiple simultaneous Cloud Relay instances per request
 - Streaming / chunked response support
 - WebSocket proxying
 - Request replay / scheduling
+
+**Iteration 2 — Self-hosted (`apps/slaops-cloud-relay` extraction):**
+
+The `cloud-relay` module will be extracted into a standalone `apps/slaops-cloud-relay` application managed as a **git subtree** (same workflow as `apps/slaops-portal/`). This code may eventually be open-sourced so customers can review and deploy it themselves.
+
+Key design decisions for Iteration 2:
+- `apps/slaops-cloud` can continue to embed the relay by importing its NestJS module, reducing deployment artifacts and eliminating extra remote calls
+- The base application (`app/`) is **cloud-agnostic** — no cloud SDK dependencies
+- Cloud-specific implementations are separate sub-packages: `app-aws/`, `app-azure/`, `app-cp/`
+- Configuration relies **solely on environment variables** — no `@slaops/config` module, minimising dependencies for self-hosted deployments
+- Supported deployment targets: **Docker**, **Lambda** (AWS SAM), and equivalents on other clouds
+- Customers store and manage their own credentials, maintaining data sovereignty
+- Customers control their own network egress
+
+Module layout:
+```
+apps/slaops-cloud-relay/
+├── app/         # NestJS core — cloud-agnostic (env-vars config, no @slaops/config)
+├── app-aws/     # AWS implementation (Secrets Manager, Lambda/SAM packaging)
+├── app-azure/   # Azure implementation (Key Vault, Azure Functions)
+└── app-cp/      # GCP implementation (Secret Manager, Cloud Run/Functions)
+```
 
 ### Relationship to Existing Components
 
@@ -239,9 +260,543 @@ export type CloudProxyError = {
 | `CloudRelayConnection` | Portal state    | Saved connection details entered by the user           |
 | `RequestMode`          | Portal state    | Current API Tester mode (browser vs cloud)             |
 | `HarRequest`           | Portal → Lambda | Standard HAR request object describing what to proxy   |
-| `CloudProxyRequest`    | Portal → Lambda | Wrapper: HAR request + proxy-level `timeoutMs`         |
+| `CloudProxyRequest`    | Portal → Lambda | Wrapper: HAR request + proxy-level extensions          |
 | `CloudProxyResponse`   | Lambda → Portal | Target response + Lambda-side timing                   |
 | `CloudProxyError`      | Lambda → Portal | Proxy-level failure (distinct from target HTTP errors) |
+
+## HAR Template Expressions
+
+The Cloud Relay extends the standard HAR format with a **template expression system**. Any string field inside the `HarRequest` may contain `{{expr}}` placeholders that the Relay resolves at execution time — before the request leaves the Relay. This keeps secrets and generated values out of the browser and off the wire between the portal and the Relay.
+
+### Expression Syntax
+
+Expressions use double-brace syntax: `{{type:qualifier}}`.
+
+| Expression | Resolved to |
+|---|---|
+| `{{secret:MY_KEY}}` | Value of secret `MY_KEY` from the configured secret store |
+| `{{secret:MY_KEY.field}}` | Field `field` parsed from a JSON secret `MY_KEY` |
+| `{{jit:uuid}}` | A freshly generated UUID v4 (e.g. `f47ac10b-58cc-4372-a567-0e02b2c3d479`) |
+| `{{jit:uuid-short}}` | First 8 hex chars of a UUID (e.g. `f47ac10b`) |
+| `{{jit:timestamp}}` | Current UTC timestamp in ISO 8601 (e.g. `2026-03-22T10:00:00.000Z`) |
+| `{{jit:timestamp-unix}}` | Current Unix epoch in **seconds** (e.g. `1774068000`) |
+| `{{jit:timestamp-unix-ms}}` | Current Unix epoch in **milliseconds** (e.g. `1774068000000`) |
+| `{{jit:random-hex:N}}` | `N` cryptographically random hex characters (e.g. `{{jit:random-hex:16}}`) |
+| `{{var:NAME}}` | Named variable resolved from `templateContext.variables` (see below) |
+
+Expressions are resolved in the following fields:
+- `url`
+- `headers[].value`
+- `queryString[].value`
+- `cookies[].value`
+- `postData.text`
+- `postData.params[].value`
+
+### Extended CloudProxyRequest
+
+`templateContext` is an optional extension to `CloudProxyRequest`. When absent, the HAR is forwarded as-is.
+
+```typescript
+/**
+ * Describes how a named template variable `{{var:NAME}}` should be resolved.
+ * The Relay resolves each variable once per request execution.
+ */
+export type TemplateVariableDefinition =
+  /** Fetch a secret from the Relay's configured secret store. */
+  | { type: 'secret'; secretId: string; field?: string }
+  /**
+   * Read a value from a Relay environment variable.
+   * Useful for non-sensitive per-environment values without a secret store.
+   */
+  | { type: 'env'; envVar: string }
+  /** A static literal (useful for parameterising shared request templates). */
+  | { type: 'literal'; value: string }
+
+/**
+ * Template resolution context attached to a CloudProxyRequest.
+ * Defines named variables that can be referenced as `{{var:NAME}}` inside HAR fields.
+ *
+ * JIT functions (`{{jit:*}}`) and direct secret references (`{{secret:*}}`)
+ * do not require entries here — they are resolved inline from the expression alone.
+ */
+export type TemplateContext = {
+  variables?: Record<string, TemplateVariableDefinition>
+}
+
+/**
+ * Request body sent to the Cloud Relay proxy endpoint.
+ */
+export type CloudProxyRequest = {
+  /** HAR-format description of the request to execute */
+  request: HarRequest
+
+  /** Request timeout in milliseconds (default: 30 000) */
+  timeoutMs?: number
+
+  /**
+   * Optional template context for resolving `{{var:NAME}}` expressions
+   * embedded in the HAR request fields.
+   */
+  templateContext?: TemplateContext
+}
+```
+
+### Secret Store Backends
+
+The Relay resolves `{{secret:*}}` expressions against a **`SecretStore`** implementation. The `SecretStore` interface is defined in the cloud-agnostic `app/` core. Built-in implementations ship with each cloud sub-package, and customers can bring their own by implementing the interface and registering it with the Relay factory.
+
+#### The `SecretStore` Interface
+
+Defined in `app/src/secrets/secret-store.ts`. All implementations must satisfy this contract.
+
+```typescript
+/**
+ * Describes a secret retrieved from a secret store.
+ * The raw value is always a string; structured secrets are JSON strings
+ * that callers may parse to extract individual fields.
+ */
+export type SecretValue = {
+  /** The raw secret string (or JSON string for structured secrets). */
+  value: string
+  /** ISO 8601 timestamp of when this value was last fetched or cached. */
+  fetchedAt: string
+  /** True if this value was served from the local cache rather than the store. */
+  fromCache: boolean
+}
+
+/**
+ * Thrown by SecretStore implementations when a secret cannot be retrieved.
+ * The `code` field allows callers to distinguish between "not found" and
+ * "access denied" without parsing error messages.
+ */
+export class SecretStoreError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'NOT_FOUND'        // Secret ID does not exist in the store
+      | 'ACCESS_DENIED'    // Credentials or IAM policy denied access
+      | 'STORE_UNAVAILABLE'// Secret store is unreachable (network, config)
+      | 'INVALID_FORMAT',  // Secret exists but cannot be parsed as expected
+    public readonly secretId: string,
+  ) {
+    super(message)
+    this.name = 'SecretStoreError'
+  }
+}
+
+/**
+ * Cloud-agnostic interface for retrieving secrets.
+ *
+ * Implementations are provided per cloud/backend and are selected at
+ * startup via RELAY_SECRET_BACKEND. Customers may supply a custom
+ * implementation by registering it with SecretStoreRegistry.
+ *
+ * All methods are async to accommodate network-backed stores. Implementations
+ * should apply their own internal caching where appropriate (see CachingSecretStore).
+ */
+export interface SecretStore {
+  /**
+   * Retrieve a secret by ID.
+   *
+   * @param secretId  The identifier of the secret in the backing store.
+   *                  For AWS Secrets Manager this is the secret name or ARN.
+   *                  For env-var backend this is the environment variable name.
+   * @returns         The secret value.
+   * @throws          SecretStoreError if the secret cannot be retrieved.
+   */
+  getSecret(secretId: string): Promise<SecretValue>
+
+  /**
+   * Retrieve a single field from a structured (JSON) secret.
+   *
+   * Equivalent to getSecret(secretId) followed by JSON.parse(value)[field].
+   * Implementations may optimise this (e.g. AWS Secrets Manager supports
+   * fetching individual keys from a JSON secret natively).
+   *
+   * @throws SecretStoreError with code 'INVALID_FORMAT' if the secret is not
+   *         valid JSON or does not contain the requested field.
+   */
+  getSecretField(secretId: string, field: string): Promise<SecretValue>
+
+  /**
+   * Check whether a secret exists without fetching its value.
+   * Used at request-validation time to surface missing secrets early.
+   */
+  hasSecret(secretId: string): Promise<boolean>
+
+  /**
+   * Optional: list available secret IDs. Useful for admin tooling and
+   * autocomplete in the portal. Implementations that do not support listing
+   * (e.g. env-var backend) may return null to indicate unsupported.
+   */
+  listSecrets?(): Promise<string[] | null>
+
+  /**
+   * Optional: proactively warm the local cache for a set of secret IDs.
+   * Called by the Relay at startup when RELAY_SECRET_PREFETCH is set.
+   */
+  prefetch?(secretIds: string[]): Promise<void>
+}
+```
+
+#### Built-in Implementations
+
+| `RELAY_SECRET_BACKEND` | Package | Where credentials live | Notes |
+|---|---|---|---|
+| `env` | `app/` (built-in) | Relay process environment variables | Zero-dependency fallback; suits Docker Compose, local dev |
+| `aws-secrets-manager` | `app-aws/` | AWS Secrets Manager in the customer's account | IAM role authentication; supports JSON secrets |
+| `hashicorp-vault` | `app/` (built-in) | HashiCorp Vault (self-hosted or HCP Vault) | KV v1 and KV v2 engines; AppRole / token auth |
+| `azure-key-vault` | `app-azure/` | Azure Key Vault | Managed identity or client credentials auth |
+| `gcp-secret-manager` | `app-cp/` | GCP Secret Manager | Workload Identity or service account key auth |
+
+The `hashicorp-vault` backend ships in `app/` (not a cloud sub-package) because HashiCorp Vault is cloud-neutral and a common choice in on-premises and multi-cloud enterprise deployments.
+
+#### Caching
+
+All network-backed implementations should be wrapped with `CachingSecretStore` (provided in `app/`) to avoid a remote call for every request that uses a secret. The TTL is configurable via `RELAY_SECRET_CACHE_TTL_S` (default: `300` seconds / 5 minutes).
+
+```typescript
+/**
+ * Decorator that wraps any SecretStore with an in-process LRU/TTL cache.
+ * Defined in app/src/secrets/caching-secret-store.ts.
+ *
+ * The cache is process-local and does not survive Lambda cold starts or
+ * container restarts. This is intentional — stale secrets are a bigger
+ * risk than the latency of a re-fetch on restart.
+ *
+ * Cache is keyed by (secretId, field?) so getSecret and getSecretField
+ * are cached independently.
+ */
+export class CachingSecretStore implements SecretStore {
+  constructor(
+    private readonly inner: SecretStore,
+    private readonly ttlSeconds: number,
+  ) {}
+
+  // Delegates to inner after cache miss; populates cache on hit.
+  // getSecret, getSecretField, hasSecret all benefit from caching.
+  // listSecrets and prefetch pass through to inner directly.
+}
+```
+
+#### Secret Store Registry and Factory
+
+The Relay selects an implementation at startup via `SecretStoreRegistry`. Built-in backends are pre-registered. Customers extending the application can register custom implementations by calling `registry.register(name, factory)` before the application bootstraps.
+
+```typescript
+/**
+ * A factory function that receives the process environment and returns a
+ * configured SecretStore instance. Factories are called once at startup.
+ */
+export type SecretStoreFactory = (env: NodeJS.ProcessEnv) => SecretStore
+
+/**
+ * Registry of available SecretStore implementations.
+ * Defined in app/src/secrets/secret-store-registry.ts.
+ *
+ * Built-in backends are registered in app/ and each cloud sub-package.
+ * Customers building a custom relay application register their own factory
+ * here before calling RelayApplication.bootstrap().
+ */
+export class SecretStoreRegistry {
+  /** Register a named SecretStore factory. Throws if the name is already taken. */
+  register(name: string, factory: SecretStoreFactory): void
+
+  /**
+   * Create the active SecretStore from RELAY_SECRET_BACKEND.
+   * Wraps the result in CachingSecretStore automatically unless
+   * RELAY_SECRET_CACHE_TTL_S=0 is set.
+   * Throws if RELAY_SECRET_BACKEND names an unregistered backend.
+   */
+  create(env: NodeJS.ProcessEnv): SecretStore
+}
+
+/** Singleton registry used throughout the application. */
+export const secretStoreRegistry = new SecretStoreRegistry()
+```
+
+Built-in registrations happen in each package's entry point:
+
+```typescript
+// app/src/secrets/index.ts — registers built-in backends
+secretStoreRegistry.register('env', (env) => new EnvSecretStore(env))
+secretStoreRegistry.register('hashicorp-vault', (env) => new VaultSecretStore(env))
+
+// app-aws/src/index.ts — registers AWS backend
+secretStoreRegistry.register('aws-secrets-manager', (env) => new AwsSecretsManagerStore(env))
+
+// app-azure/src/index.ts
+secretStoreRegistry.register('azure-key-vault', (env) => new AzureKeyVaultStore(env))
+
+// app-cp/src/index.ts
+secretStoreRegistry.register('gcp-secret-manager', (env) => new GcpSecretManagerStore(env))
+```
+
+#### Bringing Your Own Implementation
+
+Customers who want to use a secret backend not provided out of the box — for example, CyberArk Conjur, 1Password Secrets Automation, or a proprietary internal vault — can implement `SecretStore` and register it before bootstrap.
+
+The Relay application exposes a `createRelayApp` factory that accepts pre-bootstrap hooks:
+
+```typescript
+// customer-relay/src/main.ts — example custom integration
+
+import { createRelayApp, secretStoreRegistry } from '@slaops/cloud-relay'
+import { ConjurSecretStore } from './conjur-secret-store'
+
+// Register before bootstrap — the registry will select this when
+// RELAY_SECRET_BACKEND=conjur is set in the environment.
+secretStoreRegistry.register('conjur', (env) => new ConjurSecretStore({
+  applianceUrl: env.CONJUR_APPLIANCE_URL!,
+  account: env.CONJUR_ACCOUNT!,
+  authnToken: env.CONJUR_AUTHN_TOKEN!,
+}))
+
+const app = await createRelayApp()
+await app.listen(process.env.PORT ?? 3000)
+```
+
+`ConjurSecretStore` only needs to implement the `SecretStore` interface:
+
+```typescript
+// customer-relay/src/conjur-secret-store.ts
+
+import { SecretStore, SecretValue, SecretStoreError } from '@slaops/cloud-relay'
+
+export class ConjurSecretStore implements SecretStore {
+  constructor(private readonly config: ConjurConfig) {}
+
+  async getSecret(secretId: string): Promise<SecretValue> {
+    // Call Conjur API, map errors to SecretStoreError codes
+    const raw = await this.fetchFromConjur(secretId)
+    return { value: raw, fetchedAt: new Date().toISOString(), fromCache: false }
+  }
+
+  async getSecretField(secretId: string, field: string): Promise<SecretValue> {
+    const { value, ...meta } = await this.getSecret(secretId)
+    const parsed = JSON.parse(value)
+    if (!(field in parsed)) {
+      throw new SecretStoreError(
+        `Field '${field}' not found in secret '${secretId}'`,
+        'INVALID_FORMAT',
+        secretId,
+      )
+    }
+    return { value: String(parsed[field]), ...meta }
+  }
+
+  async hasSecret(secretId: string): Promise<boolean> {
+    try { await this.getSecret(secretId); return true }
+    catch { return false }
+  }
+  // listSecrets and prefetch are optional — omit if unsupported
+}
+```
+
+#### Module Structure (Iteration 2)
+
+```
+apps/slaops-cloud-relay/
+├── app/                          # Cloud-agnostic NestJS core
+│   └── src/
+│       ├── secrets/
+│       │   ├── secret-store.ts           # SecretStore interface + SecretStoreError
+│       │   ├── secret-store-registry.ts  # SecretStoreRegistry + SecretStoreFactory
+│       │   ├── caching-secret-store.ts   # CachingSecretStore decorator
+│       │   ├── env-secret-store.ts       # Built-in: env-var backend
+│       │   └── vault-secret-store.ts     # Built-in: HashiCorp Vault backend
+│       ├── template/
+│       │   └── template-resolver.ts      # {{expr}} resolution + injectedSecrets tracking
+│       ├── masking/
+│       │   └── secret-masker.ts          # Response body/header masking
+│       └── relay-app.ts                  # createRelayApp() factory
+│
+├── app-aws/                      # AWS-specific implementations
+│   └── src/
+│       └── secrets/
+│           └── aws-secrets-manager-store.ts
+│
+├── app-azure/                    # Azure-specific implementations
+│   └── src/
+│       └── secrets/
+│           └── azure-key-vault-store.ts
+│
+└── app-cp/                       # GCP-specific implementations
+    └── src/
+        └── secrets/
+            └── gcp-secret-manager-store.ts
+```
+
+### Wire Format Example
+
+A request that uses a secret API key, a generated idempotency key, and a timestamp:
+
+```json
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.partner.com/v1/payments",
+    "httpVersion": "HTTP/1.1",
+    "headers": [
+      { "name": "Authorization", "value": "Bearer {{secret:PARTNER_API_KEY}}" },
+      { "name": "Idempotency-Key", "value": "{{jit:uuid}}" },
+      { "name": "X-Request-Time", "value": "{{jit:timestamp}}" },
+      { "name": "X-Correlation-Id", "value": "{{var:correlationId}}" }
+    ],
+    "queryString": [],
+    "cookies": [],
+    "postData": {
+      "mimeType": "application/json",
+      "text": "{\"amount\": 100, \"reference\": \"{{jit:uuid-short}}\"}"
+    },
+    "headersSize": -1,
+    "bodySize": -1
+  },
+  "timeoutMs": 15000,
+  "templateContext": {
+    "variables": {
+      "correlationId": {
+        "type": "env",
+        "envVar": "CORRELATION_ID_PREFIX"
+      }
+    }
+  }
+}
+```
+
+After template resolution (before the outbound HTTP request is sent):
+- `{{secret:PARTNER_API_KEY}}` → actual key fetched from Secrets Manager
+- `{{jit:uuid}}` → `f47ac10b-58cc-4372-a567-0e02b2c3d479`
+- `{{jit:timestamp}}` → `2026-03-22T10:00:00.123Z`
+- `{{var:correlationId}}` → value of `process.env.CORRELATION_ID_PREFIX`
+- `{{jit:uuid-short}}` in the body → `f47ac10b`
+
+### TypeScript Types for the DTO
+
+```typescript
+export class TemplateVariableDefinitionDto {
+  @IsIn(['secret', 'env', 'literal'])
+  type: 'secret' | 'env' | 'literal'
+
+  @IsString()
+  @IsOptional()
+  secretId?: string       // for type: 'secret'
+
+  @IsString()
+  @IsOptional()
+  field?: string          // for type: 'secret' (optional JSON field selector)
+
+  @IsString()
+  @IsOptional()
+  envVar?: string         // for type: 'env'
+
+  @IsString()
+  @IsOptional()
+  value?: string          // for type: 'literal'
+}
+
+export class TemplateContextDto {
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => TemplateVariableDefinitionDto)
+  variables?: Record<string, TemplateVariableDefinitionDto>
+}
+
+export class CloudProxyRequestDto {
+  @ValidateNested()
+  @Type(() => HarRequestDto)
+  request: HarRequestDto
+
+  @IsInt()
+  @Min(1000)
+  @Max(60_000)
+  @IsOptional()
+  timeoutMs?: number
+
+  @ValidateNested()
+  @Type(() => TemplateContextDto)
+  @IsOptional()
+  templateContext?: TemplateContextDto
+}
+```
+
+## Response Secret Masking
+
+After template expressions are resolved and the outbound request is constructed, the Relay tracks the **resolved values of all secrets** that were injected into the request. On receiving the response, it scans both the response body and response headers for any of those values and **replaces them with a redaction marker** before returning the response to the caller.
+
+This guards against scenarios where a target API echoes back sensitive values — for example, an error response that reflects the `Authorization` header, or a body that contains a payment reference seeded from a secret.
+
+### Masking Algorithm
+
+```text
+FUNCTION maskSecrets(response, injectedSecrets):
+  FOR each secret in injectedSecrets:
+    IF secret.value appears in response.body:
+      response.body = replace(response.body, secret.value, '[REDACTED:' + secret.id + ']')
+      record secret.id in maskedSecretIds
+    FOR each headerName in response.headers:
+      IF secret.value appears in response.headers[headerName]:
+        response.headers[headerName] = replace(..., '[REDACTED:' + secret.id + ']')
+        record secret.id in maskedSecretIds
+  RETURN { response, maskedSecretIds }
+```
+
+Rules:
+- Masking is always performed — it cannot be disabled by the caller.
+- JIT-generated values (`{{jit:*}}`) are **not** masked in responses; only secrets from the secret store are tracked.
+- If a secret value is shorter than 8 characters it is **not** used for masking (too collision-prone); the Relay logs a warning at startup if any secret below this threshold is used in a request.
+- Masking is exact-string (case-sensitive). Partial or encoded matches are not detected in iteration 1.
+
+### Audit Metadata
+
+The `CloudProxyResponse` gains a `masking` field to inform the caller that masking occurred (without revealing which values or where):
+
+```typescript
+export type CloudProxyResponse = {
+  status: number
+  statusText: string
+  headers: Record<string, string>
+  body: string
+  durationMs: number
+  requestedAt: string
+  /** Present when one or more secrets were detected and masked in the response. */
+  masking?: {
+    /** IDs of secrets whose values were found and masked. */
+    maskedSecretIds: string[]
+    /** True if any masking occurred in the response body. */
+    bodyMasked: boolean
+    /** True if any masking occurred in the response headers. */
+    headersMasked: boolean
+  }
+}
+```
+
+### Example
+
+Request sends `Authorization: Bearer {{secret:PARTNER_API_KEY}}`. The target API returns a 401 with body:
+
+```json
+{ "error": "invalid_token", "token": "sk-abc123..." }
+```
+
+Where `sk-abc123...` is the value of `PARTNER_API_KEY`. The Relay masks it before returning:
+
+```json
+{ "error": "invalid_token", "token": "[REDACTED:PARTNER_API_KEY]" }
+```
+
+And the response includes:
+
+```json
+{
+  "status": 401,
+  "masking": {
+    "maskedSecretIds": ["PARTNER_API_KEY"],
+    "bodyMasked": true,
+    "headersMasked": false
+  }
+}
+```
 
 ## Architecture
 
@@ -767,25 +1322,31 @@ FUNCTION proxy(dto: CloudProxyRequest): CloudProxyResponse | CloudProxyError
 
   har = dto.request
 
-  // 1. Validate URL — must be a reachable HTTP/HTTPS endpoint
+  // 1. Resolve template expressions in all HAR string fields
+  //    Track the resolved values of any secrets for later response masking.
+  { har, injectedSecrets } = resolveTemplates(har, dto.templateContext)
+  //    injectedSecrets: Array<{ id: string; value: string }>
+  //    resolveTemplates replaces {{secret:*}}, {{jit:*}}, and {{var:*}} expressions.
+
+  // 2. Validate URL — must be a reachable HTTP/HTTPS endpoint
   IF NOT isValidHttpUrl(har.url):
     RETURN { error: 'Invalid URL', code: 'INVALID_URL' }
 
-  // 2. Merge queryString params into the URL
+  // 3. Merge queryString params into the URL
   //    (HAR queryString is the authoritative source; the URL itself may also carry them)
   resolvedUrl = mergeQueryString(har.url, har.queryString)
 
-  // 3. Convert HAR headers array to a Headers map and strip hop-by-hop entries
+  // 4. Convert HAR headers array to a Headers map and strip hop-by-hop entries
   rawHeaders = har.headers.reduce((map, h) => map.set(h.name, h.value), new Headers())
 
-  // 4. Merge cookies into the Cookie header
+  // 5. Merge cookies into the Cookie header
   IF har.cookies.length > 0:
     cookieString = har.cookies.map(c => `${c.name}=${c.value}`).join('; ')
     rawHeaders.set('Cookie', cookieString)
 
   cleanHeaders = stripHopByHop(rawHeaders)
 
-  // 5. Resolve request body from HAR postData
+  // 6. Resolve request body from HAR postData
   body = NONE
   IF har.postData IS PRESENT:
     IF har.postData.text IS PRESENT:
@@ -797,7 +1358,7 @@ FUNCTION proxy(dto: CloudProxyRequest): CloudProxyResponse | CloudProxyError
       body = encodeFormParams(har.postData.params)   // application/x-www-form-urlencoded
       cleanHeaders.set('Content-Type', har.postData.mimeType)
 
-  // 6. Execute fetch with timeout
+  // 7. Execute fetch with timeout
   startTime = Date.now()
   TRY:
     nativeResponse = await fetch(resolvedUrl, {
@@ -811,17 +1372,25 @@ FUNCTION proxy(dto: CloudProxyRequest): CloudProxyResponse | CloudProxyError
   CATCH NetworkError:
     RETURN { error: err.message, code: 'NETWORK_ERROR', durationMs: Date.now() - startTime }
 
-  // 7. Read response body as text (binary responses returned base64-encoded)
+  // 8. Read response body as text (binary responses returned base64-encoded)
   responseBody = await nativeResponse.text()
+  responseHeaders = Object.fromEntries(nativeResponse.headers)
   durationMs = Date.now() - startTime
+
+  // 9. Mask any injected secret values found in the response body or headers
+  { responseBody, responseHeaders, masking } = maskSecrets(responseBody, responseHeaders, injectedSecrets)
+  //    maskSecrets: replaces exact occurrences of any secret value with [REDACTED:SECRET_ID]
+  //    Only secrets resolved from the secret store are masked (JIT values are not tracked).
+  //    Secrets shorter than 8 chars are skipped (collision risk) — a warning was logged at resolution time.
 
   RETURN {
     status: nativeResponse.status,
     statusText: nativeResponse.statusText,
-    headers: Object.fromEntries(nativeResponse.headers),
+    headers: responseHeaders,
     body: responseBody,
     durationMs,
-    requestedAt: new Date(startTime).toISOString()
+    requestedAt: new Date(startTime).toISOString(),
+    masking: masking.maskedSecretIds.length > 0 ? masking : undefined
   }
 ```
 
@@ -847,6 +1416,12 @@ Additionally, do not forward `Host` (the target URL determines the host).
 | Self-request (portal → cloud → cloud) | URL resolves back to slaops-cloud          | Blocked by URL validation / allowlist                                      | 400 Bad Request                  |
 | Missing connection URL in portal      | User selects connection with deleted entry | Fallback to browser mode with toast warning                                | Graceful degradation             |
 | Lambda cold start                     | First request after idle                   | Normal — latency included in `durationMs`                                  | Accurate Lambda timing           |
+| Unknown secret ID in expression       | `{{secret:NO_SUCH_KEY}}` not in store      | Request rejected with `TEMPLATE_ERROR` before making any outbound call     | 422 Unprocessable Entity         |
+| Unknown `{{var:NAME}}` expression     | Name not in `templateContext.variables`    | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
+| Invalid expression syntax             | `{{bad}}` — no recognised type prefix     | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
+| Secret shorter than 8 chars          | Resolved secret value is very short        | Secret fetched and injected; masking skipped; warning logged               | Request proceeds, no masking     |
+| Secret value in response body         | Response echoes back a secret value        | Value replaced with `[REDACTED:SECRET_ID]`; `masking` field populated      | Masked `CloudProxyResponse`      |
+| Secret value in response header       | Response header contains a secret value    | Header value replaced with `[REDACTED:SECRET_ID]`                          | Masked `CloudProxyResponse`      |
 
 ### Security Considerations
 
@@ -866,6 +1441,14 @@ Additionally, do not forward `Host` (the target URL determines the host).
 - **SSRF (Server-Side Request Forgery)**: The proxy must not allow requests to private IP ranges (RFC 1918: 10.x, 172.16.x, 192.168.x) or link-local addresses (169.254.x) in production. This is enforced at the `ProxyService` level before executing the fetch.
 
 - **Target credentials**: Headers forwarded to the target (e.g. `Authorization`) pass through the Lambda in plaintext. Users should be aware these are visible in Lambda logs. The CloudWatch log group for the Lambda should have restricted access.
+
+- **Template expression security**: Secrets resolved from `{{secret:*}}` expressions are fetched server-side inside the Relay — they are never sent from the browser, and they are not present in the request from the portal to the Relay. The Relay is the only party that holds the resolved secret value, and only for the duration of the request.
+
+- **Response Secret Masking**: After every request, the Relay scans the response body and headers for any secret values that were injected. Any match is replaced with `[REDACTED:SECRET_ID]`. This prevents accidental leakage of secrets through API error responses that echo back request contents. Masking cannot be disabled by the caller. See the **Response Secret Masking** section for the full algorithm.
+
+- **Minimum secret length**: Secrets shorter than 8 characters are not used for response masking to prevent false positives. A warning is emitted at resolution time. Short secrets should be avoided in production configurations.
+
+- **JIT values are not masked**: Generated values from `{{jit:*}}` expressions (UUIDs, timestamps, random hex) are intentionally not masked in responses, as they are ephemeral and carry no persistent sensitivity.
 
 ## Integration Guide
 
@@ -902,9 +1485,19 @@ No separate credential is required. The portal uses the user's active Cognito se
 
 All values defined in `packages/slaops-config/src/config.ts` following the no-magic-numbers convention.
 
-### New Environment Variables
+### New Environment Variables (slaops-cloud-relay — Iteration 2)
 
-None. All configuration is derived from existing environment or the `@slaops/config` module.
+The self-hosted `apps/slaops-cloud-relay` application uses **only environment variables** for configuration (no `@slaops/config` module dependency):
+
+| Environment Variable    | Required | Description |
+|---|---|---|
+| `RELAY_SECRET_BACKEND` | Yes | Secret store backend: `aws-secrets-manager`, `env`, `azure-key-vault`, `gcp-secret-manager` |
+| `RELAY_LOG_LEVEL`      | No  | Log verbosity: `debug`, `info`, `warn`, `error`. Default: `info` |
+| `RELAY_MAX_BODY_BYTES` | No  | Max response body size before truncation. Default: `10485760` (10 MB) |
+| `RELAY_PROXY_TIMEOUT_MS` | No | Default proxy timeout if not supplied by the caller. Default: `30000` |
+| `RELAY_BLOCKED_CIDRS`  | No  | Comma-separated additional CIDR blocks to block (RFC 1918 ranges always blocked) |
+
+For the SLAOps-managed instance embedded in `apps/slaops-cloud`, configuration continues to use `@slaops/config` in the module wrapper.
 
 ## Testing Strategy
 
@@ -925,6 +1518,17 @@ None. All configuration is derived from existing environment or the `@slaops/con
 | Large response truncated          | Target returns 15 MB body                                                 | Body truncated at 10 MB, truncation header  | Medium   |
 | Invalid URL                       | HAR `url:'not-a-url'`                                                     | 400 with `INVALID_URL`                      | High     |
 | Connection CRUD                   | Create, list, delete a connection                                         | Correct persistence and retrieval           | High     |
+| Secret expression resolved        | `{{secret:API_KEY}}` in header, secret store returns `sk-abc`             | Outbound header contains `sk-abc`           | High     |
+| JIT uuid expression               | `{{jit:uuid}}` in header                                                  | Outbound header contains a valid UUID v4    | High     |
+| JIT timestamp expression          | `{{jit:timestamp}}` in body                                               | Resolved to ISO 8601 string                 | High     |
+| JIT random-hex expression         | `{{jit:random-hex:16}}` in body                                           | Resolved to 16 hex characters               | Medium   |
+| Var expression resolved           | `{{var:myVar}}` with `variables.myVar = {type:'literal', value:'hello'}`  | Resolved to `hello`                         | High     |
+| Unknown secret rejected           | `{{secret:MISSING_KEY}}` secret not in store                              | 422 `TEMPLATE_ERROR`, no outbound call      | High     |
+| Unknown var rejected              | `{{var:unknown}}` not in templateContext                                   | 422 `TEMPLATE_ERROR`                        | High     |
+| Secret masked in response body    | Secret value appears verbatim in response body                            | Body has `[REDACTED:API_KEY]`; masking flag | High     |
+| Secret masked in response header  | Secret value appears in a response header                                 | Header replaced; masking flag set           | High     |
+| Short secret not masked           | Secret resolved to `abc` (< 8 chars)                                      | Not masked; warning logged                  | Medium   |
+| JIT value not masked              | UUID from `{{jit:uuid}}` appears in response                              | Not redacted — JIT values are not tracked   | Medium   |
 
 ### Integration Tests (slaops-cloud)
 
@@ -1240,22 +1844,24 @@ Use a Service Worker to intercept fetch calls and route through the cloud.
 
 **Why not chosen:** Doesn't solve CORS or egress IP problems.
 
-### Alternative 2: Separate Microservice / Lambda (Planned Future Path)
+### Alternative 2: Standalone `apps/slaops-cloud-relay` (Chosen for Iteration 2)
 
-Deploy the proxy as a standalone Lambda separate from `slaops-cloud`.
+Deploy the proxy as a standalone application in `apps/slaops-cloud-relay`, managed as a git subtree (same workflow as `apps/slaops-portal/`). `apps/slaops-cloud` embeds it by importing the NestJS module, keeping the SLAOps-managed deployment as a single Lambda artifact while enabling customer self-hosting.
 
-**Pros:** Complete isolation; independently deployable into any region or a customer's own AWS account; customers can self-host without exposing the full `slaops-cloud` API surface.
+**Pros:** Complete isolation; independently deployable by customers via Docker or Lambda/SAM; cloud-agnostic core; customer credentials never leave the customer's own infrastructure; supports open-sourcing.
 
-**Cons:** Additional deployment artifact to manage; connection setup is more complex; currently loses code reuse of existing NestJS patterns, TypeORM, and config.
+**Cons:** Additional repository and subtree workflow to manage; connection setup is more involved for self-hosted deployments.
 
-**Why not chosen for iteration 1:** Adding a module to the existing `slaops-cloud` NestJS app is the lowest-friction path. The Lambda packaging already handles scale-to-zero and per-region deployment.
+**Why not chosen for iteration 1:** Adding a module to the existing `slaops-cloud` NestJS app is the lowest-friction path. The module is intentionally isolated (own module, own controller, no cross-module dependencies) so the Iteration 2 extraction is low-risk.
 
-**Planned extraction:** The `cloud-relay` module is intentionally isolated within `slaops-cloud` (own module, own controller, no cross-module dependencies) so it can be pulled out into a standalone deployable service in a future iteration. When that happens:
+**Extraction plan (Iteration 2):**
 
-- The module becomes its own package (e.g. `packages/slaops-cloud-relay/`)
-- It drops the TypeORM dependency (no database needed — connections would be managed portal-side or via environment config)
-- Authentication for self-hosted instances uses the customer's own Cognito User Pool; the portal connection record gains `cognitoUserPoolId`, `cognitoClientId`, and `cognitoRegion` fields so the portal can obtain a token from that pool
-- The custom Lambda authorizer and usage plan infrastructure are packaged alongside the service so customers can deploy the full stack (API Gateway + Authorizer + Lambda) into their own AWS account
+- `cloud-relay` moves to `apps/slaops-cloud-relay/app/` (NestJS, cloud-agnostic, env-vars config only)
+- Cloud-specific secret store implementations land in `app-aws/`, `app-azure/`, `app-cp/`
+- `apps/slaops-cloud` imports `CloudRelayModule` from the subtree — no breaking change to the SLAOps-managed deployment
+- TypeORM dependency is dropped from the relay itself; connections are managed portal-side or via environment config
+- Authentication for self-hosted instances uses the customer's own Cognito User Pool; the portal connection record gains `cognitoUserPoolId`, `cognitoClientId`, and `cognitoRegion` fields
+- The custom Lambda authorizer and usage plan infrastructure are packaged alongside `app-aws/` so customers can deploy the full stack (API Gateway + Authorizer + Lambda/SAM) into their own AWS account
 - The SLAOps-managed instance continues to use the SLAOps Cognito pool and existing usage plans, keeping backward compatibility
 
 ### Alternative 3: Third-party CORS Proxy (e.g. cors-anywhere)
@@ -1277,6 +1883,6 @@ Use a public or self-hosted CORS proxy.
 
 ---
 
-**Template Version**: 1.0
-**Last Updated**: 2026-03-17
-**Status**: Draft
+**Template Version**: 1.1
+**Last Updated**: 2026-03-22
+**Status**: Draft — updated with Iteration 2 module structure, HAR template expressions, and response secret masking
