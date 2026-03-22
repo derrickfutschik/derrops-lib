@@ -17,7 +17,7 @@ const sidebars: SidebarsConfig = {
     'user-stories/index',
     'user-stories/personas',
     'user-stories/client-user-stories',
-    'user-stories/cloud-requester-user-stories',
+    'user-stories/cloud-relay-user-stories',
     'user-stories/devops-user-stores',
     'user-stories/monitoring-user-stories',
     'user-stories/saas-management',

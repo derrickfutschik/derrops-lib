@@ -1,11 +1,11 @@
-# Aegis Broker Design
+# Aegis Token Broker Design
 
 ```
-Relay = execution engine + network boundary`
+Relay = execution engine + network boundary
 ```
 
-1.  a vendor job from your control plane
-2.  a customer-issued execution grant that your control plane cannot mint or expand
+1. a vendor job from your control plane
+2. a customer-issued session delegation grant that your control plane cannot mint or expand
 
 Security Model
 
@@ -15,7 +15,7 @@ SaaS control plane is not sufficient, by itself, to make the customer relay do w
 
 What you want is a model where your SaaS control plane is not sufficient, by itself, to make the customer relay do work.
 
-That means the relay should require two independent approvals:
+That means the relay should require two independent approvals — but enforced at **session grant time**, not per-request:
 
 # Broker as a customer-controlled authorization service
 
@@ -27,8 +27,9 @@ That means the relay should require two independent approvals:
 ```mermaid
 flowchart LR
     Browser --> SaaS
-    SaaS --> Broker
+    Browser --> Broker
     Broker --> Token
+    SaaS --> Token
     Token --> Relay
 ```
 
@@ -51,25 +52,41 @@ Alternative names:
 
 ## 1. Purpose
 
-Aegis Broker is a customer-controlled authorization and token issuance service used with a customer-hosted Relay. It integrates with the customer identity provider (SSO / IdP), evaluates customer policy, issues short-lived Relay Tokens, and allows the Relay to verify that a request was authorized by both:
+Aegis Broker is a customer-controlled authorization and session delegation service used with a customer-hosted Relay. It integrates with the customer identity provider (SSO / IdP), evaluates customer policy at session start, issues a **session delegation JWT** to the SaaS control plane, and allows the Relay to verify that any request within that session was authorized by both:
 
 1. the **vendor SaaS control plane**, and
-2. the **customer-controlled broker**.
+2. the **customer-controlled broker** (via the session delegation JWT embedded in every relay job).
 
-This prevents the SaaS control plane from unilaterally causing arbitrary executions through the customer Relay.
+This prevents the SaaS control plane from unilaterally causing arbitrary executions through the customer Relay without a customer-issued session grant, while avoiding a per-request Aegis round trip.
 
 ---
 
-## 2. Goals
+## 2. Why per-request relay tokens are infeasible
+
+Per-request relay tokens (issuing a new token from Aegis for every single API call) create unacceptable latency and a synchronous dependency on Aegis availability in the hot path of every user interaction:
+
+| Problem                                            | Impact                                                 |
+| -------------------------------------------------- | ------------------------------------------------------ |
+| Aegis call added to every request                  | Doubles round trips for interactive use                |
+| Aegis becomes a single point of failure            | Any Aegis downtime blocks all API calls                |
+| High-frequency exploratory use                     | User firing multiple requests in sequence is throttled |
+| No meaningful security gain for session-bound work | The user already authenticated at session start        |
+
+The dual-authorization model is preserved by issuing the session delegation JWT **once at session start**, embedding it in every vendor job, and having the Relay verify it. Aegis is in the critical path once per session, not once per request.
+
+---
+
+## 3. Goals
 
 ### Primary goals
 
 - Allow a browser-based HTTP client to execute requests without direct browser-to-target CORS dependency.
-- Ensure the customer, not the vendor, is the final authority for what APIs may be called.
+- Ensure the customer, not the SLAOPs platform, is the final authority for what APIs may be called.
 - Support customer-hosted execution for internal and external APIs.
-- Prevent the SaaS control plane from issuing unlimited jobs without customer authorization.
+- Prevent the SaaS control plane from issuing relay jobs without a valid customer session grant.
 - Support enterprise SSO and group-based authorization.
 - Return entitlements to the main platform so users can see what APIs they can access.
+- Avoid per-request Aegis round trips in the interactive request path.
 
 ### Non-goals
 
@@ -80,9 +97,9 @@ This prevents the SaaS control plane from unilaterally causing arbitrary executi
 
 ---
 
-## 3. Key terms
+## 4. Key terms
 
-### Cloud Requester
+### Cloud Relay
 
 The browser-based HTTP client UI used by the end user.
 
@@ -96,7 +113,7 @@ Customer identity provider used to authenticate the user.
 
 ### Aegis Broker
 
-Customer-controlled authorization and relay token issuance service.
+Customer-controlled authorization and session delegation service.
 
 ### Relay
 
@@ -106,27 +123,27 @@ Customer-hosted execution component that performs the outbound HTTP request to t
 
 Vendor identity / trust issuer used by the SaaS control plane to sign vendor job envelopes.
 
-### Relay Token
+### Session Delegation JWT
 
-A customer-issued short-lived execution grant constraining the API call.
+A customer-issued short-lived grant issued by Aegis to the SaaS control plane at session start. Covers a set of API scopes, environments, and relay IDs for the authenticated user. Embedded in every vendor job envelope so the Relay can verify customer authorization without calling Aegis per request.
 
 ### Vendor Job Envelope
 
-A vendor-signed job payload carrying the request intent and the customer-issued Relay Token.
+A vendor-signed job payload carrying the request intent and the session delegation JWT.
 
 ---
 
-## 4. High-level architecture
+## 5. High-level architecture
 
 ```mermaid
 flowchart LR
     U[User] --> B[Web Browser / SLAOps Portal]
-    B --> CP[SaaS Control Plane]
     B --> IDP[Customer SSO IdP]
+    B --> CP[SaaS Control Plane]
+    B --> BR[Aegis Broker]
+    BR --> CP
     CP --> VIDP[Vendor IdP / Signing Authority]
-    CP --> BR[Aegis Broker]
     CP --> R[Customer Relay]
-    BR --> R
     R --> API[Target APIs\nPublic or Internal]
     R --> CP
 
@@ -146,40 +163,36 @@ flowchart LR
       IDP
     end
 
-
     subgraph Vendor Control Plane
         API
     end
-
-
-
 ```
 
 ---
 
-## 5. Trust model
+## 6. Trust model
 
 The Relay only executes a request when all of the following are true:
 
 1. The **Vendor Job Envelope** is valid and signed by the vendor.
-2. The **Relay Token** is valid and signed by the customer Broker.
-3. The requested operation is within the Relay Token constraints.
+2. The **Session Delegation JWT** embedded in the job is valid and signed by the customer Broker.
+3. The requested operation is within the session delegation JWT scope.
 4. The Relay's local safety controls also allow it.
 
 This creates a **dual-authorization model**:
 
 - **Vendor approval**: request came through the official platform.
-- **Customer approval**: request is allowed under customer policy.
+- **Customer approval**: SaaS control plane holds a valid customer-issued session grant.
 
-Neither side can independently force execution.
+Neither side can independently force execution. The session delegation JWT is issued at session start by Aegis and is opaque to the SaaS control plane — it cannot mint or expand its own grants.
 
 ---
 
-## 6. Deployment model
+## 7. Deployment model
 
 ### Recommended enterprise deployment
 
-- **Cloud Requester** runs in the browser.
+- **Cloud Relay** runs in the browser.
 - **SaaS Control Plane** runs in vendor infrastructure.
 - **Aegis Broker** runs in customer infrastructure.
 - **Relay** runs in customer infrastructure.
@@ -212,32 +225,51 @@ Supported operating models:
 
 ---
 
-## 7. End-to-end request flow
+## 8. End-to-end request flow
+
+### 8.1 Session start (once per session)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant U as User
-    participant WB as Web Browser / Cloud Requester
+    participant WB as Web Browser / Cloud Relay
     participant IDP as Customer SSO IdP
+    participant BR as Aegis Broker
+    participant CP as SaaS Control Plane
+
+    U->>WB: Open Cloud Relay / start session
+    WB->>IDP: Authenticate user
+    IDP-->>WB: User session token
+    WB->>BR: Request session delegation JWT\n(user token + requested API scopes)
+    BR->>BR: Validate user identity\nResolve groups and policy\nEvaluate requested scopes
+    BR-->>WB: Session Delegation JWT\n(customer-signed, scoped, short-lived)
+    WB->>CP: Register session\n(pass session delegation JWT)
+    CP->>CP: Store delegation JWT for this session
+    CP-->>WB: Session ready + entitlements
+```
+
+### 8.2 Per-request execution (N times per session, no Aegis round trip)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant WB as Web Browser / Cloud Relay
     participant CP as SaaS Control Plane
     participant VIDP as Vendor IdP / Signing Authority
-    participant BR as Aegis Broker
     participant R as Customer Relay
     participant API as Target API
 
     U->>WB: Initiate API request
-    WB->>IDP: Authenticate user
-    IDP-->>WB: User session / access token
     WB->>CP: Submit intended request
-    CP->>BR: Ask for Relay Token for user + request
-    BR->>BR: Validate user identity and evaluate policy
-    BR-->>CP: Relay Token (customer-signed)
-    CP->>VIDP: Sign Vendor Job Envelope
+    CP->>CP: Check session delegation JWT covers this request
+    CP->>VIDP: Sign Vendor Job Envelope\n(embed session delegation JWT)
     VIDP-->>CP: Signed vendor job
-    CP->>R: Send job envelope + relay token
+    CP->>R: Send job envelope\n(contains delegation JWT + vendor signature)
     R->>R: Validate vendor signature
-    R->>R: Validate relay token signature and constraints
+    R->>R: Validate session delegation JWT signature and scope
+    R->>R: Apply local hard safety rules
     R->>API: Execute outbound HTTP request
     API-->>R: Response
     R-->>CP: Response metadata / payload
@@ -246,40 +278,44 @@ sequenceDiagram
 
 ---
 
-## 8. Flow diagram
+## 9. Flow diagram
 
 ```mermaid
 flowchart TD
-    A[User builds request in Cloud Requester] --> B[Browser Authenticates via SSO]
-    B --> C[SaaS Control Plane receives requested]
-    C --> D[Aegis Broker evaluates policy]
-    D -->|Allowed| E[Broker issues Relay Token]
+    A[User opens Cloud Relay] --> B[Browser Authenticates via SSO]
+    B --> C[Browser requests Session Delegation JWT from Aegis]
+    C --> D[Aegis evaluates policy and user groups]
+    D -->|Allowed| E[Aegis issues Session Delegation JWT]
     D -->|Denied| X[Return authorization denied]
-    E --> F[SaaS Control Plane creates Vendor Job Envelope]
-    F --> G[Relay validates vendor signature]
-    G --> H[Relay validates Broker signature and constraints]
-    H -->|Pass| I[Relay executes API request]
-    H -->|Fail| Y[Reject job]
-    I --> J[Relay returns response and audit metadata]
-    J --> K[SaaS Control Plane presents result]
+    E --> F[Browser registers session with SaaS CP]
+    F --> G[User builds and submits request]
+    G --> H[SaaS CP validates request against delegation JWT scope]
+    H -->|Out of scope| Y[Return scope violation]
+    H -->|In scope| I[SaaS CP creates Vendor Job Envelope\nembeds session delegation JWT]
+    I --> J[Relay validates vendor signature]
+    J --> K[Relay validates session delegation JWT\nsignature and scope]
+    K -->|Pass| L[Relay executes API request]
+    K -->|Fail| Z[Reject job]
+    L --> M[Relay returns response and audit metadata]
+    M --> N[SaaS CP presents result]
 ```
 
 ---
 
-## 9. Broker responsibilities
+## 10. Broker responsibilities
 
 ### Identity responsibilities
 
-- validate user identity context from customer SSO
+- validate user identity context from customer SSO at session start
 - resolve user groups / roles / claims
-- optionally map user to workspace or environment entitlements
+- map user to workspace or environment entitlements
 
 ### Authorization responsibilities
 
-- evaluate whether the user may access a given API or route
-- evaluate constraints such as method, environment, host, path, relay, and body size
-- issue short-lived Relay Tokens for allowed requests
+- evaluate whether the user may access a given set of APIs, environments, and methods
+- issue short-lived Session Delegation JWTs scoped to the user's entitlements
 - return user entitlements to the SaaS control plane
+- revoke active sessions if required (via JWT expiry or a revocation list)
 
 ### Administrative responsibilities
 
@@ -289,11 +325,11 @@ flowchart TD
 
 ---
 
-## 10. Relay responsibilities
+## 11. Relay responsibilities
 
 - validate vendor job signature
-- validate Broker Relay Token signature
-- enforce token constraints
+- validate session delegation JWT signature
+- enforce delegation JWT scope constraints
 - enforce hard local safety rules
 - execute outbound HTTP request
 - use customer-owned downstream credentials
@@ -301,20 +337,22 @@ flowchart TD
 
 ---
 
-## 11. Why the Broker exists
+## 12. Why the Broker exists
 
 Without the Broker, the SaaS control plane could sign jobs continuously and the Relay would have no independent customer approval mechanism.
 
 The Broker exists so that:
 
 - the customer controls authorization policy
-- the customer signs the Relay Token
-- the Relay enforces customer limits on every execution
+- the customer signs the session delegation JWT at session start
+- the Relay enforces customer limits on every execution without calling Aegis per request
 - entitlements can be surfaced back into the SaaS platform
+
+Aegis is in the **critical path once per session**, not once per request. The session delegation JWT carries the customer's approval into every job the SaaS CP creates for that session.
 
 ---
 
-## 12. Broker UI and admin model
+## 13. Broker UI and admin model
 
 ### Should the Broker have a UI?
 
@@ -348,7 +386,7 @@ A UI becomes useful when the customer wants:
 
 ---
 
-## 13. Main platform integration for API catalog visibility
+## 14. Main platform integration for API catalog visibility
 
 The SaaS control plane should remain the **global catalog and user experience layer**.
 
@@ -367,34 +405,32 @@ The Broker should remain the **local authorization oracle**.
 
 #### Broker
 
-- final local authorization decision
-- token issuance
+- session delegation grant issuance
+- final local authorization decision at session start
 - user entitlement resolution
 - mapping of customer groups to APIs / environments / methods / paths
 
 ### Example integration
 
-The SaaS control plane queries the Broker:
-
-- `list entitlements for this user`
-- `issue a relay token for this exact request`
-
-The platform can then show:
+At session start, the platform receives the delegation JWT and can show:
 
 - APIs available to the user
 - environments they may use
 - methods / paths allowed
 - denial reasons where appropriate
 
+During the session, the platform checks each request against the cached delegation JWT scope without contacting Aegis again.
+
 ---
 
-## 14. Architecture diagram
+## 15. Architecture diagram
 
 ```mermaid
 classDiagram
-    class CloudRequester {
+    class CloudRelay {
       +buildRequest()
       +authenticateUser()
+      +requestSessionDelegation()
       +submitRequestIntent()
       +displayResponse()
     }
@@ -402,7 +438,7 @@ classDiagram
     class SaaSControlPlane {
       +issueJob()
       +signVendorEnvelope()
-      +queryEntitlements()
+      +checkDelegationScope()
       +presentCatalog()
       +recordAudit()
     }
@@ -421,14 +457,15 @@ classDiagram
     class AegisBroker {
       +validateUserIdentity()
       +evaluatePolicy()
-      +issueRelayToken()
+      +issueSessionDelegationJWT()
       +listEntitlements()
       +adminPolicyUpdate()
+      +revokeSession()
     }
 
     class Relay {
       +validateVendorJob()
-      +validateRelayToken()
+      +validateSessionDelegationJWT()
       +enforceSafetyRules()
       +executeHttpRequest()
       +emitAuditEvent()
@@ -438,19 +475,18 @@ classDiagram
       +handleRequest()
     }
 
-    CloudRequester --> CustomerSSOIdP
-    CloudRequester --> SaaSControlPlane
-    SaaSControlPlane --> AegisBroker
+    CloudRelay --> CustomerSSOIdP
+    CloudRelay --> AegisBroker
+    CloudRelay --> SaaSControlPlane
     SaaSControlPlane --> VendorIdP
     SaaSControlPlane --> Relay
     Relay --> TargetAPI
     AegisBroker --> CustomerSSOIdP
-    Relay --> AegisBroker
 ```
 
 ---
 
-## 15. Domain model / class diagram
+## 16. Domain model / class diagram
 
 ```mermaid
 classDiagram
@@ -470,13 +506,25 @@ classDiagram
       +relayIds: string[]
     }
 
-    class RelayToken {
+    class SessionDelegationJWT {
       +iss: string
       +sub: string
       +aud: string
       +exp: number
       +jti: string
-      +constraints: RequestConstraints
+      +tenantId: string
+      +workspaceId: string
+      +scopes: DelegationScope[]
+    }
+
+    class DelegationScope {
+      +apiId: string
+      +environment: string
+      +allowedHosts: string[]
+      +allowedMethods: string[]
+      +pathPatterns: string[]
+      +relayIds: string[]
+      +maxBodyBytes: number
     }
 
     class VendorJobEnvelope {
@@ -484,7 +532,7 @@ classDiagram
       +tenantId: string
       +relayId: string
       +request: ExecutionRequest
-      +relayToken: string
+      +sessionDelegationJWT: string
       +signature: string
     }
 
@@ -496,15 +544,6 @@ classDiagram
       +timeoutMs: number
     }
 
-    class RequestConstraints {
-      +allowedHosts: string[]
-      +allowedMethods: string[]
-      +pathPatterns: string[]
-      +maxBodyBytes: number
-      +maxRequests: number
-      +expiresAt: number
-    }
-
     class PolicyRule {
       +ruleId: string
       +effect: string
@@ -514,40 +553,42 @@ classDiagram
     }
 
     UserContext --> ApiEntitlement
-    ApiEntitlement --> RequestConstraints
-    RelayToken --> RequestConstraints
+    ApiEntitlement --> DelegationScope
+    SessionDelegationJWT --> DelegationScope
     VendorJobEnvelope --> ExecutionRequest
-    VendorJobEnvelope --> RelayToken
+    VendorJobEnvelope --> SessionDelegationJWT
     PolicyRule --> ApiEntitlement
 ```
 
 ---
 
-## 16. Authorization patterns
+## 17. Authorization patterns
 
-### Pattern A: Browser authenticates, control plane requests token
-
-1. Browser authenticates user with customer SSO.
-2. SaaS control plane receives request intent.
-3. SaaS control plane calls Broker to get a Relay Token.
-4. Broker validates user context and issues token.
-
-### Pattern B: Browser calls Broker directly
+### Pattern A (recommended): Browser authenticates with Aegis directly at session start
 
 1. Browser authenticates user with customer SSO.
-2. Browser requests Relay Token from Broker.
-3. Browser passes token to SaaS control plane.
-4. SaaS control plane wraps token into Vendor Job Envelope.
+2. Browser requests Session Delegation JWT from Aegis (user token + requested scopes).
+3. Aegis validates identity, evaluates policy, issues session delegation JWT.
+4. Browser passes delegation JWT to SaaS control plane to register the session.
+5. SaaS CP embeds delegation JWT in every vendor job for the session — no further Aegis calls.
 
-### Recommended default
+**Recommended default** for enterprise deployments. Aegis has direct proof of user identity. The SaaS control plane cannot fabricate or extend delegation JWTs.
 
-Use **Pattern A** for enterprise deployments, because it allows the Broker to remain private and reduces browser exposure.
+### Pattern B: Control plane requests session delegation on behalf of user
+
+1. Browser authenticates user with customer SSO.
+2. Browser submits request intent to SaaS control plane with user identity proof.
+3. SaaS control plane calls Aegis on behalf of the user to get a session delegation JWT.
+4. Aegis validates user context and issues JWT.
+5. SaaS CP embeds delegation JWT in vendor jobs.
+
+Simpler browser flow (Aegis does not need to be CORS-accessible), but weakens non-repudiation — Aegis trusts SLAOps to faithfully relay user identity.
 
 ---
 
-## 17. Relay API contract
+## 18. Relay API contract
 
-### 17.1 Submit execution job
+### 18.1 Submit execution job
 
 **Endpoint**
 
@@ -589,7 +630,7 @@ X-Request-Id: <uuid>
     "timeoutMs": 15000,
     "followRedirects": false
   },
-  "relayToken": "<customer-signed-jwt>",
+  "sessionDelegationJWT": "<customer-signed-jwt>",
   "vendorJobSignature": "<vendor-signed-jws>"
 }
 ```
@@ -611,25 +652,25 @@ X-Request-Id: <uuid>
   "audit": {
     "decision": "ALLOW",
     "ruleId": "payments-uat-post",
-    "relayTokenJti": "7db3d2af-...",
+    "sessionDelegationJti": "7db3d2af-...",
     "vendorJobId": "job_01JX..."
   }
 }
 ```
 
-### 17.2 Get job status
+### 18.2 Get job status
 
 ```http
 GET /v1/jobs/{jobId}
 ```
 
-### 17.3 Health endpoint
+### 18.3 Health endpoint
 
 ```http
 GET /v1/health
 ```
 
-### 17.4 Relay metadata / capabilities
+### 18.4 Relay metadata / capabilities
 
 ```http
 GET /v1/capabilities
@@ -653,12 +694,12 @@ Example response:
 
 ---
 
-## 18. Broker API contract
+## 19. Broker API contract
 
-### 18.1 Issue relay token
+### 19.1 Issue session delegation JWT
 
 ```http
-POST /v1/relay-tokens
+POST /v1/sessions
 ```
 
 **Request**
@@ -666,21 +707,19 @@ POST /v1/relay-tokens
 ```json
 {
   "tenantId": "westpac-uat",
-  "user": {
-    "userId": "derrick@example.com",
-    "groups": ["payments-developers", "uat-users"]
-  },
-  "request": {
-    "apiId": "partner-payments",
-    "environment": "uat",
-    "relayId": "relay-westpac-uat-01",
-    "method": "POST",
-    "url": "https://api.partner.com/v1/payments",
-    "headers": {
-      "content-type": "application/json"
+  "userToken": "<customer-sso-id-token>",
+  "requestedScopes": [
+    {
+      "apiId": "partner-payments",
+      "environment": "uat",
+      "relayId": "relay-westpac-uat-01"
     },
-    "bodyBytes": 128
-  }
+    {
+      "apiId": "customer-profile",
+      "environment": "uat",
+      "relayId": "relay-westpac-uat-01"
+    }
+  ]
 }
 ```
 
@@ -688,14 +727,36 @@ POST /v1/relay-tokens
 
 ```json
 {
-  "relayToken": "<customer-signed-jwt>",
-  "expiresAt": "2026-03-22T10:01:00Z",
-  "decision": "ALLOW",
-  "ruleId": "payments-uat-post"
+  "sessionDelegationJWT": "<customer-signed-jwt>",
+  "expiresAt": "2026-03-22T10:30:00Z",
+  "grantedScopes": [
+    {
+      "apiId": "partner-payments",
+      "environment": "uat",
+      "allowedMethods": ["GET", "POST"],
+      "pathPatterns": ["/v1/payments/*"],
+      "relayIds": ["relay-westpac-uat-01"],
+      "maxBodyBytes": 262144
+    },
+    {
+      "apiId": "customer-profile",
+      "environment": "uat",
+      "allowedMethods": ["GET"],
+      "pathPatterns": ["/v2/profile/*"],
+      "relayIds": ["relay-westpac-uat-01"]
+    }
+  ],
+  "deniedScopes": []
 }
 ```
 
-### 18.2 List user entitlements
+### 19.2 Revoke session
+
+```http
+DELETE /v1/sessions/{jti}
+```
+
+### 19.3 List user entitlements
 
 ```http
 GET /v1/entitlements?tenantId=westpac-uat&userId=derrick@example.com
@@ -728,7 +789,7 @@ GET /v1/entitlements?tenantId=westpac-uat&userId=derrick@example.com
 }
 ```
 
-### 18.3 Admin policy APIs
+### 19.4 Admin policy APIs
 
 #### Upsert policy rule
 
@@ -750,16 +811,16 @@ POST /v1/admin/policy-decisions/test
 
 ---
 
-## 19. Job payload format
+## 20. Job payload format
 
-The Vendor Job Envelope should be explicit, auditable, and signed.
+The Vendor Job Envelope should be explicit, auditable, and signed. The session delegation JWT replaces per-request relay tokens.
 
 ### Canonical job format
 
 ```json
 {
   "jobId": "job_01JX...",
-  "version": "1.0",
+  "version": "2.0",
   "tenantId": "westpac-uat",
   "workspaceId": "payments-team",
   "relayId": "relay-westpac-uat-01",
@@ -783,7 +844,7 @@ The Vendor Job Envelope should be explicit, auditable, and signed.
     "followRedirects": false,
     "maxResponseBodyBytes": 1048576
   },
-  "relayToken": "<customer-signed-jwt>",
+  "sessionDelegationJWT": "<customer-signed-jwt>",
   "submittedAt": "2026-03-22T10:00:00Z",
   "expiresAt": "2026-03-22T10:01:00Z",
   "trace": {
@@ -798,14 +859,15 @@ The Vendor Job Envelope should be explicit, auditable, and signed.
 
 - `jobId` is unique per execution.
 - `relayId` binds the request to a specific Relay.
-- `relayToken` is opaque to the SaaS control plane except for transport.
-- `expiresAt` keeps jobs short-lived.
+- `sessionDelegationJWT` is opaque to the SaaS control plane except for transport — it cannot mint or extend it.
+- `expiresAt` keeps jobs short-lived even when the session delegation JWT is longer-lived.
 - `vendorJobSignature` protects request integrity.
 - `trace` supports auditability.
+- **No per-request Aegis call** — the Relay verifies the delegation JWT locally against Broker's published key set.
 
 ---
 
-## 20. Relay Token format
+## 21. Session Delegation JWT format
 
 ### Suggested JWT claims
 
@@ -813,37 +875,46 @@ The Vendor Job Envelope should be explicit, auditable, and signed.
 {
   "iss": "https://broker.customer.example",
   "sub": "derrick@example.com",
-  "aud": "relay-westpac-uat-01",
+  "aud": "slaops-control-plane",
   "iat": 1774068000,
-  "exp": 1774068060,
+  "exp": 1774069800,
   "jti": "7db3d2af-0f90-44b2-b98e-6f17f5f9a1df",
   "tenantId": "westpac-uat",
   "workspaceId": "payments-team",
-  "constraints": {
-    "apiId": "partner-payments",
-    "environment": "uat",
-    "allowedHosts": ["api.partner.com"],
-    "allowedMethods": ["POST"],
-    "pathPatterns": ["/v1/payments/*"],
-    "maxBodyBytes": 262144,
-    "maxRequests": 1,
-    "followRedirects": false
-  }
+  "scopes": [
+    {
+      "apiId": "partner-payments",
+      "environment": "uat",
+      "relayIds": ["relay-westpac-uat-01"],
+      "allowedHosts": ["api.partner.com"],
+      "allowedMethods": ["GET", "POST"],
+      "pathPatterns": ["/v1/payments/*"],
+      "maxBodyBytes": 262144
+    },
+    {
+      "apiId": "customer-profile",
+      "environment": "uat",
+      "relayIds": ["relay-westpac-uat-01"],
+      "allowedHosts": ["api.internal.westpac.com"],
+      "allowedMethods": ["GET"],
+      "pathPatterns": ["/v2/profile/*"],
+      "maxBodyBytes": 65536
+    }
+  ]
 }
 ```
 
 ### Recommended properties
 
-- short TTL, normally 30 to 120 seconds
-- `jti` replay protection
-- audience bound to specific Relay
-- method / host / path constrained
-- body-size constrained
-- optionally single-use
+- TTL of 15–60 minutes (session-length, not request-length)
+- `jti` for session revocation lookups
+- audience bound to the SaaS control plane (not the Relay directly)
+- scoped to specific APIs, environments, relay IDs
+- the Relay validates the JWT against Broker's published JWKS without calling Aegis
 
 ---
 
-## 21. Validation flow step-by-step
+## 22. Validation flow step-by-step
 
 ### Step 1: Receive job
 
@@ -872,37 +943,30 @@ Checks:
 - tenant binding valid
 - job payload not tampered with
 
-### Step 5: Validate Relay Token signature
+### Step 5: Validate Session Delegation JWT signature
 
-Verify `relayToken` using Broker / customer trust key set.
+Verify `sessionDelegationJWT` using Broker / customer trust key set (fetched from Broker's JWKS endpoint at startup, cached with TTL rotation).
 
 Checks:
 
 - signature valid
 - issuer trusted
-- audience equals this Relay
 - token not expired
 - token issued for correct tenant / workspace
 
-### Step 6: Replay protection
+### Step 6: Session revocation check (optional)
 
-Check `jti` not already used.
+If the customer configures revocation, check the `jti` against Broker's revocation list. For most deployments, short TTL (15–30 min) makes this optional.
 
-If single-use mode is enabled:
+### Step 7: Validate request against delegation JWT scopes
 
-- store `jti`
-- reject any repeat usage
+Compare the requested execution against the scopes in the delegation JWT:
 
-### Step 7: Validate request against Relay Token constraints
-
-Compare the requested execution against token constraints:
-
-- method allowed
+- method allowed for this apiId
 - host allowed
 - path allowed
 - body size within limit
-- relay ID matches
-- max requests not exceeded
+- relay ID is in the allowed relay list
 - redirect behavior allowed
 
 ### Step 8: Apply Relay local hard safety rules
@@ -942,8 +1006,8 @@ Record:
 - duration
 - response size
 - allow / deny decision
-- matching policy rule
-- token IDs
+- matching policy scope
+- session delegation JWT `jti`
 
 ### Step 13: Return result
 
@@ -951,7 +1015,7 @@ Send the response back to the SaaS control plane for presentation to the browser
 
 ---
 
-## 22. Detailed validation sequence diagram
+## 23. Detailed validation sequence diagram
 
 ```mermaid
 sequenceDiagram
@@ -959,17 +1023,17 @@ sequenceDiagram
     participant CP as SaaS Control Plane
     participant R as Relay
     participant VKS as Vendor Key Set
-    participant BKS as Broker Key Set
+    participant BKS as Broker Key Set (cached)
     participant API as Target API
 
-    CP->>R: Submit Vendor Job Envelope
+    CP->>R: Submit Vendor Job Envelope\n(contains sessionDelegationJWT)
     R->>R: Validate schema and freshness
     R->>VKS: Verify vendor job signature
     VKS-->>R: Signature valid
-    R->>BKS: Verify relay token signature
+    R->>BKS: Verify session delegation JWT signature\n(local cache, no Aegis call)
     BKS-->>R: Signature valid
-    R->>R: Check jti replay protection
-    R->>R: Check method / host / path / body constraints
+    R->>R: Check delegation JWT not expired
+    R->>R: Check method / host / path / body against delegation scopes
     R->>R: Apply local hard safety rules
     R->>API: Execute HTTP request
     API-->>R: Response
@@ -978,12 +1042,12 @@ sequenceDiagram
 
 ---
 
-## 23. Entitlement discovery flow
+## 24. Entitlement discovery flow
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant WB as Web Browser / Cloud Requester
+    participant WB as Web Browser / Cloud Relay
     participant CP as SaaS Control Plane
     participant BR as Aegis Broker
 
@@ -996,7 +1060,7 @@ sequenceDiagram
 
 ---
 
-## 24. Policy model
+## 25. Policy model
 
 ### Recommended coarse-to-fine approach
 
@@ -1020,6 +1084,7 @@ Managed in Broker policy, such as:
 - allowed Relay IDs
 - max body size
 - time windows
+- session TTL
 
 ### Example policy rule
 
@@ -1034,14 +1099,13 @@ Managed in Broker policy, such as:
   "allowedMethods": ["POST"],
   "pathPatterns": ["/v1/payments/*"],
   "maxBodyBytes": 262144,
-  "tokenTtlSeconds": 60,
-  "singleUse": true
+  "sessionTtlSeconds": 1800
 }
 ```
 
 ---
 
-## 25. Suggested admin UI capabilities
+## 26. Suggested admin UI capabilities
 
 If an admin UI is later added, recommended capabilities are:
 
@@ -1051,25 +1115,28 @@ If an admin UI is later added, recommended capabilities are:
 - define path / method constraints
 - test policy decisions
 - inspect denied requests
+- revoke active sessions
 - rotate Broker signing keys
 - view Relay health and version
 
 ---
 
-## 26. Security recommendations
+## 27. Security recommendations
 
-- Use short-lived Relay Tokens.
-- Prefer single-use `jti` for sensitive operations.
-- Bind tokens to `relayId` and tenant.
+- Use short-to-medium TTL session delegation JWTs (15–60 minutes).
+- Broker signing keys published via JWKS and cached by the Relay at startup.
+- Rotate JWKS keys on a schedule; Relay re-fetches on key ID miss.
+- Bind session delegation JWT to tenant and workspace.
 - Keep downstream credentials only in the Relay.
 - Treat Relay safety rules as immutable local controls.
 - Use signed job envelopes rather than unsigned requests.
 - Log metadata by default, not raw secrets or bodies.
 - Separate global catalog visibility from local execution permission.
+- Support session revocation via `jti` list for high-security tenants.
 
 ---
 
-## 27. Recommended product positioning
+## 28. Recommended product positioning
 
 ### Main platform
 
@@ -1083,8 +1150,9 @@ If an admin UI is later added, recommended capabilities are:
 ### Aegis Broker
 
 - customer authorization authority
-- token issuance service
+- session delegation grant issuer
 - entitlement provider
+- JWKS publisher for Relay validation
 - optional admin policy plane
 
 ### Relay
@@ -1093,17 +1161,22 @@ If an admin UI is later added, recommended capabilities are:
 - credential holder
 - network boundary
 - policy enforcement point
+- validates delegation JWT locally (no Aegis call per request)
 
 ---
 
-## 28. Final recommendation
+## 29. Final recommendation
 
-Use **Aegis Broker** as the customer-controlled authorization and Relay Token issuance service, paired with a customer-hosted Relay.
+Use **Aegis Broker** as the customer-controlled authorization and session delegation service, paired with a customer-hosted Relay.
+
+The dual-authorization model is preserved: neither the SaaS control plane nor the Relay can act without a valid customer-issued session delegation JWT. Aegis is in the critical path **once per session**, not once per request.
 
 This design gives:
 
 - strong enterprise trust boundaries
 - customer control over authorization
+- no per-request Aegis latency in the interactive request path
 - browser usability without target-side CORS dependency
 - clean separation between vendor control plane and customer execution plane
 - a path to rich entitlement-aware catalog UX in the main platform
+- session revocation capability for high-security tenants

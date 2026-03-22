@@ -1,11 +1,11 @@
 ---
 sidebar_position: 13
-title: Cloud Requester Security Policy
+title: Cloud Relay Security Policy
 ---
 
-# Cloud Requester Security Policy
+# Cloud Relay Security Policy
 
-To improve security, CloudRequester supports security policies to control what requests are allowed to be made or denied by the platform.
+To improve security, CloudRelay supports security policies to control what requests are allowed to be made or denied by the platform.
 
 - who can call the proxy
 - which destinations are allowed

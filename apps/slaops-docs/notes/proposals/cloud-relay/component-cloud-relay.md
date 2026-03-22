@@ -1,9 +1,9 @@
 ---
 sidebar_position: 12
-title: Component Proposal Cloud Requester
+title: Component Proposal Cloud Relay
 ---
 
-# Component Proposal: Cloud Requester
+# Component Proposal: Cloud Relay
 
 > **Status**: Draft
 > **Author**: SLAOps Team
@@ -30,22 +30,22 @@ The current API Tester makes HTTP requests directly from the browser. This creat
 **In Scope (Iteration 1):**
 
 - New NestJS module in `apps/slaops-cloud` to proxy HTTP requests
-- Authentication to the Cloud Requester via **OAuth 2.0 (Cognito JWT)** — the portal passes its existing Cognito session token; no separate credential is stored per connection
+- Authentication to the Cloud Relay via **OAuth 2.0 (Cognito JWT)** — the portal passes its existing Cognito session token; no separate credential is stored per connection
 - A **custom Lambda authorizer** on API Gateway validates the JWT, derives/looks up the API Gateway API key for the authenticated user, and returns it as the `usageIdentifierKey` so API Gateway can enforce per-user **usage plans** (rate limiting and quotas)
 - All AWS infrastructure (API Gateway, Cognito User Pool, usage plans, API keys, Lambda authorizer function) provisioned by **CDK in `packages/slaops-infra`**
-- The **Cloud Requester Lambda** defined in **`packages/slaops-backend`** (Amplify) as an app-level function — enabling independent feature deploys
+- The **Cloud Relay Lambda** defined in **`packages/slaops-backend`** (Amplify) as an app-level function — enabling independent feature deploys
 - The **Lambda authorizer** treated as shared infrastructure — deployed with the CDK infra stack rather than as a feature deploy, as it is shared across the entire environment
-- Portal UI for managing Cloud Requester connections (name + URL)
-- Request mode selector in the API Tester: **Browser** (current behaviour) or a named **Cloud Requester** instance
+- Portal UI for managing Cloud Relay connections (name + URL)
+- Request mode selector in the API Tester: **Browser** (current behaviour) or a named **Cloud Relay** instance
 - Forwarding of request method, URL, headers, query parameters, and body (HAR format)
 - Return of response status, headers, body, and timing from the Lambda perspective
-- Storing Cloud Requester connection settings per-user (via existing service/tenant infrastructure)
+- Storing Cloud Relay connection settings per-user (via existing service/tenant infrastructure)
 
 **Out of Scope (Iteration 1):**
 
-- Self-hosted Cloud Requester in a customer's own AWS account (planned future iteration — the module is designed with this extraction in mind but not yet packaged for it)
+- Self-hosted Cloud Relay in a customer's own AWS account (planned future iteration — the module is designed with this extraction in mind but not yet packaged for it)
 - Secure credential storage / Secrets Manager integration (future)
-- Multiple simultaneous cloud requester instances per request
+- Multiple simultaneous Cloud Relay instances per request
 - Streaming / chunked response support
 - WebSocket proxying
 - Request replay / scheduling
@@ -55,13 +55,13 @@ The current API Tester makes HTTP requests directly from the browser. This creat
 ```mermaid
 graph TD
     Portal[SLAOps Portal\nAPI Tester] -->|Browser mode| ExternalAPI[External API]
-    Portal -->|Cloud Requester mode\nBearer JWT| APIGW[API Gateway\n+ Usage Plans]
+    Portal -->|Cloud Relay mode\nBearer JWT| APIGW[API Gateway\n+ Usage Plans]
     APIGW -->|invoke| AuthLambda[Custom Lambda Authorizer]
     AuthLambda -->|validate JWT| Cognito[AWS Cognito\nUser Pool]
     AuthLambda -->|derive / lookup| APIKey[API Key\nper user/tenant]
     AuthLambda -->|IAM policy +\nusageIdentifierKey| APIGW
     APIGW -->|throttle / quota\nper usage plan| APIGW
-    APIGW -->|authenticated request| CloudModule[slaops-cloud\nCloud Requester Module]
+    APIGW -->|authenticated request| CloudModule[slaops-cloud\nCloud Relay Module]
     CloudModule -->|HTTP proxy| ExternalAPI
 
     Portal -.->|already authenticated via| Cognito
@@ -80,7 +80,7 @@ graph TD
 
 ```typescript
 /**
- * A saved connection to a Cloud Requester instance.
+ * A saved connection to a Cloud Relay instance.
  * Users can create multiple connections (e.g. us-east-1, eu-west-1).
  *
  * Authentication is handled via OAuth 2.0 (Cognito JWT). The portal reuses its
@@ -90,7 +90,7 @@ graph TD
  * (userPoolId, clientId, region) so the portal can obtain a token from the
  * customer's own Cognito pool.
  */
-export type CloudRequesterConnection = {
+export type CloudRelayConnection = {
   /** Locally unique identifier (UUID) */
   id: string
 
@@ -98,7 +98,7 @@ export type CloudRequesterConnection = {
   name: string
 
   /**
-   * API Gateway base URL of the Cloud Requester endpoint.
+   * API Gateway base URL of the Cloud Relay endpoint.
    * Example: https://xyz.execute-api.ap-southeast-2.amazonaws.com/prod
    */
   url: string
@@ -115,12 +115,10 @@ export type CloudRequesterConnection = {
 /**
  * Which execution mode the API Tester is currently using.
  */
-export type RequestMode =
-  | { type: 'browser' }
-  | { type: 'cloud'; connection: CloudRequesterConnection }
+export type RequestMode = { type: 'browser' } | { type: 'cloud'; connection: CloudRelayConnection }
 ```
 
-### API Contract (Portal → Cloud Requester)
+### API Contract (Portal → Cloud Relay)
 
 The proxy endpoint accepts a [HAR `Request` object](http://www.softwareishard.com/blog/har-12-spec/#request) as the request description. HAR (HTTP Archive) is the standard format used by browser DevTools to represent HTTP requests. Using it means:
 
@@ -189,7 +187,7 @@ export type HarRequest = {
 }
 
 /**
- * Request body sent to the Cloud Requester proxy endpoint.
+ * Request body sent to the Cloud Relay proxy endpoint.
  * `request` is a standard HAR Request object; `timeoutMs` is a
  * proxy-level extension not part of the HAR spec.
  */
@@ -202,7 +200,7 @@ export type CloudProxyRequest = {
 }
 
 /**
- * Response returned by the Cloud Requester proxy endpoint.
+ * Response returned by the Cloud Relay proxy endpoint.
  */
 export type CloudProxyResponse = {
   /** HTTP status code returned by the target */
@@ -236,14 +234,14 @@ export type CloudProxyError = {
 
 ### Input/Output Summary
 
-| Type                       | Direction       | Purpose                                                |
-| -------------------------- | --------------- | ------------------------------------------------------ |
-| `CloudRequesterConnection` | Portal state    | Saved connection details entered by the user           |
-| `RequestMode`              | Portal state    | Current API Tester mode (browser vs cloud)             |
-| `HarRequest`               | Portal → Lambda | Standard HAR request object describing what to proxy   |
-| `CloudProxyRequest`        | Portal → Lambda | Wrapper: HAR request + proxy-level `timeoutMs`         |
-| `CloudProxyResponse`       | Lambda → Portal | Target response + Lambda-side timing                   |
-| `CloudProxyError`          | Lambda → Portal | Proxy-level failure (distinct from target HTTP errors) |
+| Type                   | Direction       | Purpose                                                |
+| ---------------------- | --------------- | ------------------------------------------------------ |
+| `CloudRelayConnection` | Portal state    | Saved connection details entered by the user           |
+| `RequestMode`          | Portal state    | Current API Tester mode (browser vs cloud)             |
+| `HarRequest`           | Portal → Lambda | Standard HAR request object describing what to proxy   |
+| `CloudProxyRequest`    | Portal → Lambda | Wrapper: HAR request + proxy-level `timeoutMs`         |
+| `CloudProxyResponse`   | Lambda → Portal | Target response + Lambda-side timing                   |
+| `CloudProxyError`      | Lambda → Portal | Proxy-level failure (distinct from target HTTP errors) |
 
 ## Architecture
 
@@ -256,7 +254,7 @@ graph TB
         ModeSelector[Request Mode Selector]
         ConnectionManager[Connection Manager UI]
         BrowserFetch[Browser fetch()]
-        CloudClient[Cloud Requester Client]
+        CloudClient[Cloud Relay Client]
     end
 
     subgraph "API Gateway"
@@ -265,7 +263,7 @@ graph TB
     end
 
     subgraph "slaops-cloud (NestJS / Lambda)"
-        CloudController[CloudRequesterController\nPOST /cloud-requester/proxy]
+        CloudController[CloudRelayController\nPOST /cloud-relay/proxy]
         ProxyService[ProxyService\nNode fetch / undici]
         ValidationPipe[ValidationPipe\nclass-validator]
     end
@@ -295,12 +293,12 @@ sequenceDiagram
     participant APIGW as API Gateway\n+ Usage Plans
     participant Authorizer as Custom Lambda\nAuthorizer
     participant Cognito as Cognito\nUser Pool
-    participant Lambda as Cloud Requester (Lambda)
+    participant Lambda as Cloud Relay (Lambda)
     participant API as External API
 
     User->>Tester: Click Send
     Tester->>Tester: Serialize state to HarRequest
-    Tester->>APIGW: POST /cloud-requester/proxy\nAuthorization: Bearer <cognito-jwt>
+    Tester->>APIGW: POST /cloud-relay/proxy\nAuthorization: Bearer <cognito-jwt>
     APIGW->>Authorizer: Invoke with token
     Authorizer->>Cognito: Validate JWT
     alt JWT invalid or expired
@@ -336,11 +334,11 @@ sequenceDiagram
     participant Cloud as slaops-cloud
 
     User->>Portal: Open Connection Manager
-    Portal->>Cloud: GET /cloud-requester/connection
-    Cloud-->>Portal: CloudRequesterConnection[]
+    Portal->>Cloud: GET /cloud-relay/connection
+    Cloud-->>Portal: CloudRelayConnection[]
     User->>Portal: Add new connection (name, url)
-    Portal->>Cloud: POST /cloud-requester/connection\nAuthorization: Bearer <cognito-jwt>
-    Cloud-->>Portal: CloudRequesterConnection (saved)
+    Portal->>Cloud: POST /cloud-relay/connection\nAuthorization: Bearer <cognito-jwt>
+    Cloud-->>Portal: CloudRelayConnection (saved)
     User->>Portal: Select connection in API Tester
     Portal->>Portal: Store active mode in component state
 ```
@@ -349,7 +347,7 @@ sequenceDiagram
 
 | Integration Point       | Component                                         | Direction  | Protocol                              |
 | ----------------------- | ------------------------------------------------- | ---------- | ------------------------------------- |
-| Proxy endpoint          | `CloudRequesterController` in slaops-cloud        | Inbound    | HTTPS POST (JSON) via API Gateway     |
+| Proxy endpoint          | `CloudRelayController` in slaops-cloud            | Inbound    | HTTPS POST (JSON) via API Gateway     |
 | Target API              | Any external HTTP endpoint                        | Outbound   | HTTP/HTTPS                            |
 | Connection storage      | PostgreSQL (via existing TypeORM)                 | Read/Write | SQL                                   |
 | Portal client           | Generated Axios client (from OpenAPI spec)        | Inbound    | HTTPS                                 |
@@ -364,10 +362,10 @@ sequenceDiagram
 #### Controller
 
 ```typescript
-// src/cloud-requester/cloud-requester.controller.ts
+// src/cloud-relay/cloud-relay.controller.ts
 
-@Controller('cloud-requester')
-export class CloudRequesterController {
+@Controller('cloud-relay')
+export class CloudRelayController {
   constructor(private readonly proxyService: ProxyService) {}
 
   /**
@@ -382,26 +380,26 @@ export class CloudRequesterController {
   async proxy(@Body() dto: CloudProxyRequestDto): Promise<CloudProxyResponseDto>
 
   /**
-   * List saved Cloud Requester connections for the current tenant.
+   * List saved Cloud Relay connections for the current tenant.
    */
   @Get('connection')
-  @ApiOperation({ summary: 'List Cloud Requester connections' })
-  async listConnections(): Promise<CloudRequesterConnectionDto[]>
+  @ApiOperation({ summary: 'List Cloud Relay connections' })
+  async listConnections(): Promise<CloudRelayConnectionDto[]>
 
   /**
-   * Save a new Cloud Requester connection.
+   * Save a new Cloud Relay connection.
    */
   @Post('connection')
-  @ApiOperation({ summary: 'Create a Cloud Requester connection' })
+  @ApiOperation({ summary: 'Create a Cloud Relay connection' })
   async createConnection(
-    @Body() dto: CreateCloudRequesterConnectionDto,
-  ): Promise<CloudRequesterConnectionDto>
+    @Body() dto: CreateCloudRelayConnectionDto,
+  ): Promise<CloudRelayConnectionDto>
 
   /**
-   * Delete a Cloud Requester connection by ID.
+   * Delete a Cloud Relay connection by ID.
    */
   @Delete('connection/:id')
-  @ApiOperation({ summary: 'Delete a Cloud Requester connection' })
+  @ApiOperation({ summary: 'Delete a Cloud Relay connection' })
   async deleteConnection(@Param('id') id: string): Promise<void>
 }
 ```
@@ -409,7 +407,7 @@ export class CloudRequesterController {
 #### DTOs
 
 ```typescript
-// src/cloud-requester/dto/har-name-value.dto.ts
+// src/cloud-relay/dto/har-name-value.dto.ts
 export class HarNameValueDto {
   @IsString()
   name: string
@@ -418,7 +416,7 @@ export class HarNameValueDto {
   value: string
 }
 
-// src/cloud-requester/dto/har-post-data.dto.ts
+// src/cloud-relay/dto/har-post-data.dto.ts
 export class HarPostDataParamDto {
   @IsString()
   name: string
@@ -450,7 +448,7 @@ export class HarPostDataDto {
   params?: HarPostDataParamDto[]
 }
 
-// src/cloud-requester/dto/har-request.dto.ts
+// src/cloud-relay/dto/har-request.dto.ts
 export class HarRequestDto {
   @IsIn(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
   method: string
@@ -485,7 +483,7 @@ export class HarRequestDto {
   bodySize: number
 }
 
-// src/cloud-requester/dto/cloud-proxy-request.dto.ts
+// src/cloud-relay/dto/cloud-proxy-request.dto.ts
 export class CloudProxyRequestDto {
   @ValidateNested()
   @Type(() => HarRequestDto)
@@ -498,7 +496,7 @@ export class CloudProxyRequestDto {
   timeoutMs?: number
 }
 
-// src/cloud-requester/dto/cloud-proxy-response.dto.ts
+// src/cloud-relay/dto/cloud-proxy-response.dto.ts
 export class CloudProxyResponseDto {
   status: number
   statusText: string
@@ -508,10 +506,10 @@ export class CloudProxyResponseDto {
   requestedAt: string
 }
 
-// src/cloud-requester/dto/create-cloud-requester-connection.dto.ts
+// src/cloud-relay/dto/create-cloud-relay-connection.dto.ts
 // No credential fields — authentication is handled via the caller's Cognito JWT.
 // Future self-hosted support will add optional Cognito pool fields here.
-export class CreateCloudRequesterConnectionDto {
+export class CreateCloudRelayConnectionDto {
   @IsString()
   @MinLength(1)
   name: string
@@ -523,45 +521,45 @@ export class CreateCloudRequesterConnectionDto {
 
 ### Portal — New UI Components
 
-#### `CloudRequesterModeSelector`
+#### `CloudRelayModeSelector`
 
 Replaces (or wraps) the current Send button area with a mode dropdown:
 
 ```tsx
-// src/components/api-tester/CloudRequesterModeSelector.tsx
+// src/components/api-tester/CloudRelayModeSelector.tsx
 
 interface Props {
   mode: RequestMode
-  connections: CloudRequesterConnection[]
+  connections: CloudRelayConnection[]
   onModeChange: (mode: RequestMode) => void
   onManageConnections: () => void
 }
 
-export function CloudRequesterModeSelector(props: Props): JSX.Element
+export function CloudRelayModeSelector(props: Props): JSX.Element
 ```
 
-#### `CloudRequesterConnectionManager`
+#### `CloudRelayConnectionManager`
 
 A dialog/sheet for adding and deleting connections:
 
 ```tsx
-// src/components/api-tester/CloudRequesterConnectionManager.tsx
+// src/components/api-tester/CloudRelayConnectionManager.tsx
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function CloudRequesterConnectionManager(props: Props): JSX.Element
+export function CloudRelayConnectionManager(props: Props): JSX.Element
 ```
 
-#### `useCloudRequester` hook
+#### `useCloudRelay` hook
 
 ```tsx
-// src/hooks/use-cloud-requester.ts
+// src/hooks/use-cloud-relay.ts
 
-export function useCloudRequester(): {
-  connections: CloudRequesterConnection[]
+export function useCloudRelay(): {
+  connections: CloudRelayConnection[]
   isLoading: boolean
   createConnection: (data: CreateConnectionInput) => Promise<void>
   deleteConnection: (id: string) => Promise<void>
@@ -595,8 +593,8 @@ const sendRequest = async () => {
     // existing fetch() logic — no changes
     response = await fetch(url, { method, headers, body })
   } else {
-    // cloud requester path — serialize form state to HAR then proxy
-    const proxyResult = await cloudRequesterApi.proxy({
+    // Cloud Relay path — serialize form state to HAR then proxy
+    const proxyResult = await CloudRelayApi.proxy({
       request: buildHarRequest(testerState),
       timeoutMs: 30_000,
     })
@@ -630,7 +628,7 @@ CREATE INDEX idx_crc_tenant ON cloud_requester_connection(tenant_id);
 
 ### CloudProxyRequest JSON (Wire Format)
 
-The outer envelope wraps a standard HAR `request` object. This is what the portal POSTs to `/cloud-requester/proxy`.
+The outer envelope wraps a standard HAR `request` object. This is what the portal POSTs to `/cloud-relay/proxy`.
 
 **GET request:**
 
@@ -725,16 +723,16 @@ The outer envelope wraps a standard HAR `request` object. This is what the porta
 | `text`     | string             | No       | Raw body text. Used for JSON, XML, plain text, etc.                                                                  |
 | `params`   | HarPostDataParam[] | No       | Form fields. Used for `multipart/form-data` and `application/x-www-form-urlencoded`. Mutually exclusive with `text`. |
 
-#### CloudRequesterConnection
+#### CloudRelayConnection
 
-| Field       | Type   | Required | Description                                          |
-| ----------- | ------ | -------- | ---------------------------------------------------- |
-| `id`        | UUID   | Yes      | Unique identifier                                    |
-| `name`      | string | Yes      | Display label                                        |
-| `url`       | string | Yes      | API Gateway base URL of the Cloud Requester instance |
-| `createdAt` | string | Yes      | ISO creation timestamp                               |
+| Field       | Type   | Required | Description                                      |
+| ----------- | ------ | -------- | ------------------------------------------------ |
+| `id`        | UUID   | Yes      | Unique identifier                                |
+| `name`      | string | Yes      | Display label                                    |
+| `url`       | string | Yes      | API Gateway base URL of the Cloud Relay instance |
+| `createdAt` | string | Yes      | ISO creation timestamp                           |
 
-Authentication to the Cloud Requester is via the portal user's existing Cognito JWT — no separate credential is stored. Future self-hosted connections will add `cognitoUserPoolId`, `cognitoClientId`, and `cognitoRegion` to allow the portal to obtain a token from the customer's own pool.
+Authentication to the Cloud Relay is via the portal user's existing Cognito JWT — no separate credential is stored. Future self-hosted connections will add `cognitoUserPoolId`, `cognitoClientId`, and `cognitoRegion` to allow the portal to obtain a token from the customer's own pool.
 
 ## Dependencies
 
@@ -852,7 +850,7 @@ Additionally, do not forward `Host` (the target URL determines the host).
 
 ### Security Considerations
 
-- **Authentication — Custom Lambda Authorizer**: The Cloud Requester routes on API Gateway are protected by a custom Lambda authorizer (not the built-in Cognito authorizer). The authorizer:
+- **Authentication — Custom Lambda Authorizer**: The Cloud Relay routes on API Gateway are protected by a custom Lambda authorizer (not the built-in Cognito authorizer). The authorizer:
   1. Receives the `Authorization: Bearer <jwt>` header from the portal
   2. Validates the JWT against the SLAOps Cognito User Pool (signature, expiry, audience)
   3. Derives or looks up the API Gateway **API key** associated with the authenticated user/tenant (e.g. from a DynamoDB table keyed on the Cognito `sub` claim, or by convention from tenant metadata)
@@ -863,7 +861,7 @@ Additionally, do not forward `Host` (the target URL determines the host).
 
 - **Usage Plans**: API Gateway uses the `usageIdentifierKey` from the authorizer response to enforce per-user/tenant throttling and quotas defined in a usage plan. This means rate limiting is tied to the authenticated identity rather than a shared limit, and different tiers can have different quotas. Requests that exceed the plan receive `429 Too Many Requests` before reaching the Lambda.
 
-- **Authorization scope**: In iteration 1, any authenticated SLAOps user can call the Cloud Requester. The usage plan throttle provides the primary abuse-prevention layer. Finer-grained restrictions (per-role, per-tenant plan tier) can be introduced by varying the usage plan returned by the authorizer based on Cognito group membership or tenant attributes.
+- **Authorization scope**: In iteration 1, any authenticated SLAOps user can call the Cloud Relay. The usage plan throttle provides the primary abuse-prevention layer. Finer-grained restrictions (per-role, per-tenant plan tier) can be introduced by varying the usage plan returned by the authorizer based on Cognito group membership or tenant attributes.
 
 - **SSRF (Server-Side Request Forgery)**: The proxy must not allow requests to private IP ranges (RFC 1918: 10.x, 172.16.x, 192.168.x) or link-local addresses (169.254.x) in production. This is enforced at the `ProxyService` level before executing the fetch.
 
@@ -871,9 +869,9 @@ Additionally, do not forward `Host` (the target URL determines the host).
 
 ## Integration Guide
 
-### Deploying a Cloud Requester Instance
+### Deploying a Cloud Relay Instance
 
-The Cloud Requester is a module within `slaops-cloud`, which is already deployed as an AWS Lambda behind API Gateway. No separate deployment is needed for the default SLAOps-managed instance.
+The Cloud Relay is a module within `slaops-cloud`, which is already deployed as an AWS Lambda behind API Gateway. No separate deployment is needed for the default SLAOps-managed instance.
 
 For self-hosted or customer-VPC instances, deploy `slaops-cloud` as a standalone Lambda:
 
@@ -889,18 +887,18 @@ pnpm --filter @slaops/cloud run build
 2. Click the mode selector (defaults to "Browser")
 3. Select "Manage Connections…"
 4. Click "Add Connection"
-5. Enter a name and the Cloud Requester API Gateway URL
+5. Enter a name and the Cloud Relay API Gateway URL
 6. Save — the connection now appears in the mode selector
 
 No separate credential is required. The portal uses the user's active Cognito session when making requests through the connection.
 
 ### Configuration Options (slaops-cloud module)
 
-| Config Key                             | Default    | Description                                          |
-| -------------------------------------- | ---------- | ---------------------------------------------------- |
-| `cloud-requester.proxy.timeout-ms`     | `30000`    | Default proxy timeout if not specified by caller     |
-| `cloud-requester.proxy.max-body-bytes` | `10485760` | Maximum response body size before truncation (10 MB) |
-| `cloud-requester.proxy.blocked-cidrs`  | RFC 1918   | IP ranges blocked for SSRF prevention                |
+| Config Key                         | Default    | Description                                          |
+| ---------------------------------- | ---------- | ---------------------------------------------------- |
+| `cloud-relay.proxy.timeout-ms`     | `30000`    | Default proxy timeout if not specified by caller     |
+| `cloud-relay.proxy.max-body-bytes` | `10485760` | Maximum response body size before truncation (10 MB) |
+| `cloud-relay.proxy.blocked-cidrs`  | RFC 1918   | IP ranges blocked for SSRF prevention                |
 
 All values defined in `packages/slaops-config/src/config.ts` following the no-magic-numbers convention.
 
@@ -937,7 +935,7 @@ None. All configuration is derived from existing environment or the `@slaops/con
 ### Portal Tests
 
 1. **Mode selector renders connections** — Mock the connection list API, verify connections appear in the dropdown.
-2. **Cloud request path invoked** — When cloud mode is active, verify `CloudRequesterApi.proxy()` is called instead of `fetch()`.
+2. **Cloud request path invoked** — When cloud mode is active, verify `CloudRelayApi.proxy()` is called instead of `fetch()`.
 3. **Browser fallback** — If cloud request fails with a network error, a toast is shown and the mode is offered to be switched back to browser.
 4. **Connection manager CRUD** — Create, list, delete via the UI.
 
@@ -949,28 +947,28 @@ None. All configuration is derived from existing environment or the `@slaops/con
 
 ## Infrastructure Ownership
 
-The Cloud Requester spans two packages whose responsibilities must stay clearly separated:
+The Cloud Relay spans two packages whose responsibilities must stay clearly separated:
 
 | Concern                                              | Package                   | Mechanism                                      | Rationale                                                                                                        |
 | ---------------------------------------------------- | ------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| API Gateway REST API (Cloud Requester routes)        | `packages/slaops-infra`   | AWS CDK (`CloudRequesterApiStack`)             | Long-lived infrastructure; shared entry point for all Cloud Requester traffic                                    |
+| API Gateway REST API (Cloud Relay routes)            | `packages/slaops-infra`   | AWS CDK (`CloudRelayApiStack`)                 | Long-lived infrastructure; shared entry point for all Cloud Relay traffic                                        |
 | Cognito User Pool                                    | `packages/slaops-infra`   | AWS CDK (`userpool.ts` — existing or extended) | Already provisioned; referenced by the authorizer                                                                |
-| Usage Plans + API Keys                               | `packages/slaops-infra`   | AWS CDK (within `CloudRequesterApiStack`)      | Tied to API Gateway lifecycle; managed alongside the gateway                                                     |
+| Usage Plans + API Keys                               | `packages/slaops-infra`   | AWS CDK (within `CloudRelayApiStack`)          | Tied to API Gateway lifecycle; managed alongside the gateway                                                     |
 | **Custom Lambda Authorizer** (function + CDK wiring) | `packages/slaops-infra`   | AWS CDK Lambda construct                       | **Infrastructure** — shared across the entire environment; must not be gated behind a feature deploy             |
-| **Cloud Requester Lambda** (function definition)     | `packages/slaops-backend` | Amplify `defineFunction`                       | **Application** — independently deployable as a feature; follows the same pattern as the existing `api` function |
+| **Cloud Relay Lambda** (function definition)         | `packages/slaops-backend` | Amplify `defineFunction`                       | **Application** — independently deployable as a feature; follows the same pattern as the existing `api` function |
 
 ### Why the authorizer lives in infra, not backend
 
-The Lambda authorizer is **environment-wide shared infrastructure**. Every request to any Cloud Requester endpoint passes through it. Deploying it via Amplify would tie its availability to the app deployment cycle, creating a risk of the gateway becoming unauthenticated during a failed or in-progress feature deploy. By wiring it in CDK (`slaops-infra`) it is deployed once, independently of application code, and remains stable while features come and go.
+The Lambda authorizer is **environment-wide shared infrastructure**. Every request to any Cloud Relay endpoint passes through it. Deploying it via Amplify would tie its availability to the app deployment cycle, creating a risk of the gateway becoming unauthenticated during a failed or in-progress feature deploy. By wiring it in CDK (`slaops-infra`) it is deployed once, independently of application code, and remains stable while features come and go.
 
-The Cloud Requester Lambda, by contrast, contains application logic that evolves with features (new proxy behaviours, HAR handling, etc.) and benefits from Amplify's feature-branch deploy model.
+The Cloud Relay Lambda, by contrast, contains application logic that evolves with features (new proxy behaviours, HAR handling, etc.) and benefits from Amplify's feature-branch deploy model.
 
 ### Infrastructure diagram
 
 ```mermaid
 graph TB
     subgraph "packages/slaops-infra (CDK)"
-        APIGW[API Gateway\nCloudRequesterApiStack]
+        APIGW[API Gateway\nCloudRelayApiStack]
         UsagePlan[Usage Plans\n+ API Keys]
         AuthLambdaInfra[Lambda Authorizer\nCDK Lambda construct]
         CognitoPool[Cognito User Pool\nuserpool.ts]
@@ -980,11 +978,11 @@ graph TB
     end
 
     subgraph "packages/slaops-backend (Amplify)"
-        CloudFn[Cloud Requester\ndefineFunction]
+        CloudFn[Cloud Relay\ndefineFunction]
     end
 
     subgraph "apps/slaops-cloud (NestJS)"
-        CloudModule[cloud-requester module\napp logic + HAR proxy]
+        CloudModule[cloud-relay module\napp logic + HAR proxy]
         AuthorizerCode[authorizer/\nfunction code]
     end
 
@@ -999,23 +997,23 @@ The authorizer function **code** lives in `apps/slaops-cloud/src/authorizer.ts` 
 
 ### slaops-cloud (existing package, new module added)
 
-No new package — the `cloud-requester` module is added to the existing `apps/slaops-cloud` NestJS application:
+No new package — the `cloud-relay` module is added to the existing `apps/slaops-cloud` NestJS application:
 
 ```
 apps/slaops-cloud/src/
-└── cloud-requester/
-    ├── cloud-requester.module.ts
-    ├── cloud-requester.controller.ts
+└── cloud-relay/
+    ├── cloud-relay.module.ts
+    ├── cloud-relay.controller.ts
     ├── proxy.service.ts
     ├── entities/
-    │   └── cloud-requester-connection.entity.ts
+    │   └── cloud-relay-connection.entity.ts
     └── dto/
         ├── har-name-value.dto.ts
         ├── har-post-data.dto.ts
         ├── har-request.dto.ts
         ├── cloud-proxy-request.dto.ts       ← wraps HarRequestDto + timeoutMs
         ├── cloud-proxy-response.dto.ts
-        └── create-cloud-requester-connection.dto.ts
+        └── create-cloud-relay-connection.dto.ts
 ```
 
 Register in `app.module.ts`:
@@ -1024,7 +1022,7 @@ Register in `app.module.ts`:
 @Module({
   imports: [
     // ...existing modules
-    CloudRequesterModule,
+    CloudRelayModule,
   ],
 })
 export class AppModule {}
@@ -1035,10 +1033,10 @@ export class AppModule {}
 ```
 apps/slaops-portal/src/
 ├── components/api-tester/
-│   ├── CloudRequesterModeSelector.tsx
-│   └── CloudRequesterConnectionManager.tsx
+│   ├── CloudRelayModeSelector.tsx
+│   └── CloudRelayConnectionManager.tsx
 └── hooks/
-    └── use-cloud-requester.ts
+    └── use-cloud-relay.ts
 ```
 
 The Portal client for the new endpoints is auto-generated from the OpenAPI spec at build time — no manual client code needed.
@@ -1048,25 +1046,25 @@ The Portal client for the new endpoints is auto-generated from the OpenAPI spec 
 A TypeORM migration is required to create the `cloud_requester_connection` table. Generate after adding the entity:
 
 ```bash
-pnpm --filter @slaops/cloud run migration:generate -- src/migrations/CreateCloudRequesterConnection
+pnpm --filter @slaops/cloud run migration:generate -- src/migrations/CreateCloudRelayConnection
 ```
 
 ### slaops-infra (CDK — new stack + authorizer function)
 
-A new CDK stack is added to `packages/slaops-infra` for Cloud Requester infrastructure. It follows the same pattern as the existing `ApiStack` (which imports the main API Lambda ARN from Amplify and wires it to API Gateway).
+A new CDK stack is added to `packages/slaops-infra` for Cloud Relay infrastructure. It follows the same pattern as the existing `ApiStack` (which imports the main API Lambda ARN from Amplify and wires it to API Gateway).
 
 ```
 packages/slaops-infra/lib/stack/
-└── cloud-requester.ts          ← new CloudRequesterStack
+└── cloud-relay.ts          ← new CloudRelayStack
 ```
 
 The stack provisions:
 
 ```typescript
-// packages/slaops-infra/lib/stack/cloud-requester.ts (sketch)
+// packages/slaops-infra/lib/stack/cloud-relay.ts (sketch)
 
-export class CloudRequesterStack extends Stack {
-  constructor(scope: Construct, id: string, props: CloudRequesterStackProps) {
+export class CloudRelayStack extends Stack {
+  constructor(scope: Construct, id: string, props: CloudRelayStackProps) {
     super(scope, id, props)
 
     // 1. Reference existing Cognito User Pool (exported from AuthStack / userpool.ts)
@@ -1074,7 +1072,7 @@ export class CloudRequesterStack extends Stack {
 
     // 2. Lambda authorizer function
     //    Code lives in slaops-cloud/src/authorizer.ts — same repo, deployed here by CDK
-    const authorizerFn = new NodejsFunction(this, 'CloudRequesterAuthorizer', {
+    const authorizerFn = new NodejsFunction(this, 'CloudRelayAuthorizer', {
       entry: '<slaops-cloud>/src/authorizer.ts',
       environment: {
         USER_POOL_ID: userPool.userPoolId,
@@ -1084,8 +1082,8 @@ export class CloudRequesterStack extends Stack {
     })
 
     // 3. API Gateway REST API
-    const api = new RestApi(this, 'CloudRequesterApi', {
-      restApiName: 'SLAOps Cloud Requester',
+    const api = new RestApi(this, 'CloudRelayApi', {
+      restApiName: 'SLAOps Cloud Relay',
       defaultMethodOptions: {
         apiKeyRequired: true, // usage plan enforcement
       },
@@ -1103,24 +1101,20 @@ export class CloudRequesterStack extends Stack {
       quota: { limit: 10_000, period: Period.DAY },
     })
 
-    // 6. Cloud Requester Lambda (ARN imported from Amplify slaops-backend output)
-    const cloudRequesterFn = Function.fromFunctionArn(
-      this,
-      'CloudRequesterFn',
-      props.cloudRequesterFunctionArn,
-    )
+    // 6. Cloud Relay Lambda (ARN imported from Amplify slaops-backend output)
+    const CloudRelayFn = Function.fromFunctionArn(this, 'CloudRelayFn', props.CloudRelayFunctionArn)
 
     // 7. Wire proxy route
-    const proxy = api.root.addResource('cloud-requester')
+    const proxy = api.root.addResource('cloud-relay')
     proxy.addProxy({
-      defaultIntegration: new LambdaIntegration(cloudRequesterFn),
+      defaultIntegration: new LambdaIntegration(CloudRelayFn),
       defaultMethodOptions: { authorizer },
     })
 
     // 8. CloudFormation exports for the portal connection URL
-    new CfnOutput(this, 'CloudRequesterApiUrl', {
+    new CfnOutput(this, 'CloudRelayApiUrl', {
       value: api.url,
-      exportName: 'SlaOpsCloudRequesterApiUrl',
+      exportName: 'SlaOpsCloudRelayApiUrl',
     })
   }
 }
@@ -1133,23 +1127,23 @@ CDK commands (from monorepo root):
 ```bash
 pnpm infra:synth       # verify CloudFormation template
 pnpm infra:diff        # preview changes
-pnpm infra:deploy      # deploy CloudRequesterStack
+pnpm infra:deploy      # deploy CloudRelayStack
 ```
 
-### slaops-backend (Amplify — Cloud Requester Lambda function)
+### slaops-backend (Amplify — Cloud Relay Lambda function)
 
-A new `defineFunction` entry is added in `packages/slaops-backend/amplify/functions/` for the Cloud Requester Lambda. This follows the exact same pattern as the existing `api` function:
+A new `defineFunction` entry is added in `packages/slaops-backend/amplify/functions/` for the Cloud Relay Lambda. This follows the exact same pattern as the existing `api` function:
 
 ```
 packages/slaops-backend/amplify/functions/
 ├── api/
 │   └── resource.ts          ← existing main API Lambda
-└── cloud-requester/
-    └── resource.ts          ← new Cloud Requester Lambda
+└── cloud-relay/
+    └── resource.ts          ← new Cloud Relay Lambda
 ```
 
 ```typescript
-// packages/slaops-backend/amplify/functions/cloud-requester/resource.ts
+// packages/slaops-backend/amplify/functions/cloud-relay/resource.ts
 
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -1159,11 +1153,11 @@ import { config } from '@slaops/config'
 const require = createRequire(import.meta.url)
 const slaopsCloudRoot = path.dirname(require.resolve('@slaops/cloud/package.json'))
 
-export const cloudRequester = defineFunction({
-  name: config['app.cloud-requester.name'],
+export const CloudRelay = defineFunction({
+  name: config['app.cloud-relay.name'],
   entry: path.join(slaopsCloudRoot, 'src', 'lambda.ts'), // same Lambda entry; NestJS routes to the module
-  timeoutSeconds: config['aws.lambda.cloud-requester.timeout.seconds'],
-  memoryMB: config['aws.lambda.cloud-requester.memory'],
+  timeoutSeconds: config['aws.lambda.cloud-relay.timeout.seconds'],
+  memoryMB: config['aws.lambda.cloud-relay.memory'],
   runtime: config['node.version'] as 18 | 20 | 22,
   environment: {
     NODE_ENV: config['node.env'] as string,
@@ -1176,22 +1170,22 @@ export const cloudRequester = defineFunction({
 })
 ```
 
-The Amplify deploy outputs the Lambda ARN as a CloudFormation export. `CloudRequesterStack` in `slaops-infra` imports that ARN (the same mechanism used by the existing `ApiStack` for the main API Lambda).
+The Amplify deploy outputs the Lambda ARN as a CloudFormation export. `CloudRelayStack` in `slaops-infra` imports that ARN (the same mechanism used by the existing `ApiStack` for the main API Lambda).
 
 ## Documentation Requirements
 
-- [ ] Update `apps/slaops-docs/docs/components.md` to include Cloud Requester
-- [ ] Add `apps/slaops-docs/docs/cloud-requester.md` with user guide (how to add a connection, use cases)
+- [ ] Update `apps/slaops-docs/docs/components.md` to include Cloud Relay
+- [ ] Add `apps/slaops-docs/docs/cloud-relay.md` with user guide (how to add a connection, use cases)
 - [ ] Add security note about credential handling to the user guide
 - [ ] Update `apps/slaops-cloud/CLAUDE.md` with the new module and `src/authorizer.ts` entry point
-- [ ] Update `packages/slaops-infra/README.md` with `CloudRequesterStack` (resources, outputs, deploy order)
-- [ ] Update `packages/slaops-backend/README.md` with the `cloud-requester` function and its dependency on the infra stack ARN export
+- [ ] Update `packages/slaops-infra/README.md` with `CloudRelayStack` (resources, outputs, deploy order)
+- [ ] Update `packages/slaops-backend/README.md` with the `cloud-relay` function and its dependency on the infra stack ARN export
 
 ## Rollout Plan
 
 ### Phase 1: App Logic (Iteration 1a)
 
-- [ ] Add `cloud-requester` NestJS module to `slaops-cloud` (controller, ProxyService, connection CRUD, DTOs, entity)
+- [ ] Add `cloud-relay` NestJS module to `slaops-cloud` (controller, ProxyService, connection CRUD, DTOs, entity)
 - [ ] Write Lambda authorizer function at `apps/slaops-cloud/src/authorizer.ts` (JWT validation + API key lookup)
 - [ ] Implement `ProxyService` with SSRF protection, timeout, and HAR request handling
 - [ ] Write unit and integration tests for the proxy module
@@ -1199,26 +1193,26 @@ The Amplify deploy outputs the Lambda ARN as a CloudFormation export. `CloudRequ
 
 ### Phase 2: Infrastructure (Iteration 1b)
 
-- [ ] Add `CloudRequesterStack` to `packages/slaops-infra` (API Gateway, usage plans, token authorizer wired to authorizer Lambda)
-- [ ] Add `cloud-requester` function definition to `packages/slaops-backend/amplify/functions/`
-- [ ] Deploy backend via Amplify to obtain Cloud Requester Lambda ARN
-- [ ] Deploy `CloudRequesterStack` via CDK — imports Lambda ARN from Amplify output
-- [ ] Verify end-to-end: portal JWT → API Gateway → authorizer → Cloud Requester Lambda → external API
+- [ ] Add `CloudRelayStack` to `packages/slaops-infra` (API Gateway, usage plans, token authorizer wired to authorizer Lambda)
+- [ ] Add `cloud-relay` function definition to `packages/slaops-backend/amplify/functions/`
+- [ ] Deploy backend via Amplify to obtain Cloud Relay Lambda ARN
+- [ ] Deploy `CloudRelayStack` via CDK — imports Lambda ARN from Amplify output
+- [ ] Verify end-to-end: portal JWT → API Gateway → authorizer → Cloud Relay Lambda → external API
 
 ### Phase 3: Portal UI (Iteration 1c)
 
-- [ ] Add `CloudRequesterModeSelector` to API Tester
-- [ ] Add `CloudRequesterConnectionManager` dialog
-- [ ] Implement `useCloudRequester` hook
+- [ ] Add `CloudRelayModeSelector` to API Tester
+- [ ] Add `CloudRelayConnectionManager` dialog
+- [ ] Implement `useCloudRelay` hook
 - [ ] Wire mode-aware send logic in `ApiTester.tsx`
 - [ ] Test CORS bypass end-to-end against a CORS-restricted API
 
 ### Phase 4: Hardening (Iteration 2, future)
 
 - [ ] Secrets Manager integration for any sensitive Lambda env vars
-- [ ] Support for multiple simultaneous cloud requester regions
-- [ ] Request history tied to cloud requester source
-- [ ] Package Cloud Requester + authorizer + CDK stack for customer self-hosting
+- [ ] Support for multiple simultaneous Cloud Relay regions
+- [ ] Request history tied to Cloud Relay source
+- [ ] Package Cloud Relay + authorizer + CDK stack for customer self-hosting
 
 ## Open Questions
 
@@ -1256,9 +1250,9 @@ Deploy the proxy as a standalone Lambda separate from `slaops-cloud`.
 
 **Why not chosen for iteration 1:** Adding a module to the existing `slaops-cloud` NestJS app is the lowest-friction path. The Lambda packaging already handles scale-to-zero and per-region deployment.
 
-**Planned extraction:** The `cloud-requester` module is intentionally isolated within `slaops-cloud` (own module, own controller, no cross-module dependencies) so it can be pulled out into a standalone deployable service in a future iteration. When that happens:
+**Planned extraction:** The `cloud-relay` module is intentionally isolated within `slaops-cloud` (own module, own controller, no cross-module dependencies) so it can be pulled out into a standalone deployable service in a future iteration. When that happens:
 
-- The module becomes its own package (e.g. `packages/slaops-cloud-requester/`)
+- The module becomes its own package (e.g. `packages/slaops-cloud-relay/`)
 - It drops the TypeORM dependency (no database needed — connections would be managed portal-side or via environment config)
 - Authentication for self-hosted instances uses the customer's own Cognito User Pool; the portal connection record gains `cognitoUserPoolId`, `cognitoClientId`, and `cognitoRegion` fields so the portal can obtain a token from that pool
 - The custom Lambda authorizer and usage plan infrastructure are packaged alongside the service so customers can deploy the full stack (API Gateway + Authorizer + Lambda) into their own AWS account
