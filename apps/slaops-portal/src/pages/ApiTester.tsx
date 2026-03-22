@@ -17,6 +17,7 @@ import { MaximizableCodeViewer } from '@/components/api-tester/MaximizableCodeVi
 import { MobileExpandableParameter } from '@/components/api-tester/MobileExpandableParameter'
 import { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
 import { OpenAPISelection } from '@/components/api-tester/OpenAPISelection'
+import { RequestPreviewFormats } from '@/components/api-tester/RequestPreviewFormats'
 import {
   BodyType,
   FormDataEntry,
@@ -6290,8 +6291,14 @@ const ApiTester = () => {
                     <>
                       {(() => {
                         const preview = buildRequestPreview()
-                        return (
-                          <div className="space-y-6">
+                        const requestData = {
+                          method,
+                          url: preview.fullUrl,
+                          headers: preview.previewHeaders,
+                          body: preview.bodyContent || undefined,
+                        }
+                        const httpContent = (
+                          <div className="space-y-4">
                             {/* Request Line */}
                             <Collapsible
                               open={!collapsedSections.previewRequestLine}
@@ -6313,8 +6320,8 @@ const ApiTester = () => {
                                 </CollapsibleTrigger>
                               </div>
                               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                                <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                                  <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">
+                                <div className="bg-background rounded-lg p-3 border border-border mt-2">
+                                  <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all">
                                     <span
                                       className={
                                         method === 'GET'
@@ -6361,43 +6368,41 @@ const ApiTester = () => {
                                 </CollapsibleTrigger>
                               </div>
                               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                                <div className="bg-background rounded-lg p-4 border border-border mt-2">
+                                <div className="bg-background rounded-lg p-3 border border-border mt-2 overflow-x-auto">
                                   {Object.keys(preview.previewHeaders).length === 0 ? (
                                     <p className="text-muted-foreground text-sm">No headers</p>
                                   ) : (
-                                    <div className="overflow-x-auto">
-                                      <table className="w-full text-sm">
-                                        <thead>
-                                          <tr className="border-b border-border">
-                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">
-                                              Name
-                                            </th>
-                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">
-                                              Value
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {Object.entries(preview.previewHeaders).map(
-                                            ([key, value], index) => (
-                                              <tr
-                                                key={index}
-                                                className={
-                                                  index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                                                }
-                                              >
-                                                <td className="px-3 py-2 font-mono text-foreground">
-                                                  {key}
-                                                </td>
-                                                <td className="px-3 py-2 font-mono text-muted-foreground break-all">
-                                                  {value}
-                                                </td>
-                                              </tr>
-                                            ),
-                                          )}
-                                        </tbody>
-                                      </table>
-                                    </div>
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="border-b border-border">
+                                          <th className="text-left px-2 py-1 font-medium text-muted-foreground">
+                                            Name
+                                          </th>
+                                          <th className="text-left px-2 py-1 font-medium text-muted-foreground">
+                                            Value
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(preview.previewHeaders).map(
+                                          ([key, value], index) => (
+                                            <tr
+                                              key={index}
+                                              className={
+                                                index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                                              }
+                                            >
+                                              <td className="px-2 py-1 font-mono text-foreground">
+                                                {key}
+                                              </td>
+                                              <td className="px-2 py-1 font-mono text-muted-foreground break-all">
+                                                {value}
+                                              </td>
+                                            </tr>
+                                          ),
+                                        )}
+                                      </tbody>
+                                    </table>
                                   )}
                                 </div>
                               </CollapsibleContent>
@@ -6428,8 +6433,8 @@ const ApiTester = () => {
                                   </CollapsibleTrigger>
                                 </div>
                                 <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                                  <div className="bg-background rounded-lg p-4 border border-border mt-2">
-                                    <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all max-h-[400px] overflow-auto">
+                                  <div className="bg-background rounded-lg p-3 border border-border mt-2">
+                                    <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all max-h-[300px] overflow-auto">
                                       {preview.bodyContent}
                                     </pre>
                                   </div>
@@ -6438,6 +6443,7 @@ const ApiTester = () => {
                             )}
                           </div>
                         )
+                        return <RequestPreviewFormats requestData={requestData} httpContent={httpContent} />
                       })()}
                     </>
                   )}

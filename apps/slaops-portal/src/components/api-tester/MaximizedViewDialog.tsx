@@ -13,7 +13,7 @@ import type { JoiningContext, JoinColumnCandidate } from './joining-utils'
 type ViewMode = 'json' | 'markdown' | 'table'
 
 type JsonStats =
-  | { type: 'array'; count: number; totalKeys: number }
+  | { type: 'array'; count: number; totalKeys: number; depth: number; flattenedCount: number }
   | { type: 'object'; keys: number; totalKeys: number; depth: number }
   | null
 
@@ -203,7 +203,7 @@ export function MaximizedViewDialog({
             typingStartRef={typingStartRef}
             undoDebounceRef={undoDebounceRef}
             jsonContent={jsonContent}
-            inTableView={viewMode === 'table'}
+            
           />
         )}
         <div
