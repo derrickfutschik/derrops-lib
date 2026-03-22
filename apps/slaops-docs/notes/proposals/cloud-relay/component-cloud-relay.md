@@ -248,7 +248,13 @@ export type CloudProxyResponse = {
  */
 export type CloudProxyError = {
   error: string
-  code: 'TIMEOUT' | 'NETWORK_ERROR' | 'INVALID_URL' | 'UNSUPPORTED_METHOD'
+  code:
+    | 'TIMEOUT'
+    | 'NETWORK_ERROR'
+    | 'INVALID_URL'
+    | 'UNSUPPORTED_METHOD'
+    | 'POLICY_DENIED'     // request blocked by the security policy evaluator
+    | 'TEMPLATE_ERROR'    // template expression could not be resolved
   durationMs: number
 }
 ```
@@ -1332,21 +1338,38 @@ FUNCTION proxy(dto: CloudProxyRequest): CloudProxyResponse | CloudProxyError
   IF NOT isValidHttpUrl(har.url):
     RETURN { error: 'Invalid URL', code: 'INVALID_URL' }
 
-  // 3. Merge queryString params into the URL
-  //    (HAR queryString is the authoritative source; the URL itself may also carry them)
+  // 3. Resolve DNS and compute derived host flags (isPrivateNetwork, isLoopback, etc.)
+  resolvedIps = dns.resolve(har.url.host)
+  requestCtx  = buildRequestContext(har, resolvedIps, tenant, user)
+
+  // 4. Evaluate the security policy against the request context
+  //    hardDeny rules are checked first; then named allow/deny rules in order.
+  //    See the Security Policy section for the full DSL and evaluator.
+  policyResult = evaluatePolicy(activePolicy, requestCtx)
+  IF NOT policyResult.allowed:
+    RETURN { error: policyResult.reason, code: 'POLICY_DENIED' }
+  //    policyResult.enforce carries per-request overrides (timeoutMs, maxResponseBodyBytes,
+  //    stripRequestHeaders, allowRequestHeaders, allowResponseHeaders, allowRedirects).
+
+  // 5. Merge queryString params into the URL
   resolvedUrl = mergeQueryString(har.url, har.queryString)
 
-  // 4. Convert HAR headers array to a Headers map and strip hop-by-hop entries
+  // 6. Convert HAR headers array to a Headers map and strip hop-by-hop entries
   rawHeaders = har.headers.reduce((map, h) => map.set(h.name, h.value), new Headers())
 
-  // 5. Merge cookies into the Cookie header
+  // 7. Merge cookies into the Cookie header
   IF har.cookies.length > 0:
     cookieString = har.cookies.map(c => `${c.name}=${c.value}`).join('; ')
     rawHeaders.set('Cookie', cookieString)
 
+  // 8. Strip hop-by-hop headers, then apply policy-enforced header rules
   cleanHeaders = stripHopByHop(rawHeaders)
+  IF policyResult.enforce.stripRequestHeaders:
+    cleanHeaders = applyStripList(cleanHeaders, policyResult.enforce.stripRequestHeaders)
+  IF policyResult.enforce.allowRequestHeaders:
+    cleanHeaders = applyAllowList(cleanHeaders, policyResult.enforce.allowRequestHeaders)
 
-  // 6. Resolve request body from HAR postData
+  // 9. Resolve request body from HAR postData
   body = NONE
   IF har.postData IS PRESENT:
     IF har.postData.text IS PRESENT:
@@ -1358,26 +1381,39 @@ FUNCTION proxy(dto: CloudProxyRequest): CloudProxyResponse | CloudProxyError
       body = encodeFormParams(har.postData.params)   // application/x-www-form-urlencoded
       cleanHeaders.set('Content-Type', har.postData.mimeType)
 
-  // 7. Execute fetch with timeout
+  // 10. Execute fetch — respect policy-enforced timeout and redirect behaviour
+  effectiveTimeout  = policyResult.enforce.timeoutMs    ?? dto.timeoutMs ?? 30_000
+  effectiveRedirect = policyResult.enforce.allowRedirects ?? false ? 'follow' : 'manual'
   startTime = Date.now()
   TRY:
     nativeResponse = await fetch(resolvedUrl, {
       method: har.method,
       headers: cleanHeaders,
       body: body,
-      signal: AbortSignal.timeout(dto.timeoutMs ?? 30_000)
+      redirect: effectiveRedirect,
+      signal: AbortSignal.timeout(effectiveTimeout)
     })
   CATCH TimeoutError:
     RETURN { error: 'Request timed out', code: 'TIMEOUT', durationMs: Date.now() - startTime }
   CATCH NetworkError:
     RETURN { error: err.message, code: 'NETWORK_ERROR', durationMs: Date.now() - startTime }
 
-  // 8. Read response body as text (binary responses returned base64-encoded)
+  // 11. Read response body as text (binary responses returned base64-encoded)
   responseBody = await nativeResponse.text()
   responseHeaders = Object.fromEntries(nativeResponse.headers)
   durationMs = Date.now() - startTime
 
-  // 9. Mask any injected secret values found in the response body or headers
+  // 12. Apply policy-enforced response header allow-list
+  IF policyResult.enforce.allowResponseHeaders:
+    responseHeaders = applyAllowList(responseHeaders, policyResult.enforce.allowResponseHeaders)
+
+  // 13. Enforce max response body size (policy or config, whichever is lower)
+  maxBody = min(policyResult.enforce.maxResponseBodyBytes ?? Infinity, config.maxBodyBytes)
+  IF responseBody.length > maxBody:
+    responseBody = responseBody.slice(0, maxBody)
+    responseHeaders['X-Slaops-Truncated'] = 'true'
+
+  // 14. Mask any injected secret values found in the response body or headers
   { responseBody, responseHeaders, masking } = maskSecrets(responseBody, responseHeaders, injectedSecrets)
   //    maskSecrets: replaces exact occurrences of any secret value with [REDACTED:SECRET_ID]
   //    Only secrets resolved from the secret store are masked (JIT values are not tracked).
@@ -1413,6 +1449,10 @@ Additionally, do not forward `Host` (the target URL determines the host).
 | Target returns binary body            | image, PDF, etc.                           | Return as base64-encoded string in `body`                                  | Display raw in portal            |
 | Request body on GET                   | `postData` set + `method: GET`             | Strip body, log warning                                                    | Request forwarded without body   |
 | Very large response                   | response body > 10 MB                      | Truncate to 10 MB, add `X-Slaops-Truncated: true` header in proxy response | Partial body shown               |
+| Private IP destination                | Hostname resolves to RFC 1918 address      | Hard-deny rule triggers before fetch; `POLICY_DENIED` returned             | 403 Policy Denied                |
+| Metadata endpoint                     | URL is `http://169.254.169.254/*`          | Hard-deny rule triggers; cloud metadata blocked unconditionally            | 403 Policy Denied                |
+| Destination not in tenant allowlist   | Host not in tenant's allowlist             | No allow rule matches in deny-by-default mode; `POLICY_DENIED`             | 403 Policy Denied                |
+| Redirect to private IP                | Target redirects to internal host          | Redirect target re-checked against policy before following                 | 403 Policy Denied                |
 | Self-request (portal → cloud → cloud) | URL resolves back to slaops-cloud          | Blocked by URL validation / allowlist                                      | 400 Bad Request                  |
 | Missing connection URL in portal      | User selects connection with deleted entry | Fallback to browser mode with toast warning                                | Graceful degradation             |
 | Lambda cold start                     | First request after idle                   | Normal — latency included in `durationMs`                                  | Accurate Lambda timing           |
@@ -1438,7 +1478,7 @@ Additionally, do not forward `Host` (the target URL determines the host).
 
 - **Authorization scope**: In iteration 1, any authenticated SLAOps user can call the Cloud Relay. The usage plan throttle provides the primary abuse-prevention layer. Finer-grained restrictions (per-role, per-tenant plan tier) can be introduced by varying the usage plan returned by the authorizer based on Cognito group membership or tenant attributes.
 
-- **SSRF (Server-Side Request Forgery)**: The proxy must not allow requests to private IP ranges (RFC 1918: 10.x, 172.16.x, 192.168.x) or link-local addresses (169.254.x) in production. This is enforced at the `ProxyService` level before executing the fetch.
+- **SSRF (Server-Side Request Forgery)**: Private IP ranges (RFC 1918), loopback, link-local, and cloud metadata endpoints are blocked unconditionally as **hard-deny rules** in the security policy — they cannot be overridden by any allow rule. DNS is resolved before policy evaluation so that a public-looking hostname that resolves to an internal IP is also caught. See the **Security Policy** section for the full hard-deny list, the policy DSL, and the `evaluatePolicy` implementation.
 
 - **Target credentials**: Headers forwarded to the target (e.g. `Authorization`) pass through the Lambda in plaintext. Users should be aware these are visible in Lambda logs. The CloudWatch log group for the Lambda should have restricted access.
 
@@ -1449,6 +1489,405 @@ Additionally, do not forward `Host` (the target URL determines the host).
 - **Minimum secret length**: Secrets shorter than 8 characters are not used for response masking to prevent false positives. A warning is emitted at resolution time. Short secrets should be avoided in production configurations.
 
 - **JIT values are not masked**: Generated values from `{{jit:*}}` expressions (UUIDs, timestamps, random hex) are intentionally not masked in responses, as they are ephemeral and carry no persistent sensitivity.
+
+## Security Policy
+
+The Cloud Relay enforces a **declarative security policy** on every outbound request. The policy is evaluated after template resolution and DNS lookup, before the HTTP fetch is made. It controls:
+
+- which destinations are allowed or denied
+- which HTTP methods and protocols are permitted
+- which request headers are stripped or allowed through
+- which response headers are forwarded to the caller
+- whether redirects are followed
+- per-request rate, size, and timeout limits
+
+The policy layer is structured in three tiers that compose together:
+
+```
+effectivePolicy = platformPolicy ∪ tenantPolicy ∪ userPolicy
+```
+
+**Platform policy** (immutable hard-deny rules, enforced inside `ProxyService` regardless of other rules) → **Tenant policy** (stored per-tenant) → **User policy** (optional narrower restrictions or quotas per user).
+
+---
+
+### Policy DSL
+
+A policy document is a JSON object. Mode `deny-by-default` means a request is rejected unless at least one `allow` rule matches. The `hardDeny` array is checked first and cannot be overridden by any `allow` rule.
+
+```json
+{
+  "version": "2026-03-20",
+  "mode": "deny-by-default",
+  "defaults": {
+    "allowRedirects": false,
+    "maxRedirects": 0,
+    "maxRequestBodyBytes": 262144,
+    "maxResponseBodyBytes": 1048576,
+    "timeoutMs": 15000,
+    "allowedProtocols": ["https"],
+    "allowedPorts": [443]
+  },
+  "hardDeny": [
+    { "host.isIp": true },
+    { "host.isLocalhost": true },
+    { "host.isPrivateNetwork": true },
+    { "host.isLinkLocal": true },
+    { "host.isLoopback": true },
+    { "host.isMulticast": true },
+    { "host.matches": ["*.internal", "*.local"] },
+    { "url.matches": ["http://169.254.169.254/*", "http://metadata.google.internal/*"] }
+  ],
+  "rules": [
+    {
+      "id": "allow-public-api-readonly",
+      "effect": "allow",
+      "when": {
+        "all": [
+          { "user.authenticated": true },
+          { "request.method.in": ["GET", "HEAD"] },
+          { "host.matches": ["api.github.com", "jsonplaceholder.typicode.com", "*.stripe.com"] }
+        ]
+      },
+      "enforce": {
+        "stripRequestHeaders": ["cookie", "x-forwarded-for", "x-real-ip"],
+        "allowRequestHeaders": ["accept", "content-type", "authorization"],
+        "allowResponseHeaders": ["content-type", "content-length", "etag"]
+      }
+    },
+    {
+      "id": "allow-tenant-domains",
+      "effect": "allow",
+      "when": {
+        "all": [
+          { "tenant.id": { "exists": true } },
+          { "host.inTenantAllowlist": true },
+          { "request.method.in": ["GET", "POST", "PUT", "PATCH", "DELETE"] }
+        ]
+      },
+      "enforce": {
+        "allowRedirects": false,
+        "timeoutMs": 20000
+      }
+    }
+  ]
+}
+```
+
+**Minimal production starting point** — start with this and expand per-tenant allowlists as needed:
+
+```json
+{
+  "version": "2026-03-20",
+  "mode": "deny-by-default",
+  "hardDeny": [
+    { "host.isIp": true },
+    { "host.isLocalhost": true },
+    { "host.isPrivateNetwork": true },
+    { "host.isLinkLocal": true },
+    { "url.scheme.in": ["http", "file", "ftp"] }
+  ],
+  "rules": [
+    {
+      "id": "tenant-approved",
+      "effect": "allow",
+      "when": {
+        "all": [{ "user.authenticated": true }, { "host.inTenantAllowlist": true }]
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Request Context Shape
+
+The policy evaluator receives a `RequestContext` built from the parsed request plus DNS-resolved host information. Derived flags (`isPrivateNetwork`, `inTenantAllowlist`, etc.) are computed by `ProxyService` before evaluation — they are never supplied by the caller.
+
+```json
+{
+  "user": {
+    "id": "user-123",
+    "authenticated": true,
+    "roles": ["developer"]
+  },
+  "tenant": {
+    "id": "westpac-sit",
+    "plan": "enterprise",
+    "allowlist": ["api.westpac.com.au", "*.example-partner.com"]
+  },
+  "request": {
+    "method": "POST",
+    "headers": {
+      "accept": "application/json",
+      "content-type": "application/json"
+    },
+    "bodyBytes": 420
+  },
+  "url": {
+    "raw": "https://api.westpac.com.au/payments",
+    "scheme": "https",
+    "host": "api.westpac.com.au",
+    "port": 443,
+    "path": "/payments",
+    "query": {}
+  },
+  "host": {
+    "resolvedIps": ["203.0.113.10"],
+    "isIp": false,
+    "isLocalhost": false,
+    "isPrivateNetwork": false,
+    "isLinkLocal": false,
+    "isLoopback": false,
+    "isMulticast": false,
+    "inTenantAllowlist": true
+  }
+}
+```
+
+---
+
+### TypeScript Types
+
+```typescript
+// app/src/policy/types.ts  (apps/slaops-cloud-relay, cloud-agnostic core)
+
+export type Policy = {
+  version: string
+  mode: 'deny-by-default' | 'allow-by-default'
+  defaults?: Enforcement
+  hardDeny?: Condition[]
+  rules: Rule[]
+}
+
+export type Rule = {
+  id: string
+  effect: 'allow' | 'deny'
+  when: Condition
+  enforce?: Enforcement
+}
+
+export type Enforcement = {
+  allowRedirects?: boolean
+  maxRedirects?: number
+  maxRequestBodyBytes?: number
+  maxResponseBodyBytes?: number
+  timeoutMs?: number
+  allowedProtocols?: string[]
+  allowedPorts?: number[]
+  stripRequestHeaders?: string[]
+  allowRequestHeaders?: string[]
+  allowResponseHeaders?: string[]
+}
+
+export type Condition =
+  | { all: Condition[] }
+  | { any: Condition[] }
+  | { not: Condition }
+  | Record<string, unknown>
+
+export type PolicyResult =
+  | { allowed: true;  ruleId: string; enforce: Enforcement }
+  | { allowed: false; reason: string }
+
+export type RequestContext = Record<string, unknown>
+```
+
+---
+
+### Evaluator
+
+```typescript
+// app/src/policy/evaluator.ts
+
+export function evaluatePolicy(policy: Policy, ctx: RequestContext): PolicyResult {
+  // 1. Hard-deny rules — checked unconditionally, cannot be overridden
+  for (const cond of policy.hardDeny ?? []) {
+    if (matches(cond, ctx)) {
+      return { allowed: false, reason: `Matched hard-deny rule` }
+    }
+  }
+
+  // 2. Named rules — first matching rule wins
+  for (const rule of policy.rules) {
+    if (matches(rule.when, ctx)) {
+      if (rule.effect === 'deny') {
+        return { allowed: false, reason: `Denied by rule ${rule.id}` }
+      }
+      return {
+        allowed: true,
+        ruleId: rule.id,
+        enforce: mergeEnforcement(policy.defaults ?? {}, rule.enforce ?? {}),
+      }
+    }
+  }
+
+  // 3. No rule matched
+  if (policy.mode === 'deny-by-default') {
+    return { allowed: false, reason: 'No allow rule matched (deny-by-default)' }
+  }
+  return { allowed: true, ruleId: 'default', enforce: policy.defaults ?? {} }
+}
+
+function mergeEnforcement(base: Enforcement, override: Enforcement): Enforcement {
+  return { ...base, ...override }
+}
+```
+
+---
+
+### Condition Matching
+
+```typescript
+// app/src/policy/matcher.ts
+
+export function matches(condition: Condition, ctx: RequestContext): boolean {
+  if ('all' in condition) return (condition as any).all.every((c: Condition) => matches(c, ctx))
+  if ('any' in condition) return (condition as any).any.some((c: Condition) => matches(c, ctx))
+  if ('not' in condition) return !matches((condition as any).not, ctx)
+
+  return Object.entries(condition).every(([key, expected]) => {
+    const actual = getPathValue(ctx, normalizeKey(key))
+
+    if (key.endsWith('.in') && Array.isArray(expected))
+      return (expected as unknown[]).includes(actual)
+
+    if (key.endsWith('.lte'))
+      return typeof actual === 'number' && actual <= Number(expected)
+
+    if (key.endsWith('.gte'))
+      return typeof actual === 'number' && actual >= Number(expected)
+
+    if (key.endsWith('.matches') && Array.isArray(expected))
+      return matchPatterns(String(actual ?? ''), expected as string[])
+
+    if (typeof expected === 'object' && expected !== null && 'exists' in expected) {
+      const exists = actual !== undefined && actual !== null
+      return exists === Boolean((expected as any).exists)
+    }
+
+    return actual === expected
+  })
+}
+
+/** Glob-style pattern matching (* matches any sequence of characters, case-insensitive). */
+function matchPatterns(value: string, patterns: string[]): boolean {
+  return patterns.some(pattern => {
+    const regex = new RegExp(
+      '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$',
+      'i',
+    )
+    return regex.test(value)
+  })
+}
+```
+
+**Important**: always match on `host.matches` / `url.scheme` / `url.port` rather than raw URL strings. Fuzzy URL matching (`url.matches: ["*westpac*"]`) is error-prone and easy to bypass.
+
+---
+
+### Operator Reference
+
+| Operator | Example | Description |
+|---|---|---|
+| `all` | `{ "all": [...] }` | All sub-conditions must match |
+| `any` | `{ "any": [...] }` | At least one sub-condition must match |
+| `not` | `{ "not": { ... } }` | Negates a sub-condition |
+| Equality | `{ "request.method": "GET" }` | Exact equality |
+| `.in` | `{ "request.method.in": ["GET","HEAD"] }` | Value is in the given array |
+| `.lte` / `.gte` | `{ "request.bodyBytes.lte": 1048576 }` | Numeric comparison |
+| `.matches` | `{ "host.matches": ["*.stripe.com"] }` | Glob pattern match (case-insensitive, `*` = any) |
+| `{ "exists": true }` | `{ "tenant.id": { "exists": true } }` | Value is present and non-null |
+| Derived flags | `{ "host.isPrivateNetwork": true }` | Computed by `ProxyService` — not user-supplied |
+
+---
+
+### Evaluation Order
+
+The evaluator always applies steps in this order, regardless of rule order in the document:
+
+1. **Normalise** — parse URL, method, headers, body size.
+2. **Resolve DNS** — resolve hostname to IP addresses.
+3. **Compute derived flags** — `host.isPrivateNetwork`, `host.isLoopback`, `host.inTenantAllowlist`, etc.
+4. **Apply `hardDeny`** — if any condition matches, reject immediately. These are immutable platform-level rules.
+5. **Apply `rules`** — first matching rule wins (allow or deny).
+6. **Fallback** — if no rule matched and mode is `deny-by-default`, reject.
+
+---
+
+### Hard SSRF Protections (Immutable Platform Rules)
+
+These rules are always enforced outside the DSL, regardless of what any policy says. They live in `ProxyService` and cannot be disabled by tenant or user policy:
+
+- Block resolved IPs in private ranges (RFC 1918: `10/8`, `172.16/12`, `192.168/16`)
+- Block loopback (`127.0.0.0/8`, `::1`)
+- Block link-local (`169.254.0.0/16`, `fe80::/10`)
+- Block multicast (`224.0.0.0/4`)
+- Block literal IP destinations (no `http://1.2.3.4/`) unless the tenant policy explicitly includes an `allowLiteralIp: true` flag (enterprise VPC mode only)
+- Block `localhost` and `.local` hostnames
+- Block cloud metadata endpoints: `169.254.169.254`, `metadata.google.internal`, `169.254.170.2` (ECS task metadata)
+- Normalise and re-check redirects before following (redirect target must also pass policy)
+- Strip hop-by-hop headers unconditionally
+- Enforce maximum response body size
+- Enforce maximum timeout
+
+Think of these as the **kernel layer** — the policy DSL is the **policy layer** that sits above them.
+
+---
+
+### Tenant Allowlist DSL
+
+Per-tenant allowlists are stored separately and composed into `host.inTenantAllowlist` at evaluation time. This keeps the main policy document generic while allowing per-customer destination control:
+
+```json
+{
+  "tenantId": "westpac-sit",
+  "destinations": [
+    {
+      "name": "westpac-api",
+      "match": ["api.westpac.com.au", "*.westpac.com.au"],
+      "methods": ["GET", "POST"],
+      "protocols": ["https"],
+      "ports": [443]
+    },
+    {
+      "name": "partner-sandbox",
+      "match": ["sandbox.partner.com"],
+      "methods": ["GET", "POST", "PUT"],
+      "protocols": ["https"],
+      "ports": [443]
+    }
+  ]
+}
+```
+
+---
+
+### Policy Audit Log
+
+Every request produces an audit event regardless of the policy outcome:
+
+```json
+{
+  "decision": "allow",
+  "ruleId": "allow-tenant-domains",
+  "tenantId": "westpac-sit",
+  "userId": "user-123",
+  "host": "api.westpac.com.au",
+  "method": "POST",
+  "resolvedIps": ["203.0.113.10"],
+  "durationMs": 142,
+  "enforcement": {
+    "timeoutMs": 20000,
+    "allowRedirects": false
+  }
+}
+```
+
+Denied requests produce the same shape with `"decision": "deny"` and a `"reason"` field. Audit events are emitted via the structured logger and can be forwarded to CloudWatch, OpenSearch, or any log sink.
+
+---
 
 ## Integration Guide
 
@@ -1512,7 +1951,18 @@ For the SLAOps-managed instance embedded in `apps/slaops-cloud`, configuration c
 | Cookies merged into Cookie header | HAR `cookies:[{name:'session',value:'abc'}]`                              | `Cookie: session=abc` sent to target        | Medium   |
 | Timeout                           | Target takes > `timeoutMs`                                                | `{code:'TIMEOUT'}`                          | High     |
 | Network error                     | Unreachable host                                                          | `{code:'NETWORK_ERROR'}`                    | High     |
-| SSRF blocked (private IP)         | HAR `url:'http://192.168.1.1/secret'`                                     | 400 Bad Request                             | High     |
+| SSRF blocked (private IP)         | HAR `url:'http://192.168.1.1/secret'`                                     | 403 `POLICY_DENIED`                         | High     |
+| SSRF blocked (metadata endpoint)  | HAR `url:'http://169.254.169.254/latest'`                                 | 403 `POLICY_DENIED`                         | High     |
+| Policy allow rule matches         | Host in tenant allowlist, method allowed                                   | Request proceeds with merged enforcement    | High     |
+| Policy deny-by-default            | Host not in any allow rule                                                 | 403 `POLICY_DENIED`                         | High     |
+| Policy stripRequestHeaders        | Allow rule has `stripRequestHeaders: ['cookie']`                          | `cookie` header not forwarded to target     | Medium   |
+| Policy allowResponseHeaders       | Allow rule has `allowResponseHeaders: ['content-type']`                   | Only `content-type` returned in response    | Medium   |
+| Policy maxResponseBodyBytes       | Allow rule sets `maxResponseBodyBytes: 65536` for a large response        | Body truncated at 65 536 bytes              | Medium   |
+| evaluatePolicy unit — hard-deny   | Context with `host.isPrivateNetwork: true`                                | Returns `{ allowed: false }`                | High     |
+| evaluatePolicy unit — no match    | deny-by-default policy, no rules match                                    | Returns `{ allowed: false, reason: '...' }` | High     |
+| evaluatePolicy unit — allow       | Context matches a named allow rule                                        | Returns `{ allowed: true, ruleId }`         | High     |
+| matchPatterns — glob              | `*.stripe.com` against `api.stripe.com`                                   | Matches                                     | Medium   |
+| matchPatterns — no match          | `api.github.com` against `api.stripe.com`                                 | Does not match                              | Medium   |
 | postData on GET stripped          | `method:'GET'` + `postData` present                                       | Body absent in forwarded request            | Medium   |
 | Hop-by-hop headers stripped       | HAR `headers:[{name:'Connection',value:'keep-alive'}]`                    | Header not forwarded to target              | Medium   |
 | Large response truncated          | Target returns 15 MB body                                                 | Body truncated at 10 MB, truncation header  | Medium   |

@@ -5,7 +5,7 @@ title: Cloud Relay Security
 
 # Authentication Methods
 
-Customers have varying authentication methods which they need to support given their approved security patterns.
+Customers have varying authentication methods which they need to support given their approved security patterns, between the relay and the SaaS control plane.
 
 ## MTLS
 

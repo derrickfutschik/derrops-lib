@@ -1,3 +1,8 @@
+---
+sidebar_position: 14
+title: Aegis Token Broker Design
+---
+
 # Aegis Token Broker Design
 
 ```
@@ -1180,3 +1185,731 @@ This design gives:
 - clean separation between vendor control plane and customer execution plane
 - a path to rich entitlement-aware catalog UX in the main platform
 - session revocation capability for high-security tenants
+
+---
+
+## 30. Module Structure
+
+Aegis Broker is a standalone **NestJS application** managed as a **git subtree** at `apps-aegis/` in the monorepo — the same workflow used for `apps/slaops-portal/` and `apps/slaops-cloud-relay/`. It is independently deployable into customer environments and may eventually be open-sourced.
+
+The structure mirrors `apps/slaops-cloud-relay/`: a cloud-agnostic `app/` core plus cloud-specific sub-packages for implementations that depend on a particular cloud provider.
+
+```
+apps-aegis/
+├── app/                              # NestJS core — cloud-agnostic, env-var config only
+│   └── src/
+│       ├── identity/
+│       │   ├── identity-provider.ts           # IdentityProvider interface + error types
+│       │   ├── identity-provider-registry.ts  # Registry + factory
+│       │   └── oidc-identity-provider.ts      # Built-in: generic OIDC/OAuth2
+│       ├── policy/
+│       │   ├── policy-store.ts                # PolicyStore interface
+│       │   ├── policy-store-registry.ts
+│       │   ├── in-process-policy-store.ts     # Built-in: JSON rules (file or env-embedded)
+│       │   └── opa-policy-store.ts            # Built-in: Open Policy Agent (HTTP sidecar)
+│       ├── session/
+│       │   ├── session-store.ts               # SessionStore interface (revocation list)
+│       │   ├── session-store-registry.ts
+│       │   └── in-memory-session-store.ts     # Built-in: dev / single-node
+│       ├── signing/
+│       │   ├── signing-key-provider.ts        # SigningKeyProvider interface + JWKS
+│       │   ├── signing-key-provider-registry.ts
+│       │   └── local-signing-key-provider.ts  # Built-in: local RSA keypair (Docker/dev)
+│       ├── entitlements/
+│       │   ├── entitlement-store.ts           # EntitlementStore interface
+│       │   ├── entitlement-store-registry.ts
+│       │   └── static-entitlement-store.ts    # Built-in: config-file / env-embedded JSON
+│       ├── broker/
+│       │   ├── broker.controller.ts           # POST /v1/sessions, DELETE /v1/sessions/:jti
+│       │   └── broker.service.ts              # Session issuance + revocation orchestration
+│       ├── entitlements/
+│       │   └── entitlements.controller.ts     # GET /v1/entitlements
+│       ├── admin/
+│       │   └── admin.controller.ts            # Policy CRUD + POST /v1/admin/policy-decisions/test
+│       ├── health/
+│       │   └── health.controller.ts           # GET /v1/health, GET /v1/capabilities
+│       ├── jwks/
+│       │   └── jwks.controller.ts             # GET /.well-known/jwks.json
+│       ├── broker.module.ts                   # NestJS root module — wires all sub-modules
+│       └── aegis-app.ts                       # createAegisApp() factory
+│
+├── app-aws/                          # AWS-specific implementations
+│   └── src/
+│       ├── session/
+│       │   └── dynamo-session-store.ts        # DynamoDB-backed revocation list
+│       └── signing/
+│           └── kms-signing-key-provider.ts    # AWS KMS asymmetric key (RS256 / ES256)
+│
+├── app-azure/                        # Azure-specific implementations
+│   └── src/
+│       ├── session/
+│       │   └── cosmos-session-store.ts        # Cosmos DB revocation list
+│       └── signing/
+│           └── azure-keyvault-signing-provider.ts
+│
+└── app-cp/                           # GCP-specific implementations
+    └── src/
+        ├── session/
+        │   └── firestore-session-store.ts
+        └── signing/
+            └── gcp-kms-signing-provider.ts
+```
+
+### Design principles
+
+- **Cloud-agnostic core**: `app/` has no AWS/Azure/GCP SDK dependencies. It uses only environment variables and the pluggable interfaces below.
+- **No `@slaops/config` dependency**: all configuration is via environment variables so customers can deploy without the monorepo's shared config module.
+- **Parallel to `apps/slaops-cloud-relay/`**: same directory conventions, same registry/factory pattern, same deployment model.
+
+---
+
+## 31. Pluggable Service Interfaces
+
+Aegis defines five pluggable service interfaces — one for each concern that a customer may want to replace with their own implementation. Every interface follows the same pattern:
+
+1. Interface defined in `app/src/<domain>/`
+2. A typed error class (`XxxError`) with a `code` discriminant
+3. A `XxxRegistry` with a `register(name, factory)` / `create(env)` pair
+4. Built-in implementations self-register in their package entry point
+5. Customers register custom implementations before calling `createAegisApp()`
+
+---
+
+### 31.1 `IdentityProvider`
+
+Validates a user token from the customer's SSO at session start and resolves group membership / claims. Called once per session during `POST /v1/sessions`.
+
+```typescript
+// app/src/identity/identity-provider.ts
+
+export type VerifiedUserContext = {
+  /** Stable unique identifier for the user (e.g. sub claim). */
+  userId: string
+  /** Primary email address. */
+  email: string
+  /** Group or role names resolved from the IdP (used by PolicyStore evaluation). */
+  groups: string[]
+  /** All raw claims from the verified token, for use by custom policy implementations. */
+  claims: Record<string, unknown>
+}
+
+export class IdentityProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'TOKEN_INVALID'      // Signature invalid, malformed, or wrong issuer
+      | 'TOKEN_EXPIRED'      // Token has passed its exp claim
+      | 'USER_NOT_FOUND'     // Token valid but user cannot be resolved
+      | 'PROVIDER_UNAVAILABLE', // IdP JWKS or userinfo endpoint unreachable
+    public readonly provider: string,
+  ) {
+    super(message)
+    this.name = 'IdentityProviderError'
+  }
+}
+
+export interface IdentityProvider {
+  /**
+   * Verify a user token (typically an OIDC ID token or access token) and
+   * return the resolved user context including groups.
+   *
+   * @throws IdentityProviderError on any verification failure.
+   */
+  verifyUserToken(token: string): Promise<VerifiedUserContext>
+
+  /**
+   * Optional: fetch the current group membership for a user independently
+   * of token claims. Useful when group membership changes more frequently
+   * than token issuance (e.g. just-in-time group provisioning).
+   */
+  listGroups?(userId: string): Promise<string[]>
+}
+```
+
+**Built-in implementations:**
+
+| `AEGIS_IDENTITY_PROVIDER` | Package | Description |
+|---|---|---|
+| `oidc` | `app/` | Generic OIDC/OAuth2 — fetches JWKS from `AEGIS_OIDC_ISSUER/.well-known/jwks.json`, verifies signature and audience |
+
+**Customer-extensible**: Okta, Azure AD, PingFederate, custom SAML bridge — implement `IdentityProvider` and register as `'saml'`, `'okta'`, etc.
+
+---
+
+### 31.2 `PolicyStore`
+
+Evaluates whether a verified user context should be granted the requested delegation scopes, and by how much. Also exposes admin APIs for managing rules and testing decisions.
+
+```typescript
+// app/src/policy/policy-store.ts
+
+export type RequestedScope = {
+  apiId: string
+  environment: string
+  relayId: string
+}
+
+export type GrantedScope = RequestedScope & {
+  allowedHosts: string[]
+  allowedMethods: string[]
+  pathPatterns: string[]
+  maxBodyBytes: number
+  sessionTtlSeconds: number
+}
+
+export type PolicyDecision = {
+  grantedScopes: GrantedScope[]
+  /** Scopes from the request that were denied, with the reason. */
+  deniedScopes: Array<{ scope: RequestedScope; reason: string }>
+}
+
+export class PolicyStoreError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'EVALUATION_FAILED' | 'STORE_UNAVAILABLE' | 'RULE_CONFLICT',
+  ) {
+    super(message)
+    this.name = 'PolicyStoreError'
+  }
+}
+
+export interface PolicyStore {
+  /**
+   * Evaluate whether the user may be granted the requested scopes.
+   * Returns granted and denied scopes with reasons.
+   */
+  evaluate(
+    userCtx: VerifiedUserContext,
+    requestedScopes: RequestedScope[],
+  ): Promise<PolicyDecision>
+
+  /** Upsert a policy rule. Used by the admin API. */
+  upsertRule(rule: PolicyRule): Promise<void>
+
+  /** List all policy rules. */
+  listRules(): Promise<PolicyRule[]>
+
+  /**
+   * Dry-run an evaluation against a hypothetical user context.
+   * Used by POST /v1/admin/policy-decisions/test.
+   */
+  testDecision(
+    userCtx: VerifiedUserContext,
+    requestedScopes: RequestedScope[],
+  ): Promise<PolicyDecision>
+}
+```
+
+**Built-in implementations:**
+
+| `AEGIS_POLICY_STORE` | Package | Description |
+|---|---|---|
+| `in-process` | `app/` | JSON rules loaded from `AEGIS_POLICY_FILE` or `AEGIS_POLICY_JSON` env var at startup. Read-only at runtime (restart to reload). |
+| `opa` | `app/` | Delegates evaluation to an Open Policy Agent HTTP sidecar via `AEGIS_OPA_URL`. Rule management APIs pass through to OPA's REST API. Suitable for GitOps-managed policy. |
+
+**Customer-extensible**: database-backed rules, Cedar policy engine, custom enterprise policy service.
+
+---
+
+### 31.3 `SessionStore`
+
+Persists active session JTIs and supports revocation. Aegis issues a `jti` with every session delegation JWT — this store enables `DELETE /v1/sessions/{jti}` and `isRevoked` checks by the Relay.
+
+Short-TTL deployments (≤ 15 min) may use `in-memory` without needing a persistent store.
+
+```typescript
+// app/src/session/session-store.ts
+
+export type SessionMetadata = {
+  tenantId: string
+  userId: string
+  workspaceId: string
+  grantedScopeCount: number
+}
+
+export type SessionRecord = {
+  jti: string
+  expiresAt: Date
+  revokedAt?: Date
+  metadata: SessionMetadata
+}
+
+export class SessionStoreError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'NOT_FOUND' | 'ALREADY_REVOKED' | 'STORE_UNAVAILABLE',
+  ) {
+    super(message)
+    this.name = 'SessionStoreError'
+  }
+}
+
+export interface SessionStore {
+  /** Persist a newly issued session delegation JWT by its JTI. */
+  save(jti: string, expiresAt: Date, metadata: SessionMetadata): Promise<void>
+
+  /**
+   * Mark a session as revoked.
+   * @throws SessionStoreError with code 'NOT_FOUND' if JTI is unknown.
+   * @throws SessionStoreError with code 'ALREADY_REVOKED' if already revoked.
+   */
+  revoke(jti: string): Promise<void>
+
+  /**
+   * Check whether a session has been explicitly revoked.
+   * Returns false for unknown JTIs (expired entries may be purged).
+   */
+  isRevoked(jti: string): Promise<boolean>
+
+  /**
+   * Optional: list active (non-expired, non-revoked) sessions for a tenant.
+   * Used by admin tooling. Implementations that do not support listing
+   * (e.g. in-memory) may return null.
+   */
+  listActive?(tenantId: string): Promise<SessionRecord[] | null>
+}
+```
+
+**Built-in implementations:**
+
+| `AEGIS_SESSION_STORE` | Package | Description |
+|---|---|---|
+| `in-memory` | `app/` | Process-local Map — clears on restart. Suitable for dev and single-instance Docker deployments with short JWT TTLs. |
+| `dynamo` | `app-aws/` | DynamoDB table with TTL — auto-purges expired entries. IAM role auth. |
+| `cosmos` | `app-azure/` | Azure Cosmos DB with TTL. Managed identity auth. |
+| `firestore` | `app-cp/` | GCP Firestore with TTL. Workload Identity auth. |
+
+**Customer-extensible**: Redis (`ioredis`), PostgreSQL, custom enterprise session service.
+
+---
+
+### 31.4 `SigningKeyProvider`
+
+Provides the asymmetric signing key used to mint session delegation JWTs and publishes the corresponding JWKS for the Relay to validate those JWTs locally. This is the most security-critical interface — in production, the private key should never leave the HSM/KMS.
+
+```typescript
+// app/src/signing/signing-key-provider.ts
+
+export type JsonWebKeySet = {
+  keys: JsonWebKey[]
+}
+
+export class SigningKeyProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'KEY_UNAVAILABLE'   // KMS/vault unreachable
+      | 'SIGNING_FAILED'    // Key exists but signing operation failed
+      | 'KEY_NOT_FOUND',    // Key ID not found in provider
+  ) {
+    super(message)
+    this.name = 'SigningKeyProviderError'
+  }
+}
+
+export interface SigningKeyProvider {
+  /**
+   * Sign a JWT payload and return the compact serialised JWT string.
+   * The implementation is responsible for setting `kid`, `alg`, `iat`, and `exp`
+   * in the JOSE header and embedding them consistently with getPublicJwks().
+   *
+   * @throws SigningKeyProviderError on any signing failure.
+   */
+  sign(payload: Record<string, unknown>): Promise<string>
+
+  /**
+   * Return the public JWKS for all active signing keys.
+   * Served at GET /.well-known/jwks.json for the Relay to cache at startup
+   * and re-fetch on key ID miss.
+   */
+  getPublicJwks(): Promise<JsonWebKeySet>
+
+  /**
+   * Optional: trigger a key rotation. Implementations that manage rotation
+   * externally (e.g. KMS automatic rotation schedules) may leave this unimplemented.
+   * When implemented, the new key should appear in getPublicJwks() immediately
+   * and the old key should remain for at least one JWT TTL period.
+   */
+  rotateKeys?(): Promise<void>
+}
+```
+
+**Built-in implementations:**
+
+| `AEGIS_SIGNING_KEY_PROVIDER` | Package | Description |
+|---|---|---|
+| `local` | `app/` | RSA-2048 keypair from `AEGIS_LOCAL_PRIVATE_KEY_PEM` (base64 PEM). For Docker/dev only — key is in process memory. |
+| `kms` | `app-aws/` | AWS KMS asymmetric key (RS256 or ES256). Private key never leaves KMS. Key ID via `AEGIS_KMS_KEY_ID`. |
+| `azure-keyvault` | `app-azure/` | Azure Key Vault key. Managed identity auth. Key ID via `AEGIS_AZURE_KEY_VAULT_KEY_ID`. |
+| `gcp-kms` | `app-cp/` | GCP Cloud KMS asymmetric signing key. Workload Identity auth. |
+
+---
+
+### 31.5 `EntitlementStore`
+
+Stores the group-to-API entitlement mappings that determine which APIs a user may request access to. This feeds both `PolicyStore.evaluate()` (to intersect user groups against allowed scopes) and the `GET /v1/entitlements` endpoint (to surface what a user can access in the portal catalog).
+
+```typescript
+// app/src/entitlements/entitlement-store.ts
+
+export type EntitlementRule = {
+  ruleId: string
+  /** IdP group names this rule applies to. */
+  groups: string[]
+  apiId: string
+  environment: string
+  relayIds: string[]
+  allowedHosts: string[]
+  allowedMethods: string[]
+  pathPatterns: string[]
+  maxBodyBytes: number
+  sessionTtlSeconds: number
+}
+
+export type ApiEntitlement = {
+  apiId: string
+  displayName?: string
+  environments: string[]
+  allowedMethods: string[]
+  pathPatterns: string[]
+  relayIds: string[]
+}
+
+export class EntitlementStoreError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'NOT_FOUND' | 'STORE_UNAVAILABLE' | 'CONFLICT',
+  ) {
+    super(message)
+    this.name = 'EntitlementStoreError'
+  }
+}
+
+export interface EntitlementStore {
+  /**
+   * Return all entitlements for a user, derived by intersecting the user's
+   * groups with stored rules. Used by PolicyStore and the entitlements API.
+   */
+  getEntitlementsForUser(
+    tenantId: string,
+    userCtx: VerifiedUserContext,
+  ): Promise<ApiEntitlement[]>
+
+  /**
+   * Return all raw entitlement rules for a tenant.
+   * Used by the admin API and for displaying the full policy set.
+   */
+  listEntitlements(tenantId: string): Promise<EntitlementRule[]>
+
+  /**
+   * Upsert an entitlement rule. Implementations backed by a read-only source
+   * (e.g. static file) should throw EntitlementStoreError with code 'CONFLICT'.
+   */
+  upsertEntitlement(tenantId: string, rule: EntitlementRule): Promise<void>
+}
+```
+
+**Built-in implementations:**
+
+| `AEGIS_ENTITLEMENT_STORE` | Package | Description |
+|---|---|---|
+| `static` | `app/` | JSON rules loaded from `AEGIS_ENTITLEMENT_FILE` or `AEGIS_ENTITLEMENT_JSON` at startup. Read-only at runtime — restart to reload. Suitable for GitOps-managed entitlements. |
+
+**Customer-extensible**: database-backed (PostgreSQL, DynamoDB), synced from the main SaaS platform API catalog, managed via the optional admin UI.
+
+---
+
+## 32. Registry and Factory Pattern
+
+Every interface uses the same registry/factory pattern — identical in structure to `SecretStoreRegistry` in `apps/slaops-cloud-relay/`.
+
+```typescript
+// app/src/identity/identity-provider-registry.ts (example — pattern is identical for all 5 interfaces)
+
+/** A factory receives the process environment and returns a configured implementation. */
+export type IdentityProviderFactory = (env: NodeJS.ProcessEnv) => IdentityProvider
+
+export class IdentityProviderRegistry {
+  private readonly registry = new Map<string, IdentityProviderFactory>()
+
+  /** Register a named factory. Throws if the name is already registered. */
+  register(name: string, factory: IdentityProviderFactory): void {
+    if (this.registry.has(name)) {
+      throw new Error(`IdentityProvider '${name}' is already registered`)
+    }
+    this.registry.set(name, factory)
+  }
+
+  /**
+   * Instantiate the active implementation from AEGIS_IDENTITY_PROVIDER.
+   * Throws if the name is not registered.
+   */
+  create(env: NodeJS.ProcessEnv): IdentityProvider {
+    const name = env.AEGIS_IDENTITY_PROVIDER
+    if (!name) throw new Error('AEGIS_IDENTITY_PROVIDER is not set')
+    const factory = this.registry.get(name)
+    if (!factory) throw new Error(`No IdentityProvider registered for '${name}'`)
+    return factory(env)
+  }
+}
+
+export const identityProviderRegistry = new IdentityProviderRegistry()
+```
+
+The five singleton registries exported from `app/`:
+
+```typescript
+export { identityProviderRegistry }  // AEGIS_IDENTITY_PROVIDER
+export { policyStoreRegistry }       // AEGIS_POLICY_STORE
+export { sessionStoreRegistry }      // AEGIS_SESSION_STORE
+export { signingKeyProviderRegistry } // AEGIS_SIGNING_KEY_PROVIDER
+export { entitlementStoreRegistry }  // AEGIS_ENTITLEMENT_STORE
+```
+
+Built-in implementations self-register in their package entry points:
+
+```typescript
+// app/src/index.ts — built-in registrations
+identityProviderRegistry.register('oidc', (env) => new OidcIdentityProvider(env))
+policyStoreRegistry.register('in-process', (env) => new InProcessPolicyStore(env))
+policyStoreRegistry.register('opa', (env) => new OpaPolicyStore(env))
+sessionStoreRegistry.register('in-memory', () => new InMemorySessionStore())
+signingKeyProviderRegistry.register('local', (env) => new LocalSigningKeyProvider(env))
+entitlementStoreRegistry.register('static', (env) => new StaticEntitlementStore(env))
+
+// app-aws/src/index.ts
+sessionStoreRegistry.register('dynamo', (env) => new DynamoSessionStore(env))
+signingKeyProviderRegistry.register('kms', (env) => new KmsSigningKeyProvider(env))
+
+// app-azure/src/index.ts
+sessionStoreRegistry.register('cosmos', (env) => new CosmosSessionStore(env))
+signingKeyProviderRegistry.register('azure-keyvault', (env) => new AzureKeyVaultSigningProvider(env))
+
+// app-cp/src/index.ts
+sessionStoreRegistry.register('firestore', (env) => new FirestoreSessionStore(env))
+signingKeyProviderRegistry.register('gcp-kms', (env) => new GcpKmsSigningProvider(env))
+```
+
+---
+
+## 33. Bringing Your Own Implementation
+
+Customers who need a backend not provided out of the box register their implementation before `createAegisApp()`. This applies to all five interfaces.
+
+```typescript
+// customer-aegis/src/main.ts
+
+import {
+  createAegisApp,
+  sessionStoreRegistry,
+  policyStoreRegistry,
+} from '@slaops/aegis'
+
+import { RedisSessionStore } from './redis-session-store'
+import { CyberArkPolicyStore } from './cyberark-policy-store'
+
+// Register custom implementations before bootstrap.
+// AEGIS_SESSION_STORE=redis and AEGIS_POLICY_STORE=cyberark must be set in env.
+sessionStoreRegistry.register('redis', (env) => new RedisSessionStore({
+  url: env.REDIS_URL!,
+  tlsCert: env.REDIS_TLS_CERT,
+}))
+
+policyStoreRegistry.register('cyberark', (env) => new CyberArkPolicyStore({
+  baseUrl: env.CYBERARK_BASE_URL!,
+  appId: env.CYBERARK_APP_ID!,
+}))
+
+const app = await createAegisApp()
+await app.listen(process.env.PORT ?? 3001)
+```
+
+A custom `SessionStore` only needs to implement the interface — no other Aegis internals are required:
+
+```typescript
+// customer-aegis/src/redis-session-store.ts
+
+import { SessionStore, SessionMetadata, SessionRecord, SessionStoreError } from '@slaops/aegis'
+import { createClient } from 'redis'
+
+export class RedisSessionStore implements SessionStore {
+  private client = createClient({ url: this.config.url })
+
+  constructor(private readonly config: { url: string; tlsCert?: string }) {}
+
+  async save(jti: string, expiresAt: Date, metadata: SessionMetadata): Promise<void> {
+    const ttlSeconds = Math.floor((expiresAt.getTime() - Date.now()) / 1000)
+    await this.client.setEx(`session:${jti}`, ttlSeconds, JSON.stringify({ expiresAt, metadata }))
+  }
+
+  async revoke(jti: string): Promise<void> {
+    const existing = await this.client.get(`session:${jti}`)
+    if (!existing) throw new SessionStoreError(`Session ${jti} not found`, 'NOT_FOUND')
+    await this.client.setEx(`revoked:${jti}`, 86400, '1') // keep revocation marker for 24 h
+    await this.client.del(`session:${jti}`)
+  }
+
+  async isRevoked(jti: string): Promise<boolean> {
+    return (await this.client.exists(`revoked:${jti}`)) === 1
+  }
+
+  async listActive(tenantId: string): Promise<SessionRecord[] | null> {
+    return null // not implemented — returns null to indicate unsupported
+  }
+}
+```
+
+---
+
+## 34. NestJS Application Bootstrap
+
+`createAegisApp()` handles module wiring and reads all registries to instantiate the active implementations. It is the single entry point whether running as Docker, Lambda, or any other runtime.
+
+```typescript
+// app/src/aegis-app.ts
+
+import { NestFactory } from '@nestjs/core'
+import { BrokerModule } from './broker.module'
+import {
+  identityProviderRegistry,
+  policyStoreRegistry,
+  sessionStoreRegistry,
+  signingKeyProviderRegistry,
+  entitlementStoreRegistry,
+} from './index'
+
+/**
+ * Bootstrap the Aegis application.
+ *
+ * Call registries' register() methods before this to inject custom implementations.
+ * Uses environment variables exclusively for configuration.
+ */
+export async function createAegisApp() {
+  const env = process.env
+
+  // Instantiate all pluggable services from the registries.
+  // Each create() call reads its AEGIS_* env var to select the right factory.
+  const services = {
+    identityProvider: identityProviderRegistry.create(env),
+    policyStore: policyStoreRegistry.create(env),
+    sessionStore: sessionStoreRegistry.create(env),
+    signingKeyProvider: signingKeyProviderRegistry.create(env),
+    entitlementStore: entitlementStoreRegistry.create(env),
+  }
+
+  const app = await NestFactory.create(
+    BrokerModule.forRoot(services),
+  )
+
+  app.setGlobalPrefix('v1')
+  // ValidationPipe, exception filters, logging middleware wired here
+
+  return app
+}
+```
+
+`BrokerModule.forRoot(services)` uses NestJS dynamic modules to inject all services as providers, keeping the core module testable with mock implementations:
+
+```typescript
+// app/src/broker.module.ts
+
+@Module({})
+export class BrokerModule {
+  static forRoot(services: AegisServices): DynamicModule {
+    return {
+      module: BrokerModule,
+      providers: [
+        { provide: IDENTITY_PROVIDER, useValue: services.identityProvider },
+        { provide: POLICY_STORE, useValue: services.policyStore },
+        { provide: SESSION_STORE, useValue: services.sessionStore },
+        { provide: SIGNING_KEY_PROVIDER, useValue: services.signingKeyProvider },
+        { provide: ENTITLEMENT_STORE, useValue: services.entitlementStore },
+        BrokerService,
+        SessionService,
+      ],
+      controllers: [
+        BrokerController,
+        EntitlementsController,
+        AdminController,
+        HealthController,
+        JwksController,
+      ],
+    }
+  }
+}
+```
+
+---
+
+## 35. JWKS Endpoint
+
+Aegis exposes `GET /.well-known/jwks.json` served by `JwksController` via `SigningKeyProvider.getPublicJwks()`. This is the endpoint the Relay fetches at startup to cache the public key set for local JWT validation — no Aegis round trip per request.
+
+Key rotation behaviour:
+- When `rotateKeys()` is called (manually or on a schedule), the new key ID appears in the JWKS immediately.
+- The old key ID must remain in the JWKS for at least one full JWT TTL period so in-flight sessions remain verifiable.
+- The Relay re-fetches JWKS when it encounters an unknown `kid` in an incoming JWT header, picking up new keys without a restart.
+
+```typescript
+// app/src/jwks/jwks.controller.ts
+
+@Controller()
+export class JwksController {
+  constructor(
+    @Inject(SIGNING_KEY_PROVIDER)
+    private readonly signingKeyProvider: SigningKeyProvider,
+  ) {}
+
+  @Get('.well-known/jwks.json')
+  async getJwks(): Promise<JsonWebKeySet> {
+    return this.signingKeyProvider.getPublicJwks()
+  }
+}
+```
+
+---
+
+## 36. Deployment Model
+
+| Method | Sub-package | Notes |
+|---|---|---|
+| **Docker** | `app/` + chosen `app-*/` | `docker run` with env vars. Use Docker Compose to add Redis/Postgres for session store if needed. |
+| **Lambda (AWS SAM)** | `app-aws/` | Cold start acceptable — Aegis is in the critical path once per session, not per request. |
+| **ECS / Fargate** | `app-aws/` | Preferred for high-availability enterprise AWS deployments. Persistent session store via DynamoDB. |
+| **Kubernetes** | any `app/` | `app/` with optional OPA sidecar pod for policy. Suitable for multi-cloud and on-premises. |
+| **Azure Functions** | `app-azure/` | Cosmos DB session store + Key Vault signing key. |
+| **GCP Cloud Run** | `app-cp/` | Firestore session store + Cloud KMS signing key. |
+
+---
+
+## 37. Environment Variables
+
+All configuration is via environment variables. No `@slaops/config` dependency.
+
+| Variable | Required | Description |
+|---|---|---|
+| `AEGIS_IDENTITY_PROVIDER` | Yes | IdP adapter: `oidc`, or custom registered name |
+| `AEGIS_OIDC_ISSUER` | If `oidc` | OIDC issuer URL — JWKS fetched from `{issuer}/.well-known/jwks.json` |
+| `AEGIS_OIDC_AUDIENCE` | If `oidc` | Expected `aud` claim in the user token |
+| `AEGIS_POLICY_STORE` | Yes | Policy backend: `in-process`, `opa`, or custom |
+| `AEGIS_POLICY_FILE` | If `in-process` | Absolute path to JSON policy rules file |
+| `AEGIS_POLICY_JSON` | If `in-process` | Inline JSON policy rules (alternative to file — useful in Lambda) |
+| `AEGIS_OPA_URL` | If `opa` | Base URL of the OPA HTTP API (e.g. `http://localhost:8181`) |
+| `AEGIS_SESSION_STORE` | Yes | Session backend: `in-memory`, `dynamo`, `cosmos`, `firestore`, or custom |
+| `AEGIS_DYNAMO_TABLE` | If `dynamo` | DynamoDB table name for session records |
+| `AEGIS_SIGNING_KEY_PROVIDER` | Yes | Signing backend: `local`, `kms`, `azure-keyvault`, `gcp-kms` |
+| `AEGIS_LOCAL_PRIVATE_KEY_PEM` | If `local` | RSA private key as base64-encoded PEM. Dev/Docker only. |
+| `AEGIS_KMS_KEY_ID` | If `kms` | AWS KMS key ID or ARN for the asymmetric signing key |
+| `AEGIS_ENTITLEMENT_STORE` | Yes | Entitlement backend: `static`, or custom |
+| `AEGIS_ENTITLEMENT_FILE` | If `static` | Absolute path to JSON entitlement rules file |
+| `AEGIS_ENTITLEMENT_JSON` | If `static` | Inline JSON entitlement rules (alternative to file) |
+| `AEGIS_JWT_ISSUER` | Yes | `iss` claim written into every session delegation JWT |
+| `AEGIS_JWT_AUDIENCE` | Yes | `aud` claim — typically the SaaS control plane identifier |
+| `AEGIS_JWT_TTL_SECONDS` | No | Session delegation JWT lifetime. Default: `1800` (30 min) |
+| `AEGIS_LOG_LEVEL` | No | `debug`, `info`, `warn`, `error`. Default: `info` |
+| `PORT` | No | HTTP port. Default: `3001` |
+
+---
+
+**Last Updated**: 2026-03-22
+**Status**: Draft — updated with module structure, pluggable service interfaces, registry/factory pattern, deployment model, and NestJS bootstrap details

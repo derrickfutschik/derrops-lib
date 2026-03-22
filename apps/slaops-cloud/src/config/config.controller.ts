@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common'
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { config } from '@slaops/config'
 
@@ -33,8 +33,15 @@ export class ConfigController {
 
   @Get()
   @ApiOperation({ summary: 'Get the config' })
-  @ApiResponse({ status: 200, description: 'The config' })
-  getConfig() {
+  @ApiOkResponse({
+    description: 'Masked config key-value pairs (sensitive values redacted)',
+    schema: {
+      type: 'object',
+      additionalProperties: { type: 'string' },
+      example: { 'app.name': 'SLAOps', 'aws.region': 'ap-southeast-2', 'db.host': '********' },
+    },
+  })
+  getConfig(): Record<string, string | undefined> {
     return maskConfig(config)
   }
 }
