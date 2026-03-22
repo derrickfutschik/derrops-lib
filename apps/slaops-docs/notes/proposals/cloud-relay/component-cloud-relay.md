@@ -68,8 +68,14 @@ apps/slaops-cloud-relay/
 ├── app/         # NestJS core — cloud-agnostic (env-vars config, no @slaops/config)
 ├── app-aws/     # AWS implementation (Secrets Manager, Lambda/SAM packaging)
 ├── app-azure/   # Azure implementation (Key Vault, Azure Functions)
-└── app-cp/      # GCP implementation (Secret Manager, Cloud Run/Functions)
+├── app-cp/      # GCP implementation (Secret Manager, Cloud Run/Functions)
+└── infra/       # Self-contained deployment infrastructure (no dependency on packages/slaops-infra)
+    ├── aws/     # CDK stack — API Gateway, Lambda authorizer, usage plans, SAM template
+    ├── azure/   # Azure Bicep / ARM — API Management, Azure Functions
+    └── gcp/     # GCP Deployment Manager / Terraform — Cloud Endpoints, Cloud Run
 ```
+
+The `infra/` directory at the root of `apps/slaops-cloud-relay` is the **only** infrastructure customers need to self-host the Relay. It has no dependency on `packages/slaops-infra`, which is private to the SLAOps platform and is not distributed. Customers clone the relay repository, configure environment variables, and run `cd infra/aws && cdk deploy` (or equivalent for their cloud) — no access to any SLAOps private package is required.
 
 ### Relationship to Existing Components
 
@@ -2001,7 +2007,9 @@ For the SLAOps-managed instance embedded in `apps/slaops-cloud`, configuration c
 
 ## Infrastructure Ownership
 
-The Cloud Relay spans two packages whose responsibilities must stay clearly separated:
+The Cloud Relay has two distinct deployment models with separate infrastructure ownership. The split is important because `packages/slaops-infra` is **private to the SLAOps platform** and is never distributed to customers.
+
+### Iteration 1 — SLAOps-managed deployment (platform internal)
 
 | Concern                                              | Package                   | Mechanism                                      | Rationale                                                                                                        |
 | ---------------------------------------------------- | ------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -2011,17 +2019,19 @@ The Cloud Relay spans two packages whose responsibilities must stay clearly sepa
 | **Custom Lambda Authorizer** (function + CDK wiring) | `packages/slaops-infra`   | AWS CDK Lambda construct                       | **Infrastructure** — shared across the entire environment; must not be gated behind a feature deploy             |
 | **Cloud Relay Lambda** (function definition)         | `packages/slaops-backend` | Amplify `defineFunction`                       | **Application** — independently deployable as a feature; follows the same pattern as the existing `api` function |
 
-### Why the authorizer lives in infra, not backend
+`packages/slaops-infra` is used **only** for the SLAOps platform-managed deployment (Iteration 1). It is a private package and is not part of the customer-facing relay distribution.
+
+#### Why the authorizer lives in infra, not backend
 
 The Lambda authorizer is **environment-wide shared infrastructure**. Every request to any Cloud Relay endpoint passes through it. Deploying it via Amplify would tie its availability to the app deployment cycle, creating a risk of the gateway becoming unauthenticated during a failed or in-progress feature deploy. By wiring it in CDK (`slaops-infra`) it is deployed once, independently of application code, and remains stable while features come and go.
 
 The Cloud Relay Lambda, by contrast, contains application logic that evolves with features (new proxy behaviours, HAR handling, etc.) and benefits from Amplify's feature-branch deploy model.
 
-### Infrastructure diagram
+#### Infrastructure diagram (Iteration 1 — platform-managed)
 
 ```mermaid
 graph TB
-    subgraph "packages/slaops-infra (CDK)"
+    subgraph "packages/slaops-infra (CDK) — platform private"
         APIGW[API Gateway\nCloudRelayApiStack]
         UsagePlan[Usage Plans\n+ API Keys]
         AuthLambdaInfra[Lambda Authorizer\nCDK Lambda construct]
@@ -2031,7 +2041,7 @@ graph TB
         AuthLambdaInfra -.->|validates against| CognitoPool
     end
 
-    subgraph "packages/slaops-backend (Amplify)"
+    subgraph "packages/slaops-backend (Amplify) — platform private"
         CloudFn[Cloud Relay\ndefineFunction]
     end
 
@@ -2046,6 +2056,55 @@ graph TB
 ```
 
 The authorizer function **code** lives in `apps/slaops-cloud/src/authorizer.ts` (co-located with the rest of the cloud app), but it is **wired into API Gateway by CDK in `slaops-infra`**, not by Amplify. This mirrors the existing pattern where the main API Lambda is defined in `slaops-backend` but its ARN is imported into `ApiStack` via a CloudFormation export.
+
+### Iteration 2 — Self-hosted deployment (customer-facing, self-contained)
+
+Customers deploying their own Relay use only `apps/slaops-cloud-relay`. The `infra/` directory at the root of that package is **fully self-contained** — it has no dependency on `packages/slaops-infra` or any other private SLAOps package.
+
+| Concern                                | Package / Path                          | Mechanism                                              |
+| -------------------------------------- | --------------------------------------- | ------------------------------------------------------ |
+| API Gateway + Lambda authorizer        | `apps/slaops-cloud-relay/infra/aws/`    | AWS CDK stack (`RelayStack`) — standalone, no imports from slaops-infra |
+| Usage plans + API keys (AWS)           | `apps/slaops-cloud-relay/infra/aws/`    | CDK within `RelayStack`                                |
+| Azure API Management + Functions       | `apps/slaops-cloud-relay/infra/azure/`  | Bicep / ARM template                                   |
+| GCP Cloud Endpoints + Cloud Run        | `apps/slaops-cloud-relay/infra/gcp/`    | Deployment Manager / Terraform                         |
+| Docker (cloud-agnostic)                | `apps/slaops-cloud-relay/` (root)       | `Dockerfile` + `docker-compose.yml`                    |
+
+Customers configure via environment variables only — no `@slaops/config` or any SLAOps private package is required. A customer self-hosting on AWS runs:
+
+```bash
+cd apps/slaops-cloud-relay/infra/aws
+cdk deploy
+```
+
+No SLAOps private packages, no `packages/slaops-infra`, no Amplify dependency.
+
+#### Infrastructure diagram (Iteration 2 — self-hosted)
+
+```mermaid
+graph TB
+    subgraph "apps/slaops-cloud-relay (customer repo)"
+        subgraph "infra/aws/ (self-contained CDK)"
+            APIGW2[API Gateway\nRelayStack]
+            UsagePlan2[Usage Plans\n+ API Keys]
+            AuthLambda2[Lambda Authorizer\nCDK Lambda construct]
+            APIGW2 --> UsagePlan2
+            APIGW2 --> AuthLambda2
+        end
+
+        subgraph "app/ (NestJS core)"
+            RelayCore[Relay Module\nHAR proxy + secret resolution]
+            AuthCode[authorizer/\nJWT validation]
+        end
+
+        subgraph "app-aws/ (AWS impl)"
+            SecretsStore[AWS Secrets Manager\nSecretStore impl]
+        end
+    end
+
+    AuthLambda2 -->|entry: app/src/authorizer.ts| AuthCode
+    APIGW2 -->|Lambda proxy integration| RelayCore
+    RelayCore --> SecretsStore
+```
 
 ## Build Configuration
 
@@ -2103,13 +2162,15 @@ A TypeORM migration is required to create the `cloud_requester_connection` table
 pnpm --filter @slaops/cloud run migration:generate -- src/migrations/CreateCloudRelayConnection
 ```
 
-### slaops-infra (CDK — new stack + authorizer function)
+### slaops-infra (CDK — Iteration 1, platform-managed only)
 
-A new CDK stack is added to `packages/slaops-infra` for Cloud Relay infrastructure. It follows the same pattern as the existing `ApiStack` (which imports the main API Lambda ARN from Amplify and wires it to API Gateway).
+> **Note**: This section covers the SLAOps platform-managed deployment (Iteration 1). `packages/slaops-infra` is a **private** package — it is never distributed to customers. For the self-hosted deployment (Iteration 2), see the `apps/slaops-cloud-relay/infra/` section below.
+
+A new CDK stack is added to `packages/slaops-infra` for the platform-managed Cloud Relay infrastructure. It follows the same pattern as the existing `ApiStack` (which imports the main API Lambda ARN from Amplify and wires it to API Gateway).
 
 ```
 packages/slaops-infra/lib/stack/
-└── cloud-relay.ts          ← new CloudRelayStack
+└── cloud-relay.ts          ← new CloudRelayStack (platform-managed only)
 ```
 
 The stack provisions:
@@ -2184,6 +2245,90 @@ pnpm infra:diff        # preview changes
 pnpm infra:deploy      # deploy CloudRelayStack
 ```
 
+### apps/slaops-cloud-relay/infra/ (Iteration 2 — self-hosted, self-contained)
+
+The self-hosted relay ships its own infrastructure at the root of the `apps/slaops-cloud-relay` package. This has **no dependency on `packages/slaops-infra`** or any other private SLAOps package. It is the only infrastructure a customer needs.
+
+```
+apps/slaops-cloud-relay/
+├── infra/
+│   ├── aws/                     # Self-contained AWS CDK stack
+│   │   ├── bin/
+│   │   │   └── cdk.ts           # CDK app entry point
+│   │   ├── lib/
+│   │   │   └── relay-stack.ts   # RelayStack: API Gateway, authorizer, usage plans
+│   │   ├── cdk.json
+│   │   └── package.json         # Standalone — no slaops-infra dependency
+│   ├── azure/                   # Bicep / ARM template for Azure API Management + Functions
+│   └── gcp/                     # Terraform / Deployment Manager for Cloud Endpoints + Cloud Run
+├── app/
+├── app-aws/
+├── app-azure/
+├── app-cp/
+├── Dockerfile
+└── docker-compose.yml           # Zero-infrastructure option for local/VM deployment
+```
+
+The AWS CDK stack in `infra/aws/` is standalone — customers `cd infra/aws && cdk deploy` from the relay directory. It provisions its own API Gateway, Lambda authorizer, and usage plans. It does not import any CloudFormation exports from `packages/slaops-infra`.
+
+```typescript
+// apps/slaops-cloud-relay/infra/aws/lib/relay-stack.ts (sketch)
+
+export class RelayStack extends Stack {
+  constructor(scope: Construct, id: string, props: RelayStackProps) {
+    super(scope, id, props)
+
+    // All configuration comes from environment variables or stack props —
+    // no imports from slaops-infra, no @slaops/config dependency.
+
+    // 1. Lambda authorizer — points to app/src/authorizer.ts in this repo
+    const authorizerFn = new NodejsFunction(this, 'RelayAuthorizer', {
+      entry: path.join(__dirname, '../../app/src/authorizer.ts'),
+      environment: {
+        RELAY_JWKS_URI: props.jwksUri,           // Customer's IdP JWKS endpoint
+        RELAY_JWT_AUDIENCE: props.jwtAudience,   // Expected audience claim
+      },
+    })
+
+    // 2. Relay Lambda — points to app/src/lambda.ts in this repo
+    const relayFn = new NodejsFunction(this, 'RelayFn', {
+      entry: path.join(__dirname, '../../app/src/lambda.ts'),
+      environment: {
+        RELAY_SECRET_BACKEND: props.secretBackend ?? 'aws-secrets-manager',
+        // All config via env vars — no @slaops/config
+      },
+      timeout: Duration.seconds(60),
+    })
+
+    // 3. API Gateway
+    const api = new RestApi(this, 'RelayApi', {
+      restApiName: 'Cloud Relay',
+    })
+
+    const authorizer = new TokenAuthorizer(this, 'JwtAuthorizer', {
+      handler: authorizerFn,
+      resultsCacheTtl: Duration.minutes(5),
+    })
+
+    api.root.addProxy({
+      defaultIntegration: new LambdaIntegration(relayFn),
+      defaultMethodOptions: { authorizer },
+    })
+
+    new CfnOutput(this, 'RelayApiUrl', { value: api.url })
+  }
+}
+```
+
+Deploy commands (from the relay package root):
+
+```bash
+cd infra/aws
+npm install
+cdk bootstrap   # once per account/region
+cdk deploy
+```
+
 ### slaops-backend (Amplify — Cloud Relay Lambda function)
 
 A new `defineFunction` entry is added in `packages/slaops-backend/amplify/functions/` for the Cloud Relay Lambda. This follows the exact same pattern as the existing `api` function:
@@ -2232,8 +2377,9 @@ The Amplify deploy outputs the Lambda ARN as a CloudFormation export. `CloudRela
 - [ ] Add `apps/slaops-docs/docs/cloud-relay.md` with user guide (how to add a connection, use cases)
 - [ ] Add security note about credential handling to the user guide
 - [ ] Update `apps/slaops-cloud/CLAUDE.md` with the new module and `src/authorizer.ts` entry point
-- [ ] Update `packages/slaops-infra/README.md` with `CloudRelayStack` (resources, outputs, deploy order)
+- [ ] Update `packages/slaops-infra/README.md` with `CloudRelayStack` (resources, outputs, deploy order) — platform-managed deployment only
 - [ ] Update `packages/slaops-backend/README.md` with the `cloud-relay` function and its dependency on the infra stack ARN export
+- [ ] Add `apps/slaops-cloud-relay/infra/README.md` documenting the self-hosted deployment for each cloud (`aws/`, `azure/`, `gcp/`) and Docker
 
 ## Rollout Plan
 
@@ -2261,12 +2407,16 @@ The Amplify deploy outputs the Lambda ARN as a CloudFormation export. `CloudRela
 - [ ] Wire mode-aware send logic in `ApiTester.tsx`
 - [ ] Test CORS bypass end-to-end against a CORS-restricted API
 
-### Phase 4: Hardening (Iteration 2, future)
+### Phase 4: Self-hosted extraction (Iteration 2, future)
 
-- [ ] Secrets Manager integration for any sensitive Lambda env vars
+- [ ] Extract `cloud-relay` NestJS module into `apps/slaops-cloud-relay` (git subtree)
+- [ ] Build `infra/aws/` CDK stack at the root of `apps/slaops-cloud-relay` — standalone, no `packages/slaops-infra` dependency
+- [ ] Build `infra/azure/` Bicep templates and `infra/gcp/` Terraform for non-AWS customers
+- [ ] Add `Dockerfile` + `docker-compose.yml` at the repo root for cloud-agnostic deployments
+- [ ] Ensure all config uses environment variables only — no `@slaops/config`, no private SLAOps packages
 - [ ] Support for multiple simultaneous Cloud Relay regions
 - [ ] Request history tied to Cloud Relay source
-- [ ] Package Cloud Relay + authorizer + CDK stack for customer self-hosting
+- [ ] Validate customer self-hosting end-to-end: `cd infra/aws && cdk deploy` with zero SLAOps private dependencies
 
 ## Open Questions
 

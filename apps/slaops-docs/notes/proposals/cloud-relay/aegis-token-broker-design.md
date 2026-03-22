@@ -1195,7 +1195,7 @@ Aegis Broker is a standalone **NestJS application** managed as a **git subtree**
 The structure mirrors `apps/slaops-cloud-relay/`: a cloud-agnostic `app/` core plus cloud-specific sub-packages for implementations that depend on a particular cloud provider.
 
 ```
-apps-aegis/
+apps/slaops-aegis/
 ├── app/                              # NestJS core — cloud-agnostic, env-var config only
 │   └── src/
 │       ├── identity/
@@ -1247,19 +1247,34 @@ apps-aegis/
 │       └── signing/
 │           └── azure-keyvault-signing-provider.ts
 │
-└── app-cp/                           # GCP-specific implementations
-    └── src/
-        ├── session/
-        │   └── firestore-session-store.ts
-        └── signing/
-            └── gcp-kms-signing-provider.ts
+├── app-cp/                           # GCP-specific implementations
+│   └── src/
+│       ├── session/
+│       │   └── firestore-session-store.ts
+│       └── signing/
+│           └── gcp-kms-signing-provider.ts
+│
+├── infra/                            # Self-contained deployment infrastructure
+│   ├── aws/                          # AWS CDK stack — standalone, no slaops-infra dependency
+│   │   ├── bin/
+│   │   │   └── cdk.ts               # CDK app entry point
+│   │   ├── lib/
+│   │   │   └── aegis-stack.ts       # AegisStack: Lambda/ECS, API Gateway, KMS key
+│   │   ├── cdk.json
+│   │   └── package.json             # Standalone CDK package
+│   ├── azure/                        # Bicep / ARM — Azure Container Apps + Key Vault
+│   └── gcp/                          # Terraform — Cloud Run + Cloud KMS
+│
+├── Dockerfile                        # Cloud-agnostic container build
+└── docker-compose.yml                # Local / VM deployment with env-var config
 ```
 
 ### Design principles
 
 - **Cloud-agnostic core**: `app/` has no AWS/Azure/GCP SDK dependencies. It uses only environment variables and the pluggable interfaces below.
 - **No `@slaops/config` dependency**: all configuration is via environment variables so customers can deploy without the monorepo's shared config module.
-- **Parallel to `apps/slaops-cloud-relay/`**: same directory conventions, same registry/factory pattern, same deployment model.
+- **Self-contained infrastructure**: `infra/` at the root of `apps/slaops-aegis` ships all deployment templates needed to run Aegis. There is no dependency on `packages/slaops-infra` (which is private to the SLAOps platform and is never distributed to customers). A customer deploys by running `cd infra/aws && cdk deploy` — no private SLAOps packages required.
+- **Parallel to `apps/slaops-cloud-relay/`**: same directory conventions, same registry/factory pattern, same `infra/` layout at the package root, same deployment model.
 
 ---
 
@@ -1871,14 +1886,27 @@ export class JwksController {
 
 ## 36. Deployment Model
 
-| Method | Sub-package | Notes |
-|---|---|---|
-| **Docker** | `app/` + chosen `app-*/` | `docker run` with env vars. Use Docker Compose to add Redis/Postgres for session store if needed. |
-| **Lambda (AWS SAM)** | `app-aws/` | Cold start acceptable — Aegis is in the critical path once per session, not per request. |
-| **ECS / Fargate** | `app-aws/` | Preferred for high-availability enterprise AWS deployments. Persistent session store via DynamoDB. |
-| **Kubernetes** | any `app/` | `app/` with optional OPA sidecar pod for policy. Suitable for multi-cloud and on-premises. |
-| **Azure Functions** | `app-azure/` | Cosmos DB session store + Key Vault signing key. |
-| **GCP Cloud Run** | `app-cp/` | Firestore session store + Cloud KMS signing key. |
+All deployment templates live in `infra/` at the root of `apps/slaops-aegis`. There is no dependency on `packages/slaops-infra` or any other private SLAOps package.
+
+| Method | Infrastructure | Sub-package | Notes |
+|---|---|---|---|
+| **Docker** | `docker-compose.yml` (root) | `app/` + chosen `app-*/` | `docker run` with env vars. Use Docker Compose to add Redis/Postgres for session store if needed. |
+| **Lambda + API Gateway (AWS)** | `infra/aws/` CDK stack | `app-aws/` | Cold start acceptable — Aegis is in the critical path once per session, not per request. |
+| **ECS / Fargate (AWS)** | `infra/aws/` CDK stack | `app-aws/` | Preferred for high-availability enterprise AWS deployments. Persistent session store via DynamoDB. |
+| **Kubernetes** | Customer-managed Helm/manifests | any `app/` | `app/` with optional OPA sidecar pod for policy. Suitable for multi-cloud and on-premises. |
+| **Azure Container Apps** | `infra/azure/` Bicep | `app-azure/` | Cosmos DB session store + Key Vault signing key. |
+| **GCP Cloud Run** | `infra/gcp/` Terraform | `app-cp/` | Firestore session store + Cloud KMS signing key. |
+
+### Self-hosting on AWS (quick start)
+
+```bash
+cd apps/slaops-aegis/infra/aws
+npm install
+cdk bootstrap   # once per account/region
+cdk deploy
+```
+
+No SLAOps private packages, no `packages/slaops-infra`, no Amplify dependency. All configuration is passed as environment variables to the deployed function or container.
 
 ---
 
