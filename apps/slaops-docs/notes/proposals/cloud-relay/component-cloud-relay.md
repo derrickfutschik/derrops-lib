@@ -863,7 +863,7 @@ graph TB
         Tester[API Tester Page]
         ModeSelector[Request Mode Selector]
         ConnectionManager[Connection Manager UI]
-        BrowserFetch[Browser fetch()]
+        BrowserFetch[Browser fetch]
         CloudClient[Cloud Relay Client]
     end
 
@@ -1362,8 +1362,8 @@ No new npm dependencies. The connection management API will be exposed through t
 
 ```mermaid
 graph LR
-    Private[@slaops/private] --> Cloud[slaops-cloud]
-    Config[@slaops/config] --> Cloud
+    Private["@slaops/private"] --> Cloud[slaops-cloud]
+    Config["@slaops/config"] --> Cloud
     Undici[undici] --> Cloud
     Cloud -->|OpenAPI client generation| Portal[slaops-portal]
 ```
@@ -2095,7 +2095,7 @@ graph TB
 
     CloudFn -->|entry: slaops-cloud/src/lambda.ts| CloudModule
     AuthLambdaInfra -->|entry: slaops-cloud/src/authorizer.ts| AuthorizerCode
-    APIGW -->|Lambda proxy integration\n(ARN imported from Amplify output)| CloudFn
+    APIGW -->|Lambda proxy integration - ARN imported from Amplify output| CloudFn
 ```
 
 The authorizer function **code** lives in `apps/slaops-cloud/src/authorizer.ts` (co-located with the rest of the cloud app), but it is **wired into API Gateway by CDK in `slaops-infra`**, not by Amplify. This mirrors the existing pattern where the main API Lambda is defined in `slaops-backend` but its ARN is imported into `ApiStack` via a CloudFormation export.

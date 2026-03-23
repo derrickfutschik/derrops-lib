@@ -5,9 +5,9 @@ title: Relay Connection Design
 
 # Relay Connection Design
 
-> **Status**: Draft
+> **Status**: Implemented (Stage 1)
 > **Author**: SLAOps Team
-> **Date**: 2026-03-23
+> **Date**: 2026-03-24
 > **Related**: [component-cloud-relay.md](./component-cloud-relay.md), [aegis-token-broker-design.md](./aegis-token-broker-design.md)
 
 ## Overview
@@ -479,21 +479,25 @@ GET    /cloud-relay/.well-known/jwks.json   Vendor signing public keys (for rela
 
 ## Implementation status
 
-### Designed (not yet implemented)
+### Implemented (2026-03-24)
 
-- [ ] `relay_instance` table with `tenant_id`
-- [ ] `aegis_instance` table with `tenant_id`
-- [ ] Relay registration flow (portal → slaops-cloud → RDS)
-- [ ] Aegis registration flow + one-time token handshake
-- [ ] Aegis-to-relay linking via `aegis_id` FK
-- [ ] Platform → relay private JWT authentication (vendor-signed, relay-scoped)
-- [ ] Vendor JWKS endpoint (`GET /cloud-relay/.well-known/jwks.json`)
-- [ ] Relay validates `RELAY_ID` in delegation JWT `scopes[].relayIds` (point 1)
-- [ ] Aegis `ALLOWED_RELAY_IDS` config allowlist — rejects delegation JWT requests for unknown relay IDs (point 2)
+- [x] `relay_instance` table with `tenant_id` — `apps/slaops-cloud/src/relay-instance/entities/relay-instance.entity.ts`
+- [x] `aegis_instance` table with `tenant_id` — `apps/slaops-cloud/src/aegis-instance/entities/aegis-instance.entity.ts`
+- [x] Relay registration flow (portal → slaops-cloud → RDS) — `RelayInstanceService.create` + `RelayInstanceController`
+- [x] Aegis registration flow + one-time token handshake — `AegisInstanceService.create/register` + `AegisRegisterController`
+- [x] Aegis-to-relay linking via `aegis_id` FK — `RelayInstanceService.update` accepts `aegisId`
+- [x] Platform → relay private JWT authentication (vendor-signed, relay-scoped) — `VendorJwtService.mintRelayJwt` in `apps/slaops-cloud/src/vendor-jwt/`; validated by `PlatformJwtGuard` in `apps/slaops-relay/src/auth/`
+- [x] Vendor JWKS endpoint (`GET /cloud-relay/.well-known/jwks.json`) — `CloudRelayController.getJwks`
+- [x] Relay validates `RELAY_ID` in inbound platform JWTs (`aud` claim) — `PlatformJwtGuard` in `apps/slaops-relay`
+- [x] Aegis `ALLOWED_RELAY_IDS` config allowlist — `SessionService` in `apps/slaops-aegis`; rejects delegation JWT requests for relay IDs not in `ALLOWED_RELAY_IDS`
+- [x] Health endpoint on relay (`GET /health`) — `HealthController` in `apps/slaops-relay/src/health/`
+- [x] Health check triggered from platform — `RelayInstanceService.healthCheck` mints JWT and calls relay `/health`
+- [x] Aegis JWKS health check — `AegisInstanceService.healthCheck` fetches and validates the JWKS endpoint
+
+### Deferred
+
 - [ ] Portal UI: relay instances page (create, edit, delete, health check)
 - [ ] Portal UI: Aegis instances page (register, edit, delete, health check)
 - [ ] Portal UI: connection health dashboard
-
-### Implemented
-
-_(nothing yet — all design)_
+- [ ] mTLS between platform and relay (deferred — API Gateway MTLS endpoint)
+- [ ] Automatic background relay health monitoring (currently portal-triggered only)

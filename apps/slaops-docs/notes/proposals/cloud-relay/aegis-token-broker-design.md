@@ -1939,32 +1939,34 @@ All configuration is via environment variables. No `@slaops/config` dependency.
 
 ---
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-03-24
 
 ---
 
 ## Implementation status
 
-### Designed (not yet implemented)
+### Implemented (2026-03-24) — `apps/slaops-aegis`
 
-- [ ] `POST /v1/sessions` — session delegation JWT issuance
-- [ ] `DELETE /v1/sessions/:jti` — session revocation
-- [ ] `GET /v1/entitlements` — user entitlement lookup
-- [ ] `GET /.well-known/jwks.json` — JWKS publishing
+- [x] `POST /v1/session` — session delegation JWT issuance — `SessionController` + `SessionService`
+- [x] `DELETE /v1/session/:jti` — in-memory session revocation — `SessionController.revoke`
+- [x] `GET /v1/entitlement` — config-driven entitlement lookup — `EntitlementController` + `EntitlementService`
+- [x] `GET /.well-known/jwks.json` — JWKS publishing — `JwksController` + `SigningKeyService`
+- [x] `SigningKeyService` — loads ES256 key from `AEGIS_SIGNING_KEY` (JWK JSON) or generates ephemeral key for development
+- [x] `ALLOWED_RELAY_IDS` config allowlist — `SessionService` rejects delegation JWT requests for relay IDs not in the allowlist
+- [x] Relay-scoped `scopes[].relayIds` in issued delegation JWTs — each granted scope carries the requested relay UUID
+- [x] IdP token validation — validates `userToken` against `CUSTOMER_IDP_JWKS_URL` (skipped in dev if unset)
+- [x] Platform registration handshake — `RegistrationService.onModuleInit` calls `POST <SLAOPS_PLATFORM_URL>/cloud-relay/aegis/register` at startup if `SLAOPS_REGISTRATION_TOKEN` is set
+- [x] Lambda handler — `src/lambda.ts` via `@codegenie/serverless-express`
+
+### Deferred
+
 - [ ] `GET /v1/health` + `GET /v1/capabilities` — health and metadata endpoints
-- [ ] `IdentityProvider` interface + OIDC built-in implementation
-- [ ] `PolicyStore` interface + in-process JSON and OPA built-in implementations
-- [ ] `SessionStore` interface + in-memory built-in implementation
-- [ ] `SigningKeyProvider` interface + local RSA built-in implementation
-- [ ] `EntitlementStore` interface + static JSON built-in implementation
+- [ ] `IdentityProvider` interface + OIDC built-in implementation (currently inline in `SessionService`)
+- [ ] `PolicyStore` interface + in-process JSON and OPA built-in implementations (currently config-driven only)
+- [ ] `SessionStore` interface + persistent implementation (currently in-memory; revocations lost on restart)
+- [ ] `EntitlementStore` interface (currently derived from `ALLOWED_RELAY_IDS` only)
 - [ ] Cloud-specific implementations: `dynamo`, `kms`, `cosmos`, `azure-keyvault`, `gcp-kms`, `firestore`
-- [ ] `ALLOWED_RELAY_IDS` config — allowlist of relay UUIDs Aegis will scope delegation JWTs for (no DB, config-driven, requires restart to update)
-- [ ] Relay-scoped `scopes[].relayIds` in issued delegation JWTs — scoped to requested relay ID if it is in the allowlist
 - [ ] `infra/aws`, `infra/azure`, `infra/gcp` self-contained deployment stacks
 - [ ] `Dockerfile` + `docker-compose.yml`
-- [ ] Platform registration handshake (`SLAOPS_REGISTRATION_TOKEN` one-time token flow)
-
-### Implemented
-
-_(nothing yet — all design)_
+- [ ] Admin policy APIs (`PUT /v1/admin/policies`, `GET /v1/admin/policies`, `POST /v1/admin/policy-decisions/test`)
 **Status**: Draft — updated with module structure, pluggable service interfaces, registry/factory pattern, deployment model, and NestJS bootstrap details
