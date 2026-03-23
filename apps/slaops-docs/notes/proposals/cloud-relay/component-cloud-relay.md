@@ -29,17 +29,21 @@ The current API Tester makes HTTP requests directly from the browser. This creat
 
 **In Scope (Iteration 1):**
 
-- New NestJS module in `apps/slaops-cloud` to proxy HTTP requests
+- **`apps/slaops-relay`** — standalone, self-contained NestJS proxy service. Supports three delivery modes:
+  - **`direct`** — slaops-cloud calls the relay's `POST /cloud-relay/proxy` synchronously and returns the result inline. Relay must be reachable from slaops-cloud.
+  - **`relay-queue`** — slaops-cloud submits jobs to the relay's `POST /cloud-relay/queue`. The relay owns an internal queue (`QueueStore` backend: in-memory by default, SQS + DynamoDB for AWS) and processes jobs asynchronously. slaops-cloud stores a lightweight reference (job ID → relay job ID) and proxies status polls to the relay. Relay must be reachable from slaops-cloud.
+  - **`platform-queue`** — the relay **cannot** accept inbound connections (private network). Instead, the relay polls `GET /cloud-relay/queue/next` on slaops-cloud, claims a job, executes it, and posts the result to `POST /cloud-relay/job/:id/result`. slaops-cloud stores the full request payload so the relay can retrieve it on claim.
+- **`apps/slaops-cloud`** — hosts the `cloud-relay` module, which manages the registry of relay connections (`cloud_relay_connection` table: name + URL + `delivery_mode` per tenant). Owns the full `cloud_relay_job` entity which tracks every submitted job regardless of delivery mode. The portal always interacts with slaops-cloud; slaops-cloud selects the delivery path based on the connection's `delivery_mode`.
 - Authentication to the Cloud Relay via **OAuth 2.0 (Cognito JWT)** — the portal passes its existing Cognito session token; no separate credential is stored per connection
 - A **custom Lambda authorizer** on API Gateway validates the JWT, derives/looks up the API Gateway API key for the authenticated user, and returns it as the `usageIdentifierKey` so API Gateway can enforce per-user **usage plans** (rate limiting and quotas)
 - All AWS infrastructure (API Gateway, Cognito User Pool, usage plans, API keys, Lambda authorizer function) provisioned by **CDK in `packages/slaops-infra`**
-- The **Cloud Relay Lambda** defined in **`packages/slaops-backend`** (Amplify) as an app-level function — enabling independent feature deploys
+- The **Cloud Relay Lambda** (`apps/slaops-relay`) is self-contained with its own `infra/` directory — customers can deploy it independently without access to any private SLAOps package
 - The **Lambda authorizer** treated as shared infrastructure — deployed with the CDK infra stack rather than as a feature deploy, as it is shared across the entire environment
-- Portal UI for managing Cloud Relay connections (name + URL)
-- Request mode selector in the API Tester: **Browser** (current behaviour) or a named **Cloud Relay** instance
+- Portal UI for managing Cloud Relay connections (name + URL) — backed by `slaops-cloud`
+- Request mode selector in the API Tester: **Browser** (current behaviour) or a named **Cloud Relay** instance selected from the connections stored in `slaops-cloud`
 - Forwarding of request method, URL, headers, query parameters, and body (HAR format)
-- Return of response status, headers, body, and timing from the Lambda perspective
-- Storing Cloud Relay connection settings per-user (via existing service/tenant infrastructure)
+- Return of response status, headers, body, and timing from the relay's perspective
+- Cloud Relay connection settings stored per-tenant in `slaops-cloud` (not in the relay itself)
 
 **Out of Scope (Iteration 1):**
 
@@ -49,13 +53,15 @@ The current API Tester makes HTTP requests directly from the browser. This creat
 - WebSocket proxying
 - Request replay / scheduling
 
-**Iteration 2 — Self-hosted (`apps/slaops-cloud-relay` extraction):**
+**Iteration 2 — Self-hosted (`apps/slaops-relay` already extracted):**
 
-The `cloud-relay` module will be extracted into a standalone `apps/slaops-cloud-relay` application managed as a **git subtree** (same workflow as `apps/slaops-portal/`). This code may eventually be open-sourced so customers can review and deploy it themselves.
+`apps/slaops-relay` is already a standalone, self-contained application managed as a **git subtree** (same workflow as `apps/slaops-portal/`). It may eventually be open-sourced so customers can review and deploy it themselves.
 
-Key design decisions for Iteration 2:
-- `apps/slaops-cloud` can continue to embed the relay by importing its NestJS module, reducing deployment artifacts and eliminating extra remote calls
-- The base application (`app/`) is **cloud-agnostic** — no cloud SDK dependencies
+Key design decisions:
+- The relay has **no database** and no connection registry. Connection management lives in `slaops-cloud`.
+- In **direct mode** the relay is fully stateless. In **relay-queue mode** the relay owns its job queue via a pluggable `QueueStore` interface — `InMemoryQueueStore` (default) or `SqsQueueStore` (AWS: SQS work channel + DynamoDB for job state). Additional backends can be registered without modifying relay code (same pattern as `SecretStore`). In **platform-queue mode** the relay is fully stateless again — slaops-cloud stores the job state; the relay only polls, executes, and delivers results.
+- The relay is authenticated via `RELAY_API_KEY` (inbound: validates calls from slaops-cloud) and `RELAY_PLATFORM_TOKEN` (outbound: sent as Bearer when polling slaops-cloud in platform-queue mode). Both values are generated when a connection is created in slaops-cloud and configured on the relay as env vars.
+- The base application is **cloud-agnostic** — no cloud SDK dependencies in the core; SQS/DynamoDB only pulled in when `RELAY_QUEUE_BACKEND=sqs`
 - Cloud-specific implementations are separate sub-packages: `app-aws/`, `app-azure/`, `app-cp/`
 - Configuration relies **solely on environment variables** — no `@slaops/config` module, minimising dependencies for self-hosted deployments
 - Supported deployment targets: **Docker**, **Lambda** (AWS SAM), and equivalents on other clouds
@@ -79,26 +85,63 @@ The `infra/` directory at the root of `apps/slaops-cloud-relay` is the **only** 
 
 ### Relationship to Existing Components
 
+The portal **always** submits requests through slaops-cloud. slaops-cloud selects the delivery path based on the connection's `delivery_mode`. Three modes are supported to accommodate any customer network topology.
+
+**`direct` mode** — relay is publicly reachable from slaops-cloud (e.g. SLAOps-managed Lambda behind API Gateway):
+
 ```mermaid
 graph TD
-    Portal[SLAOps Portal\nAPI Tester] -->|Browser mode| ExternalAPI[External API]
-    Portal -->|Cloud Relay mode\nBearer JWT| APIGW[API Gateway\n+ Usage Plans]
-    APIGW -->|invoke| AuthLambda[Custom Lambda Authorizer]
-    AuthLambda -->|validate JWT| Cognito[AWS Cognito\nUser Pool]
-    AuthLambda -->|derive / lookup| APIKey[API Key\nper user/tenant]
-    AuthLambda -->|IAM policy +\nusageIdentifierKey| APIGW
-    APIGW -->|throttle / quota\nper usage plan| APIGW
-    APIGW -->|authenticated request| CloudModule[slaops-cloud\nCloud Relay Module]
-    CloudModule -->|HTTP proxy| ExternalAPI
+    Portal[SLAOps Portal\nAPI Tester] -->|POST /cloud-relay/job| SlaopsCloud[slaops-cloud\ncloud-relay module]
+    SlaopsCloud -->|POST /cloud-relay/proxy\nBearer api_key| RelayDirect[apps/slaops-relay\nPOST /cloud-relay/proxy]
+    RelayDirect -->|HTTP proxy| ExternalAPI[External API]
+    RelayDirect -->|response| SlaopsCloud
+    SlaopsCloud -->|store completed job| JobStore[(cloud_relay_job\nstatus=completed)]
+    SlaopsCloud -->|result inline| Portal
 
-    Portal -.->|already authenticated via| Cognito
-    Portal --> ConnectionStore[Connection Settings\nper user/tenant]
-    CloudModule -.->|deployed as| Lambda[AWS Lambda\nfixed egress IP]
+    style RelayDirect fill:#ff6b6b,stroke:#333,stroke-width:3px
+    style SlaopsCloud fill:#82b366,stroke:#333,stroke-width:2px
+```
 
-    style CloudModule fill:#ff6b6b,stroke:#333,stroke-width:3px
-    style APIGW fill:#4a90d9,stroke:#333,stroke-width:2px
-    style AuthLambda fill:#e8a838,stroke:#333,stroke-width:2px
-    style ConnectionStore fill:#ffd700,stroke:#333,stroke-width:1px
+**`relay-queue` mode** — relay is in a private network but reachable from slaops-cloud (server-to-server), not from the browser:
+
+```mermaid
+graph TD
+    Portal[SLAOps Portal\nAPI Tester] -->|POST /cloud-relay/job| SlaopsCloud[slaops-cloud\ncloud-relay module]
+    SlaopsCloud -->|store pending job| JobRef[(cloud_relay_job\nrelay_job_id ref)]
+    SlaopsCloud -->|POST /cloud-relay/queue\nBearer api_key| RelayAsync[apps/slaops-relay\nqueue backend]
+    RelayAsync -->|enqueue| QueueStore[(QueueStore\nmemory / SQS+DynamoDB)]
+    QueueStore -->|worker polls| Worker[relay worker pool]
+    Worker -->|execute| ExternalAPI[External API]
+    Worker -->|store result| QueueStore
+    Portal -->|GET /cloud-relay/job/:id| SlaopsCloud
+    SlaopsCloud -->|GET /cloud-relay/job/:relayJobId\nBearer api_key| RelayAsync
+    RelayAsync -->|job state + result| SlaopsCloud
+    SlaopsCloud -->|status + result| Portal
+
+    style RelayAsync fill:#ff6b6b,stroke:#333,stroke-width:3px
+    style SlaopsCloud fill:#82b366,stroke:#333,stroke-width:2px
+    style QueueStore fill:#ffd700,stroke:#333,stroke-width:1px
+    style Worker fill:#e8a838,stroke:#333,stroke-width:2px
+```
+
+**`platform-queue` mode** — relay is fully isolated (private network, no inbound connections). The relay polls slaops-cloud outbound:
+
+```mermaid
+graph TD
+    Portal[SLAOps Portal\nAPI Tester] -->|POST /cloud-relay/job| SlaopsCloud[slaops-cloud\ncloud-relay module]
+    SlaopsCloud -->|store pending job + full request| JobStore[(cloud_relay_job\nstatus=pending\nrequest=JSONB)]
+    Portal -->|GET /cloud-relay/job/:id| SlaopsCloud
+    SlaopsCloud -->|job status + result| Portal
+
+    RelayPlatform[apps/slaops-relay\nQueuePollerService] -->|GET /cloud-relay/queue/next\nBearer platform_token| SlaopsCloud
+    SlaopsCloud -->|claimed job + request payload| RelayPlatform
+    RelayPlatform -->|execute| ExternalAPI[External API]
+    RelayPlatform -->|POST /cloud-relay/job/:id/result\nBearer platform_token| SlaopsCloud
+    SlaopsCloud -->|update job\nstatus=completed| JobStore
+
+    style RelayPlatform fill:#ff6b6b,stroke:#333,stroke-width:3px
+    style SlaopsCloud fill:#82b366,stroke:#333,stroke-width:2px
+    style JobStore fill:#ffd700,stroke:#333,stroke-width:1px
 ```
 
 ## Type Definitions
@@ -2484,5 +2527,37 @@ Use a public or self-hosted CORS proxy.
 ---
 
 **Template Version**: 1.1
-**Last Updated**: 2026-03-22
+**Last Updated**: 2026-03-23
+
+---
+
+## Implementation status
+
+### Designed (not yet implemented)
+
+- [ ] `CloudRelayController` — `POST /cloud-relay/proxy` (direct sync mode)
+- [ ] `CloudRelayController` — `POST /cloud-relay/queue` (async queue mode)
+- [ ] `CloudRelayController` — `GET /cloud-relay/job/:id` (async job status poll)
+- [ ] `ProxyService` — outbound HTTP execution with HAR request format
+- [ ] `QueueStore` interface + `InMemoryQueueStore` built-in
+- [ ] `SqsQueueStore` AWS implementation (SQS + DynamoDB)
+- [ ] Secret template resolution (`{{secret:ID}}`, `{{jit:uuid}}`, `{{jit:timestamp}}`)
+- [ ] Response secret masking
+- [ ] Vendor job envelope signing (vendor private key / JWS)
+- [ ] Relay validates vendor job signature against vendor JWKS (`SLAOPS_VENDOR_JWKS_URL`)
+- [ ] Relay validates session delegation JWT signature against Aegis JWKS (`AEGIS_JWKS_URL`)
+- [ ] Relay validates its `RELAY_ID` appears in delegation JWT `scopes[].relayIds`
+- [ ] Platform → relay private JWT authentication (vendor-signed, `aud` = relay UUID)
+- [ ] Vendor JWKS endpoint (`GET /cloud-relay/.well-known/jwks.json`) on `slaops-cloud`
+- [ ] `SecretStore` interface + `EnvSecretStore` built-in
+- [ ] Cloud-specific secret stores: `SecretsManagerStore`, `AzureKeyVaultStore`, `GcpSecretManagerStore`
+- [ ] `app-aws/`, `app-azure/`, `app-cp/` sub-packages
+- [ ] `infra/aws`, `infra/azure`, `infra/gcp` self-contained deployment stacks
+- [ ] API Gateway + custom Lambda authorizer + Cognito usage plans (SLAOps-managed relay)
+- [ ] Portal UI: request mode selector (browser vs cloud relay)
+- [ ] Portal UI: connection manager (relay instances — backed by relay-connection design)
+
+### Implemented
+
+_(nothing yet — all design)_
 **Status**: Draft — updated with Iteration 2 module structure, HAR template expressions, and response secret masking

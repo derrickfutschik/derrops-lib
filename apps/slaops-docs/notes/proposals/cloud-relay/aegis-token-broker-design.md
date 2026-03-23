@@ -1939,5 +1939,32 @@ All configuration is via environment variables. No `@slaops/config` dependency.
 
 ---
 
-**Last Updated**: 2026-03-22
+**Last Updated**: 2026-03-23
+
+---
+
+## Implementation status
+
+### Designed (not yet implemented)
+
+- [ ] `POST /v1/sessions` — session delegation JWT issuance
+- [ ] `DELETE /v1/sessions/:jti` — session revocation
+- [ ] `GET /v1/entitlements` — user entitlement lookup
+- [ ] `GET /.well-known/jwks.json` — JWKS publishing
+- [ ] `GET /v1/health` + `GET /v1/capabilities` — health and metadata endpoints
+- [ ] `IdentityProvider` interface + OIDC built-in implementation
+- [ ] `PolicyStore` interface + in-process JSON and OPA built-in implementations
+- [ ] `SessionStore` interface + in-memory built-in implementation
+- [ ] `SigningKeyProvider` interface + local RSA built-in implementation
+- [ ] `EntitlementStore` interface + static JSON built-in implementation
+- [ ] Cloud-specific implementations: `dynamo`, `kms`, `cosmos`, `azure-keyvault`, `gcp-kms`, `firestore`
+- [ ] `ALLOWED_RELAY_IDS` config — allowlist of relay UUIDs Aegis will scope delegation JWTs for (no DB, config-driven, requires restart to update)
+- [ ] Relay-scoped `scopes[].relayIds` in issued delegation JWTs — scoped to requested relay ID if it is in the allowlist
+- [ ] `infra/aws`, `infra/azure`, `infra/gcp` self-contained deployment stacks
+- [ ] `Dockerfile` + `docker-compose.yml`
+- [ ] Platform registration handshake (`SLAOPS_REGISTRATION_TOKEN` one-time token flow)
+
+### Implemented
+
+_(nothing yet — all design)_
 **Status**: Draft — updated with module structure, pluggable service interfaces, registry/factory pattern, deployment model, and NestJS bootstrap details
