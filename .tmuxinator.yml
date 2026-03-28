@@ -1,6 +1,6 @@
 # SLAOps Platform - tmuxinator configuration
-# Start with: tmuxinator start -p .tmuxinator.yml
-# Or: tmuxinator start slaops-apps (if installed to ~/.config/tmuxinator/)
+# Before starting, source the env file:
+#   source .tmuxinator.env && tmuxinator start -p .tmuxinator.yml
 
 name: slaops-apps
 root: <%= ENV["PWD"] || Dir.pwd %>
@@ -26,43 +26,44 @@ windows:
       root: apps/slaops-docs
       layout: even-vertical
       panes:
-        - PORT=3001 NODE_ENV=dev pnpm start
+        - PORT=<%= ENV["DOCS_PORT"] %> NODE_ENV=dev pnpm start
 
   - slaops-portal:
       root: apps/slaops-portal
       layout: even-vertical
       panes:
-        - PORT=3000 NODE_ENV=dev pnpm run dev
+        - PORT=<%= ENV["PORTAL_PORT"] %> NODE_ENV=dev pnpm run dev
 
   - slaops-cloud:
       root: apps/slaops-cloud
       layout: even-vertical
       panes:
-        - echo "Migrating OpenSearch indices"
-        - NODE_ENV=dev pnpm --filter @slaops/cloud run opensearch:migrate:dev
-        - echo "Starting SLAOps Cloud"
-        - PORT=8080 NODE_ENV=dev pnpm --filter @slaops/cloud run start:dev
+        - >-
+          echo "Migrating OpenSearch indices" &&
+          NODE_ENV=dev pnpm --filter @slaops/cloud run opensearch:migrate:dev &&
+          echo "Starting SLAOps Cloud" &&
+          PORT=<%= ENV["CLOUD_PORT"] %> NODE_ENV=dev pnpm --filter @slaops/cloud run start:dev
 
   - slaops-cloudflared:
       root: .
       layout: even-vertical
       panes:
-        - sleep 15
-        - cloudflared tunnel create dev-8080-local
-        - cloudflared tunnel route dns dev-8080-local dersza.com
-        - cloudflared tunnel route dns dev-8080-local www.dersza.com
-        - cloudflared tunnel run dev-8080-local
+        - sleep <%= ENV["CF_STARTUP_DELAY"] %>
+        - cloudflared tunnel create <%= ENV["CF_TUNNEL_LOCAL"] %>
+        - cloudflared tunnel route dns <%= ENV["CF_TUNNEL_LOCAL"] %> <%= ENV["CF_DNS_1"] %>
+        - cloudflared tunnel route dns <%= ENV["CF_TUNNEL_LOCAL"] %> <%= ENV["CF_DNS_2"] %>
+        - cloudflared tunnel run <%= ENV["CF_TUNNEL_LOCAL"] %>
 
   - slaops-relay:
       root: apps/slaops-relay
       layout: even-vertical
       panes:
         - >-
-          PORT=8081
+          PORT=<%= ENV["RELAY_PORT"] %>
           NODE_ENV=dev
-          RELAY_QUEUE_BACKEND=memory
-          RELAY_SECRET_BACKEND=env
-          AEGIS_JWKS_URL=http://localhost:8082/.well-known/jwks.json
+          RELAY_QUEUE_BACKEND=<%= ENV["RELAY_QUEUE_BACKEND"] %>
+          RELAY_SECRET_BACKEND=<%= ENV["RELAY_SECRET_BACKEND"] %>
+          AEGIS_JWKS_URL=<%= ENV["AEGIS_JWKS_URL"] %>
           pnpm run dev
 
   - slaops-aegis:
@@ -70,11 +71,11 @@ windows:
       layout: even-vertical
       panes:
         - >-
-          AEGIS_PORT=8082
+          AEGIS_PORT=<%= ENV["AEGIS_PORT"] %>
           NODE_ENV=dev
-          AEGIS_ISSUER=http://localhost:8082
-          AEGIS_SIGNING_KEY_ID=aegis-dev-1
-          ALLOWED_RELAY_IDS=00000000-0000-0000-0000-000000relay1
+          AEGIS_ISSUER=<%= ENV["AEGIS_ISSUER"] %>
+          AEGIS_SIGNING_KEY_ID=<%= ENV["AEGIS_SIGNING_KEY_ID"] %>
+          ALLOWED_RELAY_IDS=<%= ENV["ALLOWED_RELAY_IDS"] %>
           pnpm run dev
 
   # Wire relay ↔ aegis after both services are up.
@@ -86,32 +87,34 @@ windows:
       layout: even-vertical
       panes:
         - |
-          echo "⏳  Waiting 25s for relay (8081) and aegis (8082) to be ready..."
-          sleep 25
+          echo "⏳  Waiting for aegis (<%= ENV["AEGIS_PORT"] %>) and relay (<%= ENV["RELAY_PORT"] %>) to be ready..."
+          until curl -sf <%= ENV["AEGIS_JWKS_URL"] %> > /dev/null 2>&1; do sleep 2; done
+          until curl -sf <%= ENV["RELAY_URL"] %>/health > /dev/null 2>&1; do sleep 2; done
+          echo "✅  Both services ready."
 
           echo ""
           echo "=== [1/3] Aegis JWKS (relay will fetch this to validate delegation JWTs) ==="
-          curl -sf http://localhost:8082/.well-known/jwks.json | jq . \
+          curl -sf <%= ENV["AEGIS_JWKS_URL"] %> | jq . \
             && echo "✅  Aegis JWKS OK" || echo "❌  Aegis not ready"
 
           echo ""
           echo "=== [2/3] Relay health ==="
-          curl -sf http://localhost:8081/health | jq . \
+          curl -sf <%= ENV["RELAY_URL"] %>/health | jq . \
             && echo "✅  Relay health OK" || echo "❌  Relay not ready"
 
           echo ""
           echo "=== [3/3] Smoke-test: issue Aegis session delegation JWT for relay ==="
           echo "    (CUSTOMER_IDP_JWKS_URL unset → IdP token validation skipped in dev)"
-          curl -sf -X POST http://localhost:8082/v1/session \
+          curl -sf -X POST <%= ENV["AEGIS_ISSUER"] %>/v1/session \
             -H "Content-Type: application/json" \
             -d '{
-              "tenantId": "dev-tenant",
-              "userToken": "dev-token-idp-validation-skipped",
+              "tenantId": "<%= ENV["SMOKE_TENANT_ID"] %>",
+              "userToken": "<%= ENV["SMOKE_USER_TOKEN"] %>",
               "requestedScopes": [
                 {
-                  "apiId": "dev-api",
-                  "environment": "dev",
-                  "relayId": "00000000-0000-0000-0000-000000relay1"
+                  "apiId": "<%= ENV["SMOKE_API_ID"] %>",
+                  "environment": "<%= ENV["SMOKE_ENVIRONMENT"] %>",
+                  "relayId": "<%= ENV["ALLOWED_RELAY_IDS"] %>"
                 }
               ]
             }' | jq . \
@@ -119,8 +122,8 @@ windows:
 
           echo ""
           echo "=== Setup complete. Services ready at: ==="
-          echo "    Relay  → http://localhost:8081  (Swagger: /api)"
-          echo "    Aegis  → http://localhost:8082  (Swagger: /api)"
+          echo "    Relay  → <%= ENV["RELAY_URL"] %>  (Swagger: /api)"
+          echo "    Aegis  → <%= ENV["AEGIS_ISSUER"] %>  (Swagger: /api)"
 
   - slaops-tests:
       root: .
@@ -132,34 +135,34 @@ windows:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.233
+        - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %>
 
   - opensearch:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch"
+        - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %> "cd <%= ENV["DEVSERVER_PATH"] %> && docker compose logs -f opensearch"
 
   - opensearch-dashboards:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f opensearch-dashboards"
+        - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %> "cd <%= ENV["DEVSERVER_PATH"] %> && docker compose logs -f opensearch-dashboards"
 
   - localstack:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f localstack"
+        - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %> "cd <%= ENV["DEVSERVER_PATH"] %> && docker compose logs -f localstack"
 
   - postgres:
       root: .
       layout: even-vertical
       panes:
-        - ssh -t derrick@192.168.7.233 "cd /home/derrick/slaops/slaops-platform && docker compose logs -f postgres"
+        - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %> "cd <%= ENV["DEVSERVER_PATH"] %> && docker compose logs -f postgres"
 
   - cloudflare:
       root: .
       layout: even-vertical
       panes:
-        - sleep 15 && cloudflared tunnel route dns dev-8080 dev.derrops.net
+        - sleep <%= ENV["CF_STARTUP_DELAY"] %> && cloudflared tunnel route dns <%= ENV["CF_TUNNEL_DEV"] %> <%= ENV["CF_DNS_DEV"] %>

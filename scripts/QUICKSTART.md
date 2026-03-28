@@ -1,115 +1,66 @@
-# AI Commit - Quick Start
+# Dev Environment Quick Start
 
-Get started with AI-powered git commits in seconds!
+Start the full SLAOps dev environment with a single command.
 
-## Installation
+## First-time setup
 
-Already included! The AI commit script is part of the SLAOps platform monorepo.
-
-## Usage
+The tmuxinator config reads all ports, hostnames, and service config from `.tmuxinator.env`. This file is not generated — it ships with defaults you can override.
 
 ```bash
-# Simple - just run this command
-pnpm commit
+# From the repo root — nothing to change for a standard local setup
+cat .tmuxinator.env
 ```
 
-## What Happens?
+If you need a non-default devserver IP or different ports, edit `.tmuxinator.env` before starting.
 
-1. **Detects your changes** - Finds modified, added, or deleted files
-2. **Stages files** - Asks if you want to stage unstaged changes
-3. **Generates message** - Creates a smart commit message based on your diff
-4. **Opens editor** - Review and edit the message
-5. **Confirms** - Shows final message and asks for confirmation
-6. **Commits** - Creates the git commit
-
-## Example Session
-
-```
-$ pnpm commit
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🤖 AI Commit Message Generator
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-No files are staged. Would you like to stage all changes? (y/n)
-> y
-
-Staging all changes...
-Analyzing changes and generating commit message...
-
-Generated commit message preview:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Refactor tests to use shared fixtures
-
-Extract test fixtures into shared module for better maintainability
-Update test files to import from centralized fixtures
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Opening editor for review and editing...
-
-[Editor opens - you review and edit the message]
-
-Final commit message:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Refactor tests to use shared fixtures
-
-Extract test fixtures into shared module for better maintainability
-Update test files to import from centralized fixtures
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Proceed with commit? (y/n)
-> y
-
-✓ Commit successful!
-
-abc1234 Refactor tests to use shared fixtures
-```
-
-## Tips
-
-### Set Your Preferred Editor
+## Start
 
 ```bash
-# VS Code
-git config --global core.editor "code --wait"
-
-# Nano
-export EDITOR="nano"
-
-# Vim (default)
-export EDITOR="vim"
+# From the repo root
+./scripts/quickstart.sh
 ```
 
-### Abort at Any Point
-
-- When asked to stage: press 'n'
-- In editor: delete all text and save
-- At confirmation: press 'n'
-
-### Use Regular git commit
-
-You can still use `git commit` as normal - the AI commit is just an optional helper!
+Or manually, if you prefer:
 
 ```bash
-git commit -m "Regular commit"  # Still works!
-pnpm commit                      # Or use AI helper
+source .tmuxinator.env && tmuxinator start -p .tmuxinator.yml
 ```
 
-## What Makes a Good Commit Message?
+## What opens
 
-The AI tries to generate messages that:
+| Window | What it runs |
+|---|---|
+| `root` | Git / build shell |
+| `slaops-docs` | Docusaurus dev server (`DOCS_PORT`) |
+| `slaops-portal` | Vite dev server (`PORTAL_PORT`) |
+| `slaops-cloud` | OpenSearch migrate → NestJS API (`CLOUD_PORT`) |
+| `slaops-relay` | Relay service (`RELAY_PORT`) |
+| `slaops-aegis` | Aegis auth service (`AEGIS_PORT`) |
+| `relay-aegis-setup` | Polls until both services are up, then runs smoke test |
+| `slaops-tests` | Vitest watch mode |
+| `devserver` | SSH shell into dev server |
+| `opensearch` / `opensearch-dashboards` / `localstack` / `postgres` | Docker Compose log tails (remote) |
+| `slaops-cloudflared` | Cloudflare tunnel |
 
-- Start with a verb (Add, Update, Fix, Refactor, Remove)
-- Are concise but descriptive
-- Focus on WHY, not just WHAT
-- Follow your project's style
+## Configuring `.tmuxinator.env`
 
-But **you're in control** - always review and edit the generated message!
+| Variable | Default | Description |
+|---|---|---|
+| `DEVSERVER_IP` | `192.168.7.233` | Dev server IP for SSH windows |
+| `DEVSERVER_USER` | `derrick` | SSH username |
+| `DEVSERVER_PATH` | `/home/derrick/slaops/slaops-platform` | Remote repo path |
+| `DOCS_PORT` | `3001` | slaops-docs port |
+| `PORTAL_PORT` | `3000` | slaops-portal port |
+| `CLOUD_PORT` | `8080` | slaops-cloud port |
+| `RELAY_PORT` | `8081` | slaops-relay port |
+| `AEGIS_PORT` | `8082` | slaops-aegis port |
+| `RELAY_QUEUE_BACKEND` | `memory` | Queue backend for relay |
+| `RELAY_SECRET_BACKEND` | `env` | Secret backend for relay |
+| `AEGIS_SIGNING_KEY_ID` | `aegis-dev-1` | Aegis signing key ID |
+| `ALLOWED_RELAY_IDS` | `00000000-...relay1` | Relay IDs Aegis will issue JWTs for |
 
-## Next Steps
+## Stop
 
-- Read [README.md](README.md) for detailed documentation
-- Customize [generate-commit-message.cjs](generate-commit-message.cjs) to fit your style
-- Share feedback on what works and what doesn't
-
-Happy committing! 🎉
+```bash
+tmuxinator stop slaops-apps
+```
