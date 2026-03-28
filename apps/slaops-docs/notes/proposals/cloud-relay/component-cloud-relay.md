@@ -873,8 +873,8 @@ graph TB
     end
 
     subgraph "slaops-cloud (NestJS / Lambda)"
-        CloudController[CloudRelayController\nPOST /cloud-relay/proxy]
-        ProxyService[ProxyService\nNode fetch / undici]
+        CloudController["CloudRelayController\nPOST /cloud-relay/proxy"]
+        ProxyService["ProxyService\nNode fetch / undici"]
         ValidationPipe[ValidationPipe\nclass-validator]
     end
 

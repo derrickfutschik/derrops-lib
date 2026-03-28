@@ -20,6 +20,8 @@ const COPY_LIST = [
   ['apps/slaops-cloud/src/openapi-indexer/README.md', 'apps/slaops-cloud/openapi-indexer.md'],
   ['apps/slaops-cloud/src/openapi-search/README.md', 'apps/slaops-cloud/openapi-search.md'],
   ['apps/slaops-portal/README.md', 'apps/slaops-portal.md'],
+  ['apps/slaops-relay/README.md', 'apps/slaops-relay.md'],
+  ['apps/slaops-aegis/README.md', 'apps/slaops-aegis.md'],
   ['packages/slaops-config/README.md', 'packages/slaops-config.md'],
   ['packages/slaops-private/README.md', 'packages/slaops-private.md'],
   ['packages/slaops-public/README.md', 'packages/slaops-public.md'],

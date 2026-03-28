@@ -1,12 +1,14 @@
 # @slaops/cloud
 
-NestJS backend API for the SLAOps platform.
+NestJS backend API for the SLAOps platform. Runs as a standalone server in development and as an AWS Lambda function in production.
 
 ## Features
 
-- RESTful API for service management
-- TypeORM with PostgreSQL (Aurora Serverless)
-- Swagger/OpenAPI documentation
+- RESTful API for service management and OpenAPI indexing
+- OpenSearch integration for spec search and analytics
+- TypeORM with PostgreSQL (Aurora Serverless in production)
+- Cloud Relay network: relay instance registry, Aegis instance registry, job queue, vendor JWT issuance
+- Swagger/OpenAPI documentation at `/api`
 - Input validation with class-validator
 - CORS support for frontend integration
 
@@ -61,13 +63,13 @@ pnpm --filter @slaops/cloud run start:prod
 pnpm --filter @slaops/cloud run generate:openapi
 ```
 
-Will generate the OpenAPI spec in `dist/openapi.json` and `src/openapi.json`
+Generates the OpenAPI spec to `dist/openapi.json` and `src/openapi.json`.
 
 ```bash
 pnpm --filter @slaops/cloud run generate:client
 ```
 
-Will generate the client in `<root>/apps/slaops-portal/src/client/slaops-cloud` for use the slaops-portal app to type-safely interact with the slaops-cloud API.
+Generates a typed Axios client to `apps/slaops-portal/src/client/slaops-cloud`.
 
 ## Development
 
@@ -96,13 +98,82 @@ pnpm --filter @slaops/cloud run test:cov
 pnpm --filter @slaops/cloud run lint
 ```
 
+## Module Structure
+
+```
+src/
+├── app.module.ts                     # Root module — TypeORM, all feature modules
+├── main.ts                           # Standalone server entry point
+├── lambda.ts                         # AWS Lambda handler
+├── openapi.ts                        # OpenAPI spec generator (runs post-build)
+│
+├── service/                          # Service registry CRUD
+├── openapi-indexer/                  # OpenAPI spec indexing into OpenSearch
+├── openapi-search/                   # OpenAPI search API
+├── opensearch/                       # OpenSearch client, templates, pipelines
+├── config/                           # Config module
+│
+├── vendor-jwt/                       # Platform vendor JWT issuance and JWKS
+│   ├── vendor-jwt.module.ts
+│   └── vendor-jwt.service.ts         # ES256 signing key, mint relay JWTs, JWKS export
+│
+├── relay-instance/                   # Relay instance registry
+│   ├── relay-instance.module.ts
+│   ├── relay-instance.service.ts     # CRUD + health check (calls relay /health)
+│   ├── relay-instance.controller.ts  # GET/POST/PATCH/DELETE /cloud-relay/relay-instance
+│   └── entities/
+│       └── relay-instance.entity.ts  # relay_instance table
+│
+├── aegis-instance/                   # Aegis broker instance registry
+│   ├── aegis-instance.module.ts
+│   ├── aegis-instance.service.ts     # CRUD + registration token + health check
+│   ├── aegis-instance.controller.ts  # GET/POST/PATCH/DELETE /cloud-relay/aegis-instance
+│   ├── aegis-register.controller.ts  # POST /cloud-relay/aegis/register (called by Aegis)
+│   └── entities/
+│       └── aegis-instance.entity.ts  # aegis_instance table
+│
+└── cloud-relay/                      # Cloud relay connection + job queue
+    ├── cloud-relay.module.ts
+    ├── cloud-relay.service.ts        # Connection and job management
+    ├── cloud-relay.controller.ts     # GET .well-known/jwks.json + connection/job endpoints
+    └── entities/
+        ├── cloud-relay-connection.entity.ts
+        └── cloud-relay-job.entity.ts
+```
+
+## Cloud Relay Network
+
+See the [Cloud Relay Component Design](../slaops-docs/notes/proposals/cloud-relay/component-cloud-relay.md) for the full architecture, sequence diagrams, and design decisions.
+
+
+The cloud relay subsystem (`relay-instance/`, `aegis-instance/`, `cloud-relay/`, `vendor-jwt/`) implements the SLAOps relay network control plane:
+
+| Module | Responsibility |
+|--------|---------------|
+| `vendor-jwt` | Mint ES256 vendor JWTs (5-min TTL, relay-scoped) for platform→relay auth; serve JWKS |
+| `relay-instance` | Registry of customer-deployed relay agents; health checks via vendor JWT |
+| `aegis-instance` | Registry of customer Aegis brokers; one-time registration token flow |
+| `cloud-relay` | Connection and job queue for proxying requests through a relay |
+
+### Key Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/.well-known/jwks.json` | Vendor signing public key in JWKS format |
+| `GET` | `/cloud-relay/relay-instance` | List relay instances (tenant-scoped) |
+| `POST` | `/cloud-relay/relay-instance` | Register a new relay instance |
+| `POST` | `/cloud-relay/relay-instance/:id/health-check` | Trigger health check for relay |
+| `GET` | `/cloud-relay/aegis-instance` | List Aegis broker instances |
+| `POST` | `/cloud-relay/aegis-instance` | Register a new Aegis instance (generates token) |
+| `POST` | `/cloud-relay/aegis/register` | Aegis self-registration handshake |
+
 ## Deployment
 
 ### AWS Infrastructure
 
-The database infrastructure (Aurora Serverless PostgreSQL) is defined in `packages/slaops-backend/` using AWS Amplify Gen 2.
+Database infrastructure (Aurora Serverless PostgreSQL) and API Gateway are defined in `packages/slaops-infra/`. Lambda deployment is managed via `packages/slaops-backend/` (AWS Amplify Gen 2).
 
-See [packages/slaops-backend/README.md](../../packages/slaops-backend/README.md) for infrastructure setup.
+See [packages/slaops-infra/README.md](../../packages/slaops-infra/README.md) and [packages/slaops-backend/README.md](../../packages/slaops-backend/README.md) for infrastructure setup.
 
 ### Environment Variables for Production
 
@@ -118,31 +189,12 @@ DB_PASSWORD=your-secure-password
 DB_NAME=slaops
 DB_SSL=true
 DB_LOGGING=false
+
+# Cloud Relay — vendor JWT signing
+# If unset, an ephemeral ES256 key is generated at startup (dev only)
+SLAOPS_VENDOR_SIGNING_KEY_JWK={"kty":"EC","crv":"P-256",...}
 ```
 
 ## API Documentation
 
-Once the server is running, visit `http://localhost:3001/api` to access the interactive Swagger documentation.
-
-## Compatibility with Supabase
-
-This API is designed to be compatible with the previous Supabase implementation:
-
-- Query parameter `select` works similarly to Supabase's select
-- Response format matches Supabase's JSON structure
-- Field names match the Supabase schema
-
-Example migration:
-
-```typescript
-// Before (Supabase)
-const { data, error } = await supabase
-  .from('services')
-  .select('id, name, endpoint, openapi_doc_url, openapi_doc_content')
-
-// After (NestJS API)
-const response = await fetch(
-  'http://localhost:3001/service?select=id,name,endpoint,openapi_doc_url,openapi_doc_content',
-)
-const data = await response.json()
-```
+Once the server is running, visit `http://localhost:3001/api` for the interactive Swagger documentation.

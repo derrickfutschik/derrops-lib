@@ -53,6 +53,75 @@ windows:
         - cloudflared tunnel route dns dev-8080-local www.dersza.com
         - cloudflared tunnel run dev-8080-local
 
+  - slaops-relay:
+      root: apps/slaops-relay
+      layout: even-vertical
+      panes:
+        - >-
+          PORT=8081
+          NODE_ENV=dev
+          RELAY_QUEUE_BACKEND=memory
+          RELAY_SECRET_BACKEND=env
+          AEGIS_JWKS_URL=http://localhost:8082/.well-known/jwks.json
+          pnpm run dev
+
+  - slaops-aegis:
+      root: apps/slaops-aegis
+      layout: even-vertical
+      panes:
+        - >-
+          AEGIS_PORT=8082
+          NODE_ENV=dev
+          AEGIS_ISSUER=http://localhost:8082
+          AEGIS_SIGNING_KEY_ID=aegis-dev-1
+          ALLOWED_RELAY_IDS=00000000-0000-0000-0000-000000relay1
+          pnpm run dev
+
+  # Wire relay ↔ aegis after both services are up.
+  # Relay trusts Aegis via AEGIS_JWKS_URL (set above).
+  # Aegis only issues delegation JWTs for relay IDs in ALLOWED_RELAY_IDS (set above).
+  # This window verifies the wiring with live curl checks and a smoke-test session.
+  - relay-aegis-setup:
+      root: .
+      layout: even-vertical
+      panes:
+        - |
+          echo "⏳  Waiting 25s for relay (8081) and aegis (8082) to be ready..."
+          sleep 25
+
+          echo ""
+          echo "=== [1/3] Aegis JWKS (relay will fetch this to validate delegation JWTs) ==="
+          curl -sf http://localhost:8082/.well-known/jwks.json | jq . \
+            && echo "✅  Aegis JWKS OK" || echo "❌  Aegis not ready"
+
+          echo ""
+          echo "=== [2/3] Relay health ==="
+          curl -sf http://localhost:8081/health | jq . \
+            && echo "✅  Relay health OK" || echo "❌  Relay not ready"
+
+          echo ""
+          echo "=== [3/3] Smoke-test: issue Aegis session delegation JWT for relay ==="
+          echo "    (CUSTOMER_IDP_JWKS_URL unset → IdP token validation skipped in dev)"
+          curl -sf -X POST http://localhost:8082/v1/session \
+            -H "Content-Type: application/json" \
+            -d '{
+              "tenantId": "dev-tenant",
+              "userToken": "dev-token-idp-validation-skipped",
+              "requestedScopes": [
+                {
+                  "apiId": "dev-api",
+                  "environment": "dev",
+                  "relayId": "00000000-0000-0000-0000-000000relay1"
+                }
+              ]
+            }' | jq . \
+            && echo "✅  Session delegation JWT issued" || echo "❌  Session request failed"
+
+          echo ""
+          echo "=== Setup complete. Services ready at: ==="
+          echo "    Relay  → http://localhost:8081  (Swagger: /api)"
+          echo "    Aegis  → http://localhost:8082  (Swagger: /api)"
+
   - slaops-tests:
       root: .
       layout: even-vertical

@@ -11,8 +11,10 @@ Content is copied at build time from each area’s `README.md` via `scripts/copy
 
 ## Apps
 
-- **[slaops-cloud](/code/apps/slaops-cloud)** — NestJS backend API
+- **[slaops-cloud](/code/apps/slaops-cloud)** — NestJS backend API (service registry, cloud relay control plane)
 - **[slaops-portal](/code/apps/slaops-portal)** — React web portal
+- **[slaops-relay](/code/apps/slaops-relay)** — Stateless HTTP proxy relay agent
+- **[slaops-aegis](/code/apps/slaops-aegis)** — Customer-controlled session delegation broker
 - **slaops-cloud modules**: [OpenAPI Indexer](/code/apps/slaops-cloud/openapi-indexer), [OpenAPI Search](/code/apps/slaops-cloud/openapi-search)
 
 ## Packages

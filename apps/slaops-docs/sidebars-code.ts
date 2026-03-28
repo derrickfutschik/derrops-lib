@@ -11,6 +11,8 @@ const sidebars: SidebarsConfig = {
         'apps/slaops-cloud/openapi-indexer',
         'apps/slaops-cloud/openapi-search',
         'apps/slaops-portal',
+        'apps/slaops-relay',
+        'apps/slaops-aegis',
       ],
     },
     {
