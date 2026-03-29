@@ -57,6 +57,48 @@ export const env = {
   },
 
   /**
+   * SQS-based platform-queue delivery.
+   *
+   * AWS credentials are obtained at startup via the Cognito Identity Pool and
+   * refreshed automatically before they expire. They are never stored on disk.
+   * `slaops relay start` injects all variables below into process.env.
+   *
+   * RELAY_PLATFORM_SQS_QUEUE_URL            — the relay's dedicated SQS queue URL
+   * RELAY_PLATFORM_SQS_REGION               — AWS region (default: ap-southeast-2)
+   * RELAY_PLATFORM_SQS_ACCESS_KEY_ID        — initial temp AWS access key (in-memory)
+   * RELAY_PLATFORM_SQS_SECRET_ACCESS_KEY    — initial temp AWS secret key (in-memory)
+   * RELAY_PLATFORM_SQS_SESSION_TOKEN        — initial temp AWS session token (in-memory)
+   * RELAY_PLATFORM_SQS_CREDS_EXPIRY         — ISO expiry of the initial temp credentials
+   *
+   * RELAY_COGNITO_IDENTITY_POOL_ID  — Cognito Identity Pool ID (for credential refresh)
+   * RELAY_COGNITO_REGION            — AWS region of the Identity Pool / User Pool
+   * RELAY_COGNITO_USER_POOL_ID      — User Pool ID (used as Identity Pool provider key)
+   * RELAY_COGNITO_ID_TOKEN          — current Cognito id_token (refreshed as needed)
+   * RELAY_COGNITO_REFRESH_TOKEN     — Cognito refresh token (30-day; renews id_token)
+   * RELAY_COGNITO_CLIENT_ID         — Cognito app client ID (for token refresh calls)
+   * RELAY_COGNITO_DOMAIN            — Cognito hosted UI domain (for token refresh calls)
+   */
+  platformSqs: {
+    queueUrl: process.env.RELAY_PLATFORM_SQS_QUEUE_URL,
+    region: process.env.RELAY_PLATFORM_SQS_REGION ?? 'ap-southeast-2',
+    // Initial credentials injected by slaops-cli — refreshed autonomously by the relay
+    initialAccessKeyId: process.env.RELAY_PLATFORM_SQS_ACCESS_KEY_ID,
+    initialSecretAccessKey: process.env.RELAY_PLATFORM_SQS_SECRET_ACCESS_KEY,
+    initialSessionToken: process.env.RELAY_PLATFORM_SQS_SESSION_TOKEN,
+    initialCredsExpiry: process.env.RELAY_PLATFORM_SQS_CREDS_EXPIRY,
+  },
+
+  cognito: {
+    identityPoolId: process.env.RELAY_COGNITO_IDENTITY_POOL_ID,
+    region: process.env.RELAY_COGNITO_REGION ?? 'ap-southeast-2',
+    userPoolId: process.env.RELAY_COGNITO_USER_POOL_ID,
+    idToken: process.env.RELAY_COGNITO_ID_TOKEN,
+    refreshToken: process.env.RELAY_COGNITO_REFRESH_TOKEN,
+    clientId: process.env.RELAY_COGNITO_CLIENT_ID,
+    domain: process.env.RELAY_COGNITO_DOMAIN ?? 'https://auth.slaops.com',
+  },
+
+  /**
    * JWT-based authentication for inbound platform requests and Aegis delegation.
    *
    * RELAY_ID                  — UUID assigned by slaops-cloud at registration. Used to validate

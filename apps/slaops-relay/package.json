@@ -4,6 +4,10 @@
   "description": "SLAOps Cloud Relay — self-contained HTTP proxy service",
   "private": true,
   "license": "MIT",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
