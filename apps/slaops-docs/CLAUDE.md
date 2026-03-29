@@ -18,14 +18,13 @@ The SLAOps documentation provides comprehensive guides for the SLAOps platform, 
 
 ```
 apps/slaops-docs/
-├── docs/              # Main documentation content
-├── src/
-│   ├── design/        # Main Design of the Platform (Internal for Architecture Decision Records)
-│   ├── docs/          # Public Documentation for the Platform
-│   ├── devops/        # Sprint and User Story documentation
-│   └── code/          # Implementation detail documentation for the SLAOps platform monorepo, developer day-to-day focused.
-├── blog/              # Blog posts
-├── changelog/         # Changelog entries
+├── design/        # Main Design of the Platform (Internal for Architecture Decision Records)
+├── docs/          # Public Documentation for the Platform
+├── devops/        # Sprint and User Story documentation
+├── code/          # Implementation detail documentation for the SLAOps platform monorepo, developer day-to-day focused.
+├── notes/         # In progress thoughts and idea, not yet fully formed, not yet ready to be documented.
+├── blog/          # Blog posts
+├── changelog/     # Changelog entries
 ├── src/
 │   ├── components/    # Custom React components
 │   ├── css/           # Custom styling

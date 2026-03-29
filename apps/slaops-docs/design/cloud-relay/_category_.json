@@ -1,0 +1,8 @@
+{
+  "label": "Cloud Relay",
+  "position": 2,
+  "link": {
+    "type": "doc",
+    "id": "cloud-relay/index"
+  }
+}

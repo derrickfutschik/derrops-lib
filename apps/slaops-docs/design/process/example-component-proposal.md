@@ -1,6 +1,7 @@
 ---
-sidebar_position: 13
+sidebar_position: 3
 title: Example Component Proposal
+tags: [process]
 ---
 
 # Component Proposal: Metrics Aggregation Engine

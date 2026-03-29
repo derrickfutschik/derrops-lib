@@ -6,5 +6,4 @@ This section contains information about DevOps practices, sprints, and user stor
 
 ## Sections
 
-- [Sprints](./sprints)
 - [User Stories](./user-stories)

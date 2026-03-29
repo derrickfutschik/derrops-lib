@@ -190,6 +190,8 @@ const config: Config = {
         path: 'design',
         routeBasePath: 'design',
         sidebarPath: './sidebars-design.ts',
+        tagsBasePath: 'tags',
+        onInlineTags: 'warn',
         editUrl: ({ docPath }) => {
           const awsBranch = process.env.AWS_BRANCH
           if (awsBranch) {

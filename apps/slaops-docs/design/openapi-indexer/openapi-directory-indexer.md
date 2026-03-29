@@ -1,11 +1,12 @@
 ---
-sidebar_position: 14
+sidebar_position: 1
 title: OpenAPI Directory Indexer
+tags: [openapi-indexer, data-pipeline, component-design, implemented]
 ---
 
 # Component Proposal: OpenAPI Directory Indexer
 
-> **Status**: Draft
+> **Status**: Implemented
 > **Author**: Derrick
 > **Date**: 2025-01-21
 > **Related Issue**: [Link to GitHub issue if applicable]
@@ -28,7 +29,24 @@ Discovering and finding relevant APIs across a large collection of OpenAPI speci
 
 Without automated indexing, users must manually browse directories or grep through thousands of YAML/JSON files, which is slow and impractical for large API directories.
 
-=
+### Scope
+
+**In Scope:**
+
+- S3 event-triggered Lambda function for automatic indexing on upload
+- Parsing OpenAPI 3.x only (Swagger 2.0 specs are converted to 3.0 upstream before upload to S3)
+- Indexing into OpenSearch Index (`slaops-openapis`)
+- Search by description, domain, server, operations, paths, tags
+- S3 Bucket will be Structured the same as APIs-guru directory structure (`APIs/[provider]/[service]/[version]/`)
+- Search service in slaops-cloud for querying indexed APIs
+
+**Out of Scope:**
+
+- OpenAPI validation/linting (separate concern)
+- API mocking or proxy generation
+- Real-time API monitoring
+- Custom S3 bucket structures (initially only APIs-guru format)
+- Full-text search of request/response schemas (future enhancement)
 
 ### Relationship to Existing Components
 
@@ -55,95 +73,21 @@ graph TD
     style Service fill:#ff6b6b,stroke:#333,stroke-width:3px
 ```
 
-## Indexing Flow
+## Type Definitions
 
-```mermaid
-
-
-flowchart TD
-    A["Send OpenAPI Spec<br/>(external URL or request body)"] --> B["Parse Spec"]
-    B --> C{"Is Swagger?<br/>Needs Conversion?"}
-    C -- "Yes" --> D["Convert to OpenAPI 3.1.0"]
-    D --> F["Save to S3"]
-    F --> H["Construct Index Document"]
-    H --> I["Index Document<br/>into OpenSearch"]
-```
-
-### Methods
-
-The following are methods which will be needed when operating on the OpenAPI spec.
-
-| Method                    | Description                                                      | Inputs              | Outputs    |
-| ------------------------- | ---------------------------------------------------------------- | ------------------- | ---------- |
-| `getSpecFromS3`           | Fetch the current OpenAPI specification from S3                  | `_id`               | `spec`     |
-| `getSpecFromExternalDocs` | Fetch the latest OpenAPI specification from the externalDocs URL | `_id`               | `spec`     |
-| `updateSpecInS3`          | Update the OpenAPI specification in S3                           | `_id`, `spec`       | `void`     |
-| `indexOperations`         | Index operations which will be used to search for the API        | `_id`, `operations` | `void`     |
-| `indexMetadata`           | Index the high-level current metadata to find the API easily     | `_id`, `metadata`   | `void`     |
-| `getMetadata`             | Get the metadata from the OpenAPI specification                  | `_id`               | `metadata` |
-| `indexSpec`               | Index the entire OpenAPI specification (Indexing Flow)           | `_id`, `spec`       | `void`     |
-
-## High Level Metadata
-
-**Utility Methods**
-To support `indexMetadata` there will need to be a function which takes an entire `spec` and returns the metadata which will be indexed. This will be used to index the high-level current metadata to find the API easily.
-
-| Field       | Description                |
-| ----------- | -------------------------- |
-| version     | The version of the API     |
-| title       | The title of the API       |
-| description | The description of the API |
-| tags        | The tags of the API        |
+### Core Types
 
 ```typescript
-
-
-/** Make use of **/
-import { OpenAPIV3_1.Document } from "openapi-types";
-
-
-/** The S3 location of an OpenAPI specification */
-export type S3Location = {
-  bucket: string,
-  key: string,
-}
-
-
 /**
  * Represents the indexed metadata for an OpenAPI specification
  * This is the document schema stored in OpenSearch
- *
- * Follow Opensearch conventions such as _id
- *
  */
 export interface OpenApiIndexDocument {
-
   /** Unique identifier: {provider}/{service}/{version} */
-  _id: string
-
-  /** Who owns and produces this API i.e. Amazon Web Services*/
-  owner: string
-
-  current: {
-    provider: string
-    service: string
-    version: string
-    title: string
-    description: string
-    tags: string[]
-    servers: string[]
-    contact: string
-  }
-
-
-  /** Index the high-level current
-
+  id: string
 
   /** Provider/domain name (e.g., 'github.com', 'stripe.com') */
   provider: string
-
-
-  latestVersion:
 
   /** Service name within the provider */
   serviceName: string
@@ -154,10 +98,50 @@ export interface OpenApiIndexDocument {
   /** OpenAPI specification version (e.g., '3.0.3', '3.1.0') */
   specVersion: string
 
+  /** API title from info.title */
+  title: string
 
+  /** API description from info.description */
+  description: string
 
+  /** Terms of service URL */
+  termsOfService?: string
 
+  /** Contact information */
+  contact?: {
+    name?: string
+    email?: string
+    url?: string
+  }
 
+  /** License information */
+  license?: {
+    name: string
+    url?: string
+  }
+
+  /** Server URLs and descriptions */
+  servers: Array<{
+    url: string
+    description?: string
+  }>
+
+  /** All unique tags used in the spec (from top-level and operations) */
+  tags: string[]
+
+  /** Aggregated operation statistics (not full operation list) */
+  operationStats: {
+    /** Total number of operations */
+    total: number
+    /** Count by HTTP method */
+    byMethod: Record<string, number>
+    /** Unique HTTP methods used */
+    methods: string[]
+    /** Unique path prefixes (first segment, e.g., '/users', '/orders') */
+    pathPrefixes: string[]
+    /** All unique operationIds (for exact lookup) */
+    operationIds: string[]
+  }
 
   /** Sample operations for display (max 20) */
   sampleOperations: Array<{
@@ -173,7 +157,7 @@ export interface OpenApiIndexDocument {
   /** Concatenated searchable text from all operation summaries/descriptions */
   operationSearchText: string
 
-  /** External documentation links which can be used to fetch and update the openAPI spec */
+  /** External documentation links */
   externalDocs?: {
     url: string
     description?: string
@@ -186,13 +170,10 @@ export interface OpenApiIndexDocument {
   }
 
   /** Metadata */
-  metadata: {
-    indexedAt: string
-    updatedAt: string
-    fileSize: number
-    fileFormat: 'yaml' | 'json'
-  }
-
+  indexedAt: string
+  updatedAt: string
+  fileSize: number
+  fileFormat: 'yaml' | 'json'
 }
 
 /**
@@ -423,6 +404,189 @@ sequenceDiagram
 
 ## API Specification
 
+### Lambda Handler
+
+```typescript
+// packages/slaops-backend/amplify/functions/openapi-indexer/handler.ts
+
+import type { S3Event, Context } from 'aws-lambda'
+import type { IndexResult } from './types'
+
+/**
+ * Lambda handler for S3 event-triggered OpenAPI indexing
+ * @param event - S3 event containing object details
+ * @param context - Lambda context
+ * @returns Array of indexing results
+ */
+export async function handler(event: S3Event, context: Context): Promise<IndexResult[]> {
+  // Process each S3 record
+}
+```
+
+### Search Controller (NestJS)
+
+```typescript
+// apps/slaops-cloud/src/openapi-search/openapi-search.controller.ts
+
+import { Controller, Get, Query } from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
+import { OpenApiSearchService } from './openapi-search.service'
+import { OpenApiSearchQueryDto, OpenApiSearchResponseDto } from './dto'
+
+@ApiTags('OpenAPI Search')
+@Controller('openapi-search')
+export class OpenApiSearchController {
+  constructor(private readonly searchService: OpenApiSearchService) {}
+
+  /**
+   * Search indexed OpenAPI specifications
+   */
+  @Get()
+  @ApiOperation({ summary: 'Search OpenAPI specifications' })
+  @ApiQuery({ name: 'query', required: false, description: 'Free-text search' })
+  @ApiQuery({ name: 'provider', required: false, description: 'Filter by provider' })
+  @ApiQuery({ name: 'tags', required: false, type: [String], description: 'Filter by tags' })
+  @ApiQuery({ name: 'method', required: false, description: 'Filter by HTTP method' })
+  async search(@Query() query: OpenApiSearchQueryDto): Promise<OpenApiSearchResponseDto> {
+    return this.searchService.search(query)
+  }
+
+  /**
+   * Get a specific OpenAPI spec by ID
+   */
+  @Get(':id')
+  @ApiOperation({ summary: 'Get OpenAPI spec by ID' })
+  async getById(@Param('id') id: string): Promise<OpenApiIndexDocument> {
+    return this.searchService.getById(id)
+  }
+
+  /**
+   * List all providers with spec counts
+   */
+  @Get('providers')
+  @ApiOperation({ summary: 'List all API providers' })
+  async listProviders(): Promise<Array<{ provider: string; count: number }>> {
+    return this.searchService.listProviders()
+  }
+
+  /**
+   * Get aggregated statistics
+   */
+  @Get('stats')
+  @ApiOperation({ summary: 'Get index statistics' })
+  async getStats(): Promise<IndexStats> {
+    return this.searchService.getStats()
+  }
+}
+```
+
+### Search Service
+
+```typescript
+// apps/slaops-cloud/src/openapi-search/openapi-search.service.ts
+
+import { Injectable } from '@nestjs/common'
+import { Client } from '@opensearch-project/opensearch'
+import { OpenApiSearchQuery, OpenApiSearchResponse, OpenApiIndexDocument } from './types'
+
+@Injectable()
+export class OpenApiSearchService {
+  private readonly client: Client
+  private readonly indexName = 'openapi-specs'
+
+  constructor() {
+    this.client = new Client({
+      node: process.env.OPENSEARCH_ENDPOINT,
+      // AWS SigV4 signing configuration
+    })
+  }
+
+  /**
+   * Search OpenAPI specifications with filters and full-text search
+   */
+  async search(query: OpenApiSearchQuery): Promise<OpenApiSearchResponse> {
+    const body = this.buildSearchQuery(query)
+    const response = await this.client.search({
+      index: this.indexName,
+      body,
+    })
+    return this.transformResponse(response)
+  }
+
+  /**
+   * Get a single document by ID
+   */
+  async getById(id: string): Promise<OpenApiIndexDocument | null> {
+    // Implementation
+  }
+
+  /**
+   * List all unique providers with document counts
+   */
+  async listProviders(): Promise<Array<{ provider: string; count: number }>> {
+    // Aggregation query
+  }
+
+  /**
+   * Build OpenSearch query DSL from search parameters
+   */
+  private buildSearchQuery(params: OpenApiSearchQuery): object {
+    // Build bool query with must/should/filter clauses
+  }
+}
+```
+
+### Usage Examples
+
+#### Searching for APIs
+
+```typescript
+// Search by description (semantic)
+const githubApis = await searchService.search({
+  query: 'repository management git version control',
+  size: 10,
+})
+
+// Filter by provider
+const stripeApis = await searchService.search({
+  provider: 'stripe.com',
+  sort: { field: 'title', order: 'asc' },
+})
+
+// Find APIs with specific operations
+const webhookApis = await searchService.search({
+  query: 'webhook',
+  method: 'POST',
+  pathPattern: '/webhooks/*',
+})
+
+// Filter by tags
+const paymentApis = await searchService.search({
+  tags: ['payments', 'billing'],
+})
+```
+
+#### REST API Usage
+
+```bash
+# Free-text search
+curl "https://api.slaops.com/openapi-search?query=user+authentication"
+
+# Filter by provider
+curl "https://api.slaops.com/openapi-search?provider=github.com"
+
+# Combined filters
+curl "https://api.slaops.com/openapi-search?tags=payments&method=POST&size=20"
+
+# Get specific spec
+curl "https://api.slaops.com/openapi-search/github.com/api.github.com/1.1.4"
+
+# List providers
+curl "https://api.slaops.com/openapi-search/providers"
+```
+
+## Data Structures
+
 ### OpenSearch Index Mapping
 
 ```json
@@ -430,6 +594,8 @@ sequenceDiagram
   "mappings": {
     "properties": {
       "id": { "type": "keyword" },
+      "provider": { "type": "keyword" },
+      "serviceName": { "type": "keyword" },
       "version": { "type": "keyword" },
       "specVersion": { "type": "keyword" },
       "title": {
@@ -548,11 +714,139 @@ s3://slaops-openapi-specs/
 | `operationSearchText`         | string   | No       | Concatenated operation text                 | text (searchable)     |
 | `indexedAt`                   | date     | Yes      | Index timestamp                             | date                  |
 
+## Dependencies
+
+### Lambda Function Dependencies
+
+| Package                             | Version    | Purpose                      | License    |
+| ----------------------------------- | ---------- | ---------------------------- | ---------- |
+| `@opensearch-project/opensearch`    | `^2.5.0`   | OpenSearch client            | Apache-2.0 |
+| `@aws-sdk/client-s3`                | `^3.500.0` | S3 operations                | Apache-2.0 |
+| `@aws-sdk/credential-provider-node` | `^3.500.0` | AWS credentials              | Apache-2.0 |
+| `yaml`                              | `^2.3.0`   | YAML parsing                 | ISC        |
+| `@apidevtools/swagger-parser`       | `^10.1.0`  | OpenAPI parsing & validation | MIT        |
+
+### Search Service Dependencies (slaops-cloud)
+
+| Package                          | Version  | Purpose            | License    |
+| -------------------------------- | -------- | ------------------ | ---------- |
+| `@opensearch-project/opensearch` | `^2.5.0` | OpenSearch client  | Apache-2.0 |
+| `@nestjs/common`                 | existing | NestJS framework   | MIT        |
+| `class-validator`                | existing | DTO validation     | MIT        |
+| `class-transformer`              | existing | DTO transformation | MIT        |
+
+### Infrastructure Dependencies
+
+| Resource              | Source                   | Purpose                  |
+| --------------------- | ------------------------ | ------------------------ |
+| OpenSearch Serverless | `@slaops/infra`          | Index storage and search |
+| VPC                   | `@slaops/infra`          | Network isolation        |
+| S3 Bucket             | New (in `@slaops/infra`) | OpenAPI spec storage     |
+
 ## Implementation Details
 
 ### Key Algorithms
 
 #### OpenAPI Parsing and Transformation
+
+```text
+FUNCTION parseAndIndexSpec(s3Key: string, content: string):
+  // Step 1: Detect format and parse
+  format = detectFormat(s3Key)  // yaml or json
+  rawSpec = format === 'yaml' ? parseYaml(content) : parseJson(content)
+
+  // Step 2: Validate and dereference
+  spec = await SwaggerParser.validate(rawSpec)
+
+  // Step 3: Extract path components from S3 key
+  // Expected: APIs/{provider}/{service}/{version}/openapi.{yaml|json}
+  [provider, service, version] = extractPathComponents(s3Key)
+
+  // Step 4: Validate OpenAPI 3.x
+  IF NOT spec.openapi OR NOT spec.openapi.startsWith('3.'):
+    THROW IndexingError('Only OpenAPI 3.x specs are supported')
+
+  // Step 5: Extract and aggregate operations
+  allOperations = []
+  methodCounts = {}
+  pathPrefixes = new Set()
+  operationIds = []
+  searchTextParts = []
+
+  FOR EACH [path, pathItem] IN spec.paths:
+    // Extract path prefix (first segment)
+    prefix = path.split('/')[1] || path
+    pathPrefixes.add('/' + prefix)
+
+    FOR EACH method IN ['get', 'post', 'put', 'delete', 'patch', 'head', 'options']:
+      IF pathItem[method]:
+        op = pathItem[method]
+        methodUpper = method.toUpperCase()
+
+        // Count methods
+        methodCounts[methodUpper] = (methodCounts[methodUpper] || 0) + 1
+
+        // Collect operation IDs (max 500)
+        IF op.operationId AND operationIds.length < 500:
+          operationIds.push(op.operationId)
+
+        // Build search text from summaries/descriptions
+        IF op.summary:
+          searchTextParts.push(op.summary)
+        IF op.description:
+          searchTextParts.push(op.description)
+
+        // Collect all operations for sampling
+        allOperations.push({
+          method: methodUpper,
+          path: path,
+          operationId: op.operationId,
+          summary: op.summary
+        })
+
+  // Step 6: Apply dimensionality limits
+  sampleOperations = allOperations.slice(0, 20)  // Max 20 for display
+  paths = Object.keys(spec.paths).slice(0, 100)  // Max 100 paths
+  operationSearchText = searchTextParts.join(' ').slice(0, 50000)  // Max 50KB
+
+  // Step 7: Build index document
+  document = {
+    id: `${provider}/${service}/${version}`,
+    provider,
+    serviceName: service,
+    version,
+    specVersion: spec.openapi,
+    title: spec.info.title,
+    description: spec.info.description,
+    contact: spec.info.contact,
+    license: spec.info.license,
+    servers: spec.servers,
+    tags: extractUniqueTags(spec),
+    operationStats: {
+      total: allOperations.length,
+      byMethod: methodCounts,
+      methods: Object.keys(methodCounts),
+      pathPrefixes: Array.from(pathPrefixes),
+      operationIds: operationIds
+    },
+    sampleOperations,
+    paths,
+    operationSearchText,
+    s3Location: { bucket, key: s3Key },
+    indexedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    fileSize: content.length,
+    fileFormat: format
+  }
+
+  // Step 8: Index to OpenSearch
+  RETURN await opensearchClient.index({
+    index: 'openapi-specs',
+    id: document.id,
+    body: document,
+    refresh: true
+  })
+```
 
 #### Search Query Building
 
@@ -635,7 +929,7 @@ FUNCTION buildSearchQuery(params: OpenApiSearchQuery):
 | ---------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- |
 | Invalid OpenAPI spec   | Parsing/validation fails                             | Log error, skip indexing                             | Error in CloudWatch, no document indexed          |
 | Non-OpenAPI 3.x spec   | Missing `openapi: "3.x.x"`                           | Reject with error                                    | Logged, not indexed (conversion happens upstream) |
-| Missing description    | `info.description` undefined                         | Generate use LLM                                     | Document indexed, low search relevance            |
+| Missing description    | `info.description` undefined                         | Use empty string                                     | Document indexed, low search relevance            |
 | Large spec file        | Size > 10MB                                          | Skip with warning                                    | Logged, not indexed                               |
 | Many operations        | 1000+ operations                                     | Apply truncation limits                              | Document indexed with truncated=true              |
 | Duplicate upload       | Same S3 key re-uploaded                              | Upsert (update existing)                             | Document updated with new timestamp               |
@@ -738,23 +1032,50 @@ export const openapiIndexer = defineFunction({
 | `MAX_FILE_SIZE_MB`    | No       | `10`            | Maximum spec file size         |
 | `DEBUG`               | No       | `false`         | Enable debug logging           |
 
+### Adding the Search Module to slaops-cloud
+
+```typescript
+// apps/slaops-cloud/src/openapi-search/openapi-search.module.ts
+
+import { Module } from '@nestjs/common'
+import { OpenApiSearchController } from './openapi-search.controller'
+import { OpenApiSearchService } from './openapi-search.service'
+
+@Module({
+  controllers: [OpenApiSearchController],
+  providers: [OpenApiSearchService],
+  exports: [OpenApiSearchService],
+})
+export class OpenApiSearchModule {}
+
+// Add to app.module.ts
+import { OpenApiSearchModule } from './openapi-search/openapi-search.module'
+
+@Module({
+  imports: [
+    // ... existing imports
+    OpenApiSearchModule,
+  ],
+})
+export class AppModule {}
+```
+
 ## Testing Strategy
 
 ### Unit Tests
 
-| Test Case                          | Input                         | Expected Output                                  | Priority |
-| ---------------------------------- | ----------------------------- | ------------------------------------------------ | -------- |
-| Parse valid OpenAPI 3.0            | Valid YAML spec               | Parsed document                                  | High     |
-| Reject not supported specs         | Swagger 2.0 or invalid spec   | IndexingError                                    | High     |
-| Convert Swagger 2.0 to OpenAPI 3.0 | Swagger 2.0 spec              | OpenAPI 3.0 spec                                 | High     |
-| Aggregate operations               | Spec with 100 endpoints       | operationStats.total=100, methods, prefixes      | High     |
-| Truncate large specs               | Spec with 1000 operations     | sampleOperations.length=20, paths.length&lt;=100 | High     |
-| Build search text                  | Spec with operation summaries | Concatenated operationSearchText                 | High     |
-| Extract unique tags                | Spec with duplicate tags      | Deduplicated tags                                | Medium   |
-| Build search query                 | Search params                 | Valid DSL query (no nested)                      | High     |
-| Handle missing description         | Spec without description      | Use AI to generate a description                 | Medium   |
-| Reject invalid spec                | Malformed YAML                | IndexingError                                    | High     |
-| Extract path params                | S3 key                        | provider, service, version                       | High     |
+| Test Case                  | Input                         | Expected Output                                  | Priority |
+| -------------------------- | ----------------------------- | ------------------------------------------------ | -------- |
+| Parse valid OpenAPI 3.0    | Valid YAML spec               | Parsed document                                  | High     |
+| Reject non-3.x spec        | Swagger 2.0 or invalid spec   | IndexingError                                    | High     |
+| Aggregate operations       | Spec with 100 endpoints       | operationStats.total=100, methods, prefixes      | High     |
+| Truncate large specs       | Spec with 1000 operations     | sampleOperations.length=20, paths.length&lt;=100 | High     |
+| Build search text          | Spec with operation summaries | Concatenated operationSearchText                 | High     |
+| Extract unique tags        | Spec with duplicate tags      | Deduplicated tags                                | Medium   |
+| Build search query         | Search params                 | Valid DSL query (no nested)                      | High     |
+| Handle missing description | Spec without description      | Empty string                                     | Medium   |
+| Reject invalid spec        | Malformed YAML                | IndexingError                                    | High     |
+| Extract path params        | S3 key                        | provider, service, version                       | High     |
 
 ### Integration Tests
 

@@ -1,0 +1,51 @@
+cloud-relay:
+  label: Cloud Relay
+  description: Cloud Relay component — the customer-deployed HTTP proxy
+
+aegis:
+  label: Aegis
+  description: Aegis Token Broker — customer-controlled credential injection
+
+openapi-indexer:
+  label: OpenAPI Indexer
+  description: Event-driven OpenAPI spec indexing pipeline
+
+authentication:
+  label: Authentication
+  description: Auth protocols, JWT, mTLS, HMAC, IAM
+
+security:
+  label: Security
+  description: Security model, trust boundaries, and threat mitigations
+
+networking:
+  label: Networking
+  description: Network topology, delivery modes, and connectivity
+
+data-pipeline:
+  label: Data Pipeline
+  description: Data ingestion, indexing, and search pipelines
+
+cli:
+  label: CLI
+  description: slaops-cli tooling and developer workflows
+
+component-design:
+  label: Component Design
+  description: Component proposals and detailed design specifications
+
+architecture:
+  label: Architecture
+  description: System architecture, topology, and ADRs
+
+reference:
+  label: Reference
+  description: Reference documents and stable specifications
+
+implemented:
+  label: Implemented
+  description: Design documents for features that have been built
+
+process:
+  label: Process
+  description: Team process documentation — proposals, standards, and workflows

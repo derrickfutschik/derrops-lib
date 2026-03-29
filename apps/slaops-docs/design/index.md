@@ -9,9 +9,35 @@ sidebar_position: 1
 
 Internal architecture and component design documentation for the SLAOps platform.
 
-This section covers:
+## Sections
 
-- **Component Designs** — Detailed design of individual software components, data models, and interfaces
-- **Architecture Decisions** — Architectural decision records (ADRs) explaining why key choices were made
-- **System Architecture** — High-level system diagrams, service boundaries, and integration points
-- **Data Flows** — How data moves through the platform (ingestion, enrichment, storage, querying)
+### [Cloud Relay](./cloud-relay)
+
+The customer-deployed HTTP proxy for API testing. Covers component design, network topology, connection trust model, Aegis Token Broker (credential injection), local development relay, and security/auth methods.
+
+### [OpenAPI Indexer](./openapi-indexer/openapi-directory-indexer)
+
+Event-driven S3-to-OpenSearch indexing pipeline for OpenAPI specifications. Covers architecture, indexing flow, search query design, and rollout plan.
+
+### [Component Proposal Process](./process/component-proposal-standard)
+
+Standards and templates for proposing new platform components — how to write a proposal, the lifecycle from draft to implemented, and a worked example.
+
+## Tags
+
+Documents are tagged for cross-cutting navigation. Browse by tag at [/design/tags](/design/tags).
+
+| Tag | Description |
+|---|---|
+| `cloud-relay` | Cloud Relay component docs |
+| `aegis` | Aegis Token Broker docs |
+| `openapi-indexer` | OpenAPI indexing pipeline docs |
+| `authentication` | Auth protocols — JWT, mTLS, HMAC, IAM |
+| `security` | Security model and trust boundaries |
+| `networking` | Network topology and delivery modes |
+| `data-pipeline` | Data ingestion, indexing, and search |
+| `cli` | slaops-cli tooling |
+| `component-design` | Component proposals and design specs |
+| `architecture` | System architecture and ADRs |
+| `implemented` | Designs for features that have been built |
+| `process` | Team process and standards |

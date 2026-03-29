@@ -1,6 +1,7 @@
 ---
-sidebar_position: 14
+sidebar_position: 2
 title: Component Proposals
+tags: [process]
 ---
 
 # Component Proposals

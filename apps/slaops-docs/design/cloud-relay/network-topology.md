@@ -1,6 +1,7 @@
 ---
-sidebar_position: 16
+sidebar_position: 3
 title: Network Topology & Component Separation
+tags: [cloud-relay, networking, architecture, reference]
 ---
 
 # Network Topology & Component Separation

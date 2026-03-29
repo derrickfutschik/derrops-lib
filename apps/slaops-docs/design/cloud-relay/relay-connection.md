@@ -1,6 +1,7 @@
 ---
-sidebar_position: 15
+sidebar_position: 4
 title: Relay Connection Design
+tags: [cloud-relay, authentication, security, architecture, implemented]
 ---
 
 # Relay Connection Design

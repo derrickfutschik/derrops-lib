@@ -1,6 +1,7 @@
 ---
-sidebar_position: 13
+sidebar_position: 7
 title: Cloud Relay Security
+tags: [cloud-relay, authentication, security]
 ---
 
 # Authentication Methods

@@ -1,11 +1,12 @@
 ---
-sidebar_position: 17
+sidebar_position: 6
 title: Local Relay for Development
+tags: [cloud-relay, cli, networking, implemented]
 ---
 
 # Local Relay for Development
 
-> **Status**: Draft
+> **Status**: Implemented
 > **Author**: SLAOps Team
 > **Date**: 2026-03-28
 > **Related**: [Cloud Relay Component](./component-cloud-relay.md), [Network Topology](./network-topology.md), [Relay Connection Design](./relay-connection.md)

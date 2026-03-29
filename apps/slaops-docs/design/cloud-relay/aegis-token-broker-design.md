@@ -1,6 +1,7 @@
 ---
-sidebar_position: 14
+sidebar_position: 5
 title: Aegis Token Broker Design
+tags: [cloud-relay, aegis, authentication, security, component-design, implemented]
 ---
 
 # Aegis Token Broker Design

@@ -1,11 +1,12 @@
 ---
-sidebar_position: 12
-title: Component Proposal Cloud Relay
+sidebar_position: 2
+title: Cloud Relay Component Design
+tags: [cloud-relay, component-design, architecture, implemented]
 ---
 
 # Component Proposal: Cloud Relay
 
-> **Status**: Draft
+> **Status**: Implemented
 > **Author**: SLAOps Team
 > **Date**: 2026-03-22
 > **Related Issue**: N/A
