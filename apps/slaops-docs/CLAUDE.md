@@ -8,24 +8,26 @@ This is a Docusaurus documentation site for the SLAOps platform, hosted at https
 
 The SLAOps documentation provides comprehensive guides for the SLAOps platform, a DevOps engineering solution focused on:
 
-- OpenAPI logging and monitoring
-- API spec validation logging
-- Response logging and analysis
-- Deployment tracking
-- Component documentation
+- HTTP API monitoring and SLA compliance
+- Cloud relay architecture and local development relay
+- OpenAPI specification indexing and validation
+- Cost analysis for API usage
+- Aegis policy engine and credential injection
 
 ## Project Structure
 
 ```
 apps/slaops-docs/
-├── docs/              # Main documentation content
-│   ├── intro.md       # Introduction/landing page
-│   ├── components.md  # Component documentation
-│   ├── deployments.md # Deployment guides
-│   ├── logs.md        # Logging documentation
-│   ├── sdk.md         # SDK documentation
-│   ├── domain/        # Domain-specific docs
-│   └── ...
+├── docs/                      # Main documentation content
+│   ├── intro.md               # Introduction/landing page (sidebar_position: 1)
+│   ├── getting-started.md     # Setup guide: relay, CLI, first request (sidebar_position: 2)
+│   ├── glossary.md            # Domain term definitions
+│   ├── archiecture-planes.md  # Enterprise plane architecture deep-dive
+│   ├── environment.md         # Environment configuration reference
+│   ├── oaspec-bucket.md       # OASpec bucket and OpenAPI indexing
+│   ├── plans.md               # SLAOps plan tiers
+│   ├── byok.md                # Bring Your Own Key (encryption)
+│   └── supported-logs.md      # Supported log sources and formats
 ├── blog/              # Blog posts
 ├── changelog/         # Changelog entries
 ├── src/
@@ -114,13 +116,15 @@ Documentation files are in Markdown/MDX format. The sidebar structure is defined
 
 Key documentation areas:
 
-- **intro.md** - Platform overview
-- **components.md** - Component architecture
-- **deployments.md** - Deployment guides
-- **logs.md** - Logging system documentation
-- **sdk.md** - SDK usage and integration
-- **openapi.md** - OpenAPI integration
-- **user-stories.md** - Use cases and examples
+- **intro.md** - Platform overview and feature summary
+- **getting-started.md** - Install CLI, connect relay, run first test, add Aegis
+- **glossary.md** - Domain term definitions (OASpec, TopOp, relay, Aegis, etc.)
+- **archiecture-planes.md** - Enterprise plane architecture (portal, relay, Aegis)
+- **environment.md** - Environment variables and configuration reference
+- **oaspec-bucket.md** - OASpec bucket: indexing OpenAPI specifications
+- **plans.md** - SLAOps plan tiers and feature availability
+- **byok.md** - Bring Your Own Key: customer-managed encryption
+- **supported-logs.md** - Supported log sources and ingestion formats
 
 ### Blog (blog/)
 
