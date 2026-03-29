@@ -12,15 +12,15 @@ import { execSync } from 'child_process'
  * SLAOPS_COGNITO_USER_POOL_ID — Cognito User Pool ID (used as Identity Pool provider key)
  * SLAOPS_IDENTITY_POOL_ID     — Cognito Identity Pool ID (for AWS credential exchange)
  */
-const COGNITO_DOMAIN =
+export const COGNITO_DOMAIN =
   process.env.SLAOPS_COGNITO_DOMAIN ?? 'https://auth.slaops.com'
-const CLIENT_ID =
+export const CLIENT_ID =
   process.env.SLAOPS_COGNITO_CLIENT_ID ?? ''
-const COGNITO_REGION =
+export const COGNITO_REGION =
   process.env.SLAOPS_COGNITO_REGION ?? 'ap-southeast-2'
-const USER_POOL_ID =
+export const USER_POOL_ID =
   process.env.SLAOPS_COGNITO_USER_POOL_ID ?? ''
-const IDENTITY_POOL_ID =
+export const IDENTITY_POOL_ID =
   process.env.SLAOPS_IDENTITY_POOL_ID ?? ''
 
 const REDIRECT_PORT = 9876

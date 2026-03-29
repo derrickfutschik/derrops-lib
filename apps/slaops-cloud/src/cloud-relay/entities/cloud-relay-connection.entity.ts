@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import {
   Column,
   CreateDateColumn,
@@ -34,6 +34,17 @@ export class CloudRelayConnection {
   url: string
 
   @ApiProperty({
+    enum: ['managed', 'self-hosted', 'local-dev'],
+    default: 'managed',
+    description:
+      'managed     — SLAOps-hosted Lambda relay.\n' +
+      'self-hosted — Customer-deployed relay on their own infrastructure.\n' +
+      'local-dev   — Developer local machine. delivery_mode is locked to platform-queue. An SQS FIFO queue is provisioned automatically.',
+  })
+  @Column({ type: 'varchar', length: 20, default: 'managed' })
+  type: 'managed' | 'self-hosted' | 'local-dev'
+
+  @ApiProperty({
     enum: ['direct', 'relay-queue', 'platform-queue'],
     description:
       'direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\n' +
@@ -42,6 +53,33 @@ export class CloudRelayConnection {
   })
   @Column({ type: 'varchar', length: 20, default: 'direct' })
   delivery_mode: 'direct' | 'relay-queue' | 'platform-queue'
+
+  @ApiPropertyOptional({
+    enum: ['platform', 'relay'],
+    description:
+      'platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). ' +
+      'relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. ' +
+      'Use relay mode when the customer\'s network cannot reach SQS endpoints in the SLAOps account.',
+  })
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  sqs_queue_mode: 'platform' | 'relay' | null
+
+  @ApiPropertyOptional({
+    description:
+      'SQS FIFO queue URL for this relay connection. ' +
+      'platform mode: provisioned by slaops-cloud and stored here. ' +
+      'relay mode: provided by the customer at registration time.',
+    example: 'https://sqs.ap-southeast-2.amazonaws.com/123456789/slaops-acme-local-abc123-relay456.fifo',
+  })
+  @Column({ type: 'text', nullable: true })
+  sqs_queue_url: string | null
+
+  @ApiPropertyOptional({
+    description: 'AWS region of the SQS queue.',
+    example: 'ap-southeast-2',
+  })
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  sqs_region: string | null
 
   @ApiProperty({
     description:

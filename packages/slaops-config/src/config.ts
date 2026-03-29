@@ -155,6 +155,12 @@ export const makeConfig = (cfg?: ConfigInput) => {
 
     'app.opneapi-indexer.name': 'openapi-indexer',
     'app.api.name': `${appName}-api`,
+
+    /** How long (in seconds) an undelivered relay job message is retained in the SQS FIFO queue before being discarded. Default: 4 days. */
+    'relay.queue.message-retention-seconds': 4 * 24 * 60 * 60,
+
+    /** Visibility timeout (in seconds) for relay job messages. If the relay crashes mid-job the message reappears after this period. */
+    'relay.queue.visibility-timeout-seconds': 120,
   }
 }
 

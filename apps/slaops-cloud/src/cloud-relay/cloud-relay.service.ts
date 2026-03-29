@@ -11,6 +11,7 @@ import { CreateCloudRelayConnectionDto } from './dto/create-cloud-relay-connecti
 import { CreateCloudRelayJobDto } from './dto/create-cloud-relay-job.dto'
 import { CloudRelayConnection } from './entities/cloud-relay-connection.entity'
 import { CloudRelayJob } from './entities/cloud-relay-job.entity'
+import { RelayQueueService } from './relay-queue.service'
 
 /** TTL for jobs stored in slaops-cloud (10 minutes). */
 const JOB_TTL_MS = 10 * 60 * 1000
@@ -22,6 +23,7 @@ export class CloudRelayService {
     private readonly connectionRepository: Repository<CloudRelayConnection>,
     @InjectRepository(CloudRelayJob)
     private readonly jobRepository: Repository<CloudRelayJob>,
+    private readonly relayQueue: RelayQueueService,
   ) {}
 
   // ── Connections ────────────────────────────────────────────────────────────
@@ -36,22 +38,59 @@ export class CloudRelayService {
   async createConnection(
     dto: CreateCloudRelayConnectionDto,
     tenantId: string,
+    userId: string,
   ): Promise<CloudRelayConnection> {
+    const type = dto.type ?? 'managed'
+    const relayId = randomUUID()
+
+    let sqsQueueUrl: string | null = null
+    let sqsRegion: string | null = null
+    let deliveryMode = dto.delivery_mode ?? 'direct'
+    let url = dto.url ?? ''
+    let name = dto.name ?? `relay-${relayId}`
+
+    if (type === 'local-dev') {
+      deliveryMode = 'platform-queue'
+      const sqsMode = dto.sqs_queue_mode ?? 'platform'
+      sqsQueueUrl = await this.relayQueue.resolveRelayQueue(
+        sqsMode,
+        tenantId,
+        userId,
+        relayId,
+        dto.relay_sqs_queue_url,
+      )
+      sqsRegion = this.relayQueue.getRegion()
+      name = dto.name ?? `local-dev-${relayId}`
+      url = dto.url ?? 'http://localhost'
+    }
+
     const connection = this.connectionRepository.create({
+      id: relayId,
       tenant_id: tenantId,
-      name: dto.name,
-      url: dto.url,
-      delivery_mode: dto.delivery_mode ?? 'direct',
+      type,
+      name,
+      url,
+      delivery_mode: deliveryMode,
       api_key: randomUUID(),
+      sqs_queue_mode: type === 'local-dev' ? (dto.sqs_queue_mode ?? 'platform') : null,
+      sqs_queue_url: sqsQueueUrl,
+      sqs_region: sqsRegion,
     })
     return this.connectionRepository.save(connection)
   }
 
   async removeConnection(id: string, tenantId: string): Promise<void> {
-    const result = await this.connectionRepository.delete({ id, tenant_id: tenantId })
-    if (result.affected === 0) {
+    const connection = await this.connectionRepository.findOne({ where: { id, tenant_id: tenantId } })
+    if (!connection) {
       throw new NotFoundException(`Cloud relay connection ${id} not found`)
     }
+
+    // Only delete platform-owned queues — relay-owned queues belong to the customer
+    if (connection.sqs_queue_url && connection.sqs_queue_mode === 'platform') {
+      await this.relayQueue.deleteRelayQueue(connection.sqs_queue_url)
+    }
+
+    await this.connectionRepository.delete({ id, tenant_id: tenantId })
   }
 
   // ── Job submission ─────────────────────────────────────────────────────────
@@ -179,7 +218,16 @@ export class CloudRelayService {
     return this.jobRepository.save(job)
   }
 
-  /** platform-queue: persist full request in DB, relay polls later */
+  /**
+   * platform-queue: persist the job in DB, then publish to the connection's
+   * SQS FIFO queue if one exists (local-dev relay). The relay consumes the
+   * message via long-poll, executes the proxy request, and posts the result
+   * back to POST /cloud-relay/job/:id/result.
+   *
+   * For platform-queue connections without a dedicated SQS queue (legacy
+   * HTTP-polling connections), the job is stored in DB only and the relay
+   * polls GET /cloud-relay/queue/next to claim it.
+   */
   private async submitPlatformQueue(
     connection: CloudRelayConnection,
     dto: CreateCloudRelayJobDto,
@@ -190,7 +238,18 @@ export class CloudRelayService {
       status: 'pending',
       request: dto.request as object,
     })
-    return this.jobRepository.save(job)
+    const saved = await this.jobRepository.save(job)
+
+    if (connection.sqs_queue_url) {
+      await this.relayQueue.publishJob(connection.sqs_queue_url, connection.id, {
+        id: saved.id,
+        request: dto.request as object,
+        tenant_id: base.tenant_id!,
+        user_id: base.user_id!,
+      })
+    }
+
+    return saved
   }
 
   // ── Job polling (portal → slaops-cloud) ───────────────────────────────────

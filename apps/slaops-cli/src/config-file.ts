@@ -23,6 +23,9 @@ export interface RelayConfig {
   relay_id: string
   relay_sqs_queue_url: string
   relay_sqs_region: string
+  /** platform — queue is SLAOps-owned; relay consumes via Identity Pool credentials.
+   *  relay    — queue is customer-owned; relay uses its own IAM credentials to consume. */
+  relay_sqs_queue_mode: 'platform' | 'relay'
   identity_pool_id: string
   cognito_region: string
   user_pool_id: string
