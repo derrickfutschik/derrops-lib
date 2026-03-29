@@ -1226,6 +1226,19 @@ When you need to enable IDE navigation to source files in another module (e.g., 
 - Build order enforced by dependency graph
 - Independent versioning possible
 
+### When to Use DynamoDB
+
+DynamoDB should only be used for **ultra-fast, latency-sensitive read/write scenarios** where single-digit millisecond performance is a hard requirement.
+
+The canonical use case in this platform is **OpenAPI spec lookups during log enrichment**: when an inbound HTTP request arrives, the enrichment pipeline must resolve the matching OASpec in the critical path before the response is returned. Any database round-trip adds to end-user latency, so DynamoDB's sub-millisecond reads are justified here.
+
+**Do not use DynamoDB** for:
+- General CRUD operations, reporting, or management APIs — use Aurora (PostgreSQL) instead
+- Anything that benefits from relational integrity, joins, or complex queries
+- Data that changes rarely and is accessed outside the hot path
+
+**Default to Aurora Serverless v2 (PostgreSQL)** for all other storage needs.
+
 ## Resources
 
 ### Documentation
