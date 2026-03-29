@@ -21,7 +21,6 @@ const sidebars: SidebarsConfig = {
     'user-stories/devops-user-stores',
     'user-stories/monitoring-user-stories',
     'user-stories/saas-management',
-    'user-stories/CLAUDE',
   ],
 }
 

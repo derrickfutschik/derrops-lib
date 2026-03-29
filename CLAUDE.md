@@ -835,6 +835,14 @@ pnpm update --filter @slaops/private
 
 - `main` - Primary development branch
 
+### Commit messages and changelog
+
+Commits and PR titles use **Conventional Commits** (`feat(scope): ...`, `fix(scope): ...`, etc.). The type maps directly to changelog labels (`feat` → `pr: new feature`, `fix` → `pr: bug fix`, etc.). Breaking changes use a `!` suffix and a `BREAKING CHANGE:` footer.
+
+Full type→label mapping, recognised scopes, and examples are in [`CONVENTIONS.md`](CONVENTIONS.md#git-commit-messages).
+
+Every release is tagged `vX.Y.Z` and documented in `apps/slaops-docs/changelog/source/X.Y.Z.md`. Label each PR before tagging. Full process and release checklist: [`apps/slaops-docs/changelog/CLAUDE.md`](apps/slaops-docs/changelog/CLAUDE.md).
+
 ## CI/CD
 
 ### GitHub Actions

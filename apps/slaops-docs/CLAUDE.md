@@ -18,16 +18,12 @@ The SLAOps documentation provides comprehensive guides for the SLAOps platform, 
 
 ```
 apps/slaops-docs/
-├── docs/                      # Main documentation content
-│   ├── intro.md               # Introduction/landing page (sidebar_position: 1)
-│   ├── getting-started.md     # Setup guide: relay, CLI, first request (sidebar_position: 2)
-│   ├── glossary.md            # Domain term definitions
-│   ├── archiecture-planes.md  # Enterprise plane architecture deep-dive
-│   ├── environment.md         # Environment configuration reference
-│   ├── oaspec-bucket.md       # OASpec bucket and OpenAPI indexing
-│   ├── plans.md               # SLAOps plan tiers
-│   ├── byok.md                # Bring Your Own Key (encryption)
-│   └── supported-logs.md      # Supported log sources and formats
+├── docs/              # Main documentation content
+├── src/
+│   ├── design/        # Main Design of the Platform (Internal for Architecture Decision Records)
+│   ├── docs/          # Public Documentation for the Platform
+│   ├── devops/        # Sprint and User Story documentation
+│   └── code/          # Implementation detail documentation for the SLAOps platform monorepo, developer day-to-day focused.
 ├── blog/              # Blog posts
 ├── changelog/         # Changelog entries
 ├── src/

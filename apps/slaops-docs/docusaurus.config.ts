@@ -183,6 +183,27 @@ const config: Config = {
         rehypePlugins: [rehypeKatex],
       },
     ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'design',
+        path: 'design',
+        routeBasePath: 'design',
+        sidebarPath: './sidebars-design.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/design/${cleanPath}`
+          }
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/design/${cleanPath}`
+          return `cursor://file${pathToFile}`
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
   ],
 
   stylesheets: [
@@ -234,6 +255,13 @@ const config: Config = {
           docsPluginId: 'devops',
           position: 'right',
           label: 'Devops',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'design',
+          docsPluginId: 'design',
+          position: 'right',
+          label: 'Design',
         },
         { to: '/changelog', label: 'Changelog', position: 'left' },
         {

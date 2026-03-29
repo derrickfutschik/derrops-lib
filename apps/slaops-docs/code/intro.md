@@ -1,7 +1,12 @@
 ---
 sidebar_position: 1
 slug: /
+description: Root page for the Developer focused code documentation.
 ---
+
+# Purpose
+
+Implementation detail documentation for the SLAOps platform monorepo, developer day-to-day focused.
 
 # Code
 
