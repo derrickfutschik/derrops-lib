@@ -829,6 +829,58 @@ pnpm update -r
 pnpm update --filter @slaops/private
 ```
 
+## Development Workflow
+
+Follow these steps in order when building any feature, fix, or significant change:
+
+### 1. Design (`apps/slaops-docs/design/`)
+
+Before writing code, document the design in `apps/slaops-docs/design/`.
+
+- **Naming**: Name files after the component being designed (e.g., `request-enrichment.md`).
+- **Cross-component interactions**: If the design spans multiple components, create a dedicated file for the interaction (e.g., `enrichment-to-storage-flow.md`).
+- **Specific aspects**: A particular concern within a component can have its own file (e.g., `request-enrichment-error-handling.md`).
+- Design files are living documents — update them when the design changes.
+
+### 2. Plan (`apps/slaops-docs/plan/`)
+
+Store Claude Code plans in `apps/slaops-docs/plan/`.
+
+- Plans must be `.md` files formatted for Docusaurus.
+- Each plan must **reference the design file(s)** it is implementing.
+- Each design file should **cross-reference any plans** that implement it.
+- Plans must list the files they will create or modify.
+
+### 3. Implement
+
+Write code following the plan. Keep implementation notes that don't belong in code comments in `.md` files alongside the code — prefer these over large inline comments.
+
+### 4. Document (`apps/slaops-docs/docs/`)
+
+When a task is complete, add or update public-facing documentation in `apps/slaops-docs/docs/` as needed.
+
+### 5. Commit
+
+Commit following the Conventional Commits convention (see below and `CONVENTIONS.md`).
+
+### 6. Tag and update changelog
+
+Tag the release `vX.Y.Z` and add an entry in `apps/slaops-docs/changelog/source/X.Y.Z.md`.
+
+---
+
+### Key documentation locations
+
+| Location | Purpose |
+|---|---|
+| `apps/slaops-docs/design/` | Design documents (component designs, interaction designs) |
+| `apps/slaops-docs/plan/` | Claude Code implementation plans |
+| `apps/slaops-docs/docs/` | Public-facing Docusaurus documentation |
+| `apps/slaops-docs/changelog/source/` | Release changelog entries |
+| `<source-dir>/*.md` | In-code developer notes alongside source files |
+
+---
+
 ## Git Workflow
 
 ### Branches
@@ -1188,12 +1240,15 @@ When you need to enable IDE navigation to source files in another module (e.g., 
 
 ### Documentation
 
-- **IMPORTANT**: When completing tasks, add or update documentation in [apps/slaops-docs/](apps/slaops-docs/)
+- **IMPORTANT**: Follow the [Development Workflow](#development-workflow) — design first, then plan, then implement, then document.
+- **Design**: Before coding, document component and interaction designs in [apps/slaops-docs/design/](apps/slaops-docs/design/)
+- **Plans**: Store Claude Code implementation plans in [apps/slaops-docs/plan/](apps/slaops-docs/plan/); cross-reference designs and list affected files
+- **Public docs**: When completing tasks, add or update documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/)
 - Before starting a task, review existing documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/) for context
 - **Glossary**: Consult [apps/slaops-docs/docs/glossary.md](apps/slaops-docs/docs/glossary.md) for definitions of domain-specific terms (OASpec, OASpecDoc, TopOp, APIUser, etc.) before using terminology in code, comments, or documentation
+- **In-code notes**: Prefer `.md` files alongside source code over large inline comments for developer-focused notes
 - Update CLAUDE.md files when making significant changes
 - Keep README.md files up to date
-- Document public APIs thoroughly in the docs site
 - Include usage examples and code snippets
 - Update relevant documentation in the same commit as code changes
 
