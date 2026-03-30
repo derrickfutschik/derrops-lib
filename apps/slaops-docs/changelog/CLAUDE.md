@@ -28,6 +28,7 @@ git push origin v1.2.0
 ```
 
 **SemVer rules:**
+
 - `patch` (1.0.x) — bug fixes, no API changes
 - `minor` (1.x.0) — new features, backward compatible
 - `major` (x.0.0) — breaking changes to public APIs
@@ -36,16 +37,16 @@ git push origin v1.2.0
 
 Every PR should carry exactly one changelog label before release:
 
-| Label | Changelog section |
-|---|---|
-| `pr: breaking change` | Breaking Changes |
-| `pr: new feature` | New Features |
-| `pr: bug fix` | Bug Fixes |
-| `pr: performance` | Performance |
-| `pr: documentation` | Documentation |
-| `pr: maintenance` | Maintenance |
-| `pr: internal` | *(omitted from changelog)* |
-| `pr: dependencies` | *(omitted or collapsed)* |
+| Label                 | Changelog section          |
+| --------------------- | -------------------------- |
+| `pr: breaking change` | Breaking Changes           |
+| `pr: new feature`     | New Features               |
+| `pr: bug fix`         | Bug Fixes                  |
+| `pr: performance`     | Performance                |
+| `pr: documentation`   | Documentation              |
+| `pr: maintenance`     | Maintenance                |
+| `pr: internal`        | _(omitted from changelog)_ |
+| `pr: dependencies`    | _(omitted or collapsed)_   |
 
 PRs labeled `pr: internal` are not included in the public changelog.
 
@@ -121,6 +122,7 @@ date: 2026-04-15T12:00
 ```
 
 **Rules:**
+
 - `<!-- truncate -->` goes immediately after the `# X.Y.Z` heading — everything above the truncate marker appears in the changelog index preview
 - Sections are only included if there is at least one entry for that release
 - Each line references the PR number (`#42`) and author (`@handle`)

@@ -1,6 +1,6 @@
 import { ConfigInput } from './schema'
 
-const devServer = '192.168.7.233'
+const devServer = process.env.DEVSERVER_IP!
 
 const cfg: ConfigInput = {
   NODE_ENV: 'local',

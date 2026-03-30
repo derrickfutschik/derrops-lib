@@ -1,5 +1,5 @@
 # Open OpenSearch Dashboards in Safari
-open -a Safari http://192.168.7.233:5601
+open -a Safari http://$DEVSERVER_IP:5601
 
 # Open the Portal
 open -a Safari http://localhost:8080
@@ -11,10 +11,10 @@ open -a Safari http://localhost:8081
 open -a Safari http://localhost:3001/api
 
 # Open Syncthing Server
-open -a Safarihttp://192.168.7.233:8384/#
+open -a Safarihttp://$DEVSERVER_IP:8384/#
 
 # Open Syncthing Local Host
 open -a Safari http://localhost:8384/#
 
 # Open PG Admin
-open -a Safari http://192.168.7.233:5050
+open -a Safari http://$DEVSERVER_IP:5050
