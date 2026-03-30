@@ -44,15 +44,15 @@ windows:
           echo "Starting SLAOps Cloud" &&
           PORT=<%= ENV["CLOUD_PORT"] %> NODE_ENV=dev pnpm --filter @slaops/cloud run start:dev
 
-  - slaops-cloudflared:
+  - cloudflared:
       root: .
       layout: even-vertical
       panes:
-        - sleep <%= ENV["CF_STARTUP_DELAY"] %>
-        - cloudflared tunnel create <%= ENV["CF_TUNNEL_LOCAL"] %>
-        - cloudflared tunnel route dns <%= ENV["CF_TUNNEL_LOCAL"] %> <%= ENV["CF_DNS_1"] %>
-        - cloudflared tunnel route dns <%= ENV["CF_TUNNEL_LOCAL"] %> <%= ENV["CF_DNS_2"] %>
-        - cloudflared tunnel run <%= ENV["CF_TUNNEL_LOCAL"] %>
+        - >-
+          sleep <%= ENV["CF_STARTUP_DELAY"] %> &&
+          cloudflared tunnel create <%= ENV["CF_TUNNEL_DEV"] %> 2>/dev/null || true &&
+          cloudflared tunnel route dns <%= ENV["CF_TUNNEL_DEV"] %> <%= ENV["CF_DNS_DEV"] %> &&
+          cloudflared tunnel run <%= ENV["CF_TUNNEL_DEV"] %>
 
   - slaops-relay:
       root: apps/slaops-relay
@@ -161,8 +161,3 @@ windows:
       panes:
         - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %> "cd <%= ENV["DEVSERVER_PATH"] %> && docker compose logs -f postgres"
 
-  - cloudflare:
-      root: .
-      layout: even-vertical
-      panes:
-        - sleep <%= ENV["CF_STARTUP_DELAY"] %> && cloudflared tunnel route dns <%= ENV["CF_TUNNEL_DEV"] %> <%= ENV["CF_DNS_DEV"] %>
