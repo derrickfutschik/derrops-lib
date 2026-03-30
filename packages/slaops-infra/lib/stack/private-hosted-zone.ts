@@ -1,4 +1,4 @@
-import { CfnOutput, Fn, Stack, StackProps } from 'aws-cdk-lib'
+import { CfnOutput, Fn, Stack, Tags, StackProps } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as route53 from 'aws-cdk-lib/aws-route53'
 import { Construct } from 'constructs'
@@ -9,7 +9,7 @@ import { Construct } from 'constructs'
 export interface HostedZoneStackProps extends StackProps {
   /**
    * Domain name for the private hosted zone
-   * @default '${env}.internal.slaops.com' (where env comes from ENVIRONMENT env var or 'production')
+   * @default '${env}.internal.slaops.com' (where env comes from ENVIRONMENT env var or 'prod')
    */
   zoneName?: string
 }
@@ -32,39 +32,35 @@ export class HostedZoneStack extends Stack {
   constructor(scope: Construct, id: string, props?: HostedZoneStackProps) {
     super(scope, id, props)
 
-    // Import VPC ID from the VPC stack using CloudFormation exports
-    // Only VPC ID is needed for creating a private hosted zone
-    const vpcId = Fn.importValue('slaops-vpc-id')
+    Tags.of(this).add('slaops:domain', 'platform')
+    Tags.of(this).add('slaops:service', 'dns')
 
-    // Create a minimal VPC reference - only VPC ID is needed for hosted zone
+    const vpcId = Fn.importValue('slaops--platform--vpc--id')
+
     const vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
       vpcId,
-      availabilityZones: Fn.getAzs(), // Required by fromVpcAttributes
+      availabilityZones: Fn.getAzs(),
     })
 
-    // Get environment from ENVIRONMENT env var or default to 'production'
-    const environment = process.env.ENVIRONMENT || 'production'
+    const environment = process.env.ENVIRONMENT || 'prod'
     const defaultZoneName = `${environment}.internal.slaops.com`
     const zoneName = props?.zoneName ?? defaultZoneName
 
-    // Create private hosted zone associated with the VPC
     this.hostedZone = new route53.PrivateHostedZone(this, 'SlaOpsHostedZone', {
       zoneName,
       vpc,
     })
 
-    // Export hosted zone ID via CloudFormation output
     new CfnOutput(this, 'HostedZoneId', {
       value: this.hostedZone.hostedZoneId,
       description: 'Private hosted zone ID',
-      exportName: 'slaops-hosted-zone-id',
+      exportName: 'slaops--platform--dns--hosted-zone-id',
     })
 
-    // Also export the zone name for convenience
     new CfnOutput(this, 'HostedZoneName', {
       value: this.hostedZone.zoneName,
       description: 'Private hosted zone name',
-      exportName: 'slaops-hosted-zone-name',
+      exportName: 'slaops--platform--dns--hosted-zone-name',
     })
   }
 }

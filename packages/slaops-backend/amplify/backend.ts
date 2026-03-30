@@ -21,9 +21,9 @@ const lambdaStack = backend.api.resources.lambda.stack
 const lambdaFunction = backend.api.resources.lambda as lambda.Function
 
 // Import infrastructure stack outputs
-const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint')
-const dbSecretArn = cdk.Fn.importValue('SlaOpsDbSecretArn')
-const userPoolId = cdk.Fn.importValue('SlaOpsUserPoolId')
+const dbEndpoint = cdk.Fn.importValue('slaops--platform--app-database--cluster-endpoint')
+const dbSecretArn = cdk.Fn.importValue('slaops--platform--app-database--secret-arn')
+const userPoolId = cdk.Fn.importValue('slaops--auth--cognito--user-pool-id')
 
 // Get reference to the database secret
 const dbSecret = secretsmanager.Secret.fromSecretCompleteArn(
@@ -36,14 +36,14 @@ const dbSecret = secretsmanager.Secret.fromSecretCompleteArn(
 dbSecret.grantRead(backend.api.resources.lambda)
 
 // Import VPC and security group from infrastructure stack
-const vpcId = cdk.Fn.importValue('slaops-vpc-id')
-const cloudSecurityGroupId = cdk.Fn.importValue('slaops-cloud-sg-id')
+const vpcId = cdk.Fn.importValue('slaops--platform--vpc--id')
+const cloudSecurityGroupId = cdk.Fn.importValue('slaops--platform--cloud--sg-id')
 
 // Import private subnet IDs (use all 3 AZs for high availability)
 const privateSubnetIds = [
-  cdk.Fn.importValue('slaops-vpc-subnet-private-a'),
-  cdk.Fn.importValue('slaops-vpc-subnet-private-b'),
-  cdk.Fn.importValue('slaops-vpc-subnet-private-c'),
+  cdk.Fn.importValue('slaops--platform--vpc--subnet-private-a'),
+  cdk.Fn.importValue('slaops--platform--vpc--subnet-private-b'),
+  cdk.Fn.importValue('slaops--platform--vpc--subnet-private-c'),
 ]
 
 // Add Lambda to VPC with the security group
@@ -55,8 +55,8 @@ cfnFunction.vpcConfig = {
 }
 
 // Import OpenSearch endpoint for the API Lambda (search service)
-const opensearchEndpointForApi = cdk.Fn.importValue('slaops-opensearch-collection-endpoint')
-const opensearchCollectionArnForApi = cdk.Fn.importValue('slaops-opensearch-collection-arn')
+const opensearchEndpointForApi = cdk.Fn.importValue('slaops--platform--opensearch--collection-endpoint')
+const opensearchCollectionArnForApi = cdk.Fn.importValue('slaops--platform--opensearch--collection-arn')
 
 // Add environment variables using the addEnvironment method from Amplify backend
 backend.api.addEnvironment('DB_HOST', dbEndpoint)
@@ -78,13 +78,13 @@ backend.api.resources.lambda.addToRolePolicy(
 new cdk.CfnOutput(lambdaStack, 'LambdaFunctionArn', {
   value: backend.api.resources.lambda.functionArn,
   description: 'ARN of the NestJS API Lambda function',
-  exportName: 'SlaOpsLambdaFunctionArn',
+  exportName: 'slaops--platform--api--lambda-arn',
 })
 
 new cdk.CfnOutput(lambdaStack, 'LambdaFunctionName', {
   value: backend.api.resources.lambda.functionName,
   description: 'Name of the NestJS API Lambda function',
-  exportName: 'SlaOpsLambdaFunctionName',
+  exportName: 'slaops--platform--api--lambda-name',
 })
 
 // ============================================================================
@@ -96,10 +96,10 @@ const indexerStack = backend.openapiIndexer.resources.lambda.stack
 const indexerFunction = backend.openapiIndexer.resources.lambda
 
 // Import infrastructure stack outputs
-const opensearchEndpoint = cdk.Fn.importValue('slaops-opensearch-collection-endpoint')
-const opensearchCollectionArn = cdk.Fn.importValue('slaops-opensearch-collection-arn')
-const openapiBucketArn = cdk.Fn.importValue('slaops-openapi-bucket-arn')
-const openapiBucketName = cdk.Fn.importValue('slaops-openapi-bucket-name')
+const opensearchEndpoint = cdk.Fn.importValue('slaops--platform--opensearch--collection-endpoint')
+const opensearchCollectionArn = cdk.Fn.importValue('slaops--platform--opensearch--collection-arn')
+const openapiBucketArn = cdk.Fn.importValue('slaops--oaspec--source--bucket-arn')
+const openapiBucketName = cdk.Fn.importValue('slaops--oaspec--source--bucket-name')
 
 // Reference the S3 bucket from the infra stack
 const openapiBucket = s3.Bucket.fromBucketAttributes(indexerStack, 'OpenApiBucket', {
@@ -148,7 +148,7 @@ openapiBucket.addEventNotification(
 new cdk.CfnOutput(indexerStack, 'IndexerLambdaFunctionArn', {
   value: indexerFunction.functionArn,
   description: 'ARN of the OpenAPI Indexer Lambda function',
-  exportName: 'SlaOpsIndexerLambdaFunctionArn',
+  exportName: 'slaops--oaspec--indexer--lambda-arn',
 })
 
 // ============================================================================
@@ -190,13 +190,13 @@ backend.openapiIndexer.addEnvironment('OASPEC_STAGING_BUCKET', oaspecStagingBuck
 new cdk.CfnOutput(indexerStack, 'OaspecStorageBucketName', {
   value: oaspecStorageBucket.bucketName,
   description: 'Name of the OASpec storage bucket',
-  exportName: 'SlaOpsOaspecStorageBucketName',
+  exportName: 'slaops--oaspec--storage--bucket-name',
 })
 
 new cdk.CfnOutput(indexerStack, 'OaspecStagingBucketName', {
   value: oaspecStagingBucket.bucketName,
   description: 'Name of the OASpec staging bucket',
-  exportName: 'SlaOpsOaspecStagingBucketName',
+  exportName: 'slaops--oaspec--staging--bucket-name',
 })
 
 export { backend }

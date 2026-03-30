@@ -28,6 +28,20 @@ async function generateOpenApi() {
     const { OpenApiSearchController } = await import('./openapi-search/openapi-search.controller')
     const { OpenApiSearchService } = await import('./openapi-search/openapi-search.service')
     const { ConfigController } = await import('./config/config.controller')
+    const { RelayInstanceController } = await import('./relay-instance/relay-instance.controller')
+    const { RelayInstanceService } = await import('./relay-instance/relay-instance.service')
+    const { RelayInstance } = await import('./relay-instance/entities/relay-instance.entity')
+    const { AegisInstanceController } = await import('./aegis-instance/aegis-instance.controller')
+    const { AegisRegisterController } = await import('./aegis-instance/aegis-register.controller')
+    const { AegisInstanceService } = await import('./aegis-instance/aegis-instance.service')
+    const { AegisInstance } = await import('./aegis-instance/entities/aegis-instance.entity')
+    const { CloudRelayController } = await import('./cloud-relay/cloud-relay.controller')
+    const { CloudRelayService } = await import('./cloud-relay/cloud-relay.service')
+    const { RelayQueueService } = await import('./cloud-relay/relay-queue.service')
+    const { CloudRelayConnection } = await import('./cloud-relay/entities/cloud-relay-connection.entity')
+    const { CloudRelayJob } = await import('./cloud-relay/entities/cloud-relay-job.entity')
+    const { VendorJwtService } = await import('./vendor-jwt/vendor-jwt.service')
+    const { CognitoGuard } = await import('./auth/cognito.guard')
 
     const mockValue = {} as any
 
@@ -38,13 +52,27 @@ async function generateOpenApi() {
         OpenApiIndexerController,
         OpenApiSearchController,
         ConfigController,
+        RelayInstanceController,
+        AegisInstanceController,
+        AegisRegisterController,
+        CloudRelayController,
       ],
       providers: [
         ServiceService,
         OpenApiIndexerService,
         OpenApiParserService,
         OpenApiSearchService,
+        RelayInstanceService,
+        AegisInstanceService,
+        CloudRelayService,
+        RelayQueueService,
+        VendorJwtService,
+        CognitoGuard,
         { provide: getRepositoryToken(Service), useValue: mockValue },
+        { provide: getRepositoryToken(RelayInstance), useValue: mockValue },
+        { provide: getRepositoryToken(AegisInstance), useValue: mockValue },
+        { provide: getRepositoryToken(CloudRelayConnection), useValue: mockValue },
+        { provide: getRepositoryToken(CloudRelayJob), useValue: mockValue },
         { provide: Client, useValue: mockValue },
         { provide: TypescriptOSProxyClient, useValue: mockValue },
       ],

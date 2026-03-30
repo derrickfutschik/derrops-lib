@@ -553,6 +553,866 @@
           "Config"
         ]
       }
+    },
+    "/cloud-relay/relay-instance": {
+      "get": {
+        "operationId": "RelayInstanceController_findAll",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RelayInstance"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List all relay instances for the tenant",
+        "tags": [
+          "Relay Instance"
+        ]
+      },
+      "post": {
+        "operationId": "RelayInstanceController_create",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRelayInstanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayInstance"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Register a new relay instance",
+        "tags": [
+          "Relay Instance"
+        ]
+      }
+    },
+    "/cloud-relay/relay-instance/{id}": {
+      "get": {
+        "operationId": "RelayInstanceController_findOne",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "RelayInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayInstance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Get a relay instance by ID",
+        "tags": [
+          "Relay Instance"
+        ]
+      },
+      "patch": {
+        "operationId": "RelayInstanceController_update",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "RelayInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRelayInstanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayInstance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Update a relay instance",
+        "tags": [
+          "Relay Instance"
+        ]
+      },
+      "delete": {
+        "operationId": "RelayInstanceController_remove",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "RelayInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Delete a relay instance",
+        "tags": [
+          "Relay Instance"
+        ]
+      }
+    },
+    "/cloud-relay/relay-instance/{id}/health-check": {
+      "post": {
+        "operationId": "RelayInstanceController_healthCheck",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "RelayInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayInstance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)",
+        "tags": [
+          "Relay Instance"
+        ]
+      }
+    },
+    "/cloud-relay/aegis-instance": {
+      "get": {
+        "operationId": "AegisInstanceController_findAll",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AegisInstance"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List all Aegis instances for the tenant",
+        "tags": [
+          "Aegis Instance"
+        ]
+      },
+      "post": {
+        "description": "Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.",
+        "operationId": "AegisInstanceController_create",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAegisInstanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AegisCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Register a new Aegis instance",
+        "tags": [
+          "Aegis Instance"
+        ]
+      }
+    },
+    "/cloud-relay/aegis-instance/{id}": {
+      "get": {
+        "operationId": "AegisInstanceController_findOne",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "AegisInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AegisInstance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Get an Aegis instance by ID",
+        "tags": [
+          "Aegis Instance"
+        ]
+      },
+      "patch": {
+        "operationId": "AegisInstanceController_update",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "AegisInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAegisInstanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AegisInstance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Update an Aegis instance",
+        "tags": [
+          "Aegis Instance"
+        ]
+      },
+      "delete": {
+        "operationId": "AegisInstanceController_remove",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "AegisInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Delete an Aegis instance",
+        "tags": [
+          "Aegis Instance"
+        ]
+      }
+    },
+    "/cloud-relay/aegis-instance/{id}/health-check": {
+      "post": {
+        "operationId": "AegisInstanceController_healthCheck",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "description": "Tenant UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "AegisInstance UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AegisInstance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "Trigger a health check on the Aegis instance (validates JWKS endpoint)",
+        "tags": [
+          "Aegis Instance"
+        ]
+      }
+    },
+    "/cloud-relay/aegis/register": {
+      "post": {
+        "description": "Aegis posts its one-time registration token and JWKS URL. On success the instance transitions from `pending` to `active` and the token is invalidated.",
+        "operationId": "AegisRegisterController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AegisRegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AegisInstance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or already-used registration token"
+          }
+        },
+        "summary": "Complete Aegis instance registration (called by Aegis)",
+        "tags": [
+          "Aegis Instance"
+        ]
+      }
+    },
+    "/cloud-relay/.well-known/jwks.json": {
+      "get": {
+        "operationId": "CloudRelayController_getJwks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "keys": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vendor JWKS endpoint (used by relays and Aegis to validate platform JWTs)",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/connection": {
+      "get": {
+        "operationId": "CloudRelayController_findAllConnections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CloudRelayConnection"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List relay connections for the authenticated user's tenant",
+        "tags": [
+          "Cloud Relay"
+        ]
+      },
+      "post": {
+        "description": "For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. The response includes sqs_queue_url and sqs_region.\n\ntenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.",
+        "operationId": "CloudRelayController_createConnection",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCloudRelayConnectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudRelayConnection"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a new relay connection",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/connection/{id}": {
+      "delete": {
+        "operationId": "CloudRelayController_deleteConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Connection UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a relay connection and its SQS queue (if any)",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/job": {
+      "post": {
+        "description": "slaops-cloud routes the request via the connection delivery_mode. direct: result is returned inline (completed immediately). relay-queue/platform-queue: job is pending — poll GET /cloud-relay/job/:id for the result.",
+        "operationId": "CloudRelayController_enqueueJob",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCloudRelayJobDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudRelayJob"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Connection not found"
+          },
+          "503": {
+            "description": "Relay unreachable (direct/relay-queue modes)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit a proxy job",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/job/{id}": {
+      "get": {
+        "description": "For relay-queue mode, slaops-cloud syncs status from the relay on each poll. For platform-queue and direct modes, returns the stored job state.",
+        "operationId": "CloudRelayController_getJob",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job UUID returned by POST /cloud-relay/job",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudRelayJob"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Poll for the result of a proxy job",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/queue/next": {
+      "get": {
+        "description": "The relay polls this endpoint to claim jobs for legacy HTTP-polling connections. SQS-enabled relays (local-dev) receive jobs via SQS long-poll instead. Authenticate with the connection api_key as a Bearer token.",
+        "operationId": "CloudRelayController_claimNextJob",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "Bearer <connection api_key>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job claimed — execute and POST result to /cloud-relay/job/:id/result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudRelayJob"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No pending jobs"
+          },
+          "401": {
+            "description": "Invalid api_key"
+          }
+        },
+        "summary": "Claim the next pending platform-queue job (called by the relay)",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/job/{id}/result": {
+      "post": {
+        "description": "After executing a claimed job, the relay posts the result here. Set `failed: true` to mark the job as failed.",
+        "operationId": "CloudRelayController_deliverJobResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job UUID (from GET /cloud-relay/queue/next or SQS message body)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "Bearer <connection api_key>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverJobResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudRelayJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid api_key"
+          },
+          "404": {
+            "description": "Job not found"
+          }
+        },
+        "summary": "Deliver the result of a platform-queue job (called by the relay)",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
     }
   },
   "info": {
@@ -907,6 +1767,513 @@
           "uniqueProviders",
           "uniqueTags"
         ]
+      },
+      "RelayInstance": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "aegis_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "object"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "url",
+          "aegis_id",
+          "status",
+          "last_seen_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateRelayInstanceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Human-readable name for this relay instance",
+            "example": "prod-relay-eu"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL of the relay (must be HTTPS)",
+            "example": "https://relay.example.com"
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ]
+      },
+      "UpdateRelayInstanceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Human-readable name for this relay instance",
+            "example": "prod-relay-eu"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL of the relay (must be HTTPS)",
+            "example": "https://relay.example.com"
+          },
+          "aegisId": {
+            "type": "string",
+            "description": "UUID of the linked Aegis instance (must belong to the same tenant)"
+          }
+        }
+      },
+      "AegisInstance": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "jwks_url": {
+            "type": "string"
+          },
+          "registration_token_hash": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "object"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "url",
+          "jwks_url",
+          "registration_token_hash",
+          "status",
+          "last_seen_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateAegisInstanceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Human-readable name for this Aegis instance",
+            "example": "prod-aegis"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL of the Aegis instance (must be HTTPS)",
+            "example": "https://aegis.example.com"
+          },
+          "jwksUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "JWKS endpoint URL of the Aegis instance (must be HTTPS)",
+            "example": "https://aegis.example.com/.well-known/jwks.json"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "jwksUrl"
+        ]
+      },
+      "AegisCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "jwks_url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "registrationToken": {
+            "type": "string",
+            "description": "One-time registration token — configure Aegis with this value. Not stored in plaintext."
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "url",
+          "jwks_url",
+          "status",
+          "created_at",
+          "updated_at",
+          "registrationToken"
+        ]
+      },
+      "UpdateAegisInstanceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Human-readable name for this Aegis instance",
+            "example": "prod-aegis"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL of the Aegis instance (must be HTTPS)",
+            "example": "https://aegis.example.com"
+          },
+          "jwksUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "JWKS endpoint URL of the Aegis instance (must be HTTPS)",
+            "example": "https://aegis.example.com/.well-known/jwks.json"
+          }
+        }
+      },
+      "AegisRegisterDto": {
+        "type": "object",
+        "properties": {
+          "registrationToken": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One-time registration token issued when the Aegis instance was created"
+          },
+          "jwksUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "JWKS endpoint URL of the Aegis instance (must be HTTPS)",
+            "example": "https://aegis.example.com/.well-known/jwks.json"
+          }
+        },
+        "required": [
+          "registrationToken",
+          "jwksUrl"
+        ]
+      },
+      "CloudRelayConnection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "us-east-1 relay"
+          },
+          "url": {
+            "type": "string",
+            "example": "https://xyz.execute-api.ap-southeast-2.amazonaws.com/prod",
+            "description": "Base URL of the relay instance. Used for direct and relay-queue modes. For platform-queue mode, the relay is not called inbound — leave this as the relay identifier URL."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "self-hosted",
+              "local-dev"
+            ],
+            "default": "managed",
+            "description": "managed     — SLAOps-hosted Lambda relay.\nself-hosted — Customer-deployed relay on their own infrastructure.\nlocal-dev   — Developer local machine. delivery_mode is locked to platform-queue. An SQS FIFO queue is provisioned automatically."
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "relay-queue",
+              "platform-queue"
+            ],
+            "description": "direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections."
+          },
+          "sqs_queue_mode": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "relay"
+            ],
+            "description": "platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. Use relay mode when the customer's network cannot reach SQS endpoints in the SLAOps account."
+          },
+          "sqs_queue_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "SQS FIFO queue URL for this relay connection. platform mode: provisioned by slaops-cloud and stored here. relay mode: provided by the customer at registration time.",
+            "example": "https://sqs.ap-southeast-2.amazonaws.com/123456789/slaops-acme-local-abc123-relay456.fifo"
+          },
+          "sqs_region": {
+            "type": "string",
+            "nullable": true,
+            "description": "AWS region of the SQS queue.",
+            "example": "ap-southeast-2"
+          },
+          "api_key": {
+            "type": "string",
+            "description": "API key for relay authentication. direct/relay-queue: slaops-cloud sends this as Bearer token to the relay. platform-queue: relay sends this as Bearer token when polling slaops-cloud. Configure the relay with RELAY_API_KEY (inbound) or RELAY_PLATFORM_TOKEN (outbound polling)."
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-03-23T10:00:00.000Z"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-03-23T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "url",
+          "type",
+          "delivery_mode",
+          "api_key",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateCloudRelayConnectionDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "self-hosted",
+              "local-dev"
+            ],
+            "default": "managed",
+            "description": "managed     — SLAOps-hosted Lambda relay.\nself-hosted — Customer-deployed relay on their own infrastructure.\nlocal-dev   — Developer local machine. delivery_mode is locked to platform-queue and an SQS FIFO queue is provisioned automatically."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "example": "us-east-1 relay",
+            "description": "Human-readable name. Auto-generated for local-dev relays."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://xyz.execute-api.ap-southeast-2.amazonaws.com/prod",
+            "description": "Base URL of the relay instance. Required for direct and relay-queue modes. Not used for platform-queue / local-dev relays (relay makes only outbound connections)."
+          },
+          "sqs_queue_mode": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "relay"
+            ],
+            "default": "platform",
+            "description": "platform — SLAOps provisions the SQS FIFO queue (default). relay    — Customer provisions the queue; provide relay_sqs_queue_url. Only relevant for local-dev relay connections."
+          },
+          "relay_sqs_queue_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Customer-owned SQS FIFO queue URL. Required when sqs_queue_mode=relay. The customer must grant the SlaOpsSqsPublishRole sqs:SendMessage permission on this queue.",
+            "example": "https://sqs.ap-southeast-2.amazonaws.com/999888777/my-relay-queue.fifo"
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "relay-queue",
+              "platform-queue"
+            ],
+            "default": "direct",
+            "description": "direct          — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue     — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue  — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\nFor local-dev relays this is always platform-queue regardless of what is sent."
+          }
+        }
+      },
+      "CloudRelayJobRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCloudRelayJobDto": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "description": "ID of the relay connection that should execute this job"
+          },
+          "request": {
+            "description": "Full CloudProxyRequestDto payload (HAR request + optional templateContext)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CloudRelayJobRequestDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "connectionId",
+          "request"
+        ]
+      },
+      "CloudRelayJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "connection_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "relay-queue",
+              "platform-queue"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "claimed",
+              "completed",
+              "failed"
+            ]
+          },
+          "request": {
+            "type": "object",
+            "nullable": true,
+            "description": "Full CloudProxyRequestDto payload. Stored for platform-queue (relay reads it when claiming) and direct mode. Null for relay-queue (relay owns the request data)."
+          },
+          "relay_job_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Relay-internal job ID. Set for relay-queue mode only."
+          },
+          "result": {
+            "type": "object",
+            "nullable": true,
+            "description": "CloudProxyResponseDto or CloudProxyErrorDto. Set once job completes."
+          },
+          "claimed_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "completed_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "connection_id",
+          "tenant_id",
+          "user_id",
+          "delivery_mode",
+          "status",
+          "created_at",
+          "expires_at"
+        ]
+      },
+      "DeliverJobResultDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

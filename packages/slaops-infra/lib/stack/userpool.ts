@@ -1,4 +1,4 @@
-import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
+import { CfnOutput, Duration, RemovalPolicy, Stack, Tags, StackProps } from 'aws-cdk-lib'
 import * as cognito from 'aws-cdk-lib/aws-cognito'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
@@ -11,7 +11,7 @@ import { Construct } from 'constructs'
  * ## Tenant membership
  *
  * Tenants are represented as Cognito User Pool Groups. Each group's name IS the
- * tenantId (e.g. "acme", "globex"). slaops-cloud manages group creation and
+ * tenantId (e.g. "t-a3f8b2"). slaops-cloud manages group creation and
  * user→group assignment via the Cognito Admin API, with the canonical records
  * stored in RDS. No DynamoDB is used.
  *
@@ -27,8 +27,8 @@ import { Construct } from 'constructs'
  *
  * For enterprise customers who cannot reach SQS endpoints in the SLAOps account,
  * a `relay` queue mode is available — the customer provisions the queue in their
- * own account and grants the SlaOpsSqsPublishRole (exported below) SendMessage
- * permission via a queue resource policy. slaops-cloud then publishes cross-account.
+ * own account and grants the slaops--platform--auth--sqs-publish-role (exported below)
+ * SendMessage permission via a queue resource policy. slaops-cloud then publishes cross-account.
  *
  * See userpool.md for the full architecture diagram and flow.
  */
@@ -42,6 +42,9 @@ export class AuthStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props)
 
+    Tags.of(this).add('slaops:domain', 'auth')
+    Tags.of(this).add('slaops:service', 'cognito')
+
     // -------------------------------------------------------------------------
     // Pre-Token Generation Lambda (V2)
     //
@@ -52,7 +55,7 @@ export class AuthStack extends Stack {
     // UserPool currently only exposes the V1 preTokenGeneration trigger key.
     // -------------------------------------------------------------------------
     const preTokenGenerationFn = new lambda.Function(this, 'PreTokenGenerationFn', {
-      functionName: 'slaops-pre-token-generation',
+      functionName: 'slaops--auth--cognito--pre-token-generation',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
@@ -66,7 +69,7 @@ export class AuthStack extends Stack {
     // Cognito User Pool
     // -------------------------------------------------------------------------
     this.userPool = new cognito.UserPool(this, 'SlaOpsUserPool', {
-      userPoolName: 'slaops-users',
+      userPoolName: 'slaops--auth--cognito--users',
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -105,17 +108,12 @@ export class AuthStack extends Stack {
     })
 
     // Wire the V2 Pre-Token Generation trigger via L1 escape hatch.
-    // V2 adds `claimsAndScopeOverrideDetails` which lets the Lambda inject
-    // claims into the access token (V1 only supported id_token).
     const cfnUserPool = this.userPool.node.defaultChild as cognito.CfnUserPool
     cfnUserPool.addPropertyOverride('LambdaConfig.PreTokenGenerationConfig', {
       LambdaArn: preTokenGenerationFn.functionArn,
       LambdaVersion: 'V2_0',
     })
 
-    // Grant Cognito permission to invoke the function.
-    // The L2 UserPool construct grants this automatically for lambdaTriggers.*
-    // but not for the L1 override, so we add it manually.
     preTokenGenerationFn.addPermission('CognitoInvoke', {
       principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
       sourceArn: this.userPool.userPoolArn,
@@ -124,13 +122,11 @@ export class AuthStack extends Stack {
 
     // -------------------------------------------------------------------------
     // User Pool Client — public PKCE client for the slaops-cli
-    // No client secret: the CLI is a public client and uses PKCE for security.
-    // Refresh tokens live for 30 days; developers re-authenticate monthly.
     // -------------------------------------------------------------------------
     this.userPoolClient = new cognito.UserPoolClient(this, 'SlaOpsUserPoolClient', {
       userPool: this.userPool,
       userPoolClientName: 'slaops-cli',
-      generateSecret: false, // public client — PKCE only
+      generateSecret: false,
       authFlows: {
         userPassword: true,
         userSrp: true,
@@ -141,7 +137,7 @@ export class AuthStack extends Stack {
           implicitCodeGrant: false,
         },
         scopes: [cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
-        callbackUrls: ['http://localhost:9876/callback'], // loopback redirect for CLI PKCE flow
+        callbackUrls: ['http://localhost:9876/callback'],
       },
       preventUserExistenceErrors: true,
       refreshTokenValidity: Duration.days(30),
@@ -151,19 +147,9 @@ export class AuthStack extends Stack {
 
     // -------------------------------------------------------------------------
     // SQS Publish Role
-    //
-    // IAM role assumed by slaops-cloud Lambda when publishing jobs to relay
-    // SQS queues. Used for both platform-owned queues (same account) and
-    // relay-owned queues (cross-account, customer grants SendMessage via queue
-    // resource policy using this role ARN).
-    //
-    // Customers running relay-owned queues must add a queue resource policy:
-    //   Principal: { AWS: "<SlaOpsSqsPublishRoleArn>" }
-    //   Action: sqs:SendMessage
-    //   Resource: <their-queue-arn>
     // -------------------------------------------------------------------------
     this.sqsPublishRole = new iam.Role(this, 'SqsPublishRole', {
-      roleName: 'SlaOpsSqsPublishRole',
+      roleName: 'slaops--platform--auth--sqs-publish-role',
       description: 'Used by slaops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     })
@@ -180,35 +166,21 @@ export class AuthStack extends Stack {
 
     // -------------------------------------------------------------------------
     // Cognito Identity Pool
-    //
-    // Allows CLI users to exchange their Cognito access_token / id_token for
-    // short-lived AWS credentials (via STS AssumeRoleWithWebIdentity).
-    // Used by the local relay process to consume from its dedicated SQS queue.
-    //
-    // Credentials expire in 1 hour and are refreshed automatically by the relay
-    // process — no AWS credentials are ever written to disk.
     // -------------------------------------------------------------------------
     this.identityPool = new cognito.CfnIdentityPool(this, 'SlaOpsIdentityPool', {
-      identityPoolName: 'slaops_relay_identity_pool',
+      identityPoolName: 'slaops--auth--cognito--relay-identity-pool',
       allowUnauthenticatedIdentities: false,
       cognitoIdentityProviders: [
         {
           clientId: this.userPoolClient.userPoolClientId,
           providerName: this.userPool.userPoolProviderName,
-          serverSideTokenCheck: true, // validate tokens against Cognito on every exchange
+          serverSideTokenCheck: true,
         },
       ],
     })
 
     // -------------------------------------------------------------------------
     // Principal tag mapping — ABAC for SQS queue isolation
-    //
-    // The Identity Pool reads from the id_token for claim→tag mapping.
-    // The V2 Lambda injects tenantId into both access token and id_token,
-    // so the id_token always carries the tenantId claim for this mapping.
-    //
-    // Queue naming convention: slaops-{tenantId}-local-{userId}-{relayId}.fifo
-    // IAM resource pattern:    slaops-{tenantId}-local-{userId}-*.fifo
     // -------------------------------------------------------------------------
     new cognito.CfnIdentityPoolPrincipalTag(this, 'IdentityPoolPrincipalTags', {
       identityPoolId: this.identityPool.ref,
@@ -220,10 +192,8 @@ export class AuthStack extends Stack {
       },
     })
 
-    // IAM role assumed by authenticated Identity Pool identities.
-    // Scoped by ABAC: each user can only consume from their own relay queues.
     const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
-      roleName: 'SlaOpsIdentityPoolAuthRole',
+      roleName: 'slaops--platform--auth--identity-pool-auth-role',
       description: 'Assumed by authenticated SLAOps CLI users — ABAC-scoped SQS relay consume access',
       assumedBy: new iam.FederatedPrincipal(
         'cognito-identity.amazonaws.com',
@@ -250,9 +220,6 @@ export class AuthStack extends Stack {
         ],
         // ${aws:PrincipalTag/tenantId} and ${aws:PrincipalTag/userId} are
         // substituted at IAM evaluation time from the principal tags above.
-        // A user with tenantId=acme, userId=abc-123 can only consume from:
-        //   slaops-acme-local-abc-123-<any-relayId>.fifo
-        // The \${} escaping prevents TypeScript template literal interpolation.
         resources: [
           `arn:aws:sqs:*:${this.account}:slaops-\${aws:PrincipalTag/tenantId}-local-\${aws:PrincipalTag/userId}-*.fifo`,
         ],
@@ -272,43 +239,43 @@ export class AuthStack extends Stack {
     new CfnOutput(this, 'UserPoolId', {
       value: this.userPool.userPoolId,
       description: 'Cognito User Pool ID',
-      exportName: 'SlaOpsUserPoolId',
+      exportName: 'slaops--auth--cognito--user-pool-id',
     })
 
     new CfnOutput(this, 'UserPoolArn', {
       value: this.userPool.userPoolArn,
       description: 'Cognito User Pool ARN',
-      exportName: 'SlaOpsUserPoolArn',
+      exportName: 'slaops--auth--cognito--user-pool-arn',
     })
 
     new CfnOutput(this, 'UserPoolClientId', {
       value: this.userPoolClient.userPoolClientId,
       description: 'Cognito User Pool Client ID (public PKCE client for slaops-cli)',
-      exportName: 'SlaOpsUserPoolClientId',
+      exportName: 'slaops--auth--cognito--user-pool-client-id',
     })
 
     new CfnOutput(this, 'UserPoolProviderName', {
       value: this.userPool.userPoolProviderName,
       description: 'Cognito User Pool Provider Name',
-      exportName: 'SlaOpsUserPoolProviderName',
+      exportName: 'slaops--auth--cognito--user-pool-provider-name',
     })
 
     new CfnOutput(this, 'UserPoolProviderUrl', {
       value: this.userPool.userPoolProviderUrl,
       description: 'Cognito User Pool Provider URL',
-      exportName: 'SlaOpsUserPoolProviderUrl',
+      exportName: 'slaops--auth--cognito--user-pool-provider-url',
     })
 
     new CfnOutput(this, 'IdentityPoolId', {
       value: this.identityPool.ref,
       description: 'Cognito Identity Pool ID — used by slaops-cli to exchange tokens for AWS credentials',
-      exportName: 'SlaOpsIdentityPoolId',
+      exportName: 'slaops--auth--cognito--identity-pool-id',
     })
 
     new CfnOutput(this, 'IdentityPoolAuthRoleArn', {
       value: authenticatedRole.roleArn,
       description: 'IAM role ARN for authenticated Identity Pool users (relay SQS consume)',
-      exportName: 'SlaOpsIdentityPoolAuthRoleArn',
+      exportName: 'slaops--auth--cognito--identity-pool-auth-role-arn',
     })
 
     new CfnOutput(this, 'SqsPublishRoleArn', {
@@ -316,7 +283,7 @@ export class AuthStack extends Stack {
       description:
         'IAM role ARN slaops-cloud uses to publish relay jobs to SQS. ' +
         'Enterprise customers using relay-owned queues must grant this role sqs:SendMessage on their queue.',
-      exportName: 'SlaOpsSqsPublishRoleArn',
+      exportName: 'slaops--auth--cognito--sqs-publish-role-arn',
     })
   }
 }

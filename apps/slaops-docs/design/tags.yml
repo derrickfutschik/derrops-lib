@@ -49,3 +49,52 @@ implemented:
 process:
   label: Process
   description: Team process documentation — proposals, standards, and workflows
+
+multi-tenant:
+  label: Multi-Tenant
+  description: Multi-tenancy design — per-tenant isolation, index scoping, access control
+
+infrastructure:
+  label: Infrastructure
+  description: AWS infrastructure design — VPC, S3, RDS, OpenSearch, IaC patterns
+
+tagging:
+  label: Tagging
+  description: AWS resource tagging standards and CDK enforcement
+
+iac:
+  label: IaC
+  description: Infrastructure as Code patterns and CDK constructs
+
+cost-allocation:
+  label: Cost Allocation
+  description: AWS cost allocation tags and Cost Explorer configuration
+
+# ── Domain tags ─────────────────────────────────────────────────────────────
+# These mirror the slaops:domain CDK tag values. Add the matching tag to any
+# design doc that covers resources or services within that domain.
+# See design/infrastructure/platform-domains.md for the full registry.
+
+platform:
+  label: Domain — Platform
+  description: Core shared infrastructure domain — VPC, database, OpenSearch, API Gateway
+
+auth:
+  label: Domain — Auth
+  description: Authentication and authorization domain — Cognito, IAM, identity
+
+oaspec:
+  label: Domain — OASpec
+  description: OpenAPI specification management domain — indexer, storage, search
+
+relay:
+  label: Domain — Relay
+  description: Cloud Relay domain — HTTP proxy, local relay, Aegis Token Broker
+
+logging:
+  label: Domain — Logging
+  description: HTTP log ingestion and enrichment domain
+
+portal:
+  label: Domain — Portal
+  description: Web portal domain — dashboards, SLA metrics, cost analysis

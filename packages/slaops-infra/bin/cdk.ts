@@ -17,39 +17,36 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-2',
 }
 
-// common tags for the environment
-const tags = {
-  Project: 'SLAOps',
-  Environment: process.env.ENVIRONMENT || 'production',
-  ManagedBy: 'CDK',
-  Stack: 'Infrastructure',
-}
+const appEnv = process.env.ENVIRONMENT || 'prod'
+
+// Apply common tags to every resource in the entire app.
+// slaops:domain and slaops:service are stack-specific — set inside each constructor.
+cdk.Tags.of(app).add('slaops:org', 'slaops')
+cdk.Tags.of(app).add('slaops:env', appEnv)
+cdk.Tags.of(app).add('slaops:managed-by', 'cdk')
 
 // VPC infrastructure stack (deployed first, exports used by other stacks)
 // Contains VPC, subnets, NAT gateways, and VPC endpoints
 const vpcStack = new VpcStack(app, 'SlaOpsVpcStack', {
-  stackName: 'slaops-vpc-infrastructure',
+  stackName: 'slaops--platform--vpc',
   description: 'SLAOps VPC Infrastructure - Networking resources',
   env,
-  tags,
 })
 
 // Authentication infrastructure stack
 // Contains Cognito User Pool and related auth resources
 new AuthStack(app, 'SlaOpsAuthStack', {
-  stackName: 'slaops-auth-infrastructure',
+  stackName: 'slaops--auth--cognito',
   description: 'SLAOps Authentication Infrastructure - Cognito User Pool',
   env,
-  tags,
 })
 
 // Database infrastructure stack
 // Contains Aurora Serverless v2 PostgreSQL cluster (imports VPC from VPC stack)
 const databaseStack = new AppDatabaseStack(app, 'SlaOpsDatabaseStack', {
-  stackName: 'slaops-database-infrastructure',
+  stackName: 'slaops--platform--app-database',
   description: 'SLAOps Database Infrastructure - Aurora Serverless v2 PostgreSQL',
   env,
-  tags,
 })
 
 // Database stack depends on VPC stack (for VPC exports)
@@ -58,10 +55,9 @@ databaseStack.addDependency(vpcStack)
 // Security Group infrastructure stack
 // Contains centralized security groups for OpenSearch, RDS, and Lambda backend
 const securityGroupStack = new SecurityGroupStack(app, 'SlaOpsSecurityGroupStack', {
-  stackName: 'slaops-security-group-infrastructure',
+  stackName: 'slaops--platform--security-groups',
   description: 'SLAOps Security Group Infrastructure - Centralized security groups',
   env,
-  tags,
 })
 
 // Security group stack depends on VPC stack (for VPC exports)
@@ -70,23 +66,21 @@ securityGroupStack.addDependency(vpcStack)
 // Private Hosted Zone infrastructure stack
 // Contains Route53 private hosted zone associated with the VPC
 const hostedZoneStack = new HostedZoneStack(app, 'SlaOpsHostedZoneStack', {
-  stackName: 'slaops-hosted-zone-infrastructure',
+  stackName: 'slaops--platform--dns',
   description: 'SLAOps Private Hosted Zone Infrastructure - Route53 private hosted zone',
   env,
-  tags,
 })
 
 // Hosted zone stack depends on VPC stack (for VPC exports)
 hostedZoneStack.addDependency(vpcStack)
 
 // OpenSearch infrastructure stack
-// Contains OpenSearch domain with configurable node count (imports VPC and security group)
+// Contains OpenSearch Serverless collection (imports VPC and security group)
 const opensearchStack = new OpenSearchStack(app, 'SlaOpsOpenSearchStack', {
-  stackName: 'slaops-opensearch',
-  description: 'SLAOps OpenSearch Infrastructure - OpenSearch domain cluster',
+  stackName: 'slaops--platform--opensearch',
+  description: 'SLAOps OpenSearch Infrastructure - OpenSearch Serverless collection',
   env,
-  tags,
-  singleNodeMode: process.env.ENVIRONMENT === 'development' || process.env.ENVIRONMENT === 'dev',
+  singleNodeMode: appEnv === 'development' || appEnv === 'dev',
 })
 
 // OpenSearch stack depends on VPC stack and Security Group stack
@@ -94,12 +88,11 @@ opensearchStack.addDependency(vpcStack)
 opensearchStack.addDependency(securityGroupStack)
 
 // OpenAPI Bucket infrastructure stack
-// Contains S3 bucket for storing OpenAPI specifications (APIs-guru format)
+// Contains S3 bucket for SLAOps-managed OpenAPI specifications (APIs-guru format)
 new OpenApiBucketStack(app, 'SlaOpsOpenApiBucketStack', {
-  stackName: 'slaops-openapi-bucket',
-  description: 'SLAOps OpenAPI Bucket - S3 bucket for OpenAPI specifications',
+  stackName: 'slaops--oaspec--source',
+  description: 'SLAOps OpenAPI Source Bucket - S3 bucket for SLAOps-managed OpenAPI specifications',
   env,
-  tags,
 })
 
 // API Gateway infrastructure stack
@@ -111,10 +104,9 @@ const lambdaFunctionArn =
 
 if (lambdaFunctionArn) {
   new ApiStack(app, 'SlaOpsApiStack', {
-    stackName: 'slaops-api-infrastructure',
+    stackName: 'slaops--platform--api-gateway',
     description: 'SLAOps API Infrastructure - API Gateway REST API',
     env,
-    tags,
   })
 } else {
   console.warn(

@@ -1,0 +1,39 @@
+platform:
+  label: Platform
+  description: Core shared infrastructure — VPC, database, OpenSearch, API Gateway
+
+auth:
+  label: Auth
+  description: Authentication and authorization — Cognito, IAM, identity
+
+oaspec:
+  label: OASpec
+  description: OpenAPI specification management — indexer, storage, search, multi-tenant catalogues
+
+relay:
+  label: Relay
+  description: Cloud Relay and local dev relay — HTTP proxy, Aegis Token Broker
+
+logging:
+  label: Logging
+  description: HTTP request/response log ingestion, enrichment, and storage
+
+portal:
+  label: Portal
+  description: Web portal — dashboards, SLA metrics, cost analysis, alert management
+
+getting-started:
+  label: Getting Started
+  description: Onboarding guides for new users
+
+reference:
+  label: Reference
+  description: Reference documentation — stable specs, glossaries, environment variables
+
+multi-tenant:
+  label: Multi-Tenant
+  description: Multi-tenancy model — dedicated resources, tenant isolation, onboarding
+
+security:
+  label: Security
+  description: Security model, encryption, BYOK, and access control

@@ -74,6 +74,7 @@ const config: Config = {
             return `cursor://file${pathToFile}`
           },
 
+          onInlineTags: 'warn',
           remarkPlugins: [remarkMath, remarkCodeImport],
           rehypePlugins: [rehypeKatex],
         },

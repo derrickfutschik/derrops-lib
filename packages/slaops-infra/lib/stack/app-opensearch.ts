@@ -1,4 +1,4 @@
-import { CfnOutput, Fn, Stack, StackProps } from 'aws-cdk-lib'
+import { CfnOutput, Fn, Stack, Tags, StackProps } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as opensearchserverless from 'aws-cdk-lib/aws-opensearchserverless'
 import { Construct } from 'constructs'
@@ -36,56 +36,52 @@ export class OpenSearchStack extends Stack {
   constructor(scope: Construct, id: string, props?: OpenSearchStackProps) {
     super(scope, id, props)
 
-    // Import VPC ID from the VPC stack using CloudFormation exports
-    const vpcId = Fn.importValue('slaops-vpc-id')
+    Tags.of(this).add('slaops:domain', 'platform')
+    Tags.of(this).add('slaops:service', 'opensearch')
 
-    // Import private subnet IDs (OpenSearch Serverless should be in private subnets)
+    const vpcId = Fn.importValue('slaops--platform--vpc--id')
+
     const privateSubnetIds = [
-      Fn.importValue('slaops-vpc-subnet-private-a'),
-      Fn.importValue('slaops-vpc-subnet-private-b'),
-      Fn.importValue('slaops-vpc-subnet-private-c'),
+      Fn.importValue('slaops--platform--vpc--subnet-private-a'),
+      Fn.importValue('slaops--platform--vpc--subnet-private-b'),
+      Fn.importValue('slaops--platform--vpc--subnet-private-c'),
     ]
 
-    // Create minimal VPC reference
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'ImportedVpc', {
       vpcId,
       availabilityZones: Fn.getAzs(),
     })
 
-    // Create subnet references
     const privateSubnets = privateSubnetIds.map((subnetId, index) =>
       ec2.Subnet.fromSubnetId(this, `PrivateSubnet${index}`, subnetId),
     )
 
-    // Import security group from the Security Group stack
-    const opensearchSecurityGroupId = Fn.importValue('slaops-opensearch-sg')
+    const opensearchSecurityGroupId = Fn.importValue('slaops--platform--opensearch--sg-id')
     this.opensearchSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
       this,
       'ImportedOpenSearchSecurityGroup',
       opensearchSecurityGroupId,
     )
 
-    // Create OpenSearch Serverless VPC endpoint
-    // This enables private connectivity to the OpenSearch Serverless collection within the VPC
+    // OpenSearch Serverless resource names have a 32-char limit; use shortened forms
     const vpcEndpoint = new opensearchserverless.CfnVpcEndpoint(this, 'SlaOpsVpcEndpoint', {
-      name: 'slaops-opensearch-vpc-endpoint',
+      name: 'slaops--opensearch--vpc-ep',
       vpcId,
       subnetIds: privateSubnetIds,
       securityGroupIds: [opensearchSecurityGroupId],
     })
 
-    // Create network security policy to allow VPC access
-    // This policy allows the collection to be accessed from within the VPC
-    // Must be created before the collection
-    // Note: SourceVPCEs requires the actual VPC endpoint ID
+    // Use a local constant so network policy and collection stay in sync
+    const collectionName = 'slaops--opensearch'
+
     const networkPolicy = new opensearchserverless.CfnSecurityPolicy(this, 'SlaOpsNetworkPolicy', {
-      name: 'slaops-network-policy',
+      name: 'slaops--opensearch--net-policy',
       type: 'network',
       policy: JSON.stringify({
         Rules: [
           {
             ResourceType: 'collection',
-            Resource: ['collection/slaops-collection'],
+            Resource: [`collection/${collectionName}`],
             AllowFromPublic: false,
             SourceVPCEs: [vpcEndpoint.attrId],
           },
@@ -93,33 +89,27 @@ export class OpenSearchStack extends Stack {
       }),
     })
 
-    // Network policy depends on VPC endpoint
     networkPolicy.addDependency(vpcEndpoint)
 
-    // Create OpenSearch Serverless collection
-    // Associate it with the VPC endpoint for private VPC access
     this.collection = new opensearchserverless.CfnCollection(this, 'SlaOpsOpenSearchCollection', {
-      name: 'slaops-collection',
-      type: 'SEARCH', // Can be 'SEARCH', 'TIMESERIES', or 'VECTORSEARCH'
-      description: 'SLAOps OpenSearch Serverless collection for log analytics',
+      name: collectionName,
+      type: 'SEARCH',
+      description: 'SLAOps OpenSearch Serverless collection for log analytics and OASpec search',
     })
 
-    // Network policy must be created before the collection
     this.collection.addDependency(networkPolicy)
 
-    // Create data access policy (placeholder - should be configured based on IAM roles)
-    // This allows specific IAM principals to access the collection
     const dataAccessPolicy = new opensearchserverless.CfnSecurityPolicy(
       this,
       'SlaOpsDataAccessPolicy',
       {
-        name: 'slaops-data-access-policy',
+        name: 'slaops--opensearch--data-access',
         type: 'data',
         policy: JSON.stringify({
           Rules: [
             {
               ResourceType: 'collection',
-              Resource: [`collection/${this.collection.name}`],
+              Resource: [`collection/${collectionName}`],
               Permission: [
                 'aoss:CreateCollectionItems',
                 'aoss:DeleteCollectionItems',
@@ -127,14 +117,12 @@ export class OpenSearchStack extends Stack {
                 'aoss:DescribeCollectionItems',
               ],
               Principal: [
-                // This should be replaced with actual IAM role ARNs
-                // For now, using a placeholder that will need to be updated
                 `arn:aws:iam::${this.account}:root`,
               ],
             },
             {
               ResourceType: 'index',
-              Resource: [`index/${this.collection.name}/*`],
+              Resource: [`index/${collectionName}/*`],
               Permission: [
                 'aoss:CreateIndex',
                 'aoss:DeleteIndex',
@@ -144,7 +132,6 @@ export class OpenSearchStack extends Stack {
                 'aoss:WriteDocument',
               ],
               Principal: [
-                // This should be replaced with actual IAM role ARNs
                 `arn:aws:iam::${this.account}:root`,
               ],
             },
@@ -153,44 +140,48 @@ export class OpenSearchStack extends Stack {
       },
     )
 
-    // Data access policy must be created after the collection
     dataAccessPolicy.addDependency(this.collection)
 
-    // Export important values via CloudFormation outputs
+    // CfnCollection does not inherit stack-level tags — apply directly
+    this.collection.tags.setTag('slaops:org', 'slaops')
+    this.collection.tags.setTag('slaops:domain', 'platform')
+    this.collection.tags.setTag('slaops:service', 'opensearch')
+    this.collection.tags.setTag('slaops:managed-by', 'cdk')
+
     new CfnOutput(this, 'OpenSearchCollectionId', {
       value: this.collection.attrId,
       description: 'OpenSearch Serverless collection ID',
-      exportName: 'slaops-opensearch-collection-id',
+      exportName: 'slaops--platform--opensearch--collection-id',
     })
 
     new CfnOutput(this, 'OpenSearchCollectionName', {
       value: this.collection.name,
       description: 'OpenSearch Serverless collection name',
-      exportName: 'slaops-opensearch-collection-name',
+      exportName: 'slaops--platform--opensearch--collection-name',
     })
 
     new CfnOutput(this, 'OpenSearchCollectionArn', {
       value: this.collection.attrArn,
       description: 'OpenSearch Serverless collection ARN',
-      exportName: 'slaops-opensearch-collection-arn',
+      exportName: 'slaops--platform--opensearch--collection-arn',
     })
 
     new CfnOutput(this, 'OpenSearchCollectionEndpoint', {
       value: this.collection.attrCollectionEndpoint,
       description: 'OpenSearch Serverless collection endpoint',
-      exportName: 'slaops-opensearch-collection-endpoint',
+      exportName: 'slaops--platform--opensearch--collection-endpoint',
     })
 
     new CfnOutput(this, 'OpenSearchDashboardEndpoint', {
       value: this.collection.attrDashboardEndpoint,
       description: 'OpenSearch Serverless dashboard endpoint',
-      exportName: 'slaops-opensearch-dashboard-endpoint',
+      exportName: 'slaops--platform--opensearch--dashboard-endpoint',
     })
 
     new CfnOutput(this, 'VpcEndpointId', {
       value: vpcEndpoint.attrId,
       description: 'OpenSearch Serverless VPC endpoint ID',
-      exportName: 'slaops-opensearch-vpc-endpoint-id',
+      exportName: 'slaops--platform--opensearch--vpc-endpoint-id',
     })
   }
 }

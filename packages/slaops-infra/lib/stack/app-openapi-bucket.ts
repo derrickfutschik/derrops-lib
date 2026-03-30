@@ -1,4 +1,4 @@
-import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
+import { CfnOutput, RemovalPolicy, Stack, Tags, StackProps } from 'aws-cdk-lib'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import { Construct } from 'constructs'
 
@@ -14,14 +14,18 @@ export interface OpenApiBucketStackProps extends StackProps {
 }
 
 /**
- * Infrastructure stack for the OpenAPI specs S3 bucket
+ * Infrastructure stack for the SLAOps-managed OpenAPI source bucket
  *
- * This stack creates an S3 bucket for storing OpenAPI specifications
- * in the APIs-guru directory structure:
+ * This stack creates the S3 bucket that holds SLAOps-managed OpenAPI
+ * specifications (sourced from APIs-guru and curated additions), structured
+ * as the APIs-guru directory layout:
  *   APIs/{provider}/{service}/{version}/openapi.{yaml|json}
  *
- * The bucket exports its ARN and name for use by other stacks
- * (e.g., the Lambda indexer in slaops-backend).
+ * Bucket name follows the Derrops globally-unique convention:
+ *   {region}--{env}--{org}--{tenant}--{domain}--{service}--{key}
+ * where tenant = "slaops" (the platform's own reserved tenant ID).
+ *
+ * The bucket exports its ARN and name for use by the Amplify backend indexer Lambda.
  */
 export class OpenApiBucketStack extends Stack {
   public readonly bucket: s3.Bucket
@@ -29,29 +33,32 @@ export class OpenApiBucketStack extends Stack {
   constructor(scope: Construct, id: string, props?: OpenApiBucketStackProps) {
     super(scope, id, props)
 
-    // Create S3 bucket for OpenAPI specs
-    this.bucket = new s3.Bucket(this, 'OpenApiSpecsBucket', {
-      bucketName: `slaops-openapi-specs-${this.account}-${this.region}`,
+    Tags.of(this).add('slaops:domain', 'oaspec')
+    Tags.of(this).add('slaops:service', 'source')
+    Tags.of(this).add('slaops:tenant-id', 'slaops')
+
+    const appEnv = process.env.ENVIRONMENT || 'prod'
+
+    this.bucket = new s3.Bucket(this, 'OpenApiSourceBucket', {
+      // Globally-unique name: {region}--{env}--slaops--slaops--oaspec--source--specs
+      bucketName: `${this.region}--${appEnv}--slaops--slaops--oaspec--source--specs`,
       versioned: props?.versioned ?? true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.RETAIN, // Keep bucket on stack deletion
-      // Enable event notifications (will be configured by slaops-backend)
+      removalPolicy: RemovalPolicy.RETAIN,
       eventBridgeEnabled: true,
     })
 
-    // Export bucket ARN
-    new CfnOutput(this, 'OpenApiBucketArn', {
+    new CfnOutput(this, 'OpenApiSourceBucketArn', {
       value: this.bucket.bucketArn,
-      description: 'ARN of the OpenAPI specs S3 bucket',
-      exportName: 'slaops-openapi-bucket-arn',
+      description: 'ARN of the SLAOps-managed OpenAPI source S3 bucket',
+      exportName: 'slaops--oaspec--source--bucket-arn',
     })
 
-    // Export bucket name
-    new CfnOutput(this, 'OpenApiBucketName', {
+    new CfnOutput(this, 'OpenApiSourceBucketName', {
       value: this.bucket.bucketName,
-      description: 'Name of the OpenAPI specs S3 bucket',
-      exportName: 'slaops-openapi-bucket-name',
+      description: 'Name of the SLAOps-managed OpenAPI source S3 bucket',
+      exportName: 'slaops--oaspec--source--bucket-name',
     })
   }
 }

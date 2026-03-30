@@ -1,4 +1,4 @@
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib'
+import { CfnOutput, Stack, Tags, StackProps } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import { Construct } from 'constructs'
 
@@ -92,16 +92,18 @@ export class VpcStack extends Stack {
   constructor(scope: Construct, id: string, props?: VpcStackProps) {
     super(scope, id, props)
 
+    Tags.of(this).add('slaops:domain', 'platform')
+    Tags.of(this).add('slaops:service', 'vpc')
+
     // Get configurable NAT Gateway count (default: 1)
     const natGateways = props?.natGatewayCount ?? 1
 
     // Create VPC with 3 availability zones
-    // This will automatically create 3 public, 3 private, and 3 isolated subnets
     this.vpc = new ec2.Vpc(this, 'SlaOpsVpc', {
       maxAzs: 3,
       natGateways,
       enableDnsHostnames: true, // Required for RDS/OpenSearch/VPC endpoints
-      enableDnsSupport: true, // Required for private DNS resolution
+      enableDnsSupport: true,   // Required for private DNS resolution
       subnetConfiguration: [
         {
           cidrMask: 24,
@@ -114,14 +116,13 @@ export class VpcStack extends Stack {
           subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
         },
         {
-          cidrMask: 24, // Increased from /28 to /24 for future scalability
+          cidrMask: 24,
           name: 'Isolated',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         },
       ],
     })
 
-    // Get references to the subnets
     this.publicSubnets = this.vpc.publicSubnets
     this.privateSubnets = this.vpc.privateSubnets
 
@@ -139,7 +140,6 @@ export class VpcStack extends Stack {
     }
 
     // Interface Endpoints (require security group)
-    // Only create security group if at least one interface endpoint is enabled
     const needsEndpointSecurityGroup =
       (props?.enableSecretsManagerEndpoint ?? false) ||
       (props?.enableCloudWatchLogsEndpoint ?? false) ||
@@ -148,7 +148,6 @@ export class VpcStack extends Stack {
       (props?.enableEcrDockerEndpoint ?? false)
 
     if (needsEndpointSecurityGroup) {
-      // Create security group for interface endpoints (reused by all endpoints)
       const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
         vpc: this.vpc,
         description: 'Security group for VPC interface endpoints',
@@ -161,7 +160,6 @@ export class VpcStack extends Stack {
         'Allow HTTPS from VPC',
       )
 
-      // Secrets Manager endpoint (~$7.20/month)
       if (props?.enableSecretsManagerEndpoint ?? false) {
         this.vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
           service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
@@ -171,7 +169,6 @@ export class VpcStack extends Stack {
         })
       }
 
-      // CloudWatch Logs endpoint (~$7.20/month)
       if (props?.enableCloudWatchLogsEndpoint ?? false) {
         this.vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
           service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
@@ -181,7 +178,6 @@ export class VpcStack extends Stack {
         })
       }
 
-      // EC2 endpoint (~$7.20/month)
       if (props?.enableEc2Endpoint ?? false) {
         this.vpc.addInterfaceEndpoint('EC2Endpoint', {
           service: ec2.InterfaceVpcEndpointAwsService.EC2,
@@ -191,7 +187,6 @@ export class VpcStack extends Stack {
         })
       }
 
-      // ECR API endpoint (~$7.20/month)
       if (props?.enableEcrApiEndpoint ?? false) {
         this.vpc.addInterfaceEndpoint('EcrApiEndpoint', {
           service: ec2.InterfaceVpcEndpointAwsService.ECR,
@@ -201,7 +196,6 @@ export class VpcStack extends Stack {
         })
       }
 
-      // ECR Docker endpoint (~$7.20/month)
       if (props?.enableEcrDockerEndpoint ?? false) {
         this.vpc.addInterfaceEndpoint('EcrDockerEndpoint', {
           service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
@@ -212,12 +206,11 @@ export class VpcStack extends Stack {
       }
     }
 
-    // VPC Flow Logs for network traffic monitoring
     if (props?.enableFlowLogs ?? false) {
       new ec2.FlowLog(this, 'VpcFlowLog', {
         resourceType: ec2.FlowLogResourceType.fromVpc(this.vpc),
         trafficType: ec2.FlowLogTrafficType.ALL,
-        flowLogName: 'slaops-vpc-flow-log',
+        flowLogName: 'slaops--platform--vpc--flow-log',
       })
     }
 
@@ -225,42 +218,39 @@ export class VpcStack extends Stack {
     new CfnOutput(this, 'VpcId', {
       value: this.vpc.vpcId,
       description: 'VPC ID',
-      exportName: 'slaops-vpc-id',
+      exportName: 'slaops--platform--vpc--id',
     })
 
     new CfnOutput(this, 'VpcCidrBlock', {
       value: this.vpc.vpcCidrBlock,
       description: 'VPC CIDR block',
-      exportName: 'slaops-vpc-cidr-block',
+      exportName: 'slaops--platform--vpc--cidr-block',
     })
 
-    // Export public subnet IDs with AZ-specific naming
     this.publicSubnets.forEach((subnet, index) => {
       const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase()
       new CfnOutput(this, `PublicSubnet${azLetter.toUpperCase()}Id`, {
         value: subnet.subnetId,
         description: `Public subnet ${azLetter.toUpperCase()} ID`,
-        exportName: `slaops-vpc-subnet-public-${azLetter}`,
+        exportName: `slaops--platform--vpc--subnet-public-${azLetter}`,
       })
     })
 
-    // Export private subnet IDs with AZ-specific naming
     this.privateSubnets.forEach((subnet, index) => {
       const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase()
       new CfnOutput(this, `PrivateSubnet${azLetter.toUpperCase()}Id`, {
         value: subnet.subnetId,
         description: `Private subnet ${azLetter.toUpperCase()} ID`,
-        exportName: `slaops-vpc-subnet-private-${azLetter}`,
+        exportName: `slaops--platform--vpc--subnet-private-${azLetter}`,
       })
     })
 
-    // Export isolated subnet IDs with AZ-specific naming
     this.vpc.isolatedSubnets.forEach((subnet, index) => {
       const azLetter = this.vpc.availabilityZones[index].slice(-1).toLowerCase()
       new CfnOutput(this, `IsolatedSubnet${azLetter.toUpperCase()}Id`, {
         value: subnet.subnetId,
         description: `Isolated subnet ${azLetter.toUpperCase()} ID`,
-        exportName: `slaops-vpc-subnet-isolated-${azLetter}`,
+        exportName: `slaops--platform--vpc--subnet-isolated-${azLetter}`,
       })
     })
   }

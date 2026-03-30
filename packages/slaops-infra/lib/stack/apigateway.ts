@@ -1,4 +1,4 @@
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib'
+import { CfnOutput, Stack, Tags, StackProps } from 'aws-cdk-lib'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
 import { Construct } from 'constructs'
@@ -25,8 +25,9 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props)
 
-    // Import the Lambda function ARN from Amplify backend stack
-    // This will be set after the Amplify backend is deployed
+    Tags.of(this).add('slaops:domain', 'platform')
+    Tags.of(this).add('slaops:service', 'api-gateway')
+
     const lambdaFunctionArn =
       this.node.tryGetContext('lambdaFunctionArn') || process.env.LAMBDA_FUNCTION_ARN
 
@@ -38,12 +39,10 @@ export class ApiStack extends Stack {
       )
     }
 
-    // Import the Lambda function by ARN
     const apiFunction = lambda.Function.fromFunctionArn(this, 'ApiFunction', lambdaFunctionArn)
 
-    // Create API Gateway REST API
     this.restApi = new apigateway.RestApi(this, 'SlaOpsRestApi', {
-      restApiName: 'SLAOps API',
+      restApiName: 'slaops--platform--api-gateway',
       description: 'SLAOps Cloud Backend REST API',
       deployOptions: {
         stageName: 'prod',
@@ -72,7 +71,6 @@ export class ApiStack extends Stack {
       },
     })
 
-    // Create Lambda integration
     const lambdaIntegration = new apigateway.LambdaIntegration(apiFunction, {
       proxy: true,
       allowTestInvoke: true,
@@ -83,38 +81,35 @@ export class ApiStack extends Stack {
       ],
     })
 
-    // Add proxy resource to handle all paths
     this.restApi.root.addProxy({
       defaultIntegration: lambdaIntegration,
       anyMethod: true,
     })
 
-    // Also add root endpoint
     this.restApi.root.addMethod('ANY', lambdaIntegration)
 
-    // Export API outputs
     new CfnOutput(this, 'ApiUrl', {
       value: this.restApi.url,
       description: 'SLAOps REST API URL',
-      exportName: 'SlaOpsApiUrl',
+      exportName: 'slaops--platform--api-gateway--url',
     })
 
     new CfnOutput(this, 'ApiId', {
       value: this.restApi.restApiId,
       description: 'SLAOps REST API ID',
-      exportName: 'SlaOpsApiId',
+      exportName: 'slaops--platform--api-gateway--id',
     })
 
     new CfnOutput(this, 'ApiArn', {
       value: this.restApi.arnForExecuteApi(),
       description: 'SLAOps REST API ARN',
-      exportName: 'SlaOpsApiArn',
+      exportName: 'slaops--platform--api-gateway--arn',
     })
 
     new CfnOutput(this, 'ApiEndpoint', {
       value: `${this.restApi.url}prod`,
       description: 'SLAOps REST API Endpoint (with stage)',
-      exportName: 'SlaOpsApiEndpoint',
+      exportName: 'slaops--platform--api-gateway--endpoint',
     })
   }
 }
