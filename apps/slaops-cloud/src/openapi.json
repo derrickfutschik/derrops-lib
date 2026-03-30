@@ -530,7 +530,22 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "The config"
+            "description": "Masked config key-value pairs (sensitive values redacted)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "example": {
+                    "app.name": "SLAOps",
+                    "aws.region": "ap-southeast-2",
+                    "db.host": "********"
+                  }
+                }
+              }
+            }
           }
         },
         "summary": "Get the config",
