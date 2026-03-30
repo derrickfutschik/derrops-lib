@@ -14,11 +14,14 @@
 
 
 
-export * from './api/aegis-instance-api';
-export * from './api/cloud-relay-api';
-export * from './api/config-api';
-export * from './api/open-apisearch-api';
-export * from './api/open-api-indexer-api';
-export * from './api/relay-instance-api';
-export * from './api/service-api';
+export interface AegisRegisterDto {
+    /**
+     * One-time registration token issued when the Aegis instance was created
+     */
+    'registrationToken': string;
+    /**
+     * JWKS endpoint URL of the Aegis instance (must be HTTPS)
+     */
+    'jwksUrl': string;
+}
 
