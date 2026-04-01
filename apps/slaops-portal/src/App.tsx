@@ -13,6 +13,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-route
 import { store } from './store'
 import AddService from './pages/AddService'
 import ApiTester from './pages/ApiTester'
+import Connections from './pages/Connections'
 import Dashboard from './pages/Dashboard'
 import Landing from './pages/Landing'
 import NotFound from './pages/NotFound'
@@ -188,6 +189,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <ApiTester />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/connections"
+            element={
+              <ProtectedRoute>
+                <Connections />
               </ProtectedRoute>
             }
           />
