@@ -14,11 +14,14 @@
 
 
 
-export * from './api/aegis-instance-api';
-export * from './api/cloud-relay-api';
-export * from './api/config-api';
-export * from './api/open-apisearch-api';
-export * from './api/open-api-indexer-api';
-export * from './api/relay-instance-api';
-export * from './api/service-api';
+export interface CreateRelayInstanceDto {
+    /**
+     * Human-readable name for this relay instance
+     */
+    'name': string;
+    /**
+     * Base URL of the relay (must be HTTPS)
+     */
+    'url': string;
+}
 

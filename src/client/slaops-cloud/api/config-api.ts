@@ -45,6 +45,7 @@ export const ConfigApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -70,7 +71,7 @@ export const ConfigApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async configControllerGetConfig(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async configControllerGetConfig(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<{ [key: string]: string; }>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.configControllerGetConfig(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ConfigApi.configControllerGetConfig']?.[localVarOperationServerIndex]?.url;
@@ -91,7 +92,7 @@ export const ConfigApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        configControllerGetConfig(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        configControllerGetConfig(options?: RawAxiosRequestConfig): AxiosPromise<{ [key: string]: string; }> {
             return localVarFp.configControllerGetConfig(options).then((request) => request(axios, basePath));
         },
     };

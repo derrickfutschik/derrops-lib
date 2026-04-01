@@ -14,11 +14,14 @@
 
 
 
-export * from './api/aegis-instance-api';
-export * from './api/cloud-relay-api';
-export * from './api/config-api';
-export * from './api/open-apisearch-api';
-export * from './api/open-api-indexer-api';
-export * from './api/relay-instance-api';
-export * from './api/service-api';
+export interface CreateCloudRelayJobDto {
+    /**
+     * ID of the relay connection that should execute this job
+     */
+    'connectionId': string;
+    /**
+     * Full CloudProxyRequestDto payload (HAR request + optional templateContext)
+     */
+    'request': object;
+}
 

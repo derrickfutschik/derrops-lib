@@ -200,9 +200,9 @@ export function MaximizableCodeViewer({
     dispatch(setJmespathQueryRedux(query))
   }, [dispatch])
 
-  // Sets query AND enables JMESPath (used for Cmd+Click from JSON viewer)
+  // Sets query only (used for Cmd+Click from JSON viewer — does not change enabled state)
   const selectJmespathQuery = useCallback((query: string) => {
-    dispatch(setJsonState({ jmespathEnabled: true, jmespathQuery: query }))
+    dispatch(setJmespathQueryRedux(query))
   }, [dispatch])
 
   const setJmespathModeLocal = (mode: 'filter' | 'highlight') => {

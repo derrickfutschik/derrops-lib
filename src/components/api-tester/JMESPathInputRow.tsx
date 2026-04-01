@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import jmespath from 'jmespath'
 import { Filter, Highlighter } from 'lucide-react'
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { extractWildcardPaths, fuzzySearchPaths } from './jmespath-autocomplete-utils'
 
 // ---------------------------------------------------------------------------
@@ -27,13 +27,21 @@ export function highlightJmespathQuery(query: string): React.ReactNode[] {
     const content = match[1]
     if (content === '') {
       if (match.index < trailingStart) {
-        parts.push(<span key={match.index} className="text-green-500">[]</span>)
+        parts.push(
+          <span key={match.index} className="text-green-500">
+            []
+          </span>,
+        )
       } else {
         parts.push('[]')
       }
     } else {
       const isWildcard = content === '*'
-      parts.push(<span key={match.index} className={isWildcard ? 'text-green-500' : 'text-orange-500'}>[{content}]</span>)
+      parts.push(
+        <span key={match.index} className={isWildcard ? 'text-green-500' : 'text-orange-500'}>
+          [{content}]
+        </span>,
+      )
     }
     lastIndex = match.index + match[0].length
   }
@@ -111,7 +119,11 @@ export function JMESPathInputRow({
   // ---------------------------------------------------------------------------
   const parsedJsonContent = useMemo(() => {
     if (!jsonContent) return null
-    try { return JSON.parse(jsonContent) } catch { return null }
+    try {
+      return JSON.parse(jsonContent)
+    } catch {
+      return null
+    }
   }, [jsonContent])
 
   const allPaths = useMemo(() => {
@@ -151,20 +163,27 @@ export function JMESPathInputRow({
           const result = jmespath.search(parsedJsonContent, evalQuery)
           // Only use eval approach for object results — for arrays, the fuzzy
           // search against allPaths (which uses [*] prefixes) is more accurate.
-          if (result !== null && result !== undefined && typeof result === 'object' && !Array.isArray(result)) {
+          if (
+            result !== null &&
+            result !== undefined &&
+            typeof result === 'object' &&
+            !Array.isArray(result)
+          ) {
             const childPaths = extractWildcardPaths(result)
             if (childPaths.length > 0) {
-              const suggestions = childPaths.map(p =>
-                p.startsWith('[') ? `${evalQuery}${p}` : `${evalQuery}.${p}`
+              const suggestions = childPaths.map((p) =>
+                p.startsWith('[') ? `${evalQuery}${p}` : `${evalQuery}.${p}`,
               )
-              const filtered = [...new Set(suggestions)].filter(s => s !== query)
+              const filtered = [...new Set(suggestions)].filter((s) => s !== query)
               if (filtered.length > 0) {
                 filtered.sort((a, b) => a.length - b.length || a.localeCompare(b))
                 return filtered.slice(0, 15)
               }
             }
           }
-        } catch { /* fall through to fuzzy search */ }
+        } catch {
+          /* fall through to fuzzy search */
+        }
       }
     }
 
@@ -184,13 +203,18 @@ export function JMESPathInputRow({
     autocompleteItemRefs.current[nextIndex]?.scrollIntoView({ block: 'nearest' })
   }, [autocompleteIndex, autocompleteSuggestions, showAutocomplete])
 
-  const selectAutocomplete = useCallback((path: string) => {
-    onQueryProgrammatic(path)
-    setShowAutocomplete(false)
-  }, [onQueryProgrammatic])
+  const selectAutocomplete = useCallback(
+    (path: string) => {
+      onQueryProgrammatic(path)
+      setShowAutocomplete(false)
+    },
+    [onQueryProgrammatic],
+  )
 
   return (
-    <div className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}>
+    <div
+      className={`flex items-center gap-3 px-3 py-2 border-b border-border ${disabled ? 'bg-muted/50 opacity-50 pointer-events-none' : 'bg-muted/20'}`}
+    >
       <div className="flex items-center gap-2">
         <Switch
           id="jmespath-toggle"
@@ -297,7 +321,9 @@ export function JMESPathInputRow({
                 clearTimeout(undoDebounceRef.current)
                 undoDebounceRef.current = null
                 if (typingStartRef.current !== null) {
-                  undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(-100)
+                  undoStackRef.current = [...undoStackRef.current, typingStartRef.current].slice(
+                    -100,
+                  )
                   typingStartRef.current = null
                 }
               }
@@ -321,8 +347,14 @@ export function JMESPathInputRow({
           }}
           disabled={!jmespathEnabled}
           className={`h-7 text-xs font-mono ${jmespathError || jmespathNullResult ? 'border-destructive' : ''}`}
-          style={!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
-          onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollLeft = e.currentTarget.scrollLeft }}
+          style={
+            !jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery)
+              ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' }
+              : undefined
+          }
+          onScroll={(e) => {
+            if (overlayRef.current) overlayRef.current.scrollLeft = e.currentTarget.scrollLeft
+          }}
           title="Tab to accept suggestion | ↑↓ navigate suggestions | Esc dismiss"
         />
         {!jmespathInputFocused && hasColoredJmespathTokens(jmespathQuery) && (
@@ -362,7 +394,9 @@ export function JMESPathInputRow({
               )
             })}
             <div className="px-3 py-1 text-[10px] text-muted-foreground border-t border-border">
-              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Tab</kbd> accept · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">↑↓</kbd> navigate · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Esc</kbd> dismiss
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Tab</kbd> accept ·{' '}
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">↑↓</kbd> navigate ·{' '}
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Esc</kbd> dismiss
             </div>
           </div>
         )}
@@ -426,7 +460,11 @@ function highlightPathMatch(path: string, query: string): React.ReactNode {
     while (j < path.length && highlights.has(j) === isHighlighted) j++
     const segment = path.slice(i, j)
     if (isHighlighted) {
-      parts.push(<span key={i} className="font-bold underline decoration-primary underline-offset-2">{segment}</span>)
+      parts.push(
+        <span key={i} className="font-bold underline decoration-primary underline-offset-2">
+          {segment}
+        </span>,
+      )
     } else {
       parts.push(segment)
     }
