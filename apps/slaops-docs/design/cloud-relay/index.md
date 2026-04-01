@@ -20,6 +20,7 @@ The Cloud Relay is a customer-deployed HTTP proxy that sits between the SLAOps p
 | [Aegis Token Broker](./aegis-token-broker-design) | Customer-controlled credential injection and session delegation |
 | [Local Relay](./local-relay) | Local development relay for reaching `localhost` services |
 | [Security](./cloud-relay-security) | Authentication methods between Relay and SLAOps control plane |
+| [Portal UI — Connection Management](./portal-connections-ui) | UI design brief for managing relay and Aegis connections in the portal |
 
 ## Runtime Components
 
