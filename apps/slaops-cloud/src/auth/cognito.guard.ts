@@ -70,7 +70,7 @@ export class CognitoGuard implements CanActivate {
       }
 
       // Attach to request for @CurrentUser() to pick up
-      (request as Request & { [COGNITO_CLAIMS_KEY]: CognitoClaims })[COGNITO_CLAIMS_KEY] =
+      ;(request as Request & { [COGNITO_CLAIMS_KEY]: CognitoClaims })[COGNITO_CLAIMS_KEY] =
         payload as unknown as CognitoClaims
 
       return true

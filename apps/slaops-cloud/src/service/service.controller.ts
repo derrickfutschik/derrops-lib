@@ -21,6 +21,8 @@ import { CreateServiceDto } from './dto/create-service.dto'
 import { UpdateServiceDto } from './dto/update-service.dto'
 import { Service } from './entities/service.entity'
 import { ServiceService } from './service.service'
+import { CurrentUser } from '../auth'
+import { User } from '../user/user.dto'
 
 @ApiTags('Service')
 @Controller('services')
@@ -44,7 +46,8 @@ export class ServiceController {
     example: 'id,name,endpoint,openapi_doc_url,openapi_doc_content',
   })
   @ApiResponse({ status: 200, description: 'List of services', type: [Service] })
-  findAll(@Query('select') select?: string): Promise<Service[]> {
+  findAll(@CurrentUser() user: User, @Query('select') select?: string): Promise<Service[]> {
+    console.log({ user })
     const selectFields = select ? select.split(',').map((f) => f.trim()) : undefined
     return this.serviceService.findAll(selectFields)
   }

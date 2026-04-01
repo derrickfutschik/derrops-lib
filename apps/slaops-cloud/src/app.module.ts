@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { config } from '@slaops/config'
 import { nestConfigOptions } from '@slaops/config-nestjs'
+import { JwtAuthGuard } from './auth/jwt-auth.guard'
 import { AegisInstanceModule } from './aegis-instance/aegis-instance.module'
 import { CloudRelayModule } from './cloud-relay/cloud-relay.module'
 import { SLAConfigModule } from './config/config.module'
@@ -12,6 +14,7 @@ import { OpenApiIndexerModule } from './openapi-indexer/openapi-indexer.module'
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module'
 import { OpenSearchModule } from './opensearch/opensearch.module'
 import { ServiceModule } from './service/service.module'
+import { AuthModule } from './auth/auth.module'
 
 @Module({
   imports: [
@@ -70,8 +73,14 @@ import { ServiceModule } from './service/service.module'
     OpenApiSearchModule,
     SLAConfigModule, // TODO - only import this in non prod environments
     OpenSearchModule, // TODO - only import this in non prod environments
+    AuthModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}
