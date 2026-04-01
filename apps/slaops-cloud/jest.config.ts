@@ -28,12 +28,14 @@ const config: Config = {
   coverageDirectory: './coverage',
   testEnvironment: 'node',
   testMatch: [
+    '**/src/**/*.e2e-spec.test.ts',
     '**/src/**/*.spec.ts',
     '**/src/**/*.test.ts',
     '**/test/**/*.spec.ts',
     '**/test/**/*.test.ts',
     '**/test/**/*.e2e-spec.ts',
     '**/test/**/*.e2e-spec.test.ts',
+    '**/test/*.e2e-spec.test.ts',
   ],
   reporters: [
     'default',
