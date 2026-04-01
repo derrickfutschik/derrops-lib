@@ -44,16 +44,16 @@ windows:
           echo "Starting SLAOps Cloud" &&
           PORT=<%= ENV["CLOUD_PORT"] %> NODE_ENV=dev pnpm --filter @slaops/cloud run start:dev
 
-  - cloudflared:
-      root: .
-      layout: even-vertical
-      panes:
-        - >-
-          sleep <%= ENV["CF_STARTUP_DELAY"] %> &&
-          cloudflared tunnel create <%= ENV["CF_TUNNEL_DEV"] %> 2>/dev/null || true &&
-          cloudflared tunnel route dns <%= ENV["CF_TUNNEL_DEV"] %> <%= ENV["CF_DNS_DEV"] %> &&
-          cloudflared tunnel run <%= ENV["CF_TUNNEL_DEV"] %>
-
+#  - cloudflared:
+#      root: .
+#      layout: even-vertical
+#      panes:
+#        - >-
+#          sleep <%= ENV["CF_STARTUP_DELAY"] %> &&
+#          cloudflared tunnel create <%= ENV["CF_TUNNEL_DEV"] %> 2>/dev/null || true &&
+#          cloudflared tunnel route dns <%= ENV["CF_TUNNEL_DEV"] %> <%= ENV["CF_DNS_DEV"] %> &&
+#          cloudflared tunnel run <%= ENV["CF_TUNNEL_DEV"] %>
+#
   - slaops-relay:
       root: apps/slaops-relay
       layout: even-vertical
