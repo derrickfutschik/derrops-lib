@@ -74,6 +74,7 @@ const config: Config = {
             return `cursor://file${pathToFile}`
           },
 
+          exclude: ['**/CLAUDE.md'],
           onInlineTags: 'warn',
           remarkPlugins: [remarkMath, remarkCodeImport],
           rehypePlugins: [rehypeKatex],
@@ -127,6 +128,7 @@ const config: Config = {
         id: 'notes',
         path: 'notes',
         routeBasePath: 'notes',
+        exclude: ['**/CLAUDE.md'],
         sidebarPath: './sidebars.ts',
         editUrl: ({ docPath }) => {
           const awsBranch = process.env.AWS_BRANCH
@@ -148,6 +150,7 @@ const config: Config = {
         id: 'devops',
         path: 'devops',
         routeBasePath: 'devops',
+        exclude: ['**/CLAUDE.md'],
         sidebarPath: './sidebars-devops.ts',
         editUrl: ({ docPath }) => {
           const awsBranch = process.env.AWS_BRANCH
@@ -169,6 +172,7 @@ const config: Config = {
         id: 'code',
         path: 'code',
         routeBasePath: 'code',
+        exclude: ['**/CLAUDE.md'],
         sidebarPath: './sidebars-code.ts',
         editUrl: ({ docPath }) => {
           const awsBranch = process.env.AWS_BRANCH
@@ -190,6 +194,7 @@ const config: Config = {
         id: 'design',
         path: 'design',
         routeBasePath: 'design',
+        exclude: ['**/CLAUDE.md'],
         sidebarPath: './sidebars-design.ts',
         tagsBasePath: 'tags',
         onInlineTags: 'warn',
