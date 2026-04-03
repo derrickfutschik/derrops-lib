@@ -39,6 +39,11 @@ apps/slaops-docs/
 
 - **Docusaurus 3.9.2** with future v4 compatibility enabled
 - **Mermaid diagrams** support via `@docusaurus/theme-mermaid`
+
+  **Mermaid authoring rules** (violations cause silent render failures):
+  - Always quote participant/actor labels that contain special characters such as parentheses, brackets, or colons — e.g. `participant Foo as "Foo Service (v2)"` not `participant Foo as Foo Service (v2)`.
+  - Keep node/participant IDs simple identifiers (letters, digits, underscores) — put human-readable text in the `as "..."` alias.
+  - Never use semicolons (`;`) inside message labels — Mermaid treats them as statement terminators, which causes a parse error on the following line. Use a comma or em dash instead.
 - **Math equations** support via remark-math and rehype-katex
 - **Code imports** via remark-code-import plugin
 - **Custom changelog** plugin for release tracking

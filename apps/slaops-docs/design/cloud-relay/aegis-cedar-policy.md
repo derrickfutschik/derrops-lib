@@ -314,7 +314,7 @@ sequenceDiagram
     actor User
     participant Portal as SLAOps Portal
     participant IdP as Customer SSO IdP
-    participant Aegis as Aegis Broker (Cedar)
+    participant Aegis as "Aegis Broker (Cedar)"
     participant CP as SaaS Control Plane
     participant Relay as Customer Relay
 
@@ -327,7 +327,7 @@ sequenceDiagram
     Aegis-->>Portal: Session Delegation JWT { permittedScopes, relayId }
     Portal->>CP: Attach session delegation JWT to vendor job envelope
     CP->>Relay: Execute job (vendor job + session delegation JWT)
-    Relay->>Relay: Verify both tokens; check scope
+    Relay->>Relay: Verify both tokens, check scope
     Relay-->>CP: Result
 ```
 
