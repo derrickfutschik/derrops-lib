@@ -20,6 +20,7 @@ The Cloud Relay is a customer-deployed HTTP proxy that sits between the SLAOps p
 | [Aegis Token Broker](./aegis-token-broker-design) | Customer-controlled credential injection and session delegation |
 | [Local Relay](./local-relay) | Local development relay for reaching `localhost` services |
 | [Security](./cloud-relay-security) | Authentication methods between Relay and SLAOps control plane |
+| [Aegis — Cedar Policy Authorization](./aegis-cedar-policy) | Cedar Policy engine integration: entity model, schema, example policies, and session grant flow |
 
 ## Runtime Components
 
