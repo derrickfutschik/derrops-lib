@@ -68,44 +68,56 @@ const responseViewerSlice = createSlice({
   initialState,
   reducers: {
     // View mode
+    /** Sets the active response viewer mode ('json', 'markdown', or 'table'). */
     setSelectedView(state, action: PayloadAction<'json' | 'markdown' | 'table'>) {
       state.selectedView = action.payload
     },
 
+    /** Enables or disables highlighting of duplicate values across the response. */
     setHighlightDuplicates(state, action: PayloadAction<boolean>) {
       state.highlightDuplicates = action.payload
     },
 
     // JSON state
+    /** Enables or disables the JMESPath query input in the JSON viewer. */
     setJmespathEnabled(state, action: PayloadAction<boolean>) {
       state.json.jmespathEnabled = action.payload
     },
+    /** Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer. */
     setJmespathQuery(state, action: PayloadAction<string>) {
       state.json.jmespathQuery = action.payload
     },
+    /** Sets whether the JMESPath expression filters rows out ('filter') or highlights matching nodes ('highlight'). */
     setJmespathMode(state, action: PayloadAction<'filter' | 'highlight'>) {
       state.json.jmespathMode = action.payload
     },
+    /** Enables or disables truncation of long string values in the JSON viewer. */
     setTruncateValues(state, action: PayloadAction<boolean>) {
       state.json.truncateValues = action.payload
     },
+    /** Enables or disables filtering the JSON view to show only unique values. */
     setUniqueFilter(state, action: PayloadAction<boolean>) {
       state.json.uniqueFilter = action.payload
     },
 
     // Table state
+    /** Sets the SQL expression used to filter or highlight rows in the table viewer. */
     setSqlQuery(state, action: PayloadAction<string>) {
       state.table.sqlQuery = action.payload
     },
+    /** Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight'). */
     setSqlMode(state, action: PayloadAction<'filter' | 'highlight'>) {
       state.table.sqlMode = action.payload
     },
+    /** Sets the column key used as the join key when merging a secondary data source into the table. */
     setJoinColumn(state, action: PayloadAction<string | null>) {
       state.table.joinColumn = action.payload
     },
+    /** Enables or disables the table join feature that merges a secondary data source alongside the primary response. */
     setJoiningEnabled(state, action: PayloadAction<boolean>) {
       state.table.joiningEnabled = action.payload
     },
+    /** Sets the list of additional JSON paths used to locate join data within the secondary source. */
     setAdditionalJoinPaths(state, action: PayloadAction<(string | null)[]>) {
       state.table.additionalJoinPaths = action.payload
     },
@@ -126,11 +138,13 @@ const responseViewerSlice = createSlice({
       })
     },
 
+    /** Toggles the visibility of the column with the given id. */
     toggleColumnHidden(state, action: PayloadAction<string>) {
       const col = state.table.columns.find((c) => c.id === action.payload)
       if (col) col.hidden = !col.hidden
     },
 
+    /** Clears the hidden flag on every column, making all columns visible. */
     showAllColumns(state) {
       state.table.columns.forEach((c) => {
         c.hidden = false
@@ -148,7 +162,7 @@ const responseViewerSlice = createSlice({
       })
     },
 
-    // Bulk JSON state update (used for backward compat initialization from props)
+    /** Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props. */
     setJsonState(state, action: PayloadAction<Partial<JsonState>>) {
       Object.assign(state.json, action.payload)
     },
