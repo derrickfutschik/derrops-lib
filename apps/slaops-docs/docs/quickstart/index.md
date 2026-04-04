@@ -23,6 +23,7 @@ These guides take you from a fresh account to a fully running SLAOps setup as qu
 | [2. Local relay](./local-relay) | A relay running on your machine for testing `localhost` services |
 | [3. Cloud relay](./cloud-relay) | A relay deployed in your cloud environment or SLAOps-managed |
 | [4. Aegis](./aegis) | Customer-controlled credential injection and request authorisation |
+| [5. API Tester](./api-tester) | Sending requests through a relay and reading results |
 
 ---
 
@@ -30,11 +31,11 @@ These guides take you from a fresh account to a fully running SLAOps setup as qu
 
 **I'm a developer testing a local service** (e.g. `localhost:3001`)
 
-Follow guides 1 and 2. You do not need a cloud relay or Aegis for local development.
+Follow guides 1, 2, and 5. You do not need a cloud relay or Aegis for local development.
 
 **I'm setting up a staging or production environment**
 
-Follow guides 1, 3, and 4. A cloud relay plus Aegis is the recommended production configuration.
+Follow guides 1, 3, 4, and 5. A cloud relay plus Aegis is the recommended production configuration.
 
 **I want to understand the full architecture first**
 
