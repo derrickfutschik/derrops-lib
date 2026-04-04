@@ -29,3 +29,15 @@
   --ifm-color-primary-lightest: #7a9ec4;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+.token.comment {
+  font-style: italic;
+}
+
+.token.builtin {
+  color: var(--ifm-color-primary);
+}
+
+.token.keyword {
+  font-weight: 600;
+}
