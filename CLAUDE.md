@@ -2,6 +2,9 @@
 
 React web portal for monitoring, API testing, and service management. Built with Vite + React 18 + TypeScript, using AWS Amplify for auth and a generated OpenAPI client for backend communication.
 
+- **Tech**: React 18 · Vite · TypeScript · Redux Toolkit · shadcn/ui · AWS Amplify (Cognito)
+- **Dev port**: 8080
+
 ## Directory Structure
 
 ```
@@ -31,9 +34,12 @@ src/
 
 ```
 src/store/
-├── index.ts          # configureStore, RootState, AppDispatch exports
-├── hooks.ts          # useAppDispatch, useAppSelector (always use these, not raw hooks)
-├── apiTesterSlice.ts # UI state for the API tester (collapsed panels, active tabs)
+├── index.ts               # configureStore, RootState, AppDispatch exports
+├── hooks.ts               # useAppDispatch, useAppSelector (always use these, not raw hooks)
+├── actionMeta.ts          # ActionArea/ActionGroup enums, ActionMeta type,
+│                          #   RegisteredAction type, ActionRegistry class,
+│                          #   actionRegistry singleton
+├── apiTesterSlice.ts      # Request-building UI state
 └── responseViewerSlice.ts # Response viewer state (view mode, JMESPath, sorting, columns)
 ```
 
@@ -44,39 +50,115 @@ src/store/
 - **Export selectors from the slice.** Define `select*` selectors alongside the slice and export them, so components don't need to know the store shape.
 - **Local UI state stays local.** Use `useState` for state that belongs entirely within a single component (hover, open/closed, input value while typing).
 
-### Example
+### Action creator registry
+
+Every Redux action creator in this app must be registered via `actionRegistry.registerAll()` (from `src/store/actionMeta.ts`). This:
+
+1. Attaches metadata (`description`, `area`, `group`) directly onto each action creator function.
+2. Adds every action creator to a queryable list so AI agents and developer tooling can discover all available actions at runtime without parsing source code.
+3. Returns the same actions object typed as `RegisteredAction<T>` for destructuring into named exports.
+
+### Enums
+
+**`ActionArea`** — the top-level functional domain:
+
+| Value | Used for |
+|---|---|
+| `ActionArea.Request` | Building, configuring, or sending a request (API tester UI, params, headers, etc.). |
+| `ActionArea.Response` | Viewing or analysing a response (JSON viewer, table viewer, filters, columns). |
+| `ActionArea.Export` | Exporting data from the portal (downloads, clipboard, share links). |
+| `ActionArea.UI` | General UI chrome not tied to a specific domain (modals, toasts, themes, global layout). |
+
+**`ActionGroup`** — logical sub-group within an area (defined in `actionMeta.ts`):
+
+| Value | Area | Used for |
+|---|---|---|
+| `ActionGroup.Navigation` | `Request` | Tab and panel selection in the API tester. |
+| `ActionGroup.Layout` | `Request` | Section collapse/expand state. |
+| `ActionGroup.ViewMode` | `Response` | Top-level view selector and cross-view settings (e.g. highlight duplicates). |
+| `ActionGroup.Json` | `Response` | JMESPath filtering, truncation, unique filter, and bulk JSON state. |
+| `ActionGroup.Table` | `Response` | SQL query, join configuration. |
+| `ActionGroup.TableColumns` | `Response` | Column visibility, sort order, column reconciliation. |
+
+When adding a new group, add a value to the `ActionGroup` enum in `actionMeta.ts` — do not use raw strings.
+
+### `ActionMeta` fields
+
+| Field | Type | Purpose |
+|---|---|---|
+| `description` | `string` | Plain-English explanation of what the action does and when to use it. |
+| `area` | `ActionArea` | Functional domain the action belongs to. |
+| `group` | `ActionGroup` | Logical sub-group within the area. |
+
+### Adding a new action
+
+1. Define the reducer inside `createSlice` as normal.
+2. Pass `slice.actions` to `actionRegistry.registerAll()` and provide an `ActionMeta` entry for **every** key — TypeScript will error if any are missing or misspelled.
+3. Destructure the return value into named exports.
+4. Export `reducer` **after** the `registerAll` call.
 
 ```typescript
-// store/myFeatureSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
 
-interface MyFeatureState {
-  activeTab: string
-}
-
-const initialState: MyFeatureState = { activeTab: 'request' }
-
-const myFeatureSlice = createSlice({
-  name: 'myFeature',
+const mySlice = createSlice({
+  name: 'mySlice',
   initialState,
   reducers: {
-    setActiveTab(state, action: PayloadAction<string>) {
-      state.activeTab = action.payload
+    myAction(state, action: PayloadAction<string>) {
+      state.value = action.payload
+    },
+    myOtherAction(state) {
+      state.active = !state.active
     },
   },
 })
 
-export const { setActiveTab } = myFeatureSlice.actions
-export const selectActiveTab = (state: RootState) => state.myFeature.activeTab
-export default myFeatureSlice.reducer
+export const { myAction, myOtherAction } = actionRegistry.registerAll(mySlice.actions, {
+  myAction: {
+    description: 'Sets the current value.',
+    area: ActionArea.Response,
+    group: ActionGroup.ViewMode,
+  },
+  myOtherAction: {
+    description: 'Toggles the active state.',
+    area: ActionArea.Response,
+    group: ActionGroup.ViewMode,
+  },
+})
+
+export const myReducer = mySlice.reducer
+
+// Selectors
+export const selectValue = (state: RootState) => state.mySlice.value
 
 // In a component
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { setActiveTab, selectActiveTab } from '@/store/myFeatureSlice'
+import { myAction, selectValue } from '@/store/mySlice'
 
-const activeTab = useAppSelector(selectActiveTab)
+const value = useAppSelector(selectValue)
 const dispatch = useAppDispatch()
-dispatch(setActiveTab('response'))
+dispatch(myAction('new value'))
+```
+
+### Querying the registry
+
+```typescript
+import { actionRegistry, ActionArea, ActionGroup } from '@/store/actionMeta'
+
+// All registered action creators
+actionRegistry.all
+
+// Filter by area
+actionRegistry.byArea(ActionArea.Response)
+
+// Filter by group
+actionRegistry.byGroup(ActionGroup.TableColumns)
+
+// Inspect an individual action creator
+myAction.description  // string
+myAction.area         // ActionArea
+myAction.group        // ActionGroup
 ```
 
 ## Component Conventions
@@ -255,11 +337,12 @@ See `src/components/api-tester/CLAUDE.md` for the full shortcut table and instru
 ## Development
 
 ```bash
-pnpm run dev       # Dev server on port 8080
-pnpm run build     # Production build
-pnpm run build:dev # Dev build
-pnpm run lint      # ESLint
-pnpm run test      # Vitest
+pnpm run dev        # Dev server on port 8080
+pnpm run build      # Production build
+pnpm run build:dev  # Dev build
+pnpm run preview    # Preview production build
+pnpm run lint       # ESLint
+pnpm run test       # Vitest
 pnpm run test:watch
 ```
 

@@ -1,10 +1,10 @@
-import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { ServiceApi } from '@/client/slaops-cloud'
 import { Service } from '@/client/slaops-cloud/models/service'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { API_BASE_URL } from '@/config'
 import { useToast } from '@/hooks/use-toast'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { Activity, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -21,10 +21,7 @@ const ServicesList = () => {
 
   const fetchServices = async () => {
     try {
-      const config = new Configuration({
-        basePath: API_BASE_URL,
-      })
-      const serviceApi = new ServiceApi(config)
+      const serviceApi = new ServiceApi(cloudApiConfig, undefined, cloudAxios)
 
       const response = await serviceApi.serviceControllerFindAll(
         'id,name,endpoint,availability,response_time',

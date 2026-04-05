@@ -1,7 +1,5 @@
-import { API_BASE_URL } from '@/config'
 import {
   AegisInstanceApi,
-  Configuration,
   RelayInstanceApi,
 } from '@/client/slaops-cloud'
 import type {
@@ -13,36 +11,18 @@ import type {
   UpdateAegisInstanceDto,
   UpdateRelayInstanceDto,
 } from '@/client/slaops-cloud'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchAuthSession } from 'aws-amplify/auth'
 import { useMemo } from 'react'
 
 // TODO: Replace with actual tenant ID from auth context
 const TENANT_ID = 'default-tenant'
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  try {
-    const session = await fetchAuthSession()
-    const token = session.tokens?.idToken?.toString()
-    if (token) {
-      return { Authorization: `Bearer ${token}` }
-    }
-  } catch {
-    // not authenticated
-  }
-  return {}
-}
-
 function useApiClients() {
-  return useMemo(() => {
-    const config = new Configuration({
-      basePath: API_BASE_URL,
-    })
-    return {
-      relayApi: new RelayInstanceApi(config),
-      aegisApi: new AegisInstanceApi(config),
-    }
-  }, [])
+  return useMemo(() => ({
+    relayApi: new RelayInstanceApi(cloudApiConfig, undefined, cloudAxios),
+    aegisApi: new AegisInstanceApi(cloudApiConfig, undefined, cloudAxios),
+  }), [])
 }
 
 // ── Relay Hooks ──

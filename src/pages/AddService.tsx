@@ -1,12 +1,12 @@
 import type { CreateServiceDto } from '@/client/slaops-cloud'
-import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { ServiceApi } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { API_BASE_URL } from '@/config'
 import { useToast } from '@/hooks/use-toast'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { ArrowLeft, Zap } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -88,10 +88,7 @@ const AddService = () => {
       // For now, using a hardcoded user_id
       const user_id = '5c963787-d89d-4260-adaf-6541c41cb982'
 
-      const config = new Configuration({
-        basePath: API_BASE_URL,
-      })
-      const serviceApi = new ServiceApi(config)
+      const serviceApi = new ServiceApi(cloudApiConfig, undefined, cloudAxios)
 
       const createDto: CreateServiceDto = {
         user_id,

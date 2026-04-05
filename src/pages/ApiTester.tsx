@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { ServiceApi } from '@/client/slaops-cloud'
 import {
   selectCollapsedSections,
   selectRightPanelTab,
@@ -47,7 +47,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { API_BASE_URL } from '@/config'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useIsMobile } from '@/hooks/use-mobile'
 import yaml from 'js-yaml'
 import {
@@ -1118,11 +1118,7 @@ const ApiTester = () => {
 
   const fetchServices = async () => {
     try {
-      // TODO this should reference the correct pah in docker
-      const config = new Configuration({
-        basePath: API_BASE_URL,
-      })
-      const serviceApi = new ServiceApi(config)
+      const serviceApi = new ServiceApi(cloudApiConfig, undefined, cloudAxios)
 
       const response = await serviceApi.serviceControllerFindAll()
       const data = response.data

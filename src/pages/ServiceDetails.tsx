@@ -1,11 +1,11 @@
-import { Configuration, ServiceApi } from '@/client/slaops-cloud'
+import { ServiceApi } from '@/client/slaops-cloud'
 import { Service } from '@/client/slaops-cloud/models/service'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { API_BASE_URL } from '@/config'
 import { useToast } from '@/hooks/use-toast'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import yaml from 'js-yaml'
 import { Activity, AlertCircle, ArrowLeft, Clock, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -31,10 +31,7 @@ const ServiceDetails = () => {
         throw new Error('Service ID is required')
       }
 
-      const config = new Configuration({
-        basePath: API_BASE_URL,
-      })
-      const serviceApi = new ServiceApi(config)
+      const serviceApi = new ServiceApi(cloudApiConfig, undefined, cloudAxios)
 
       const response = await serviceApi.serviceControllerFindOne(id)
       const data = response.data
