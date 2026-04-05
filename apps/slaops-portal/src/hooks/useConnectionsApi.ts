@@ -32,8 +32,7 @@ export function useRelayInstances() {
   return useQuery<RelayInstance[]>({
     queryKey: ['relay-instances'],
     queryFn: async () => {
-      const headers = await getAuthHeaders()
-      const { data } = await relayApi.relayInstanceControllerFindAll(TENANT_ID, { headers })
+      const { data } = await relayApi.relayInstanceControllerFindAll(TENANT_ID)
       return data
     },
   })
@@ -44,8 +43,7 @@ export function useCreateRelay() {
   const qc = useQueryClient()
   return useMutation<RelayInstance, Error, CreateRelayInstanceDto>({
     mutationFn: async (dto) => {
-      const headers = await getAuthHeaders()
-      const { data } = await relayApi.relayInstanceControllerCreate(TENANT_ID, dto, { headers })
+      const { data } = await relayApi.relayInstanceControllerCreate(TENANT_ID, dto)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['relay-instances'] }),
@@ -57,8 +55,7 @@ export function useUpdateRelay() {
   const qc = useQueryClient()
   return useMutation<RelayInstance, Error, { id: string; dto: UpdateRelayInstanceDto }>({
     mutationFn: async ({ id, dto }) => {
-      const headers = await getAuthHeaders()
-      const { data } = await relayApi.relayInstanceControllerUpdate(TENANT_ID, id, dto, { headers })
+      const { data } = await relayApi.relayInstanceControllerUpdate(TENANT_ID, id, dto)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['relay-instances'] }),
@@ -70,8 +67,7 @@ export function useDeleteRelay() {
   const qc = useQueryClient()
   return useMutation<void, Error, string>({
     mutationFn: async (id) => {
-      const headers = await getAuthHeaders()
-      await relayApi.relayInstanceControllerRemove(TENANT_ID, id, { headers })
+      await relayApi.relayInstanceControllerRemove(TENANT_ID, id)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['relay-instances'] }),
   })
@@ -82,8 +78,7 @@ export function useHealthCheckRelay() {
   const qc = useQueryClient()
   return useMutation<RelayInstance, Error, string>({
     mutationFn: async (id) => {
-      const headers = await getAuthHeaders()
-      const { data } = await relayApi.relayInstanceControllerHealthCheck(TENANT_ID, id, { headers })
+      const { data } = await relayApi.relayInstanceControllerHealthCheck(TENANT_ID, id)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['relay-instances'] }),
@@ -97,8 +92,7 @@ export function useAegisInstances() {
   return useQuery<AegisInstance[]>({
     queryKey: ['aegis-instances'],
     queryFn: async () => {
-      const headers = await getAuthHeaders()
-      const { data } = await aegisApi.aegisInstanceControllerFindAll(TENANT_ID, { headers })
+      const { data } = await aegisApi.aegisInstanceControllerFindAll(TENANT_ID)
       return data
     },
   })
@@ -109,8 +103,7 @@ export function useCreateAegis() {
   const qc = useQueryClient()
   return useMutation<AegisCreateResponseDto, Error, CreateAegisInstanceDto>({
     mutationFn: async (dto) => {
-      const headers = await getAuthHeaders()
-      const { data } = await aegisApi.aegisInstanceControllerCreate(TENANT_ID, dto, { headers })
+      const { data } = await aegisApi.aegisInstanceControllerCreate(TENANT_ID, dto)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aegis-instances'] }),
@@ -122,8 +115,7 @@ export function useUpdateAegis() {
   const qc = useQueryClient()
   return useMutation<AegisInstance, Error, { id: string; dto: UpdateAegisInstanceDto }>({
     mutationFn: async ({ id, dto }) => {
-      const headers = await getAuthHeaders()
-      const { data } = await aegisApi.aegisInstanceControllerUpdate(TENANT_ID, id, dto, { headers })
+      const { data } = await aegisApi.aegisInstanceControllerUpdate(TENANT_ID, id, dto)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aegis-instances'] }),
@@ -135,8 +127,7 @@ export function useDeleteAegis() {
   const qc = useQueryClient()
   return useMutation<void, Error, string>({
     mutationFn: async (id) => {
-      const headers = await getAuthHeaders()
-      await aegisApi.aegisInstanceControllerRemove(TENANT_ID, id, { headers })
+      await aegisApi.aegisInstanceControllerRemove(TENANT_ID, id)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aegis-instances'] }),
   })
@@ -147,8 +138,7 @@ export function useHealthCheckAegis() {
   const qc = useQueryClient()
   return useMutation<AegisInstance, Error, string>({
     mutationFn: async (id) => {
-      const headers = await getAuthHeaders()
-      const { data } = await aegisApi.aegisInstanceControllerHealthCheck(TENANT_ID, id, { headers })
+      const { data } = await aegisApi.aegisInstanceControllerHealthCheck(TENANT_ID, id)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aegis-instances'] }),

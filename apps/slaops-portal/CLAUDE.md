@@ -2,6 +2,23 @@
 
 React web portal for monitoring, API testing, and service management. Built with Vite + React 18 + TypeScript, using AWS Amplify for auth and a generated OpenAPI client for backend communication.
 
+## CRITICAL: No cross-project imports
+
+**The portal must be buildable in isolation.** It must never import from other packages in this monorepo (`@slaops/*`, `slaops-cloud`, `slaops-aegis`, etc.).
+
+All backend communication **must** go through the generated OpenAPI client at `src/client/slaops-cloud/`. When the backend API changes, regenerate the client — do not reach into backend source code directly.
+
+```typescript
+// ✅ Correct — generated client only
+import { ServiceApi } from '@/client/slaops-cloud'
+
+// ❌ Wrong — never import from other monorepo packages
+import { something } from '@slaops/private'
+import { helper } from '../../slaops-cloud/src/...'
+```
+
+Auth is handled by `cloudAxios` in `src/lib/cloud-api.ts` — its request interceptor attaches the Cognito Bearer token on every outgoing request automatically. **Do not call `getAuthHeaders()` or any other auth helper manually** — pass requests through `cloudAxios` and the token is injected for you.
+
 - **Tech**: React 18 · Vite · TypeScript · Redux Toolkit · shadcn/ui · AWS Amplify (Cognito)
 - **Dev port**: 8080
 
