@@ -19,6 +19,8 @@ import { helper } from '../../slaops-cloud/src/...'
 
 Auth is handled by `cloudAxios` in `src/lib/cloud-api.ts` — its request interceptor attaches the Cognito Bearer token on every outgoing request automatically. **Do not call `getAuthHeaders()` or any other auth helper manually** — pass requests through `cloudAxios` and the token is injected for you.
 
+=======
+
 - **Tech**: React 18 · Vite · TypeScript · Redux Toolkit · shadcn/ui · AWS Amplify (Cognito)
 - **Dev port**: 8080
 
@@ -79,33 +81,33 @@ Every Redux action creator in this app must be registered via `actionRegistry.re
 
 **`ActionArea`** — the top-level functional domain:
 
-| Value | Used for |
-|---|---|
-| `ActionArea.Request` | Building, configuring, or sending a request (API tester UI, params, headers, etc.). |
-| `ActionArea.Response` | Viewing or analysing a response (JSON viewer, table viewer, filters, columns). |
-| `ActionArea.Export` | Exporting data from the portal (downloads, clipboard, share links). |
-| `ActionArea.UI` | General UI chrome not tied to a specific domain (modals, toasts, themes, global layout). |
+| Value                 | Used for                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `ActionArea.Request`  | Building, configuring, or sending a request (API tester UI, params, headers, etc.).      |
+| `ActionArea.Response` | Viewing or analysing a response (JSON viewer, table viewer, filters, columns).           |
+| `ActionArea.Export`   | Exporting data from the portal (downloads, clipboard, share links).                      |
+| `ActionArea.UI`       | General UI chrome not tied to a specific domain (modals, toasts, themes, global layout). |
 
 **`ActionGroup`** — logical sub-group within an area (defined in `actionMeta.ts`):
 
-| Value | Area | Used for |
-|---|---|---|
-| `ActionGroup.Navigation` | `Request` | Tab and panel selection in the API tester. |
-| `ActionGroup.Layout` | `Request` | Section collapse/expand state. |
-| `ActionGroup.ViewMode` | `Response` | Top-level view selector and cross-view settings (e.g. highlight duplicates). |
-| `ActionGroup.Json` | `Response` | JMESPath filtering, truncation, unique filter, and bulk JSON state. |
-| `ActionGroup.Table` | `Response` | SQL query, join configuration. |
-| `ActionGroup.TableColumns` | `Response` | Column visibility, sort order, column reconciliation. |
+| Value                      | Area       | Used for                                                                     |
+| -------------------------- | ---------- | ---------------------------------------------------------------------------- |
+| `ActionGroup.Navigation`   | `Request`  | Tab and panel selection in the API tester.                                   |
+| `ActionGroup.Layout`       | `Request`  | Section collapse/expand state.                                               |
+| `ActionGroup.ViewMode`     | `Response` | Top-level view selector and cross-view settings (e.g. highlight duplicates). |
+| `ActionGroup.Json`         | `Response` | JMESPath filtering, truncation, unique filter, and bulk JSON state.          |
+| `ActionGroup.Table`        | `Response` | SQL query, join configuration.                                               |
+| `ActionGroup.TableColumns` | `Response` | Column visibility, sort order, column reconciliation.                        |
 
 When adding a new group, add a value to the `ActionGroup` enum in `actionMeta.ts` — do not use raw strings.
 
 ### `ActionMeta` fields
 
-| Field | Type | Purpose |
-|---|---|---|
-| `description` | `string` | Plain-English explanation of what the action does and when to use it. |
-| `area` | `ActionArea` | Functional domain the action belongs to. |
-| `group` | `ActionGroup` | Logical sub-group within the area. |
+| Field         | Type          | Purpose                                                               |
+| ------------- | ------------- | --------------------------------------------------------------------- |
+| `description` | `string`      | Plain-English explanation of what the action does and when to use it. |
+| `area`        | `ActionArea`  | Functional domain the action belongs to.                              |
+| `group`       | `ActionGroup` | Logical sub-group within the area.                                    |
 
 ### Adding a new action
 
@@ -173,9 +175,9 @@ actionRegistry.byArea(ActionArea.Response)
 actionRegistry.byGroup(ActionGroup.TableColumns)
 
 // Inspect an individual action creator
-myAction.description  // string
-myAction.area         // ActionArea
-myAction.group        // ActionGroup
+myAction.description // string
+myAction.area // ActionArea
+myAction.group // ActionGroup
 ```
 
 ## Component Conventions
