@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { attachMeta } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------
@@ -164,37 +165,91 @@ export const {
   setJsonState,
 } = responseViewerSlice.actions
 
-setSelectedView.description = "Sets the active response viewer mode ('json', 'markdown', or 'table')."
-setHighlightDuplicates.description =
-  'Enables or disables highlighting of duplicate values across the response.'
-setJmespathEnabled.description =
-  'Enables or disables the JMESPath query input in the JSON viewer.'
-setJmespathQuery.description =
-  'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.'
-setJmespathMode.description =
-  "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight')."
-setTruncateValues.description =
-  'Enables or disables truncation of long string values in the JSON viewer.'
-setUniqueFilter.description =
-  'Enables or disables filtering the JSON view to show only unique values.'
-setSqlQuery.description =
-  'Sets the SQL expression used to filter or highlight rows in the table viewer.'
-setSqlMode.description =
-  "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight')."
-setJoinColumn.description =
-  'Sets the column key used as the join key when merging a secondary data source into the table.'
-setJoiningEnabled.description =
-  'Enables or disables the table join feature that merges a secondary data source alongside the primary response.'
-setAdditionalJoinPaths.description =
-  'Sets the list of additional JSON paths used to locate join data within the secondary source.'
-reconcileColumns.description =
-  'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.'
-toggleColumnHidden.description = 'Toggles the visibility of the column with the given id.'
-showAllColumns.description = 'Clears the hidden flag on every column, making all columns visible.'
-setColumnSort.description =
-  "Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting."
-setJsonState.description =
-  'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.'
+attachMeta(setSelectedView, {
+  description: "Sets the active response viewer mode ('json', 'markdown', or 'table').",
+  area: 'response',
+  group: 'view-mode',
+})
+attachMeta(setHighlightDuplicates, {
+  description: 'Enables or disables highlighting of duplicate values across the response.',
+  area: 'response',
+  group: 'view-mode',
+})
+attachMeta(setJmespathEnabled, {
+  description: 'Enables or disables the JMESPath query input in the JSON viewer.',
+  area: 'response',
+  group: 'json',
+})
+attachMeta(setJmespathQuery, {
+  description: 'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.',
+  area: 'response',
+  group: 'json',
+})
+attachMeta(setJmespathMode, {
+  description: "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight').",
+  area: 'response',
+  group: 'json',
+})
+attachMeta(setTruncateValues, {
+  description: 'Enables or disables truncation of long string values in the JSON viewer.',
+  area: 'response',
+  group: 'json',
+})
+attachMeta(setUniqueFilter, {
+  description: 'Enables or disables filtering the JSON view to show only unique values.',
+  area: 'response',
+  group: 'json',
+})
+attachMeta(setJsonState, {
+  description: 'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.',
+  area: 'response',
+  group: 'json',
+})
+attachMeta(setSqlQuery, {
+  description: 'Sets the SQL expression used to filter or highlight rows in the table viewer.',
+  area: 'response',
+  group: 'table',
+})
+attachMeta(setSqlMode, {
+  description: "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight').",
+  area: 'response',
+  group: 'table',
+})
+attachMeta(setJoinColumn, {
+  description: 'Sets the column key used as the join key when merging a secondary data source into the table.',
+  area: 'response',
+  group: 'table',
+})
+attachMeta(setJoiningEnabled, {
+  description: 'Enables or disables the table join feature that merges a secondary data source alongside the primary response.',
+  area: 'response',
+  group: 'table',
+})
+attachMeta(setAdditionalJoinPaths, {
+  description: 'Sets the list of additional JSON paths used to locate join data within the secondary source.',
+  area: 'response',
+  group: 'table',
+})
+attachMeta(reconcileColumns, {
+  description: 'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.',
+  area: 'response',
+  group: 'table-columns',
+})
+attachMeta(toggleColumnHidden, {
+  description: 'Toggles the visibility of the column with the given id.',
+  area: 'response',
+  group: 'table-columns',
+})
+attachMeta(showAllColumns, {
+  description: 'Clears the hidden flag on every column, making all columns visible.',
+  area: 'response',
+  group: 'table-columns',
+})
+attachMeta(setColumnSort, {
+  description: 'Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting.',
+  area: 'response',
+  group: 'table-columns',
+})
 
 export const responseViewerReducer = responseViewerSlice.reducer
 

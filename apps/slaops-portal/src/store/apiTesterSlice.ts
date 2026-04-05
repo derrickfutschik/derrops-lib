@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { attachMeta } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------
@@ -77,14 +78,26 @@ const apiTesterSlice = createSlice({
 export const { toggleSection, setCollapsedSections, setRightPanelTab, setActiveTab } =
   apiTesterSlice.actions
 
-toggleSection.description =
-  'Toggles the collapsed/expanded state of a named section in the API tester UI.'
-setCollapsedSections.description =
-  'Partially updates the collapsed state of one or more sections without affecting others.'
-setRightPanelTab.description =
-  "Sets the active tab in the right panel ('match', 'response', or 'preview')."
-setActiveTab.description =
-  "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body')."
+attachMeta(toggleSection, {
+  description: 'Toggles the collapsed/expanded state of a named section in the API tester UI.',
+  area: 'request',
+  group: 'layout',
+})
+attachMeta(setCollapsedSections, {
+  description: 'Partially updates the collapsed state of one or more sections without affecting others.',
+  area: 'request',
+  group: 'layout',
+})
+attachMeta(setRightPanelTab, {
+  description: "Sets the active tab in the right panel ('match', 'response', or 'preview').",
+  area: 'request',
+  group: 'navigation',
+})
+attachMeta(setActiveTab, {
+  description: "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body').",
+  area: 'request',
+  group: 'navigation',
+})
 
 export const apiTesterReducer = apiTesterSlice.reducer
 
