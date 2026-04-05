@@ -58,20 +58,16 @@ const apiTesterSlice = createSlice({
   name: 'apiTester',
   initialState,
   reducers: {
-    /** Toggles the collapsed/expanded state of a named section in the API tester UI. */
     toggleSection(state, action: PayloadAction<string>) {
       const section = action.payload
       state.collapsedSections[section] = !state.collapsedSections[section]
     },
-    /** Partially updates the collapsed state of one or more sections without affecting others. */
     setCollapsedSections(state, action: PayloadAction<Partial<CollapsedSections>>) {
       Object.assign(state.collapsedSections, action.payload)
     },
-    /** Sets the active tab in the right panel ('match', 'response', or 'preview'). */
     setRightPanelTab(state, action: PayloadAction<'match' | 'response' | 'preview'>) {
       state.rightPanelTab = action.payload
     },
-    /** Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body'). */
     setActiveTab(state, action: PayloadAction<string>) {
       state.activeTab = action.payload
     },
@@ -80,6 +76,15 @@ const apiTesterSlice = createSlice({
 
 export const { toggleSection, setCollapsedSections, setRightPanelTab, setActiveTab } =
   apiTesterSlice.actions
+
+toggleSection.description =
+  'Toggles the collapsed/expanded state of a named section in the API tester UI.'
+setCollapsedSections.description =
+  'Partially updates the collapsed state of one or more sections without affecting others.'
+setRightPanelTab.description =
+  "Sets the active tab in the right panel ('match', 'response', or 'preview')."
+setActiveTab.description =
+  "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body')."
 
 export const apiTesterReducer = apiTesterSlice.reducer
 

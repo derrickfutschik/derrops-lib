@@ -68,66 +68,48 @@ const responseViewerSlice = createSlice({
   initialState,
   reducers: {
     // View mode
-    /** Sets the active response viewer mode ('json', 'markdown', or 'table'). */
     setSelectedView(state, action: PayloadAction<'json' | 'markdown' | 'table'>) {
       state.selectedView = action.payload
     },
 
-    /** Enables or disables highlighting of duplicate values across the response. */
     setHighlightDuplicates(state, action: PayloadAction<boolean>) {
       state.highlightDuplicates = action.payload
     },
 
     // JSON state
-    /** Enables or disables the JMESPath query input in the JSON viewer. */
     setJmespathEnabled(state, action: PayloadAction<boolean>) {
       state.json.jmespathEnabled = action.payload
     },
-    /** Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer. */
     setJmespathQuery(state, action: PayloadAction<string>) {
       state.json.jmespathQuery = action.payload
     },
-    /** Sets whether the JMESPath expression filters rows out ('filter') or highlights matching nodes ('highlight'). */
     setJmespathMode(state, action: PayloadAction<'filter' | 'highlight'>) {
       state.json.jmespathMode = action.payload
     },
-    /** Enables or disables truncation of long string values in the JSON viewer. */
     setTruncateValues(state, action: PayloadAction<boolean>) {
       state.json.truncateValues = action.payload
     },
-    /** Enables or disables filtering the JSON view to show only unique values. */
     setUniqueFilter(state, action: PayloadAction<boolean>) {
       state.json.uniqueFilter = action.payload
     },
 
     // Table state
-    /** Sets the SQL expression used to filter or highlight rows in the table viewer. */
     setSqlQuery(state, action: PayloadAction<string>) {
       state.table.sqlQuery = action.payload
     },
-    /** Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight'). */
     setSqlMode(state, action: PayloadAction<'filter' | 'highlight'>) {
       state.table.sqlMode = action.payload
     },
-    /** Sets the column key used as the join key when merging a secondary data source into the table. */
     setJoinColumn(state, action: PayloadAction<string | null>) {
       state.table.joinColumn = action.payload
     },
-    /** Enables or disables the table join feature that merges a secondary data source alongside the primary response. */
     setJoiningEnabled(state, action: PayloadAction<boolean>) {
       state.table.joiningEnabled = action.payload
     },
-    /** Sets the list of additional JSON paths used to locate join data within the secondary source. */
     setAdditionalJoinPaths(state, action: PayloadAction<(string | null)[]>) {
       state.table.additionalJoinPaths = action.payload
     },
 
-    /**
-     * Reconcile columns: merges a new column list with existing preferences.
-     * - Preserves hidden/sortDirection for columns that still exist.
-     * - Adds defaults for new columns.
-     * - Drops columns that are no longer present.
-     */
     reconcileColumns(state, action: PayloadAction<string[]>) {
       const newIds = action.payload
       const existingMap = new Map(state.table.columns.map((c) => [c.id, c]))
@@ -138,23 +120,17 @@ const responseViewerSlice = createSlice({
       })
     },
 
-    /** Toggles the visibility of the column with the given id. */
     toggleColumnHidden(state, action: PayloadAction<string>) {
       const col = state.table.columns.find((c) => c.id === action.payload)
       if (col) col.hidden = !col.hidden
     },
 
-    /** Clears the hidden flag on every column, making all columns visible. */
     showAllColumns(state) {
       state.table.columns.forEach((c) => {
         c.hidden = false
       })
     },
 
-    /**
-     * Set the sort for a specific column. Clears all other sorts first
-     * (single column sort model). Pass `direction: null` to clear sorting.
-     */
     setColumnSort(state, action: PayloadAction<{ id: string; direction: 'asc' | 'desc' | null }>) {
       const { id, direction } = action.payload
       state.table.columns.forEach((c) => {
@@ -162,7 +138,6 @@ const responseViewerSlice = createSlice({
       })
     },
 
-    /** Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props. */
     setJsonState(state, action: PayloadAction<Partial<JsonState>>) {
       Object.assign(state.json, action.payload)
     },
@@ -188,6 +163,38 @@ export const {
   setColumnSort,
   setJsonState,
 } = responseViewerSlice.actions
+
+setSelectedView.description = "Sets the active response viewer mode ('json', 'markdown', or 'table')."
+setHighlightDuplicates.description =
+  'Enables or disables highlighting of duplicate values across the response.'
+setJmespathEnabled.description =
+  'Enables or disables the JMESPath query input in the JSON viewer.'
+setJmespathQuery.description =
+  'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.'
+setJmespathMode.description =
+  "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight')."
+setTruncateValues.description =
+  'Enables or disables truncation of long string values in the JSON viewer.'
+setUniqueFilter.description =
+  'Enables or disables filtering the JSON view to show only unique values.'
+setSqlQuery.description =
+  'Sets the SQL expression used to filter or highlight rows in the table viewer.'
+setSqlMode.description =
+  "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight')."
+setJoinColumn.description =
+  'Sets the column key used as the join key when merging a secondary data source into the table.'
+setJoiningEnabled.description =
+  'Enables or disables the table join feature that merges a secondary data source alongside the primary response.'
+setAdditionalJoinPaths.description =
+  'Sets the list of additional JSON paths used to locate join data within the secondary source.'
+reconcileColumns.description =
+  'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.'
+toggleColumnHidden.description = 'Toggles the visibility of the column with the given id.'
+showAllColumns.description = 'Clears the hidden flag on every column, making all columns visible.'
+setColumnSort.description =
+  "Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting."
+setJsonState.description =
+  'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.'
 
 export const responseViewerReducer = responseViewerSlice.reducer
 
