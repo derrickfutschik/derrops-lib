@@ -164,7 +164,7 @@ If your target URL starts with `localhost` or `127.0.0.1`, the Portal will remin
 
 Aegis is optional for `local-dev` relays. For production deployments handling sensitive APIs it is strongly recommended.
 
-To configure Aegis, see the [Aegis setup guide](/docs/aegis) *(coming soon)*.
+To configure Aegis, see the [Aegis quickstart](/docs/quickstart/aegis).
 
 ---
 
@@ -175,7 +175,7 @@ To configure Aegis, see the [Aegis setup guide](/docs/aegis) *(coming soon)*.
 | Monitor API SLAs and set alerts | Portal → Monitoring |
 | Index your OpenAPI specifications | [OASpec Bucket](/docs/oaspec-bucket) |
 | Understand costs per API operation | Portal → Cost Analysis |
-| Deploy to production with Aegis | Aegis setup guide *(coming soon)* |
+| Deploy to production with Aegis | [Aegis quickstart](/docs/quickstart/aegis) |
 | Bring your own encryption key | [BYOK](/docs/byok) |
 | Review platform architecture | [Enterprise Plane Architecture](/docs/archiecture-planes) |
 | Look up a term | [Glossary](/docs/glossary) |
