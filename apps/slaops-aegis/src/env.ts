@@ -53,4 +53,13 @@ export const env = {
       .map(s => s.trim())
       .filter(Boolean),
   },
+
+  cedar: {
+    /**
+     * Directory containing Cedar policy files (.cedar) and schema.json.
+     * Customer-managed; Aegis reads all .cedar files in this directory at startup.
+     * Defaults to ./policies relative to the process working directory.
+     */
+    policiesDir: process.env.CEDAR_POLICIES_DIR ?? './policies',
+  },
 } as const

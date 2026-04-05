@@ -1,0 +1,167 @@
+{
+  "AegisNamespace": {
+    "commonTypes": {
+      "AegisContext": {
+        "type": "Record",
+        "attributes": {
+          "mfaVerified":           { "type": "Boolean" },
+          "authMethod":            { "type": "String" },
+          "authTime":              { "type": "String" },
+          "tokenAud":              { "type": "String" },
+          "tokenIat":              { "type": "String" },
+          "tokenNbf":              { "type": "String" },
+          "tokenAgeSeconds":       { "type": "Long" },
+          "tokenExpiresInSeconds": { "type": "Long" },
+          "ipAddress":             { "type": "String" },
+          "time":                  { "type": "String" },
+          "timeOfDayHour":         { "type": "Long" },
+          "relayId":               { "type": "String" },
+          "environment":           { "type": "String" }
+        }
+      }
+    },
+    "entityTypes": {
+      "User": {
+        "memberOfTypes": ["UserGroup"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "sub":           { "type": "String" },
+            "username":      { "type": "String" },
+            "email":         { "type": "String" },
+            "emailVerified": { "type": "Boolean" },
+            "tenantId":      { "type": "String" },
+            "isFederated":   { "type": "Boolean" },
+            "idpProvider":   { "type": "String" },
+            "locale":        { "type": "String", "required": false },
+            "phoneVerified": { "type": "Boolean", "required": false },
+            "updatedAt":     { "type": "String", "required": false }
+          }
+        }
+      },
+      "UserGroup": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "displayName": { "type": "String" }
+          }
+        }
+      },
+      "ApiEnvironment": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "name": { "type": "String" }
+          }
+        }
+      },
+      "ApiHost": {
+        "memberOfTypes": ["ApiEnvironment"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "hostname": { "type": "String" },
+            "internal": { "type": "Boolean" }
+          }
+        }
+      },
+      "ApiEndpoint": {
+        "memberOfTypes": ["ApiHost"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "operationId":    { "type": "String" },
+            "method":         { "type": "String" },
+            "pathPattern":    { "type": "String" },
+            "tags":           { "type": "Set", "element": { "type": "String" } },
+            "pathParams":     { "type": "Set", "element": { "type": "String" }, "required": false },
+            "queryParams":    { "type": "Set", "element": { "type": "String" }, "required": false },
+            "requiredParams": { "type": "Set", "element": { "type": "String" }, "required": false },
+            "deprecated":     { "type": "Boolean", "required": false }
+          }
+        }
+      }
+    },
+    "actions": {
+      "callApi": {
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "callApiRead": {
+        "memberOf": [{ "id": "callApi", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "callApiWrite": {
+        "memberOf": [{ "id": "callApi", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpGet": {
+        "memberOf": [{ "id": "callApiRead", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpHead": {
+        "memberOf": [{ "id": "callApiRead", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpOptions": {
+        "memberOf": [{ "id": "callApiRead", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpPost": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpPut": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpPatch": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      },
+      "httpDelete": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"],
+          "context": { "type": "AegisContext" }
+        }
+      }
+    }
+  }
+}

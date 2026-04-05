@@ -14,10 +14,11 @@ export class SessionController {
   @ApiOperation({
     summary: 'Issue a session delegation JWT',
     description:
-      'The browser authenticates the user with the customer SSO IdP and submits the user token here. ' +
-      'Aegis validates identity, evaluates policy, and issues a customer-signed session delegation JWT ' +
-      'that the browser then registers with the SLAOps platform. ' +
-      'Only relay IDs in ALLOWED_RELAY_IDS are granted.',
+      'The browser authenticates the user with Cognito (directly or via a federated IdP) and submits the ' +
+      'access token here with the list of API endpoints it needs access to. ' +
+      'Aegis validates the token, builds Cedar entities from the Cognito claims, and evaluates the ' +
+      'customer Cedar policies for each requested endpoint. ' +
+      'A signed session delegation JWT is returned containing only the permitted endpoints.',
   })
   @ApiResponse({ status: 201, type: SessionResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid user token or no scopes granted' })

@@ -49,6 +49,9 @@ importers:
 
   apps/slaops-aegis:
     dependencies:
+      '@cedar-policy/cedar-wasm':
+        specifier: ^4.9.1
+        version: 4.9.1
       '@codegenie/serverless-express':
         specifier: ^4.17.1
         version: 4.17.1
@@ -7765,6 +7768,10 @@ packages:
 
   /@cdklabs/tskb@0.0.4:
     resolution: {integrity: sha512-NFx1X0l7p5DyHtLLEyNeh1hPN4UN9hTkZkzFs/Mp+kFk7dpdINGmGVpCfRDjJ2DrcNSNENUmT+w8g73TvmBbTw==}
+    dev: false
+
+  /@cedar-policy/cedar-wasm@4.9.1:
+    resolution: {integrity: sha512-7+57EYkWmkBGasBQU6UhdafwxrY+YXzBlxpYZn33s1YR978W6ZqgLEAvHb3Wg1XMIzLWWoljhFYerejpOpvxuA==}
     dev: false
 
   /@chevrotain/cst-dts-gen@11.0.3:
