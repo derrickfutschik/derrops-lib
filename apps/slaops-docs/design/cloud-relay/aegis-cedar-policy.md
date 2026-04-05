@@ -174,6 +174,7 @@ Context carries data that is scoped to the session grant request — values that
 
   // Request
   time:         "2026-04-04T09:12:00Z", // wall-clock time of the session grant
+  timeOfDayHour: 9,                     // UTC hour (0–23) computed from time — used for business-hours policies
   relayId:      "relay-01",            // which relay the session will use
   environment:  "prod",                // target environment
 }
@@ -186,6 +187,28 @@ Context carries data that is scoped to the session grant request — values that
 ## Mapping Cognito Tokens to Cedar Entities
 
 Aegis receives the Cognito access token on the `/session-grant` request and translates its claims into a Cedar entity graph.
+
+### Cognito claim → Cedar attribute mapping
+
+| Cognito token claim | Cedar target | Notes |
+|---|---|---|
+| `sub` | `User` entity ID + `User.sub` | Stable UUID, never changes |
+| `cognito:username` / `username` | `User.username` | Falls back to `sub` if absent |
+| `email` | `User.email` | — |
+| `email_verified` | `User.emailVerified` | — |
+| `custom:tenantId` | `User.tenantId` | Must be configured in Cognito user pool |
+| `cognito:groups` | `User` parents → `UserGroup` entities | One `UserGroup` entity per group |
+| `identities[0].providerName` | `User.idpProvider` | Only for federated users; set to `"COGNITO"` for direct auth |
+| `amr` contains `"external-provider"` | `User.isFederated = true` | — |
+| `amr` | `context.mfaVerified`, `context.authMethod` | `"mfa"` → verified; `"software_totp"` → `SOFTWARE_TOTP` |
+| `auth_time` | `context.authTime` | Epoch → ISO 8601 UTC |
+| `iat` | `context.tokenIat`, `context.tokenAgeSeconds` | — |
+| `exp` | `context.tokenExpiresInSeconds` | — |
+| `nbf` | `context.tokenNbf` | Falls back to `iat` if absent |
+| `client_id` / `aud` | `context.tokenAud` | Cognito access tokens use `client_id` |
+| `locale` | `User.locale` | Optional OIDC claim |
+| `phone_number_verified` | `User.phoneVerified` | Optional OIDC claim |
+| `updated_at` | `User.updatedAt` | Optional OIDC claim |
 
 ### Scenario A: Direct Cognito authentication (with MFA)
 
@@ -1397,29 +1420,41 @@ The `POST /v1/refunds` endpoint was denied (no matching permit) and is absent. T
 
 Customer Cedar policies are stored as plain `.cedar` files alongside the Aegis deployment. They are versioned in the customer's own repository and deployed via their CI/CD pipeline.
 
+The directory Aegis reads from is controlled by the `CEDAR_POLICIES_DIR` environment variable (default: `./policies` relative to the process working directory). Aegis loads:
+- `<CEDAR_POLICIES_DIR>/schema.json` — required; contains the AegisNamespace entity model
+- `<CEDAR_POLICIES_DIR>/*.cedar` — all `.cedar` files in the directory (non-recursive)
+
 ```
-aegis/
-├── policies/
-│   ├── platform-engineers.cedar
-│   ├── analysts.cedar
-│   ├── external-contractors.cedar
-│   └── deny-billing-contractors.cedar
-├── schema.json          # Cedar schema for the Aegis entity model
-└── entities.json        # Entity graph template (populated at runtime from Cognito token)
+<CEDAR_POLICIES_DIR>/       # e.g. ./policies or /etc/aegis/policies
+├── schema.json             # Cedar schema — REQUIRED
+├── platform-engineers.cedar
+├── analysts.cedar
+├── external-contractors.cedar
+└── deny-billing-contractors.cedar
 ```
+
+The Aegis source repository ships `policies/examples/` with reference policy files and a copy of the schema. Customers copy policies they want to activate from `examples/` to their configured policies directory and customise them.
+
+**Cedar SDK**: Aegis uses `@cedar-policy/cedar-wasm` (the official AWS Cedar WebAssembly SDK) for policy evaluation. The schema is passed as a parsed JSON object (not text) so Cedar reads it in JSON schema format rather than Cedar text schema format.
 
 ### Schema validation
 
 Cedar validates all policies against `schema.json` at startup. Policies that reference entity types or attributes not present in the schema are rejected before Aegis serves any traffic.
 
+The schema defines a `AegisContext` common type that enumerates every context attribute Aegis provides at evaluation time. This ensures policies that reference context attributes are validated against the expected shape at load time.
+
 ### Policy set lifecycle
 
 | Event | Action |
 |---|---|
-| Policy added | Deploy new `.cedar` file; Aegis hot-reloads on file change (or restart) |
-| Policy updated | Replace `.cedar` file; existing sessions are unaffected until next session grant |
-| Policy removed | Delete `.cedar` file; next session grant re-evaluates without the removed policy |
-| Schema change | Redeploy Aegis; all policies re-validated against new schema at startup |
+| Policy added | Deploy new `.cedar` file; restart Aegis to reload |
+| Policy updated | Replace `.cedar` file; restart Aegis to reload |
+| Policy removed | Delete `.cedar` file; restart Aegis to reload |
+| Schema change | Update `schema.json`; restart Aegis — all policies re-validated at startup |
+
+**Hot-reload**: Aegis loads policies once at startup. Policy changes require a restart. File watching may be added in a future stage.
+
+If `CEDAR_POLICIES_DIR` does not exist or contains no `.cedar` files, Cedar's default-deny behaviour applies — no session grants will succeed until policies are deployed.
 
 Existing session delegation JWTs are not revoked when policies change — they remain valid until expiry. Customers requiring immediate revocation should use short JWT expiry windows (e.g. 15–60 minutes).
 
