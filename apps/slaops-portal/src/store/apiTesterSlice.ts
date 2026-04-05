@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { attachMeta } from './actionMeta'
+import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------
@@ -76,28 +76,28 @@ const apiTesterSlice = createSlice({
 })
 
 export const { toggleSection, setCollapsedSections, setRightPanelTab, setActiveTab } =
-  apiTesterSlice.actions
-
-attachMeta(toggleSection, {
-  description: 'Toggles the collapsed/expanded state of a named section in the API tester UI.',
-  area: 'request',
-  group: 'layout',
-})
-attachMeta(setCollapsedSections, {
-  description: 'Partially updates the collapsed state of one or more sections without affecting others.',
-  area: 'request',
-  group: 'layout',
-})
-attachMeta(setRightPanelTab, {
-  description: "Sets the active tab in the right panel ('match', 'response', or 'preview').",
-  area: 'request',
-  group: 'navigation',
-})
-attachMeta(setActiveTab, {
-  description: "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body').",
-  area: 'request',
-  group: 'navigation',
-})
+  actionRegistry.registerAll(apiTesterSlice.actions, {
+    toggleSection: {
+      description: 'Toggles the collapsed/expanded state of a named section in the API tester UI.',
+      area: ActionArea.Request,
+      group: ActionGroup.Layout,
+    },
+    setCollapsedSections: {
+      description: 'Partially updates the collapsed state of one or more sections without affecting others.',
+      area: ActionArea.Request,
+      group: ActionGroup.Layout,
+    },
+    setRightPanelTab: {
+      description: "Sets the active tab in the right panel ('match', 'response', or 'preview').",
+      area: ActionArea.Request,
+      group: ActionGroup.Navigation,
+    },
+    setActiveTab: {
+      description: "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body').",
+      area: ActionArea.Request,
+      group: ActionGroup.Navigation,
+    },
+  })
 
 export const apiTesterReducer = apiTesterSlice.reducer
 

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { attachMeta } from './actionMeta'
+import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------
@@ -163,92 +163,92 @@ export const {
   showAllColumns,
   setColumnSort,
   setJsonState,
-} = responseViewerSlice.actions
-
-attachMeta(setSelectedView, {
-  description: "Sets the active response viewer mode ('json', 'markdown', or 'table').",
-  area: 'response',
-  group: 'view-mode',
-})
-attachMeta(setHighlightDuplicates, {
-  description: 'Enables or disables highlighting of duplicate values across the response.',
-  area: 'response',
-  group: 'view-mode',
-})
-attachMeta(setJmespathEnabled, {
-  description: 'Enables or disables the JMESPath query input in the JSON viewer.',
-  area: 'response',
-  group: 'json',
-})
-attachMeta(setJmespathQuery, {
-  description: 'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.',
-  area: 'response',
-  group: 'json',
-})
-attachMeta(setJmespathMode, {
-  description: "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight').",
-  area: 'response',
-  group: 'json',
-})
-attachMeta(setTruncateValues, {
-  description: 'Enables or disables truncation of long string values in the JSON viewer.',
-  area: 'response',
-  group: 'json',
-})
-attachMeta(setUniqueFilter, {
-  description: 'Enables or disables filtering the JSON view to show only unique values.',
-  area: 'response',
-  group: 'json',
-})
-attachMeta(setJsonState, {
-  description: 'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.',
-  area: 'response',
-  group: 'json',
-})
-attachMeta(setSqlQuery, {
-  description: 'Sets the SQL expression used to filter or highlight rows in the table viewer.',
-  area: 'response',
-  group: 'table',
-})
-attachMeta(setSqlMode, {
-  description: "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight').",
-  area: 'response',
-  group: 'table',
-})
-attachMeta(setJoinColumn, {
-  description: 'Sets the column key used as the join key when merging a secondary data source into the table.',
-  area: 'response',
-  group: 'table',
-})
-attachMeta(setJoiningEnabled, {
-  description: 'Enables or disables the table join feature that merges a secondary data source alongside the primary response.',
-  area: 'response',
-  group: 'table',
-})
-attachMeta(setAdditionalJoinPaths, {
-  description: 'Sets the list of additional JSON paths used to locate join data within the secondary source.',
-  area: 'response',
-  group: 'table',
-})
-attachMeta(reconcileColumns, {
-  description: 'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.',
-  area: 'response',
-  group: 'table-columns',
-})
-attachMeta(toggleColumnHidden, {
-  description: 'Toggles the visibility of the column with the given id.',
-  area: 'response',
-  group: 'table-columns',
-})
-attachMeta(showAllColumns, {
-  description: 'Clears the hidden flag on every column, making all columns visible.',
-  area: 'response',
-  group: 'table-columns',
-})
-attachMeta(setColumnSort, {
-  description: 'Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting.',
-  area: 'response',
-  group: 'table-columns',
+} = actionRegistry.registerAll(responseViewerSlice.actions, {
+  setSelectedView: {
+    description: "Sets the active response viewer mode ('json', 'markdown', or 'table').",
+    area: ActionArea.Response,
+    group: ActionGroup.ViewMode,
+  },
+  setHighlightDuplicates: {
+    description: 'Enables or disables highlighting of duplicate values across the response.',
+    area: ActionArea.Response,
+    group: ActionGroup.ViewMode,
+  },
+  setJmespathEnabled: {
+    description: 'Enables or disables the JMESPath query input in the JSON viewer.',
+    area: ActionArea.Response,
+    group: ActionGroup.Json,
+  },
+  setJmespathQuery: {
+    description: 'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.',
+    area: ActionArea.Response,
+    group: ActionGroup.Json,
+  },
+  setJmespathMode: {
+    description: "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight').",
+    area: ActionArea.Response,
+    group: ActionGroup.Json,
+  },
+  setTruncateValues: {
+    description: 'Enables or disables truncation of long string values in the JSON viewer.',
+    area: ActionArea.Response,
+    group: ActionGroup.Json,
+  },
+  setUniqueFilter: {
+    description: 'Enables or disables filtering the JSON view to show only unique values.',
+    area: ActionArea.Response,
+    group: ActionGroup.Json,
+  },
+  setJsonState: {
+    description: 'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.',
+    area: ActionArea.Response,
+    group: ActionGroup.Json,
+  },
+  setSqlQuery: {
+    description: 'Sets the SQL expression used to filter or highlight rows in the table viewer.',
+    area: ActionArea.Response,
+    group: ActionGroup.Table,
+  },
+  setSqlMode: {
+    description: "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight').",
+    area: ActionArea.Response,
+    group: ActionGroup.Table,
+  },
+  setJoinColumn: {
+    description: 'Sets the column key used as the join key when merging a secondary data source into the table.',
+    area: ActionArea.Response,
+    group: ActionGroup.Table,
+  },
+  setJoiningEnabled: {
+    description: 'Enables or disables the table join feature that merges a secondary data source alongside the primary response.',
+    area: ActionArea.Response,
+    group: ActionGroup.Table,
+  },
+  setAdditionalJoinPaths: {
+    description: 'Sets the list of additional JSON paths used to locate join data within the secondary source.',
+    area: ActionArea.Response,
+    group: ActionGroup.Table,
+  },
+  reconcileColumns: {
+    description: 'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.',
+    area: ActionArea.Response,
+    group: ActionGroup.TableColumns,
+  },
+  toggleColumnHidden: {
+    description: 'Toggles the visibility of the column with the given id.',
+    area: ActionArea.Response,
+    group: ActionGroup.TableColumns,
+  },
+  showAllColumns: {
+    description: 'Clears the hidden flag on every column, making all columns visible.',
+    area: ActionArea.Response,
+    group: ActionGroup.TableColumns,
+  },
+  setColumnSort: {
+    description: 'Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting.',
+    area: ActionArea.Response,
+    group: ActionGroup.TableColumns,
+  },
 })
 
 export const responseViewerReducer = responseViewerSlice.reducer
