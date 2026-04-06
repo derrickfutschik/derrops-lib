@@ -15,6 +15,7 @@ A local relay runs on your machine and lets the SLAOps Portal reach services on 
 **Time to complete**: ~10 minutes
 
 **Prerequisites**:
+
 - An SLAOps account ([sign up](./portal-login) if you haven't yet)
 - Node.js 22 or later
 - `npm` or `pnpm`
@@ -25,8 +26,12 @@ A local relay runs on your machine and lets the SLAOps Portal reach services on 
 
 The local relay polls a dedicated SQS queue for jobs. When you send a request from the Portal, it is enqueued; the relay picks it up, executes the HTTP call against your local service, and returns the result. All traffic is outbound-only from your machine — no inbound ports are opened.
 
-```
-Portal → SLAOps cloud → SQS queue → Local relay → localhost:PORT
+```mermaid
+flowchart LR
+  A[Portal] --> B[SLAOps Cloud]
+  B --> C[SQS Queue]
+  C --> D[Local Relay]
+  D --> E[localhost:PORT]
 ```
 
 ---
@@ -114,7 +119,7 @@ Leave this terminal open. The relay polls continuously for incoming jobs.
 The Portal routes the request through your relay to your local service and displays the response, timing, and SLA metrics.
 
 :::note
-If you enter a `localhost` URL but no local relay is selected, the Portal will prompt you: *"Your target is a localhost URL. Start a local relay with `slaops relay start` to route this request."*
+If you enter a `localhost` URL but no local relay is selected, the Portal will prompt you: _"Your target is a localhost URL. Start a local relay with `slaops relay start` to route this request."_
 :::
 
 ---
@@ -153,10 +158,10 @@ Profiles are stored in separate sections of `~/.slaops/config` and `~/.slaops/cr
 
 ## Configuration files
 
-| File | Contents | Permissions |
-|---|---|---|
-| `~/.slaops/config` | Platform URL, relay ID, SQS queue URL, Cognito settings | `0644` |
-| `~/.slaops/credentials` | Short-lived Cognito tokens | `0600` |
+| File                    | Contents                                                | Permissions |
+| ----------------------- | ------------------------------------------------------- | ----------- |
+| `~/.slaops/config`      | Platform URL, relay ID, SQS queue URL, Cognito settings | `0644`      |
+| `~/.slaops/credentials` | Short-lived Cognito tokens                              | `0600`      |
 
 Example `~/.slaops/config`:
 
