@@ -1,11 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm'
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm'
 
 export type CloudRelayJobStatus = 'pending' | 'claimed' | 'completed' | 'failed'
 
@@ -22,7 +16,7 @@ export class CloudRelayJob {
   connection_id: string
 
   @ApiProperty()
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 10 })
   tenant_id: string
 
   @ApiProperty()

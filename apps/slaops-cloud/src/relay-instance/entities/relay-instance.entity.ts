@@ -8,7 +8,7 @@ export class RelayInstance {
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 10 })
   tenant_id: string
 
   @Column({ type: 'varchar', length: 255 })

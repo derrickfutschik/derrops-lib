@@ -6,27 +6,29 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
+import * as jwt from 'jsonwebtoken'
 import type { Request } from 'express'
 import { config } from '@slaops/config'
+import { mockToken } from './auth.mock'
 
 export interface CognitoClaims {
   /** Cognito User Pool subject — stable UUID per user, used as userId. */
   sub: string
-  /** Tenant the user belongs to — injected by the Pre-Token Generation Lambda. Not a Cognito custom attribute. */
+  /** Tenant the user belongs to — injected by the Pre-Token Generation Lambda. */
   tenantId: string
   email?: string
   [key: string]: unknown
 }
 
-/** Key on the Express request where verified claims are attached. */
-export const COGNITO_CLAIMS_KEY = 'cognitoClaims'
-
 /**
  * CognitoGuard — verifies the Cognito id_token (or access_token) sent as
- * `Authorization: Bearer <token>` and attaches the verified claims to the request.
+ * `Authorization: Bearer <token>` and attaches the verified claims to `request.user`.
  *
  * Uses jose's createRemoteJWKSet which fetches and caches the Cognito JWKS
  * automatically, re-fetching only when a new `kid` is seen.
+ *
+ * When `app.auth.mock.enabled` is true, signature verification is skipped and
+ * the default mock payload from config is used instead.
  *
  * Controllers extract claims via the @CurrentUser() decorator.
  */
@@ -47,8 +49,14 @@ export class CognitoGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>()
-    const token = this.extractBearer(request)
 
+    if (config['app.auth.mock.enabled']) {
+      const decoded = jwt.decode(mockToken({})) as Record<string, unknown>
+      request.user = this.buildClaims(decoded)
+      return true
+    }
+
+    const token = this.extractBearer(request)
     if (!token) {
       throw new UnauthorizedException('Missing Authorization Bearer token')
     }
@@ -63,21 +71,32 @@ export class CognitoGuard implements CanActivate {
         throw new UnauthorizedException('Token missing sub claim')
       }
 
-      if (!payload['tenantId']) {
+      const claims = this.buildClaims(payload as Record<string, unknown>)
+      if (!claims.tenantId) {
         throw new UnauthorizedException(
           'Token missing tenantId claim — user may not be assigned to a tenant',
         )
       }
 
-      // Attach to request for @CurrentUser() to pick up
-      ;(request as Request & { [COGNITO_CLAIMS_KEY]: CognitoClaims })[COGNITO_CLAIMS_KEY] =
-        payload as unknown as CognitoClaims
-
+      request.user = claims
       return true
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err
       this.logger.debug(`JWT verification failed: ${(err as Error).message}`)
       throw new UnauthorizedException('Invalid or expired token')
+    }
+  }
+
+  /**
+   * Normalises a raw JWT payload into CognitoClaims.
+   * Handles both real tokens (tenantId set by Pre-Token Generation Lambda)
+   * and mock tokens (custom:tenant_id from config mock payload).
+   */
+  private buildClaims(payload: Record<string, unknown>): CognitoClaims {
+    return {
+      ...payload,
+      sub: payload['sub'] as string,
+      tenantId: (payload['tenantId'] ?? payload['custom:tenant_id']) as string,
     }
   }
 

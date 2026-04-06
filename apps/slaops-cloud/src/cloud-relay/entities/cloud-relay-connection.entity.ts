@@ -16,7 +16,7 @@ export class CloudRelayConnection {
   id: string
 
   @ApiProperty()
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 10 })
   tenant_id: string
 
   @ApiProperty({ example: 'us-east-1 relay' })

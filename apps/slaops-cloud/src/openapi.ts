@@ -1,17 +1,24 @@
+// Stub required env vars so the config schema passes during OpenAPI generation.
+// No real connections are made — all providers are mocked.
+process.env.NODE_ENV ??= 'dev'
+process.env.DB_HOST ??= 'localhost'
+process.env.DB_USERNAME ??= 'postgres'
+process.env.DB_PASSWORD ??= 'postgres'
+process.env.AWS_REGION ??= 'ap-southeast-2'
+process.env.AWS_ACCOUNT_ID ??= '000000000000'
+process.env.OPENSEARCH_ENDPOINT ??= 'http://localhost:9200'
+process.env.DYNAMODB_ENDPOINT ??= 'http://localhost:4566'
+process.env.VITE_APP_AUTH_MOCK_ENABLED ??= 'true'
+
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { getRepositoryToken } from '@nestjs/typeorm'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { Client } from '@opensearch-project/opensearch'
-import * as dotenv from 'dotenv'
 import { writeFileSync } from 'fs'
-import { join, resolve } from 'path'
+import { join } from 'path'
 import { TypescriptOSProxyClient } from 'opensearch-ts'
-
-// Load environment variables from root .env file BEFORE importing app code
-const envPath = resolve(__dirname, '../../../.env')
-dotenv.config({ path: envPath })
 
 async function generateOpenApi() {
   try {
@@ -22,7 +29,9 @@ async function generateOpenApi() {
     const { ServiceController } = await import('./service/service.controller')
     const { ServiceService } = await import('./service/service.service')
     const { Service } = await import('./service/entities/service.entity')
-    const { OpenApiIndexerController } = await import('./openapi-indexer/openapi-indexer.controller')
+    const { OpenApiIndexerController } = await import(
+      './openapi-indexer/openapi-indexer.controller'
+    )
     const { OpenApiIndexerService } = await import('./openapi-indexer/openapi-indexer.service')
     const { OpenApiParserService } = await import('./openapi-indexer/openapi-parser.service')
     const { OpenApiSearchController } = await import('./openapi-search/openapi-search.controller')
@@ -38,10 +47,11 @@ async function generateOpenApi() {
     const { CloudRelayController } = await import('./cloud-relay/cloud-relay.controller')
     const { CloudRelayService } = await import('./cloud-relay/cloud-relay.service')
     const { RelayQueueService } = await import('./cloud-relay/relay-queue.service')
-    const { CloudRelayConnection } = await import('./cloud-relay/entities/cloud-relay-connection.entity')
+    const { CloudRelayConnection } = await import(
+      './cloud-relay/entities/cloud-relay-connection.entity'
+    )
     const { CloudRelayJob } = await import('./cloud-relay/entities/cloud-relay-job.entity')
     const { VendorJwtService } = await import('./vendor-jwt/vendor-jwt.service')
-    const { CognitoGuard } = await import('./auth/cognito.guard')
 
     const mockValue = {} as any
 
@@ -67,7 +77,6 @@ async function generateOpenApi() {
         CloudRelayService,
         RelayQueueService,
         VendorJwtService,
-        CognitoGuard,
         { provide: getRepositoryToken(Service), useValue: mockValue },
         { provide: getRepositoryToken(RelayInstance), useValue: mockValue },
         { provide: getRepositoryToken(AegisInstance), useValue: mockValue },
