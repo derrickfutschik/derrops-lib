@@ -3,7 +3,10 @@ import { Reflector } from '@nestjs/core'
 import * as jwt from 'jsonwebtoken'
 import { User } from '../user/user.dto'
 import { IS_PUBLIC_KEY } from './public.decorator'
+import { config } from '@slaops/config'
+import { mockToken } from './auth.mock'
 
+// TODO replace with this to remove duplication /slaops-platform/apps/slaops-cloud/src/user/user.dto.ts
 interface JwtPayload {
   sub: string
   username?: string
@@ -19,6 +22,7 @@ interface JwtPayload {
   auth_time: number
   client_id: string
   userId: string
+  'custom:tenant_id': string
 
   [key: string]: any
 }
@@ -27,7 +31,9 @@ function getToken(request: Request) {
   const authHeader = (request.headers as any).authorization
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new UnauthorizedException('No valid authorization header found')
+    throw new UnauthorizedException(
+      'No valid authorization header found. Authorization: Bearer XXX',
+    )
   }
 
   const token = authHeader.substring(7)
@@ -64,7 +70,8 @@ export class JwtAuthGuard implements CanActivate {
       return true
     }
 
-    const token = getToken(request)
+    // const token = getToken(request)
+    const token = config['app.auth.mock.enabled'] ? mockToken({}) : getToken(request)
 
     try {
       // Decode JWT without verification since API Gateway already validated it

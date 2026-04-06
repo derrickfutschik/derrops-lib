@@ -213,8 +213,6 @@ All utility scripts are located in the `scripts/` directory:
 | PGAdmin                   | 5050 | http://192.168.7.233:5050 |
 | Portal                    | 8080 | http://localhost:8080     |
 | Portal (production build) | 8081 | http://localhost:8081     |
-| Syncthing (server)        | 8384 | http://192.168.7.233:8384 |
-| Syncthing (local)         | 8384 | http://localhost:8384     |
 
 ### Environment Files
 

@@ -16,8 +16,38 @@ function getDefaultConfigInput(): ConfigInput {
   })
 }
 
+function getMatchingEntries<T extends Record<string, any>>(obj: T, prefix: string): Partial<T> {
+  const result: Partial<T> = {}
+
+  for (const key in obj) {
+    if (key.startsWith(prefix)) {
+      result[key] = obj[key]
+    }
+  }
+
+  return result
+}
+
+export function configAtPrefix(prefix: string) {
+  return getMatchingEntries(config, prefix)
+}
+
+export function mapKeysToLastSegment<T extends Record<string, any>>(input: T): Record<string, any> {
+  const result: Record<string, any> = {}
+
+  for (const [key, value] of Object.entries(input)) {
+    const segments = key.split('.')
+    const newKey = segments[segments.length - 1]
+    result[newKey!] = value
+  }
+
+  return result
+}
+
 export const makeConfig = (cfg?: ConfigInput) => {
   const input = cfg ?? getConfigInputOverride() ?? getDefaultConfigInput()
+
+  const isProd = ['prod', 'staging'].includes(input.NODE_ENV)
 
   const appName = (input.APP_NAME ?? 'SLAOps') + ''
   const app = appName.toLowerCase()
@@ -34,6 +64,24 @@ export const makeConfig = (cfg?: ConfigInput) => {
     `${input.AWS_REGION}--${env}--${app}--${tenantId}--logs--storage`
 
   return {
+    /** Whether to enable mock authentication, note that this is very dangerous and should not be enabled in production */
+    'app.auth.mock.enabled': !isProd && (input.VITE_APP_AUTH_MOCK_ENABLED ?? false),
+
+    'app.auth.mock.payload.sub': '12345678-1234-1234-1234-123456789012',
+    'app.auth.mock.payload.cognito:username': 'derrops',
+    'app.auth.mock.payload.email': 'derrops@derrops.com',
+    'app.auth.mock.payload.email_verified': true,
+    'app.auth.mock.payload.iss':
+      'https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_XUMcOaNb2',
+    'app.auth.mock.payload.aud': '1example23456789',
+    'app.auth.mock.payload.token_use': 'access',
+    'app.auth.mock.payload.scope': 'aws.cognito.signin.user.admin',
+    'app.auth.mock.payload.auth_time': 1643723400,
+    'app.auth.mock.payload.iat': 1643723400,
+    'app.auth.mock.payload.exp': 1643727000,
+    'app.auth.mock.payload.client_id': '1example23456789',
+    'app.auth.mock.payload.custom:tenant_id': 'derrops',
+
     /** The bucket for the OASpecs Storage */
     'slaops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
 

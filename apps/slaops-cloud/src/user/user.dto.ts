@@ -15,4 +15,5 @@ export type User = {
   exp: number
   client_id: string
   userId: string
+  'custom:tenant_id': string
 }
