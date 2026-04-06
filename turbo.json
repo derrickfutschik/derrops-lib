@@ -9,9 +9,21 @@
         ".next/**",
         "!.next/cache/**",
         "build/**",
-        ".docusaurus/**",
-        "../slaops-portal/src/client/slaops-cloud/**"
+        ".docusaurus/**"
       ],
+      "env": ["NODE_ENV", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"]
+    },
+    "generate:openapi": {
+      "dependsOn": ["build"],
+      "outputs": ["dist/openapi.json", "src/openapi.json"]
+    },
+    "generate:client": {
+      "dependsOn": ["generate:openapi"],
+      "outputs": ["../slaops-portal/src/client/slaops-cloud/**"]
+    },
+    "@slaops/portal#build": {
+      "dependsOn": ["@slaops/cloud#generate:client", "^build"],
+      "outputs": ["dist/**"],
       "env": ["NODE_ENV", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"]
     },
     "dev": {

@@ -5,9 +5,8 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build": "nest build && pnpm generate:openapi && pnpm generate:client",
+    "build": "nest build",
     "build:backend": "nest build",
-    "postbuild": "pnpm generate:openapi && pnpm generate:client",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "opensearch:migrate": "nest start -- opensearch:migrate",
