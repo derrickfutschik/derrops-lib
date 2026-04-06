@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -11,14 +10,15 @@ import {
   Patch,
   Post,
 } from '@nestjs/common'
-import { ApiHeader, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { CurrentUser } from '../auth/current-user.decorator'
+import { User } from '../user/user.dto'
 import { CreateRelayInstanceDto } from './dto/create-relay-instance.dto'
 import { UpdateRelayInstanceDto } from './dto/update-relay-instance.dto'
 import { RelayInstance } from './entities/relay-instance.entity'
 import { RelayInstanceService } from './relay-instance.service'
 
 @ApiTags('Relay Instance')
-@ApiHeader({ name: 'x-tenant-id', required: true, description: 'Tenant UUID' })
 @Controller('cloud-relay/relay-instance')
 export class RelayInstanceController {
   constructor(private readonly relayInstanceService: RelayInstanceService) {}
@@ -26,8 +26,8 @@ export class RelayInstanceController {
   @Get()
   @ApiOperation({ summary: 'List all relay instances for the tenant' })
   @ApiResponse({ status: 200, type: [RelayInstance] })
-  findAll(@Headers('x-tenant-id') tenantId = 'default'): Promise<RelayInstance[]> {
-    return this.relayInstanceService.findAll(tenantId)
+  findAll(@CurrentUser() user: User): Promise<RelayInstance[]> {
+    return this.relayInstanceService.findAll(user['custom:tenant_id'])
   }
 
   @Get(':id')
@@ -37,9 +37,9 @@ export class RelayInstanceController {
   @ApiResponse({ status: 404 })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<RelayInstance> {
-    return this.relayInstanceService.findOne(id, tenantId)
+    return this.relayInstanceService.findOne(id, user['custom:tenant_id'])
   }
 
   @Post()
@@ -48,9 +48,9 @@ export class RelayInstanceController {
   @ApiResponse({ status: 201, type: RelayInstance })
   create(
     @Body() dto: CreateRelayInstanceDto,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<RelayInstance> {
-    return this.relayInstanceService.create(dto, tenantId)
+    return this.relayInstanceService.create(dto, user['custom:tenant_id'])
   }
 
   @Patch(':id')
@@ -61,9 +61,9 @@ export class RelayInstanceController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateRelayInstanceDto,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<RelayInstance> {
-    return this.relayInstanceService.update(id, dto, tenantId)
+    return this.relayInstanceService.update(id, dto, user['custom:tenant_id'])
   }
 
   @Delete(':id')
@@ -74,9 +74,9 @@ export class RelayInstanceController {
   @ApiResponse({ status: 404 })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<void> {
-    return this.relayInstanceService.remove(id, tenantId)
+    return this.relayInstanceService.remove(id, user['custom:tenant_id'])
   }
 
   @Post(':id/health-check')
@@ -87,8 +87,8 @@ export class RelayInstanceController {
   @ApiResponse({ status: 404 })
   healthCheck(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<RelayInstance> {
-    return this.relayInstanceService.healthCheck(id, tenantId)
+    return this.relayInstanceService.healthCheck(id, user['custom:tenant_id'])
   }
 }

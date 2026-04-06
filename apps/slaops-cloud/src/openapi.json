@@ -557,17 +557,7 @@
     "/cloud-relay/relay-instance": {
       "get": {
         "operationId": "RelayInstanceController_findAll",
-        "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "",
@@ -590,17 +580,7 @@
       },
       "post": {
         "operationId": "RelayInstanceController_create",
-        "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -634,15 +614,6 @@
         "operationId": "RelayInstanceController_findOne",
         "parameters": [
           {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -675,15 +646,6 @@
       "patch": {
         "operationId": "RelayInstanceController_update",
         "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,
@@ -728,15 +690,6 @@
         "operationId": "RelayInstanceController_remove",
         "parameters": [
           {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -764,15 +717,6 @@
       "post": {
         "operationId": "RelayInstanceController_healthCheck",
         "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,
@@ -807,17 +751,7 @@
     "/cloud-relay/aegis-instance": {
       "get": {
         "operationId": "AegisInstanceController_findAll",
-        "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "",
@@ -841,17 +775,7 @@
       "post": {
         "description": "Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.",
         "operationId": "AegisInstanceController_create",
-        "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -885,15 +809,6 @@
         "operationId": "AegisInstanceController_findOne",
         "parameters": [
           {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -926,15 +841,6 @@
       "patch": {
         "operationId": "AegisInstanceController_update",
         "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,
@@ -979,15 +885,6 @@
         "operationId": "AegisInstanceController_remove",
         "parameters": [
           {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -1015,15 +912,6 @@
       "post": {
         "operationId": "AegisInstanceController_healthCheck",
         "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "description": "Tenant UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,

@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -12,13 +11,14 @@ import {
   Post,
 } from '@nestjs/common'
 import {
-  ApiHeader,
   ApiOperation,
   ApiParam,
   ApiProperty,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger'
+import { CurrentUser } from '../auth/current-user.decorator'
+import { User } from '../user/user.dto'
 import { AegisCreateResponse, AegisInstanceService } from './aegis-instance.service'
 import { CreateAegisInstanceDto } from './dto/create-aegis-instance.dto'
 import { UpdateAegisInstanceDto } from './dto/update-aegis-instance.dto'
@@ -42,7 +42,6 @@ class AegisCreateResponseDto {
 }
 
 @ApiTags('Aegis Instance')
-@ApiHeader({ name: 'x-tenant-id', required: true, description: 'Tenant UUID' })
 @Controller('cloud-relay/aegis-instance')
 export class AegisInstanceController {
   constructor(private readonly aegisInstanceService: AegisInstanceService) {}
@@ -50,8 +49,8 @@ export class AegisInstanceController {
   @Get()
   @ApiOperation({ summary: 'List all Aegis instances for the tenant' })
   @ApiResponse({ status: 200, type: [AegisInstance] })
-  findAll(@Headers('x-tenant-id') tenantId = 'default'): Promise<AegisInstance[]> {
-    return this.aegisInstanceService.findAll(tenantId)
+  findAll(@CurrentUser() user: User): Promise<AegisInstance[]> {
+    return this.aegisInstanceService.findAll(user['custom:tenant_id'])
   }
 
   @Get(':id')
@@ -61,9 +60,9 @@ export class AegisInstanceController {
   @ApiResponse({ status: 404 })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<AegisInstance> {
-    return this.aegisInstanceService.findOne(id, tenantId)
+    return this.aegisInstanceService.findOne(id, user['custom:tenant_id'])
   }
 
   @Post()
@@ -77,9 +76,9 @@ export class AegisInstanceController {
   @ApiResponse({ status: 201, type: AegisCreateResponseDto })
   create(
     @Body() dto: CreateAegisInstanceDto,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<AegisCreateResponse> {
-    return this.aegisInstanceService.create(dto, tenantId)
+    return this.aegisInstanceService.create(dto, user['custom:tenant_id'])
   }
 
   @Patch(':id')
@@ -90,9 +89,9 @@ export class AegisInstanceController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAegisInstanceDto,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<AegisInstance> {
-    return this.aegisInstanceService.update(id, dto, tenantId)
+    return this.aegisInstanceService.update(id, dto, user['custom:tenant_id'])
   }
 
   @Delete(':id')
@@ -103,9 +102,9 @@ export class AegisInstanceController {
   @ApiResponse({ status: 404 })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<void> {
-    return this.aegisInstanceService.remove(id, tenantId)
+    return this.aegisInstanceService.remove(id, user['custom:tenant_id'])
   }
 
   @Post(':id/health-check')
@@ -118,8 +117,8 @@ export class AegisInstanceController {
   @ApiResponse({ status: 404 })
   healthCheck(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-tenant-id') tenantId = 'default',
+    @CurrentUser() user: User,
   ): Promise<AegisInstance> {
-    return this.aegisInstanceService.healthCheck(id, tenantId)
+    return this.aegisInstanceService.healthCheck(id, user['custom:tenant_id'])
   }
 }
