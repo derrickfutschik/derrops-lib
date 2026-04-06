@@ -144,7 +144,7 @@ The relay selector in the API Tester:
 
 The `slaops-cli` package (`apps/slaops-cli`) is a dedicated CLI tool for developer-facing workflows, implemented with oclif. It depends on `slaops-relay` as a workspace dependency to start the relay programmatically.
 
-See [slaops-cli](./slaops-cli.md) for full CLI documentation. The local relay workflow uses two commands:
+The local relay workflow uses two commands:
 
 ### `slaops relay init` (one-time setup)
 

@@ -304,7 +304,7 @@ The search alias is created during tenant onboarding pointing only at `oaspec-sl
 
 ## Enrichment Integration
 
-During log enrichment (the hot path described in the [CLAUDE.md architecture notes](../../CLAUDE.md)):
+During log enrichment (the hot path):
 
 1. Incoming HTTP request arrives at the relay
 2. Enrichment service extracts the `host` / base URL
@@ -362,4 +362,4 @@ Derived names:
 - [Tagging Conventions](../infrastructure/tagging-conventions) — Required AWS tags for all tenant resources
 - [Multi-Tenancy (Docs)](/docs/multi-tenancy) — Customer-facing overview of data isolation and dedicated resources
 - [OASpec Bucket (Docs)](/docs/oaspec-bucket) — Bucket naming reference
-- [CLAUDE.md — When to Use DynamoDB](../../CLAUDE.md) — DynamoDB cache rationale for enrichment hot path
+- DynamoDB cache rationale: use DynamoDB only for ultra-fast, latency-sensitive lookups in the enrichment hot path (sub-millisecond repeat host→specId lookups)

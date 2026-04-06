@@ -14,6 +14,3 @@ This section contains user stories for different personas and components of the 
 - [Monitoring User Stories](./monitoring-stories)
 - [SaaS Management](./saas-management-stories)
 
-## Development
-
-- [CLAUDE](./CLAUDE) - Development notes

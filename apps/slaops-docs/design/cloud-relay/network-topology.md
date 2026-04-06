@@ -9,7 +9,7 @@ tags: [cloud-relay, networking, architecture, reference]
 > **Status**: Reference
 > **Author**: SLAOps Team
 > **Date**: 2026-03-28
-> **Related**: [Relay Connection Design](./cloud-relay/relay-connection.md), [Cloud Relay Component](./cloud-relay/component-cloud-relay.md), [Aegis Token Broker Design](./cloud-relay/aegis-token-broker-design.md)
+> **Related**: [Relay Connection Design](./relay-connection.md), [Cloud Relay Component](./component-cloud-relay.md), [Aegis Token Broker Design](./aegis-token-broker-design.md)
 
 ## Overview
 

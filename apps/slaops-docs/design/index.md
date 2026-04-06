@@ -29,7 +29,7 @@ Event-driven S3-to-OpenSearch indexing pipeline for OpenAPI specifications. Cove
 
 - [OpenAPI Index Access Pattern](./openapi-indexer/openapi-index-access-pattern) — Two-tier multi-tenant index architecture: SLAOps managed public catalogue (`oaspec-slaops`) and per-tenant private indices, including search resolution order, access control, and the managed index ingestion component.
 
-### [Infrastructure](./infrastructure/index)
+### [Infrastructure](./infrastructure)
 
 Platform-wide infrastructure design: tenancy model, per-tenant resource catalogue, IaC provisioning via CDK, AWS resource tagging, and access control.
 
