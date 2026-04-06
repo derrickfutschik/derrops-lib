@@ -80,7 +80,8 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'app.auth.mock.payload.iat': 1643723400,
     'app.auth.mock.payload.exp': 1643727000,
     'app.auth.mock.payload.client_id': '1example23456789',
-    'app.auth.mock.payload.custom:tenant_id': 'derrops',
+    'app.auth.mock.payload.custom:tenant_id': 't-test0000',
+    'app.auth.mock.payload.custom:customer_id': 'c-test0000',
 
     /** The bucket for the OASpecs Storage */
     'slaops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,

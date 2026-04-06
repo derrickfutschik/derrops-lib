@@ -23,7 +23,7 @@ interface JwtPayload {
   client_id: string
   userId: string
   'custom:tenant_id': string
-
+  'custom:customer_id': string
   [key: string]: any
 }
 
