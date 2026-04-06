@@ -3,7 +3,7 @@ import { z } from 'zod'
 // TODO - there should be no default variables and rather manage this through environment variables somehwo
 
 export const ConfigSchema = z.object({
-  VITE_APP_AUTH_MOCK_ENABLED: z.boolean(),
+  VITE_APP_AUTH_MOCK_ENABLED: z.coerce.boolean(),
 
   NODE_VERSION: z.number().optional(),
 

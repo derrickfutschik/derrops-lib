@@ -65,7 +65,7 @@ export const makeConfig = (cfg?: ConfigInput) => {
 
   return {
     /** Whether to enable mock authentication, note that this is very dangerous and should not be enabled in production */
-    'app.auth.mock.enabled': !isProd && (input.VITE_APP_AUTH_MOCK_ENABLED ?? false),
+    'app.auth.mock.enabled': !isProd && input.VITE_APP_AUTH_MOCK_ENABLED,
 
     'app.auth.mock.payload.sub': '12345678-1234-1234-1234-123456789012',
     'app.auth.mock.payload.cognito:username': 'derrops',
@@ -81,7 +81,7 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'app.auth.mock.payload.exp': 1643727000,
     'app.auth.mock.payload.client_id': '1example23456789',
     'app.auth.mock.payload.custom:tenant_id': 't-test0000',
-    'app.auth.mock.payload.custom:customer_id': 'c-test0000',
+    'app.auth.mock.payload.custom:customer_id': 'c-bank0000',
 
     /** The bucket for the OASpecs Storage */
     'slaops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,

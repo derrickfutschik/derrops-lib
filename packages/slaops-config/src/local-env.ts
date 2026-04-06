@@ -18,6 +18,8 @@ const cfg: ConfigInput = {
 
   OPENSEARCH_ENDPOINT: `http://${devServer}:9200`,
   DYNAMODB_ENDPOINT: `http://${devServer}:4566`,
+
+  VITE_APP_AUTH_MOCK_ENABLED: true,
 }
 
 export default cfg
