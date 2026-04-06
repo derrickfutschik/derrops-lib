@@ -29,11 +29,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new AegisInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let createAegisInstanceDto: CreateAegisInstanceDto; //
 
 const { status, data } = await apiInstance.aegisInstanceControllerCreate(
-    xTenantId,
     createAegisInstanceDto
 );
 ```
@@ -43,7 +41,6 @@ const { status, data } = await apiInstance.aegisInstanceControllerCreate(
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
 | **createAegisInstanceDto** | **CreateAegisInstanceDto**|  | |
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 
 
 ### Return type
@@ -82,18 +79,11 @@ import {
 const configuration = new Configuration();
 const apiInstance = new AegisInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
-
-const { status, data } = await apiInstance.aegisInstanceControllerFindAll(
-    xTenantId
-);
+const { status, data } = await apiInstance.aegisInstanceControllerFindAll();
 ```
 
 ### Parameters
-
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
+This endpoint does not have any parameters.
 
 
 ### Return type
@@ -132,11 +122,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new AegisInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //AegisInstance UUID (default to undefined)
 
 const { status, data } = await apiInstance.aegisInstanceControllerFindOne(
-    xTenantId,
     id
 );
 ```
@@ -145,7 +133,6 @@ const { status, data } = await apiInstance.aegisInstanceControllerFindOne(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | AegisInstance UUID | defaults to undefined|
 
 
@@ -186,11 +173,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new AegisInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //AegisInstance UUID (default to undefined)
 
 const { status, data } = await apiInstance.aegisInstanceControllerHealthCheck(
-    xTenantId,
     id
 );
 ```
@@ -199,7 +184,6 @@ const { status, data } = await apiInstance.aegisInstanceControllerHealthCheck(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | AegisInstance UUID | defaults to undefined|
 
 
@@ -240,11 +224,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new AegisInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //AegisInstance UUID (default to undefined)
 
 const { status, data } = await apiInstance.aegisInstanceControllerRemove(
-    xTenantId,
     id
 );
 ```
@@ -253,7 +235,6 @@ const { status, data } = await apiInstance.aegisInstanceControllerRemove(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | AegisInstance UUID | defaults to undefined|
 
 
@@ -295,12 +276,10 @@ import {
 const configuration = new Configuration();
 const apiInstance = new AegisInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //AegisInstance UUID (default to undefined)
 let updateAegisInstanceDto: UpdateAegisInstanceDto; //
 
 const { status, data } = await apiInstance.aegisInstanceControllerUpdate(
-    xTenantId,
     id,
     updateAegisInstanceDto
 );
@@ -311,7 +290,6 @@ const { status, data } = await apiInstance.aegisInstanceControllerUpdate(
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
 | **updateAegisInstanceDto** | **UpdateAegisInstanceDto**|  | |
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | AegisInstance UUID | defaults to undefined|
 
 

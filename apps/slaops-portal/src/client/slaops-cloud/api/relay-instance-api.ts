@@ -35,14 +35,11 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Register a new relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {CreateRelayInstanceDto} createRelayInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerCreate: async (xTenantId: string, createRelayInstanceDto: CreateRelayInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('relayInstanceControllerCreate', 'xTenantId', xTenantId)
+        relayInstanceControllerCreate: async (createRelayInstanceDto: CreateRelayInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'createRelayInstanceDto' is not null or undefined
             assertParamExists('relayInstanceControllerCreate', 'createRelayInstanceDto', createRelayInstanceDto)
             const localVarPath = `/cloud-relay/relay-instance`;
@@ -60,9 +57,6 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
             localVarHeaderParameter['Content-Type'] = 'application/json';
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -76,13 +70,10 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary List all relay instances for the tenant
-         * @param {string} xTenantId Tenant UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerFindAll: async (xTenantId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('relayInstanceControllerFindAll', 'xTenantId', xTenantId)
+        relayInstanceControllerFindAll: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/cloud-relay/relay-instance`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -97,9 +88,6 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
 
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -112,14 +100,11 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Get a relay instance by ID
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerFindOne: async (xTenantId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('relayInstanceControllerFindOne', 'xTenantId', xTenantId)
+        relayInstanceControllerFindOne: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('relayInstanceControllerFindOne', 'id', id)
             const localVarPath = `/cloud-relay/relay-instance/{id}`
@@ -137,9 +122,6 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
 
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -152,14 +134,11 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerHealthCheck: async (xTenantId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('relayInstanceControllerHealthCheck', 'xTenantId', xTenantId)
+        relayInstanceControllerHealthCheck: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('relayInstanceControllerHealthCheck', 'id', id)
             const localVarPath = `/cloud-relay/relay-instance/{id}/health-check`
@@ -177,9 +156,6 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
 
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -192,14 +168,11 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Delete a relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerRemove: async (xTenantId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('relayInstanceControllerRemove', 'xTenantId', xTenantId)
+        relayInstanceControllerRemove: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('relayInstanceControllerRemove', 'id', id)
             const localVarPath = `/cloud-relay/relay-instance/{id}`
@@ -216,9 +189,6 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
             const localVarQueryParameter = {} as any;
 
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -231,15 +201,12 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Update a relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {UpdateRelayInstanceDto} updateRelayInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerUpdate: async (xTenantId: string, id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('relayInstanceControllerUpdate', 'xTenantId', xTenantId)
+        relayInstanceControllerUpdate: async (id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('relayInstanceControllerUpdate', 'id', id)
             // verify required parameter 'updateRelayInstanceDto' is not null or undefined
@@ -260,9 +227,6 @@ export const RelayInstanceApiAxiosParamCreator = function (configuration?: Confi
             localVarHeaderParameter['Content-Type'] = 'application/json';
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -285,13 +249,12 @@ export const RelayInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Register a new relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {CreateRelayInstanceDto} createRelayInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async relayInstanceControllerCreate(xTenantId: string, createRelayInstanceDto: CreateRelayInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerCreate(xTenantId, createRelayInstanceDto, options);
+        async relayInstanceControllerCreate(createRelayInstanceDto: CreateRelayInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerCreate(createRelayInstanceDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['RelayInstanceApi.relayInstanceControllerCreate']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -299,12 +262,11 @@ export const RelayInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary List all relay instances for the tenant
-         * @param {string} xTenantId Tenant UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async relayInstanceControllerFindAll(xTenantId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<RelayInstance>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerFindAll(xTenantId, options);
+        async relayInstanceControllerFindAll(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<RelayInstance>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerFindAll(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['RelayInstanceApi.relayInstanceControllerFindAll']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -312,13 +274,12 @@ export const RelayInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get a relay instance by ID
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async relayInstanceControllerFindOne(xTenantId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerFindOne(xTenantId, id, options);
+        async relayInstanceControllerFindOne(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerFindOne(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['RelayInstanceApi.relayInstanceControllerFindOne']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -326,13 +287,12 @@ export const RelayInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async relayInstanceControllerHealthCheck(xTenantId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerHealthCheck(xTenantId, id, options);
+        async relayInstanceControllerHealthCheck(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerHealthCheck(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['RelayInstanceApi.relayInstanceControllerHealthCheck']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -340,13 +300,12 @@ export const RelayInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Delete a relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async relayInstanceControllerRemove(xTenantId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerRemove(xTenantId, id, options);
+        async relayInstanceControllerRemove(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerRemove(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['RelayInstanceApi.relayInstanceControllerRemove']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -354,14 +313,13 @@ export const RelayInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Update a relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {UpdateRelayInstanceDto} updateRelayInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async relayInstanceControllerUpdate(xTenantId: string, id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerUpdate(xTenantId, id, updateRelayInstanceDto, options);
+        async relayInstanceControllerUpdate(id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RelayInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.relayInstanceControllerUpdate(id, updateRelayInstanceDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['RelayInstanceApi.relayInstanceControllerUpdate']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -378,68 +336,62 @@ export const RelayInstanceApiFactory = function (configuration?: Configuration, 
         /**
          * 
          * @summary Register a new relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {CreateRelayInstanceDto} createRelayInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerCreate(xTenantId: string, createRelayInstanceDto: CreateRelayInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
-            return localVarFp.relayInstanceControllerCreate(xTenantId, createRelayInstanceDto, options).then((request) => request(axios, basePath));
+        relayInstanceControllerCreate(createRelayInstanceDto: CreateRelayInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
+            return localVarFp.relayInstanceControllerCreate(createRelayInstanceDto, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary List all relay instances for the tenant
-         * @param {string} xTenantId Tenant UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerFindAll(xTenantId: string, options?: RawAxiosRequestConfig): AxiosPromise<Array<RelayInstance>> {
-            return localVarFp.relayInstanceControllerFindAll(xTenantId, options).then((request) => request(axios, basePath));
+        relayInstanceControllerFindAll(options?: RawAxiosRequestConfig): AxiosPromise<Array<RelayInstance>> {
+            return localVarFp.relayInstanceControllerFindAll(options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Get a relay instance by ID
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerFindOne(xTenantId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
-            return localVarFp.relayInstanceControllerFindOne(xTenantId, id, options).then((request) => request(axios, basePath));
+        relayInstanceControllerFindOne(id: string, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
+            return localVarFp.relayInstanceControllerFindOne(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerHealthCheck(xTenantId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
-            return localVarFp.relayInstanceControllerHealthCheck(xTenantId, id, options).then((request) => request(axios, basePath));
+        relayInstanceControllerHealthCheck(id: string, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
+            return localVarFp.relayInstanceControllerHealthCheck(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Delete a relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerRemove(xTenantId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.relayInstanceControllerRemove(xTenantId, id, options).then((request) => request(axios, basePath));
+        relayInstanceControllerRemove(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.relayInstanceControllerRemove(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Update a relay instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id RelayInstance UUID
          * @param {UpdateRelayInstanceDto} updateRelayInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        relayInstanceControllerUpdate(xTenantId: string, id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
-            return localVarFp.relayInstanceControllerUpdate(xTenantId, id, updateRelayInstanceDto, options).then((request) => request(axios, basePath));
+        relayInstanceControllerUpdate(id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<RelayInstance> {
+            return localVarFp.relayInstanceControllerUpdate(id, updateRelayInstanceDto, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -451,73 +403,67 @@ export class RelayInstanceApi extends BaseAPI {
     /**
      * 
      * @summary Register a new relay instance
-     * @param {string} xTenantId Tenant UUID
      * @param {CreateRelayInstanceDto} createRelayInstanceDto 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public relayInstanceControllerCreate(xTenantId: string, createRelayInstanceDto: CreateRelayInstanceDto, options?: RawAxiosRequestConfig) {
-        return RelayInstanceApiFp(this.configuration).relayInstanceControllerCreate(xTenantId, createRelayInstanceDto, options).then((request) => request(this.axios, this.basePath));
+    public relayInstanceControllerCreate(createRelayInstanceDto: CreateRelayInstanceDto, options?: RawAxiosRequestConfig) {
+        return RelayInstanceApiFp(this.configuration).relayInstanceControllerCreate(createRelayInstanceDto, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary List all relay instances for the tenant
-     * @param {string} xTenantId Tenant UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public relayInstanceControllerFindAll(xTenantId: string, options?: RawAxiosRequestConfig) {
-        return RelayInstanceApiFp(this.configuration).relayInstanceControllerFindAll(xTenantId, options).then((request) => request(this.axios, this.basePath));
+    public relayInstanceControllerFindAll(options?: RawAxiosRequestConfig) {
+        return RelayInstanceApiFp(this.configuration).relayInstanceControllerFindAll(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Get a relay instance by ID
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id RelayInstance UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public relayInstanceControllerFindOne(xTenantId: string, id: string, options?: RawAxiosRequestConfig) {
-        return RelayInstanceApiFp(this.configuration).relayInstanceControllerFindOne(xTenantId, id, options).then((request) => request(this.axios, this.basePath));
+    public relayInstanceControllerFindOne(id: string, options?: RawAxiosRequestConfig) {
+        return RelayInstanceApiFp(this.configuration).relayInstanceControllerFindOne(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id RelayInstance UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public relayInstanceControllerHealthCheck(xTenantId: string, id: string, options?: RawAxiosRequestConfig) {
-        return RelayInstanceApiFp(this.configuration).relayInstanceControllerHealthCheck(xTenantId, id, options).then((request) => request(this.axios, this.basePath));
+    public relayInstanceControllerHealthCheck(id: string, options?: RawAxiosRequestConfig) {
+        return RelayInstanceApiFp(this.configuration).relayInstanceControllerHealthCheck(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Delete a relay instance
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id RelayInstance UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public relayInstanceControllerRemove(xTenantId: string, id: string, options?: RawAxiosRequestConfig) {
-        return RelayInstanceApiFp(this.configuration).relayInstanceControllerRemove(xTenantId, id, options).then((request) => request(this.axios, this.basePath));
+    public relayInstanceControllerRemove(id: string, options?: RawAxiosRequestConfig) {
+        return RelayInstanceApiFp(this.configuration).relayInstanceControllerRemove(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Update a relay instance
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id RelayInstance UUID
      * @param {UpdateRelayInstanceDto} updateRelayInstanceDto 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public relayInstanceControllerUpdate(xTenantId: string, id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options?: RawAxiosRequestConfig) {
-        return RelayInstanceApiFp(this.configuration).relayInstanceControllerUpdate(xTenantId, id, updateRelayInstanceDto, options).then((request) => request(this.axios, this.basePath));
+    public relayInstanceControllerUpdate(id: string, updateRelayInstanceDto: UpdateRelayInstanceDto, options?: RawAxiosRequestConfig) {
+        return RelayInstanceApiFp(this.configuration).relayInstanceControllerUpdate(id, updateRelayInstanceDto, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
