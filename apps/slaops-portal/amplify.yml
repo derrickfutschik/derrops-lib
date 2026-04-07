@@ -20,6 +20,10 @@ applications:
             - export NODE_OPTIONS="--max-old-space-size=12000"
             - corepack enable
             - corepack prepare pnpm@9.0.0 --activate
+            - rpm --import https://yum.corretto.aws/corretto.key
+            - curl -L -o /etc/yum.repos.d/corretto.repo https://yum.corretto.aws/corretto.repo
+            - yum install -y java-11-amazon-corretto-headless
+            - java -version
             - chmod +x apps/slaops-portal/amplify-prebuild.sh
             - ./apps/slaops-portal/amplify-prebuild.sh
         build:
