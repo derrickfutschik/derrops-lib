@@ -31,7 +31,8 @@
       "Bash(mkdir -p design idea release)",
       "Bash(mv design.md design/SKILL.md)",
       "Bash(mv idea.md idea/SKILL.md)",
-      "Bash(mv release.md release/SKILL.md)"
+      "Bash(mv release.md release/SKILL.md)",
+      "WebSearch"
     ]
   }
 }
