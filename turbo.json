@@ -4,13 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [
-        "dist/**",
-        ".next/**",
-        "!.next/cache/**",
-        "build/**",
-        ".docusaurus/**"
-      ],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "build/**", ".docusaurus/**"],
       "env": ["NODE_ENV", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"]
     },
     "generate:openapi": {
@@ -24,7 +18,13 @@
     "@slaops/portal#build": {
       "dependsOn": ["@slaops/cloud#generate:client", "^build"],
       "outputs": ["dist/**"],
-      "env": ["NODE_ENV", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"]
+      "env": [
+        "NODE_ENV",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_ANON_KEY",
+        "VITE_API_BASE_URL",
+        "VITE_API_BASE_URL_OVERRIDE"
+      ]
     },
     "dev": {
       "cache": false,
