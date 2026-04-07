@@ -1,6 +1,7 @@
 /**
  * Copies README.md files from monorepo apps and packages into the docs app's
- * code/ directory so the "Code" tab can surface them without manual duplication.
+ * internal/developer/code/ directory so the "Developer" tab can surface them
+ * without manual duplication.
  *
  * Run from apps/slaops-docs (e.g. pnpm docs:prepare). Monorepo root is two levels up from docs dir.
  * Pass --watch to do the initial copy then re-copy on source file changes.
@@ -12,9 +13,9 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const docsDir = path.resolve(__dirname, '..')
 const root = path.resolve(docsDir, '..', '..')
-const codeDir = path.join(docsDir, 'code')
+const codeDir = path.join(docsDir, 'internal', 'developer', 'code')
 
-/** [source path relative to monorepo root, dest path relative to code/] */
+/** [source path relative to monorepo root, dest path relative to internal/developer/code/] */
 const COPY_LIST = [
   ['apps/slaops-cloud/README.md', 'apps/slaops-cloud.md'],
   ['apps/slaops-cloud/src/openapi-indexer/README.md', 'apps/slaops-cloud/openapi-indexer.md'],
@@ -44,29 +45,29 @@ function copyFile(srcRel, destRel) {
   }
   ensureDir(path.dirname(dest))
   let content = fs.readFileSync(src, 'utf8')
-  // Fix relative links that break in Docusaurus when viewed under /code/
+  // Fix relative links that break in Docusaurus when viewed under /internal/developer/
   if (destRel === 'apps/slaops-cloud.md') {
     content = content.replace(
       /\]\(\.\.\/\.\.\/packages\/slaops-backend\/README\.md\)/g,
-      '](/code/packages/slaops-backend)'
+      '](/internal/developer/packages/slaops-backend)'
     )
     content = content.replace(
       /\]\(\.\.\/\.\.\/packages\/slaops-infra\/README\.md\)/g,
-      '](/code/packages/slaops-infra)'
+      '](/internal/developer/packages/slaops-infra)'
     )
     content = content.replace(
       /\]\(\.\.\/slaops-docs\/notes\/proposals\/cloud-relay\/component-cloud-relay\.md\)/g,
-      '](/design/cloud-relay/component-cloud-relay)'
+      '](/internal/platform/design/cloud-relay/component-cloud-relay)'
     )
   }
   if (destRel === 'apps/slaops-aegis.md') {
     content = content.replace(
       /\]\(\/notes\/proposals\/cloud-relay\/component-cloud-relay\.md\)/g,
-      '](/design/cloud-relay/component-cloud-relay)'
+      '](/internal/platform/design/cloud-relay/component-cloud-relay)'
     )
     content = content.replace(
       /\]\(\.\.\/slaops-docs\/notes\/proposals\/cloud-relay\/aegis-token-broker-design\.md\)/g,
-      '](/design/cloud-relay/aegis-token-broker-design)'
+      '](/internal/platform/design/cloud-relay/aegis-token-broker-design)'
     )
   }
   fs.writeFileSync(dest, content)
@@ -78,7 +79,7 @@ function copyAll() {
   let skipped = 0
   for (const [srcRel, destRel] of COPY_LIST) {
     if (copyFile(srcRel, destRel)) {
-      console.log(`Copied: ${srcRel} → code/${destRel}`)
+      console.log(`Copied: ${srcRel} → internal/developer/code/${destRel}`)
       copied++
     } else {
       skipped++
@@ -97,7 +98,7 @@ if (process.argv.includes('--watch')) {
     fs.watch(src, () => {
       console.log(`Changed: ${srcRel} — re-copying...`)
       if (copyFile(srcRel, destRel)) {
-        console.log(`Copied: ${srcRel} → code/${destRel}`)
+        console.log(`Copied: ${srcRel} → internal/developer/code/${destRel}`)
       }
     })
   }

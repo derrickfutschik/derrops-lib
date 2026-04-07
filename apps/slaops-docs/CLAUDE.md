@@ -14,26 +14,84 @@ The SLAOps documentation provides comprehensive guides for the SLAOps platform, 
 - Cost analysis for API usage
 - Aegis policy engine and credential injection
 
-## Project Structure
+---
+
+## Directory Structure & Access Model
+
+Content is split into two top-level trees whose names signal access intent:
 
 ```
 apps/slaops-docs/
-├── design/        # Main Design of the Platform (Internal for Architecture Decision Records)
-├── docs/          # Public Documentation for the Platform
-├── devops/        # Sprint and User Story documentation
-├── code/          # Implementation detail documentation for the SLAOps platform monorepo, developer day-to-day focused.
-├── notes/         # In progress thoughts and idea, not yet fully formed, not yet ready to be documented.
-├── blog/          # Blog posts
-├── changelog/     # Changelog entries
-├── src/
-│   ├── components/    # Custom React components
-│   ├── css/           # Custom styling
-│   ├── pages/         # Custom pages
-│   └── plugins/       # Custom Docusaurus plugins (e.g., changelog)
-├── static/            # Static assets (images, favicons)
-├── docusaurus.config.ts  # Main configuration
-└── sidebars.ts        # Sidebar navigation structure
+├── public/                        ← No auth required
+│   ├── docs/                      ←   User-facing platform docs (Docusaurus preset)
+│   └── security/                  ←   Customer security / compliance overview
+│
+├── internal/                      ← Cognito auth required — protected at Amplify layer
+│   ├── platform/
+│   │   ├── design/                ←   Implemented platform design records (ADRs)
+│   │   └── drafts/                ←   WIP ideas and research notes
+│   ├── developer/
+│   │   └── code/                  ←   Auto-copied monorepo READMEs (see scripts/copy-code-readmes.mjs)
+│   ├── devops/                    ←   Sprint planning, user stories
+│   ├── security/                  ←   Full security KB (threat models, pen-tests, compliance)
+│   └── testing/                   ←   Test reports
+│
+├── changelog/                     ← Public release changelog (custom plugin)
+├── blog/                          ← Public blog posts
+├── src/                           ←   Custom React components & plugins (changelog)
+└── static/                        ←   Static assets
 ```
+
+### Naming conventions
+
+| Convention | Rule |
+|---|---|
+| `public/` prefix | Open access — no authentication |
+| `internal/` prefix | Requires Cognito login (enforced at Amplify Hosting layer) |
+| Section dirs are lowercase-hyphenated | `platform/`, `developer/`, `devops/` |
+| Sidebar file names mirror section names | `sidebars-platform-design.ts`, `sidebars-developer.ts` |
+| Plugin `id` matches sidebar key | `id: 'platform-design'` → sidebar key `'platform-design'` |
+| Drafts / WIP always go in `internal/platform/drafts/` | Never in the public tree |
+| Security split is intentional | `public/security/` = customer-facing; `internal/security/` = full KB |
+
+### Permission management
+
+The `/internal/*` URL prefix is the single choke-point. Protect it at **Amplify Hosting** (access control rules in the Amplify Console or `amplify.yml`) — no Docusaurus-level auth is needed.
+
+Public routes: `/docs`, `/security`, `/blog`, `/changelog`
+Private routes: `/internal/**` (all sub-paths)
+
+---
+
+## Docusaurus Plugin Mapping
+
+| Plugin id | Physical path | URL route | Access |
+|---|---|---|---|
+| `docs` (preset) | `public/docs/` | `/docs` | Public |
+| `security-public` | `public/security/` | `/security` | Public |
+| `platform-design` | `internal/platform/design/` | `/internal/platform/design` | Private |
+| `platform-drafts` | `internal/platform/drafts/` | `/internal/platform/drafts` | Private |
+| `developer` | `internal/developer/code/` | `/internal/developer` | Private |
+| `devops` | `internal/devops/` | `/internal/devops` | Private |
+| `security-internal` | `internal/security/` | `/internal/security` | Private |
+| `testing` | `internal/testing/` | `/internal/testing` | Private |
+| changelog (custom) | `changelog/source/` | `/changelog` | Public |
+| blog | `blog/` | `/blog` | Public |
+
+### Sidebar file names
+
+| File | Sidebar key | Used by plugin |
+|---|---|---|
+| `sidebars.ts` | `tutorialSidebar` | `docs` (preset) |
+| `sidebars-security-public.ts` | `security-public` | `security-public` |
+| `sidebars-platform-design.ts` | `platform-design` | `platform-design` |
+| `sidebars-platform-drafts.ts` | `platform-drafts` | `platform-drafts` |
+| `sidebars-developer.ts` | `developer` | `developer` |
+| `sidebars-devops.ts` | `devops` | `devops` |
+| `sidebars-security-internal.ts` | `security-internal` | `security-internal` |
+| `sidebars-testing.ts` | `testing` | `testing` |
+
+---
 
 ## Key Features
 
@@ -50,6 +108,8 @@ apps/slaops-docs/
 - **Dark/light mode** with system preference detection
 - **RSS/Atom feeds** for blog and changelog
 - **React 19** for modern component support
+
+---
 
 ## Development
 
@@ -108,49 +168,68 @@ pnpm run write-heading-ids
 pnpm run write-translations
 ```
 
+---
+
 ## Content Management
 
-### Documentation (docs/)
+### Public documentation (`public/docs/`)
 
-Documentation files are in Markdown/MDX format. The sidebar structure is defined in `sidebars.ts`.
+User-facing platform documentation. Sidebar is auto-generated from the filesystem.
 
-Key documentation areas:
+Key files:
+- `intro.md` — Platform overview
+- `getting-started.md` — Install CLI, connect relay, run first test
+- `glossary.md` — Domain term definitions
+- `quickstart/` — Step-by-step guided setup
 
-- **intro.md** - Platform overview and feature summary
-- **getting-started.md** - Install CLI, connect relay, run first test, add Aegis
-- **glossary.md** - Domain term definitions (OASpec, TopOp, relay, Aegis, etc.)
-- **archiecture-planes.md** - Enterprise plane architecture (portal, relay, Aegis)
-- **environment.md** - Environment variables and configuration reference
-- **oaspec-bucket.md** - OASpec bucket: indexing OpenAPI specifications
-- **plans.md** - SLAOps plan tiers and feature availability
-- **byok.md** - Bring Your Own Key: customer-managed encryption
-- **supported-logs.md** - Supported log sources and ingestion formats
+### Public security (`public/security/`)
 
-### Blog (blog/)
+Customer-facing security posture document. Add docs here that customers can read during vendor evaluation. Keep sensitive details (threat models, pen-test reports) in `internal/security/` instead.
+
+### Platform design (`internal/platform/design/`)
+
+Completed architecture decision records and design docs. Sidebar is auto-generated.
+
+### Platform drafts (`internal/platform/drafts/`)
+
+WIP ideas, research notes, and anything not yet ready to be a formal design doc. Previously `notes/`.
+
+### Developer (`internal/developer/code/`)
+
+Auto-copied from monorepo READMEs. **Do not edit files here directly** — edit the source README.md in the relevant app or package.
+
+- **Script**: `scripts/copy-code-readmes.mjs`
+- **When**: Run automatically before `pnpm start` and `pnpm build`; or `pnpm docs:prepare` to refresh.
+- **Sidebar**: `sidebars-developer.ts`. To add a new README, add its path to `COPY_LIST` in the script and the doc id to the sidebar.
+
+### DevOps (`internal/devops/`)
+
+Sprint planning and user story documentation. Sidebar is manually defined in `sidebars-devops.ts`.
+
+### Internal security (`internal/security/`)
+
+Full security knowledge base — threat models, pen-test results, compliance evidence, incident runbooks.
+
+### Testing (`internal/testing/`)
+
+Test reports and quality metrics. Add subdirectories for `unit/`, `integration/`, `e2e/` as needed.
+
+### Blog (`blog/`)
 
 Blog posts follow Docusaurus blog conventions with frontmatter:
-
 - Authors defined in `blog/authors.yml`
 - Tags defined in `blog/tags.yml`
-- Posts organized by date in subdirectories
+- Posts organised by date in subdirectories
 
-### Changelog (changelog/)
+### Changelog (`changelog/`)
 
 Custom changelog plugin for release tracking:
-
 - Located at `src/plugins/changelog/`
-- Available at `/changelog` route
-- Uses same format as blog posts
+- Available at `/changelog`
+- Source entries in `changelog/source/`
 - Configured with 5 recent releases in sidebar
 
-### Code (code/)
-
-README docs from apps and packages are copied into `code/` at build time so the **Code** tab can show them without manual duplication.
-
-- **Script**: `scripts/copy-code-readmes.mjs` — copies README.md from monorepo apps/packages into `code/apps/` and `code/packages/`.
-- **When**: Run automatically before `pnpm start` and `pnpm build`; or run `pnpm docs:prepare` to refresh only.
-- **Source of truth**: READMEs stay in each app/package; generated files under `code/apps/*.md` and `code/packages/*.md` are gitignored.
-- **Sidebar**: `sidebars-code.ts`. To add a new README, add its path to `COPY_LIST` in the script and the doc id to the sidebar.
+---
 
 ## Deployment
 
@@ -158,56 +237,44 @@ README docs from apps and packages are copied into `code/` at build time so the 
 
 The site is deployed using AWS Amplify:
 
-- **amplify.yml** - Build configuration
-- **amplify-prebuild.sh** - Pre-build setup (Node.js version, etc.)
-- **amplify-build.sh** - Build execution script
+- **amplify.yml** — Build configuration
+- **amplify-prebuild.sh** — Pre-build setup (Node.js version, etc.)
+- **amplify-build.sh** — Build execution script
 
 AWS Amplify automatically builds and deploys the site when changes are pushed to the repository.
 
+**Auth configuration**: Add an Amplify Hosting access rule to protect the `/internal/*` path prefix with Cognito authentication. All other routes remain public.
+
+---
+
 ## Configuration
 
-### Main Config (docusaurus.config.ts)
+### Main Config (`docusaurus.config.ts`)
 
 Key settings:
-
 - **Title**: "SLAOps"
-- **Tagline**: "SLAOps the Devops Engineer"
 - **URL**: https://blog.SLAOps.com
-- **Edit URLs**: Point to GitHub repository
-- **Broken links**: Set to throw errors (strict mode)
+- **Broken links**: throws errors (strict mode)
+- Each content section is a separate `@docusaurus/plugin-content-docs` instance
 
 ### Theme
 
 - Prism syntax highlighting (GitHub light, Dracula dark)
 - Custom CSS in `src/css/custom.css`
 - KaTeX stylesheet for math rendering
-- Social card: `img/docusaurus-social-card.jpg`
+
+---
 
 ## Monorepo Context
 
-This documentation site is part of the SLAOps monorepo and has dependencies on shared packages:
-
-- `@slaops/private` - Core utilities and types
-- `@slaops/public` - Shared library functions
-
-**Important**: When working in the monorepo:
+This documentation site is part of the SLAOps monorepo. When working here:
 
 - Always use `pnpm` for package management
 - Build shared dependencies before building slaops-docs
 - Install dependencies from the monorepo root
 - Use pnpm workspace filters for targeted operations
 
-## Keeping Documentation Updated
-
-When making changes to the SLAOps platform:
-
-1. **Update relevant documentation** in `docs/` directory
-2. **Add changelog entries** in `changelog/` for releases
-3. **Create blog posts** in `blog/` for major features or updates
-4. **Update examples** to reflect API/SDK changes
-5. **Regenerate heading IDs** if adding new sections: `pnpm run write-heading-ids`
-6. **Test locally** before committing: `pnpm start`
-7. **Build verification**: `pnpm run build` to catch broken links
+---
 
 ## License
 
@@ -221,4 +288,3 @@ SLAOps@SLAOps.com
 
 - **Live Site**: https://blog.SLAOps.com
 - **GitHub**: https://github.com/derrickfutschik/slaops-platform
-- **Stack Overflow**: https://stackoverflow.com/users/4033292/SLAOps

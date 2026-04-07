@@ -855,9 +855,9 @@ Store Claude Code plans in `apps/slaops-docs/plan/`.
 
 Write code following the plan. Keep implementation notes that don't belong in code comments in `.md` files alongside the code — prefer these over large inline comments.
 
-### 4. Document (`apps/slaops-docs/docs/`)
+### 4. Document (`apps/slaops-docs/public/docs/`)
 
-When a task is complete, add or update public-facing documentation in `apps/slaops-docs/docs/` as needed.
+When a task is complete, add or update public-facing documentation in `apps/slaops-docs/public/docs/` as needed.
 
 ### 5. Commit
 
@@ -871,13 +871,20 @@ Tag the release `vX.Y.Z` and add an entry in `apps/slaops-docs/changelog/source/
 
 ### Key documentation locations
 
-| Location | Purpose |
-|---|---|
-| `apps/slaops-docs/design/` | Design documents (component designs, interaction designs) |
-| `apps/slaops-docs/plan/` | Claude Code implementation plans |
-| `apps/slaops-docs/docs/` | Public-facing Docusaurus documentation |
-| `apps/slaops-docs/changelog/source/` | Release changelog entries |
-| `<source-dir>/*.md` | In-code developer notes alongside source files |
+| Location | Access | Purpose |
+|---|---|---|
+| `apps/slaops-docs/public/docs/` | Public | User-facing Docusaurus documentation |
+| `apps/slaops-docs/public/security/` | Public | Customer security / compliance overview |
+| `apps/slaops-docs/internal/platform/design/` | Private | Design documents (component designs, ADRs) |
+| `apps/slaops-docs/internal/platform/drafts/` | Private | WIP ideas and research notes |
+| `apps/slaops-docs/internal/developer/code/` | Private | Codebase docs (auto-copied monorepo READMEs) |
+| `apps/slaops-docs/internal/devops/` | Private | Sprint planning, user stories |
+| `apps/slaops-docs/internal/security/` | Private | Full security KB (threat models, pen-tests) |
+| `apps/slaops-docs/internal/testing/` | Private | Test reports |
+| `apps/slaops-docs/changelog/source/` | Public | Release changelog entries |
+| `<source-dir>/*.md` | — | In-code developer notes alongside source files |
+
+**Access model**: `public/` directories are open; `internal/` directories require Cognito auth enforced at the Amplify Hosting layer on the `/internal/*` URL prefix.
 
 ---
 
@@ -1241,11 +1248,11 @@ When you need to enable IDE navigation to source files in another module (e.g., 
 ### Documentation
 
 - **IMPORTANT**: Follow the [Development Workflow](#development-workflow) — design first, then plan, then implement, then document.
-- **Design**: Before coding, document component and interaction designs in [apps/slaops-docs/design/](apps/slaops-docs/design/)
+- **Design**: Before coding, document component and interaction designs in [apps/slaops-docs/internal/platform/design/](apps/slaops-docs/internal/platform/design/)
 - **Plans**: Store Claude Code implementation plans in [apps/slaops-docs/plan/](apps/slaops-docs/plan/); cross-reference designs and list affected files
-- **Public docs**: When completing tasks, add or update documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/)
-- Before starting a task, review existing documentation in [apps/slaops-docs/docs/](apps/slaops-docs/docs/) for context
-- **Glossary**: Consult [apps/slaops-docs/docs/glossary.md](apps/slaops-docs/docs/glossary.md) for definitions of domain-specific terms (OASpec, OASpecDoc, TopOp, APIUser, etc.) before using terminology in code, comments, or documentation
+- **Public docs**: When completing tasks, add or update documentation in [apps/slaops-docs/public/docs/](apps/slaops-docs/public/docs/)
+- Before starting a task, review existing documentation in [apps/slaops-docs/public/docs/](apps/slaops-docs/public/docs/) for context
+- **Glossary**: Consult [apps/slaops-docs/public/docs/glossary.md](apps/slaops-docs/public/docs/glossary.md) for definitions of domain-specific terms (OASpec, OASpecDoc, TopOp, APIUser, etc.) before using terminology in code, comments, or documentation
 - **In-code notes**: Prefer `.md` files alongside source code over large inline comments for developer-focused notes
 - Update CLAUDE.md files when making significant changes
 - Keep README.md files up to date

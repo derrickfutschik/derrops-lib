@@ -7,6 +7,17 @@ import remarkMath from 'remark-math'
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
+// ---------------------------------------------------------------------------
+// Directory / access model
+// ---------------------------------------------------------------------------
+// public/   → no auth required  (routes: /docs, /security)
+// internal/ → Cognito auth required  (routes: /internal/*)
+//
+// The /internal/* prefix is the single choke-point protected at the Amplify
+// Hosting layer (see amplify.yml). Nothing inside docusaurus.config.ts itself
+// enforces auth — the convention is purely structural.
+// ---------------------------------------------------------------------------
+
 const config: Config = {
   title: 'SLAOps',
   tagline: 'SLAOps the Devops Engineer',
@@ -61,16 +72,19 @@ const config: Config = {
       'classic',
       {
         docs: {
+          // PUBLIC: user-facing platform documentation
+          path: 'public/docs',
+          routeBasePath: 'docs',
           sidebarPath: './sidebars.ts',
 
           editUrl: ({ docPath }) => {
             const awsBranch = process.env.AWS_BRANCH
             if (awsBranch) {
               const cleanPath = docPath.replace(/^\//, '')
-              return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/docs/${cleanPath}`
+              return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/public/docs/${cleanPath}`
             }
             const cleanPath = docPath.replace(/^\//, '')
-            const pathToFile = `${process.cwd()}/docs/${cleanPath}`
+            const pathToFile = `${process.cwd()}/public/docs/${cleanPath}`
             return `cursor://file${pathToFile}`
           },
 
@@ -104,6 +118,9 @@ const config: Config = {
   ],
 
   plugins: [
+    // -------------------------------------------------------------------------
+    // Changelog (public)
+    // -------------------------------------------------------------------------
     [
       require.resolve('./src/plugins/changelog'),
       {
@@ -122,90 +139,184 @@ const config: Config = {
         },
       },
     ],
+
+    // -------------------------------------------------------------------------
+    // PUBLIC: customer security / compliance overview
+    // -------------------------------------------------------------------------
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'notes',
-        path: 'notes',
-        routeBasePath: 'notes',
+        id: 'security-public',
+        path: 'public/security',
+        routeBasePath: 'security',
         exclude: ['**/CLAUDE.md'],
-        sidebarPath: './sidebars.ts',
+        sidebarPath: './sidebars-security-public.ts',
         editUrl: ({ docPath }) => {
           const awsBranch = process.env.AWS_BRANCH
           if (awsBranch) {
             const cleanPath = docPath.replace(/^\//, '')
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/notes/${cleanPath}`
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/public/security/${cleanPath}`
           }
           const cleanPath = docPath.replace(/^\//, '')
-          const pathToFile = `${process.cwd()}/notes/${cleanPath}`
+          const pathToFile = `${process.cwd()}/public/security/${cleanPath}`
           return `cursor://file${pathToFile}`
         },
         remarkPlugins: [remarkMath, remarkCodeImport],
         rehypePlugins: [rehypeKatex],
       },
     ],
+
+    // -------------------------------------------------------------------------
+    // INTERNAL: platform design records (implemented designs)
+    // -------------------------------------------------------------------------
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'devops',
-        path: 'devops',
-        routeBasePath: 'devops',
+        id: 'platform-design',
+        path: 'internal/platform/design',
+        routeBasePath: 'internal/platform/design',
         exclude: ['**/CLAUDE.md'],
-        sidebarPath: './sidebars-devops.ts',
-        editUrl: ({ docPath }) => {
-          const awsBranch = process.env.AWS_BRANCH
-          if (awsBranch) {
-            const cleanPath = docPath.replace(/^\//, '')
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/devops/${cleanPath}`
-          }
-          const cleanPath = docPath.replace(/^\//, '')
-          const pathToFile = `${process.cwd()}/devops/${cleanPath}`
-          return `cursor://file${pathToFile}`
-        },
-        remarkPlugins: [remarkMath, remarkCodeImport],
-        rehypePlugins: [rehypeKatex],
-      },
-    ],
-    [
-      '@docusaurus/plugin-content-docs',
-      {
-        id: 'code',
-        path: 'code',
-        routeBasePath: 'code',
-        exclude: ['**/CLAUDE.md'],
-        sidebarPath: './sidebars-code.ts',
-        editUrl: ({ docPath }) => {
-          const awsBranch = process.env.AWS_BRANCH
-          if (awsBranch) {
-            const cleanPath = docPath.replace(/^\//, '')
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/code/${cleanPath}`
-          }
-          const cleanPath = docPath.replace(/^\//, '')
-          const pathToFile = `${process.cwd()}/code/${cleanPath}`
-          return `cursor://file${pathToFile}`
-        },
-        remarkPlugins: [remarkMath, remarkCodeImport],
-        rehypePlugins: [rehypeKatex],
-      },
-    ],
-    [
-      '@docusaurus/plugin-content-docs',
-      {
-        id: 'design',
-        path: 'design',
-        routeBasePath: 'design',
-        exclude: ['**/CLAUDE.md'],
-        sidebarPath: './sidebars-design.ts',
+        sidebarPath: './sidebars-platform-design.ts',
         tagsBasePath: 'tags',
         onInlineTags: 'warn',
         editUrl: ({ docPath }) => {
           const awsBranch = process.env.AWS_BRANCH
           if (awsBranch) {
             const cleanPath = docPath.replace(/^\//, '')
-            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/design/${cleanPath}`
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/internal/platform/design/${cleanPath}`
           }
           const cleanPath = docPath.replace(/^\//, '')
-          const pathToFile = `${process.cwd()}/design/${cleanPath}`
+          const pathToFile = `${process.cwd()}/internal/platform/design/${cleanPath}`
+          return `cursor://file${pathToFile}`
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
+
+    // -------------------------------------------------------------------------
+    // INTERNAL: platform drafts (WIP ideas, research notes)
+    // -------------------------------------------------------------------------
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'platform-drafts',
+        path: 'internal/platform/drafts',
+        routeBasePath: 'internal/platform/drafts',
+        exclude: ['**/CLAUDE.md'],
+        sidebarPath: './sidebars-platform-drafts.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/internal/platform/drafts/${cleanPath}`
+          }
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/internal/platform/drafts/${cleanPath}`
+          return `cursor://file${pathToFile}`
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
+
+    // -------------------------------------------------------------------------
+    // INTERNAL: developer / codebase docs (auto-copied monorepo READMEs)
+    // -------------------------------------------------------------------------
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'developer',
+        path: 'internal/developer/code',
+        routeBasePath: 'internal/developer',
+        exclude: ['**/CLAUDE.md'],
+        sidebarPath: './sidebars-developer.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/internal/developer/code/${cleanPath}`
+          }
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/internal/developer/code/${cleanPath}`
+          return `cursor://file${pathToFile}`
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
+
+    // -------------------------------------------------------------------------
+    // INTERNAL: devops — sprint planning, user stories
+    // -------------------------------------------------------------------------
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'devops',
+        path: 'internal/devops',
+        routeBasePath: 'internal/devops',
+        exclude: ['**/CLAUDE.md'],
+        sidebarPath: './sidebars-devops.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/internal/devops/${cleanPath}`
+          }
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/internal/devops/${cleanPath}`
+          return `cursor://file${pathToFile}`
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
+
+    // -------------------------------------------------------------------------
+    // INTERNAL: security knowledge base (threat models, compliance, pen-tests)
+    // -------------------------------------------------------------------------
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'security-internal',
+        path: 'internal/security',
+        routeBasePath: 'internal/security',
+        exclude: ['**/CLAUDE.md'],
+        sidebarPath: './sidebars-security-internal.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/internal/security/${cleanPath}`
+          }
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/internal/security/${cleanPath}`
+          return `cursor://file${pathToFile}`
+        },
+        remarkPlugins: [remarkMath, remarkCodeImport],
+        rehypePlugins: [rehypeKatex],
+      },
+    ],
+
+    // -------------------------------------------------------------------------
+    // INTERNAL: testing — test reports
+    // -------------------------------------------------------------------------
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'testing',
+        path: 'internal/testing',
+        routeBasePath: 'internal/testing',
+        exclude: ['**/CLAUDE.md'],
+        sidebarPath: './sidebars-testing.ts',
+        editUrl: ({ docPath }) => {
+          const awsBranch = process.env.AWS_BRANCH
+          if (awsBranch) {
+            const cleanPath = docPath.replace(/^\//, '')
+            return `https://github.com/derrickfutschik/slaops-platform/tree/${awsBranch}/apps/slaops-docs/internal/testing/${cleanPath}`
+          }
+          const cleanPath = docPath.replace(/^\//, '')
+          const pathToFile = `${process.cwd()}/internal/testing/${cleanPath}`
           return `cursor://file${pathToFile}`
         },
         remarkPlugins: [remarkMath, remarkCodeImport],
@@ -236,6 +347,9 @@ const config: Config = {
         src: 'img/derrops.png',
       },
       items: [
+        // -----------------------------------------------------------------------
+        // PUBLIC (left side) — no auth required
+        // -----------------------------------------------------------------------
         {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
@@ -244,34 +358,60 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
-          sidebarId: 'notes',
-          docsPluginId: 'notes',
+          sidebarId: 'security-public',
+          docsPluginId: 'security-public',
           position: 'left',
-          label: 'Drafts',
+          label: 'Security',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
-        {
-          type: 'docSidebar',
-          sidebarId: 'code',
-          docsPluginId: 'code',
-          position: 'left',
-          label: 'Code',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'devops',
-          docsPluginId: 'devops',
-          position: 'right',
-          label: 'Devops',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'design',
-          docsPluginId: 'design',
-          position: 'right',
-          label: 'Design',
-        },
         { to: '/changelog', label: 'Changelog', position: 'left' },
+
+        // -----------------------------------------------------------------------
+        // INTERNAL (right side) — protected at Amplify layer (/internal/*)
+        // -----------------------------------------------------------------------
+        {
+          type: 'dropdown',
+          label: 'Internal',
+          position: 'right',
+          items: [
+            {
+              type: 'docSidebar',
+              sidebarId: 'platform-design',
+              docsPluginId: 'platform-design',
+              label: 'Platform — Design',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'platform-drafts',
+              docsPluginId: 'platform-drafts',
+              label: 'Platform — Drafts',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'developer',
+              docsPluginId: 'developer',
+              label: 'Developer',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'devops',
+              docsPluginId: 'devops',
+              label: 'DevOps',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'security-internal',
+              docsPluginId: 'security-internal',
+              label: 'Security KB',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'testing',
+              docsPluginId: 'testing',
+              label: 'Testing',
+            },
+          ],
+        },
         {
           href: 'https://github.com/derrickfutschik/slaops-platform',
           label: 'GitHub',
