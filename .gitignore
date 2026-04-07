@@ -50,8 +50,6 @@ Thumbs.db
 *.temp
 .cache/
 
-.claude/
-
 .turbo/cookies/*
 .turbo/cache/*
 .turbo/daemon/*

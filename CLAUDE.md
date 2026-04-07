@@ -156,6 +156,18 @@ Follow these steps for any feature, fix, or significant change:
 
 `/internal/*` is protected by Cognito at the Amplify Hosting layer. Consult `apps/slaops-docs/public/docs/glossary.md` for domain terminology (OASpec, OASpecDoc, TopOp, APIUser, etc.).
 
+### Claude Code doc tooling
+
+| Skill | When to use |
+|---|---|
+| `/idea` | Capture a raw idea or research note in `internal/platform/drafts/` |
+| `/design` | Create a formal design doc — searches drafts for related ideas first, pre-fills lifecycle frontmatter |
+| `/release` | Guided release: summarises git log → creates changelog entry → tags and pushes |
+
+Active rules during any doc session:
+- `.claude/rules/doc-tagging.md` — tag format and completeness
+- `.claude/rules/doc-workflow.md` — doc tier placement, lifecycle transitions, idea absorption, quickstart sync
+
 ## Git Workflow
 
 - Branch: `main` (primary development)

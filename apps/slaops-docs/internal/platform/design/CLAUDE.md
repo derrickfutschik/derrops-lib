@@ -96,6 +96,56 @@ tags:
 ---
 ```
 
+## Lifecycle frontmatter standard
+
+All design documents must include lifecycle-tracking fields in addition to the Docusaurus fields above. Use the `/design` skill to create new docs with this pre-filled. Update `updated_at` on every meaningful edit.
+
+```yaml
+---
+id: {filename-without-extension}
+title: {Human Readable Title}
+sidebar_label: {Short Sidebar Label — ≤30 characters}
+sidebar_position: {integer — check neighbouring files}
+created_at: {YYYY-MM-DD}
+updated_at: {YYYY-MM-DD}
+implemented_at: ~          # Set to YYYY-MM-DD when shipped; ~ means not yet implemented
+author: {GitHub handle or name}
+status: draft              # draft | proposed | accepted | implemented | superseded
+tags:
+  - {topic-tag from tags.yml}
+  - {domain-tag: platform|auth|oaspec|relay|logging|portal}
+---
+```
+
+### Field rules
+
+| Field | Required | Notes |
+|---|---|---|
+| `id` | Yes | Filename without `.md` extension, lowercase-hyphenated |
+| `title` | Yes | Human-readable full title |
+| `sidebar_label` | Yes | Short label for sidebar (≤30 characters) |
+| `sidebar_position` | Yes | Integer; check adjacent files to avoid ordering collisions |
+| `created_at` | Yes | ISO date `YYYY-MM-DD` — set once, never change |
+| `updated_at` | Yes | ISO date `YYYY-MM-DD` — update on every meaningful edit |
+| `implemented_at` | Yes | ISO date `YYYY-MM-DD` or `~` (YAML null) if not yet shipped |
+| `author` | Yes | GitHub handle or name of the primary author |
+| `status` | Yes | See lifecycle below |
+| `tags` | Yes | At least one topic tag + exactly one domain tag from `tags.yml` |
+
+### Status lifecycle
+
+```
+draft → proposed → accepted → implemented → superseded
+```
+
+| Status | Meaning |
+|---|---|
+| `draft` | Being actively written, not ready for review |
+| `proposed` | Ready for design review |
+| `accepted` | Design approved, implementation in progress |
+| `implemented` | Feature shipped — also set `implemented_at` and add the `implemented` tag |
+| `superseded` | Replaced by a newer design — link to the successor doc in the body |
+
 ## `_category_.json` format
 
 Every subdirectory needs a `_category_.json`. Follow this pattern:
