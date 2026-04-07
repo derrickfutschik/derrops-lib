@@ -26,7 +26,12 @@
       "Bash(npm pack:*)",
       "Read(//private/tmp/**)",
       "Bash(npm install:*)",
-      "Bash(node -e \"const c = require\\('./node_modules/@cedar-policy/cedar-wasm/nodejs/cedar_wasm.js'\\); console.log\\(Object.keys\\(c\\).filter\\(k => typeof c[k] === 'function'\\).join\\('\\\\n'\\)\\)\")"
+      "Bash(node -e \"const c = require\\('./node_modules/@cedar-policy/cedar-wasm/nodejs/cedar_wasm.js'\\); console.log\\(Object.keys\\(c\\).filter\\(k => typeof c[k] === 'function'\\).join\\('\\\\n'\\)\\)\")",
+      "Skill(update-config)",
+      "Bash(mkdir -p design idea release)",
+      "Bash(mv design.md design/SKILL.md)",
+      "Bash(mv idea.md idea/SKILL.md)",
+      "Bash(mv release.md release/SKILL.md)"
     ]
   }
 }
