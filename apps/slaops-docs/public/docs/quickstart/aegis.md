@@ -109,7 +109,7 @@ permit (
 
 Cedar uses **default deny** — unless a `permit` policy explicitly matches a request, the session is denied. Start with permissive policies and tighten them as needed.
 
-See [Aegis Cedar Policy design](/design/cloud-relay/aegis-cedar-policy) for the full entity model and action hierarchy.
+See [Aegis Cedar Policy design](/internal/platform/design/cloud-relay/aegis-cedar-policy) for the full entity model and action hierarchy.
 
 ---
 
@@ -306,5 +306,5 @@ Aegis resolves the secret at session grant time and embeds it in the relay job. 
 
 - **Index your OpenAPI specs** → [OASpec Bucket](/docs/oaspec-bucket)
 - **Understand the full security model** → [Architecture Planes](/docs/archiecture-planes)
-- **Advanced policy patterns** → [Aegis Cedar Policy design](/design/cloud-relay/aegis-cedar-policy)
+- **Advanced policy patterns** → [Aegis Cedar Policy design](/internal/platform/design/cloud-relay/aegis-cedar-policy)
 - **Bring your own encryption key** → [BYOK](/docs/byok)

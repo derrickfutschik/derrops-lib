@@ -44,7 +44,7 @@ Standards and templates for proposing new platform components — how to write a
 
 ## Tags
 
-Documents are tagged for cross-cutting navigation. Browse by tag at [/design/tags](/design/tags).
+Documents are tagged for cross-cutting navigation. Browse by tag at [/internal/platform/design/tags](/internal/platform/design/tags).
 
 | Tag | Description |
 |---|---|
