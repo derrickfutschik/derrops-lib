@@ -119,7 +119,7 @@ graph TD
         IP[Cognito Identity Pool<br/>slaops_relay_identity_pool<br/>serverSideTokenCheck: true]
         PT[Principal Tag Mapping<br/>tenantId ← tenantId claim<br/>userId ← sub]
         AUTH_ROLE[IAM Role<br/>SlaOpsIdentityPoolAuthRole<br/>sqs:ReceiveMessage / DeleteMessage<br/>on slaops-{tenantId}-local-{userId}-*.fifo]
-        PUB_ROLE[IAM Role<br/>SlaOpsSqsPublishRole<br/>sqs:SendMessage<br/>on slaops-*-local-*.fifo<br/>Used by slaops-cloud Lambda]
+        PUB_ROLE[IAM Role<br/>SlaOpsSqsPublishRole<br/>CreateQueue + DeleteQueue + SendMessage<br/>on slaops-*-local-*.fifo (same account)<br/>SendMessage on *.fifo (cross-account, customer queues)<br/>Used by slaops-cloud Lambda]
     end
 
     subgraph RDS["RDS (slaops-cloud)"]

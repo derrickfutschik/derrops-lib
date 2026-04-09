@@ -154,13 +154,39 @@ export class AuthStack extends Stack {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     })
 
-    // Platform-owned queues: publish to any slaops relay queue in this account
+    // Platform-owned queues: full lifecycle management + publish for queues in this account.
+    // CreateQueue and DeleteQueue are called by relay-queue.service.ts at relay
+    // registration and teardown respectively.
     this.sqsPublishRole.addToPolicy(
       new iam.PolicyStatement({
-        sid: 'PublishToPlatformRelayQueues',
+        sid: 'ManageAndPublishToPlatformRelayQueues',
         effect: iam.Effect.ALLOW,
-        actions: ['sqs:SendMessage', 'sqs:GetQueueAttributes'],
+        actions: [
+          'sqs:CreateQueue',
+          'sqs:DeleteQueue',
+          'sqs:SendMessage',
+          'sqs:GetQueueAttributes',
+        ],
         resources: [`arn:aws:sqs:*:${this.account}:slaops-*-local-*.fifo`],
+      }),
+    )
+
+    // Relay-owned queues (cross-account): slaops-cloud publishes to a customer-provisioned
+    // FIFO queue in their AWS account. The customer's queue resource policy authorises this
+    // role via sqs:SendMessage; this IAM statement is the sender-side permission required for
+    // cross-account delivery. No CreateQueue/DeleteQueue — slaops-cloud never manages
+    // customer-owned queues.
+    this.sqsPublishRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'PublishToRelayOwnedQueues',
+        effect: iam.Effect.ALLOW,
+        actions: ['sqs:SendMessage'],
+        resources: ['arn:aws:sqs:*:*:*.fifo'],
+        conditions: {
+          StringNotEquals: {
+            'aws:ResourceAccount': this.account,
+          },
+        },
       }),
     )
 
