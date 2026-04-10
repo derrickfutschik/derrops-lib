@@ -11,11 +11,33 @@ interface WizardSqsSettingsProps {
   onOwnershipChange: (o: SqsOwnership) => void
   customQueueUrl: string
   onCustomQueueUrlChange: (url: string) => void
-  customRegion: string
-  onCustomRegionChange: (region: string) => void
 }
 
+interface ParsedQueueUrl {
+  region: string
+  accountId: string
+  queueName: string
+}
+
+const QUEUE_URL_RE = /^https:\/\/sqs\.([\w-]+)\.amazonaws\.com\/(\d{12})\/([^/]+)$/
 const SLAOPS_ACCOUNT_ID = '123456789012' // populated at runtime in production
+
+export function parseQueueUrl(url: string): ParsedQueueUrl | null {
+  const m = url.trim().match(QUEUE_URL_RE)
+  if (!m) return null
+  return { region: m[1], accountId: m[2], queueName: m[3] }
+}
+
+export function isValidByoQueueUrl(url: string): boolean {
+  const parsed = parseQueueUrl(url)
+  if (!parsed) return false
+  if (!parsed.queueName.endsWith('.fifo')) return false
+  return parsed.queueName === parsed.queueName.toLowerCase()
+}
+
+function queueUrlToArn(parsed: ParsedQueueUrl): string {
+  return `arn:aws:sqs:${parsed.region}:${parsed.accountId}:${parsed.queueName}`
+}
 
 function policySnippet(queueArn: string) {
   return JSON.stringify(
@@ -24,20 +46,11 @@ function policySnippet(queueArn: string) {
       Effect: 'Allow',
       Principal: { AWS: `arn:aws:iam::${SLAOPS_ACCOUNT_ID}:role/SLAOpsPlatformRole` },
       Action: 'sqs:SendMessage',
-      Resource: queueArn || '<your-queue-arn>',
+      Resource: queueArn,
     },
     null,
     2,
   )
-}
-
-function queueUrlToArn(url: string, region: string): string {
-  // https://sqs.<region>.amazonaws.com/<account>/<name>
-  const parts = url.replace('https://sqs.', '').split('/')
-  if (parts.length < 3) return '<your-queue-arn>'
-  const account = parts[1]
-  const name = parts[2]
-  return `arn:aws:sqs:${region}:${account}:${name}`
 }
 
 export function WizardSqsSettings({
@@ -45,14 +58,15 @@ export function WizardSqsSettings({
   onOwnershipChange,
   customQueueUrl,
   onCustomQueueUrlChange,
-  customRegion,
-  onCustomRegionChange,
 }: WizardSqsSettingsProps) {
   const [copied, setCopied] = useState(false)
 
-  const queueArn = customQueueUrl && customRegion
-    ? queueUrlToArn(customQueueUrl, customRegion)
-    : '<your-queue-arn>'
+  const parsed = customQueueUrl.trim() ? parseQueueUrl(customQueueUrl) : null
+  const urlEntered = customQueueUrl.trim().length > 0
+  const urlInvalid = urlEntered && !parsed
+  const nameNotLowercase = parsed && parsed.queueName !== parsed.queueName.toLowerCase()
+  const notFifo = parsed && !parsed.queueName.endsWith('.fifo')
+  const queueArn = parsed ? queueUrlToArn(parsed) : '<your-queue-arn>'
 
   const handleCopyPolicy = () => {
     navigator.clipboard.writeText(policySnippet(queueArn))
@@ -125,25 +139,42 @@ export function WizardSqsSettings({
               placeholder="https://sqs.ap-southeast-2.amazonaws.com/123456789012/my-relay.fifo"
               value={customQueueUrl}
               onChange={e => onCustomQueueUrlChange(e.target.value)}
+              className={urlInvalid ? 'border-destructive focus-visible:ring-destructive' : ''}
             />
-            <p className="text-xs text-muted-foreground">Must be an SQS FIFO queue (ending in .fifo)</p>
+            {urlInvalid && (
+              <p className="text-xs text-destructive">
+                Invalid URL — expected https://sqs.&#123;region&#125;.amazonaws.com/&#123;account-id&#125;/&#123;name.fifo&#125;
+              </p>
+            )}
+            {notFifo && (
+              <p className="text-xs text-destructive">Queue name must end in .fifo</p>
+            )}
+            {nameNotLowercase && (
+              <p className="text-xs text-destructive">Queue name must be all lowercase</p>
+            )}
+            {parsed && !notFifo && !nameNotLowercase && (
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-1 font-mono">
+                <div className="flex gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0">Region</span>
+                  <span>{parsed.region}</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0">Account ID</span>
+                  <span>{parsed.accountId}</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0">Queue</span>
+                  <span>{parsed.queueName}</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="queue-region">Queue Region</Label>
-            <Input
-              id="queue-region"
-              placeholder="ap-southeast-2"
-              value={customRegion}
-              onChange={e => onCustomRegionChange(e.target.value)}
-            />
-          </div>
-
-          {customQueueUrl && (
+          {parsed && !notFifo && !nameNotLowercase && (
             <div className="space-y-2">
               <p className="text-sm font-medium">Add to your queue resource policy:</p>
               <div className="relative rounded-md bg-muted/50 border p-3">
-                <pre className="text-xs font-mono text-muted-foreground overflow-auto">
+                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all">
                   {policySnippet(queueArn)}
                 </pre>
                 <Button

@@ -13,7 +13,7 @@ import { WizardAegis, type AegisMode, type NewAegisForm } from './WizardAegis'
 import { WizardConnectivity, type ConnectivityMode } from './WizardConnectivity'
 import { WizardHttpSettings } from './WizardHttpSettings'
 import { WizardRelayDetails, type RelayType } from './WizardRelayDetails'
-import { WizardSqsSettings, type SqsOwnership } from './WizardSqsSettings'
+import { WizardSqsSettings, type SqsOwnership, isValidByoQueueUrl } from './WizardSqsSettings'
 import { WizardSuccess } from './WizardSuccess'
 
 type Step = 'connectivity' | 'http' | 'sqs' | 'details' | 'aegis' | 'review' | 'success'
@@ -53,7 +53,6 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
   const [url, setUrl] = useState('')
   const [sqsOwnership, setSqsOwnership] = useState<SqsOwnership>('slaops')
   const [customQueueUrl, setCustomQueueUrl] = useState('')
-  const [customRegion, setCustomRegion] = useState('')
   const [name, setName] = useState('')
   const [relayType, setRelayType] = useState<RelayType>('self-hosted')
   const [aegisMode, setAegisMode] = useState<AegisMode>('skip')
@@ -70,7 +69,7 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
   const canAdvance = (): boolean => {
     if (currentStep === 'connectivity') return connectivity !== null
     if (currentStep === 'http') return url.trim().length > 0
-    if (currentStep === 'sqs') return sqsOwnership === 'slaops' || (customQueueUrl.trim().endsWith('.fifo') && customRegion.trim().length > 0)
+    if (currentStep === 'sqs') return sqsOwnership === 'slaops' || isValidByoQueueUrl(customQueueUrl)
     if (currentStep === 'details') return name.trim().length > 0 && !localWithHttp
     if (currentStep === 'aegis') {
       if (aegisMode === 'existing') return selectedAegisId !== null
@@ -132,7 +131,6 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
       setUrl('')
       setSqsOwnership('slaops')
       setCustomQueueUrl('')
-      setCustomRegion('')
       setName('')
       setRelayType('self-hosted')
       setAegisMode('skip')
@@ -152,7 +150,7 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{STEP_TITLES[currentStep]}</DialogTitle>
           {!isSuccess && (
@@ -182,8 +180,6 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
               onOwnershipChange={setSqsOwnership}
               customQueueUrl={customQueueUrl}
               onCustomQueueUrlChange={setCustomQueueUrl}
-              customRegion={customRegion}
-              onCustomRegionChange={setCustomRegion}
             />
           )}
           {currentStep === 'details' && (
