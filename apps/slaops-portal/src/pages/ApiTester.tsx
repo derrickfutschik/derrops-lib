@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ServiceApi } from '@/client/slaops-cloud'
 import {
@@ -49,6 +49,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useRelayJob } from '@/hooks/useRelayJob'
+import { useRelaySelector } from '@/hooks/useRelaySelector'
+import { RelaySelector } from '@/components/api-tester/RelaySelector'
 import yaml from 'js-yaml'
 import {
   AlertCircle,
@@ -258,10 +261,15 @@ const ApiTester = () => {
     headers: Record<string, string>
     body: string
     duration: number
+    relayConnectionName?: string
+    relayDeliveryMode?: string
   } | null>(null)
   const setRightPanelTab = (tab: 'match' | 'response' | 'preview') => dispatch(setRightPanelTabAction(tab))
   const toggleSection = (section: string) => dispatch(toggleSectionAction(section))
   const setActiveTab = (tab: string) => dispatch(setActiveTabAction(tab))
+
+  const relaySelector = useRelaySelector()
+  const relayJob = useRelayJob()
 
   // Manual selection state
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
@@ -336,6 +344,34 @@ const ApiTester = () => {
   const openAPIServerUrlRef = useRef(openAPIServerUrl)
   openAPIServerUrlRef.current = openAPIServerUrl
   const urlInputFocusedRef = useRef(false)
+
+  // Map relay job completion into requestResponse
+  useEffect(() => {
+    if (relayJob.status === 'completed' && relayJob.result) {
+      const r = relayJob.result
+      setRequestResponse({
+        status: r.statusCode,
+        statusText: r.statusText,
+        headers: r.headers,
+        body: r.body,
+        duration: r.timingMs,
+        relayConnectionName: relayJob.connectionName ?? undefined,
+        relayDeliveryMode: relayJob.deliveryMode ?? undefined,
+      })
+      setIsSendingRequest(false)
+    } else if (relayJob.status === 'failed' || relayJob.status === 'timed_out') {
+      setRequestResponse({
+        status: 0,
+        statusText: relayJob.status === 'timed_out' ? 'Relay Timeout' : 'Relay Error',
+        headers: {},
+        body: relayJob.error ?? 'An error occurred',
+        duration: 0,
+        relayConnectionName: relayJob.connectionName ?? undefined,
+        relayDeliveryMode: relayJob.deliveryMode ?? undefined,
+      })
+      setIsSendingRequest(false)
+    }
+  }, [relayJob.status, relayJob.result, relayJob.error, relayJob.connectionName, relayJob.deliveryMode])
 
   // URL history (similar to JMESPath history)
   const [urlHistory, setUrlHistory] = useState<string[]>(() => {

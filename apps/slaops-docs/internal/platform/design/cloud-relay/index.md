@@ -22,6 +22,7 @@ The Cloud Relay is a customer-deployed HTTP proxy that sits between the SLAOps p
 | [Security](./cloud-relay-security) | Authentication methods between Relay and SLAOps control plane |
 | [Portal UI — Connection Management](./portal-connections-ui) | UI design brief for managing relay and Aegis connections in the portal |
 | [Aegis — Cedar Policy Authorization](./aegis-cedar-policy) | Cedar Policy engine integration: entity model, schema, example policies, and session grant flow |
+| [API Tester — Relay Execution](./api-tester-relay-execution) | End-to-end job execution flow: portal → slaops-cloud → SQS → relay → result |
 
 ## Runtime Components
 
