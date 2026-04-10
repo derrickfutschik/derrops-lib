@@ -39,14 +39,11 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.
          * @summary Register a new Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {CreateAegisInstanceDto} createAegisInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerCreate: async (xTenantId: string, createAegisInstanceDto: CreateAegisInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('aegisInstanceControllerCreate', 'xTenantId', xTenantId)
+        aegisInstanceControllerCreate: async (createAegisInstanceDto: CreateAegisInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'createAegisInstanceDto' is not null or undefined
             assertParamExists('aegisInstanceControllerCreate', 'createAegisInstanceDto', createAegisInstanceDto)
             const localVarPath = `/cloud-relay/aegis-instance`;
@@ -64,9 +61,6 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
             localVarHeaderParameter['Content-Type'] = 'application/json';
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -80,13 +74,10 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary List all Aegis instances for the tenant
-         * @param {string} xTenantId Tenant UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerFindAll: async (xTenantId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('aegisInstanceControllerFindAll', 'xTenantId', xTenantId)
+        aegisInstanceControllerFindAll: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/cloud-relay/aegis-instance`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -101,9 +92,6 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
 
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -116,14 +104,11 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Get an Aegis instance by ID
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerFindOne: async (xTenantId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('aegisInstanceControllerFindOne', 'xTenantId', xTenantId)
+        aegisInstanceControllerFindOne: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('aegisInstanceControllerFindOne', 'id', id)
             const localVarPath = `/cloud-relay/aegis-instance/{id}`
@@ -141,9 +126,6 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
 
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -156,14 +138,11 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Trigger a health check on the Aegis instance (validates JWKS endpoint)
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerHealthCheck: async (xTenantId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('aegisInstanceControllerHealthCheck', 'xTenantId', xTenantId)
+        aegisInstanceControllerHealthCheck: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('aegisInstanceControllerHealthCheck', 'id', id)
             const localVarPath = `/cloud-relay/aegis-instance/{id}/health-check`
@@ -181,9 +160,6 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
 
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -196,14 +172,11 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Delete an Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerRemove: async (xTenantId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('aegisInstanceControllerRemove', 'xTenantId', xTenantId)
+        aegisInstanceControllerRemove: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('aegisInstanceControllerRemove', 'id', id)
             const localVarPath = `/cloud-relay/aegis-instance/{id}`
@@ -220,9 +193,6 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
             const localVarQueryParameter = {} as any;
 
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -235,15 +205,12 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
         /**
          * 
          * @summary Update an Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {UpdateAegisInstanceDto} updateAegisInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerUpdate: async (xTenantId: string, id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'xTenantId' is not null or undefined
-            assertParamExists('aegisInstanceControllerUpdate', 'xTenantId', xTenantId)
+        aegisInstanceControllerUpdate: async (id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
             assertParamExists('aegisInstanceControllerUpdate', 'id', id)
             // verify required parameter 'updateAegisInstanceDto' is not null or undefined
@@ -264,9 +231,6 @@ export const AegisInstanceApiAxiosParamCreator = function (configuration?: Confi
             localVarHeaderParameter['Content-Type'] = 'application/json';
             localVarHeaderParameter['Accept'] = 'application/json';
 
-            if (xTenantId != null) {
-                localVarHeaderParameter['x-tenant-id'] = String(xTenantId);
-            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -324,13 +288,12 @@ export const AegisInstanceApiFp = function(configuration?: Configuration) {
         /**
          * Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.
          * @summary Register a new Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {CreateAegisInstanceDto} createAegisInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async aegisInstanceControllerCreate(xTenantId: string, createAegisInstanceDto: CreateAegisInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisCreateResponseDto>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerCreate(xTenantId, createAegisInstanceDto, options);
+        async aegisInstanceControllerCreate(createAegisInstanceDto: CreateAegisInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisCreateResponseDto>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerCreate(createAegisInstanceDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AegisInstanceApi.aegisInstanceControllerCreate']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -338,12 +301,11 @@ export const AegisInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary List all Aegis instances for the tenant
-         * @param {string} xTenantId Tenant UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async aegisInstanceControllerFindAll(xTenantId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<AegisInstance>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerFindAll(xTenantId, options);
+        async aegisInstanceControllerFindAll(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<AegisInstance>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerFindAll(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AegisInstanceApi.aegisInstanceControllerFindAll']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -351,13 +313,12 @@ export const AegisInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get an Aegis instance by ID
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async aegisInstanceControllerFindOne(xTenantId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerFindOne(xTenantId, id, options);
+        async aegisInstanceControllerFindOne(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerFindOne(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AegisInstanceApi.aegisInstanceControllerFindOne']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -365,13 +326,12 @@ export const AegisInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Trigger a health check on the Aegis instance (validates JWKS endpoint)
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async aegisInstanceControllerHealthCheck(xTenantId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerHealthCheck(xTenantId, id, options);
+        async aegisInstanceControllerHealthCheck(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerHealthCheck(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AegisInstanceApi.aegisInstanceControllerHealthCheck']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -379,13 +339,12 @@ export const AegisInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Delete an Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async aegisInstanceControllerRemove(xTenantId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerRemove(xTenantId, id, options);
+        async aegisInstanceControllerRemove(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerRemove(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AegisInstanceApi.aegisInstanceControllerRemove']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -393,14 +352,13 @@ export const AegisInstanceApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Update an Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {UpdateAegisInstanceDto} updateAegisInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async aegisInstanceControllerUpdate(xTenantId: string, id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisInstance>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerUpdate(xTenantId, id, updateAegisInstanceDto, options);
+        async aegisInstanceControllerUpdate(id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AegisInstance>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.aegisInstanceControllerUpdate(id, updateAegisInstanceDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AegisInstanceApi.aegisInstanceControllerUpdate']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -430,68 +388,62 @@ export const AegisInstanceApiFactory = function (configuration?: Configuration, 
         /**
          * Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.
          * @summary Register a new Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {CreateAegisInstanceDto} createAegisInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerCreate(xTenantId: string, createAegisInstanceDto: CreateAegisInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<AegisCreateResponseDto> {
-            return localVarFp.aegisInstanceControllerCreate(xTenantId, createAegisInstanceDto, options).then((request) => request(axios, basePath));
+        aegisInstanceControllerCreate(createAegisInstanceDto: CreateAegisInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<AegisCreateResponseDto> {
+            return localVarFp.aegisInstanceControllerCreate(createAegisInstanceDto, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary List all Aegis instances for the tenant
-         * @param {string} xTenantId Tenant UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerFindAll(xTenantId: string, options?: RawAxiosRequestConfig): AxiosPromise<Array<AegisInstance>> {
-            return localVarFp.aegisInstanceControllerFindAll(xTenantId, options).then((request) => request(axios, basePath));
+        aegisInstanceControllerFindAll(options?: RawAxiosRequestConfig): AxiosPromise<Array<AegisInstance>> {
+            return localVarFp.aegisInstanceControllerFindAll(options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Get an Aegis instance by ID
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerFindOne(xTenantId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<AegisInstance> {
-            return localVarFp.aegisInstanceControllerFindOne(xTenantId, id, options).then((request) => request(axios, basePath));
+        aegisInstanceControllerFindOne(id: string, options?: RawAxiosRequestConfig): AxiosPromise<AegisInstance> {
+            return localVarFp.aegisInstanceControllerFindOne(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Trigger a health check on the Aegis instance (validates JWKS endpoint)
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerHealthCheck(xTenantId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<AegisInstance> {
-            return localVarFp.aegisInstanceControllerHealthCheck(xTenantId, id, options).then((request) => request(axios, basePath));
+        aegisInstanceControllerHealthCheck(id: string, options?: RawAxiosRequestConfig): AxiosPromise<AegisInstance> {
+            return localVarFp.aegisInstanceControllerHealthCheck(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Delete an Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerRemove(xTenantId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.aegisInstanceControllerRemove(xTenantId, id, options).then((request) => request(axios, basePath));
+        aegisInstanceControllerRemove(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.aegisInstanceControllerRemove(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Update an Aegis instance
-         * @param {string} xTenantId Tenant UUID
          * @param {string} id AegisInstance UUID
          * @param {UpdateAegisInstanceDto} updateAegisInstanceDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        aegisInstanceControllerUpdate(xTenantId: string, id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<AegisInstance> {
-            return localVarFp.aegisInstanceControllerUpdate(xTenantId, id, updateAegisInstanceDto, options).then((request) => request(axios, basePath));
+        aegisInstanceControllerUpdate(id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options?: RawAxiosRequestConfig): AxiosPromise<AegisInstance> {
+            return localVarFp.aegisInstanceControllerUpdate(id, updateAegisInstanceDto, options).then((request) => request(axios, basePath));
         },
         /**
          * Aegis posts its one-time registration token and JWKS URL. On success the instance transitions from `pending` to `active` and the token is invalidated.
@@ -513,73 +465,67 @@ export class AegisInstanceApi extends BaseAPI {
     /**
      * Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.
      * @summary Register a new Aegis instance
-     * @param {string} xTenantId Tenant UUID
      * @param {CreateAegisInstanceDto} createAegisInstanceDto 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public aegisInstanceControllerCreate(xTenantId: string, createAegisInstanceDto: CreateAegisInstanceDto, options?: RawAxiosRequestConfig) {
-        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerCreate(xTenantId, createAegisInstanceDto, options).then((request) => request(this.axios, this.basePath));
+    public aegisInstanceControllerCreate(createAegisInstanceDto: CreateAegisInstanceDto, options?: RawAxiosRequestConfig) {
+        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerCreate(createAegisInstanceDto, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary List all Aegis instances for the tenant
-     * @param {string} xTenantId Tenant UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public aegisInstanceControllerFindAll(xTenantId: string, options?: RawAxiosRequestConfig) {
-        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerFindAll(xTenantId, options).then((request) => request(this.axios, this.basePath));
+    public aegisInstanceControllerFindAll(options?: RawAxiosRequestConfig) {
+        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerFindAll(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Get an Aegis instance by ID
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id AegisInstance UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public aegisInstanceControllerFindOne(xTenantId: string, id: string, options?: RawAxiosRequestConfig) {
-        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerFindOne(xTenantId, id, options).then((request) => request(this.axios, this.basePath));
+    public aegisInstanceControllerFindOne(id: string, options?: RawAxiosRequestConfig) {
+        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerFindOne(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Trigger a health check on the Aegis instance (validates JWKS endpoint)
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id AegisInstance UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public aegisInstanceControllerHealthCheck(xTenantId: string, id: string, options?: RawAxiosRequestConfig) {
-        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerHealthCheck(xTenantId, id, options).then((request) => request(this.axios, this.basePath));
+    public aegisInstanceControllerHealthCheck(id: string, options?: RawAxiosRequestConfig) {
+        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerHealthCheck(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Delete an Aegis instance
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id AegisInstance UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public aegisInstanceControllerRemove(xTenantId: string, id: string, options?: RawAxiosRequestConfig) {
-        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerRemove(xTenantId, id, options).then((request) => request(this.axios, this.basePath));
+    public aegisInstanceControllerRemove(id: string, options?: RawAxiosRequestConfig) {
+        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerRemove(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Update an Aegis instance
-     * @param {string} xTenantId Tenant UUID
      * @param {string} id AegisInstance UUID
      * @param {UpdateAegisInstanceDto} updateAegisInstanceDto 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public aegisInstanceControllerUpdate(xTenantId: string, id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options?: RawAxiosRequestConfig) {
-        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerUpdate(xTenantId, id, updateAegisInstanceDto, options).then((request) => request(this.axios, this.basePath));
+    public aegisInstanceControllerUpdate(id: string, updateAegisInstanceDto: UpdateAegisInstanceDto, options?: RawAxiosRequestConfig) {
+        return AegisInstanceApiFp(this.configuration).aegisInstanceControllerUpdate(id, updateAegisInstanceDto, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

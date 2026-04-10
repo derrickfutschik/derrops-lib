@@ -11,6 +11,7 @@ applications:
     env:
       variables:
         NODE_OPTIONS: "--max-old-space-size=12000"
+        VITE_API_BASE_URL: "https://devserver.dersza.com"
     frontend:
       buildPath: /
       phases:
@@ -19,6 +20,8 @@ applications:
             - export NODE_OPTIONS="--max-old-space-size=12000"
             - corepack enable
             - corepack prepare pnpm@9.0.0 --activate
+            - sudo yum install -y java-11-amazon-corretto-headless
+            - java -version
             - chmod +x apps/slaops-portal/amplify-prebuild.sh
             - ./apps/slaops-portal/amplify-prebuild.sh
         build:

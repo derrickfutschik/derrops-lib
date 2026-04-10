@@ -27,11 +27,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new RelayInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let createRelayInstanceDto: CreateRelayInstanceDto; //
 
 const { status, data } = await apiInstance.relayInstanceControllerCreate(
-    xTenantId,
     createRelayInstanceDto
 );
 ```
@@ -41,7 +39,6 @@ const { status, data } = await apiInstance.relayInstanceControllerCreate(
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
 | **createRelayInstanceDto** | **CreateRelayInstanceDto**|  | |
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 
 
 ### Return type
@@ -80,18 +77,11 @@ import {
 const configuration = new Configuration();
 const apiInstance = new RelayInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
-
-const { status, data } = await apiInstance.relayInstanceControllerFindAll(
-    xTenantId
-);
+const { status, data } = await apiInstance.relayInstanceControllerFindAll();
 ```
 
 ### Parameters
-
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
+This endpoint does not have any parameters.
 
 
 ### Return type
@@ -130,11 +120,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new RelayInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //RelayInstance UUID (default to undefined)
 
 const { status, data } = await apiInstance.relayInstanceControllerFindOne(
-    xTenantId,
     id
 );
 ```
@@ -143,7 +131,6 @@ const { status, data } = await apiInstance.relayInstanceControllerFindOne(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | RelayInstance UUID | defaults to undefined|
 
 
@@ -184,11 +171,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new RelayInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //RelayInstance UUID (default to undefined)
 
 const { status, data } = await apiInstance.relayInstanceControllerHealthCheck(
-    xTenantId,
     id
 );
 ```
@@ -197,7 +182,6 @@ const { status, data } = await apiInstance.relayInstanceControllerHealthCheck(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | RelayInstance UUID | defaults to undefined|
 
 
@@ -238,11 +222,9 @@ import {
 const configuration = new Configuration();
 const apiInstance = new RelayInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //RelayInstance UUID (default to undefined)
 
 const { status, data } = await apiInstance.relayInstanceControllerRemove(
-    xTenantId,
     id
 );
 ```
@@ -251,7 +233,6 @@ const { status, data } = await apiInstance.relayInstanceControllerRemove(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | RelayInstance UUID | defaults to undefined|
 
 
@@ -293,12 +274,10 @@ import {
 const configuration = new Configuration();
 const apiInstance = new RelayInstanceApi(configuration);
 
-let xTenantId: string; //Tenant UUID (default to undefined)
 let id: string; //RelayInstance UUID (default to undefined)
 let updateRelayInstanceDto: UpdateRelayInstanceDto; //
 
 const { status, data } = await apiInstance.relayInstanceControllerUpdate(
-    xTenantId,
     id,
     updateRelayInstanceDto
 );
@@ -309,7 +288,6 @@ const { status, data } = await apiInstance.relayInstanceControllerUpdate(
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
 | **updateRelayInstanceDto** | **UpdateRelayInstanceDto**|  | |
-| **xTenantId** | [**string**] | Tenant UUID | defaults to undefined|
 | **id** | [**string**] | RelayInstance UUID | defaults to undefined|
 
 

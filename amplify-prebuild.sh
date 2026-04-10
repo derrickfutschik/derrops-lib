@@ -34,6 +34,9 @@ pnpm install --frozen-lockfile
 echo "Installing Turbo globally for caching benefits..."
 npm install -g turbo@2.6.1
 
+echo "Verifying Java availability (required by openapi-generator-cli for generate:client)..."
+java -version || { echo "ERROR: Java not found. Ensure Java is installed before running this script."; exit 1; }
+
 echo "Building shared packages with Turbo (with caching)..."
 pnpm exec turbo run build --filter=@slaops/private --filter=@slaops/public
 
