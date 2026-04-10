@@ -138,6 +138,9 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'app.version': input.APP_VERSION ?? '0.0.1',
     'app.debug': input.APP_DEBUG ?? false,
 
+    /** When true, error responses include the full stack trace and original error message instead of the generic "Internal server error" message. Enabled automatically when APP_DEBUG is set in non-production environments. */
+    'app.error.verbose': !isProd && Boolean(input.APP_DEBUG),
+
     // Open API properties
     'openapi.version': input.APP_VERSION,
     'openapi.title': `${input.APP_NAME} Cloud API`,

@@ -45,14 +45,15 @@ export class CloudRelayConnection {
   type: 'managed' | 'self-hosted' | 'local-dev'
 
   @ApiProperty({
-    enum: ['direct', 'relay-queue', 'platform-queue'],
+    enum: ['direct', 'relay-queue', 'platform-queue', 'hybrid'],
     description:
       'direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\n' +
       'relay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\n' +
-      'platform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.',
+      'platform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\n' +
+      'hybrid         — platform tries direct HTTP first; falls back to platform-queue on failure. Requires both url and sqs_queue_url.',
   })
   @Column({ type: 'varchar', length: 20, default: 'direct' })
-  delivery_mode: 'direct' | 'relay-queue' | 'platform-queue'
+  delivery_mode: 'direct' | 'relay-queue' | 'platform-queue' | 'hybrid'
 
   @ApiPropertyOptional({
     enum: ['platform', 'relay'],
@@ -80,6 +81,29 @@ export class CloudRelayConnection {
   })
   @Column({ type: 'varchar', length: 50, nullable: true })
   sqs_region: string | null
+
+  @ApiPropertyOptional({
+    description: 'UUID of the linked AegisInstance. Optional — null means no Aegis for this connection.',
+    example: '9a1b2c3d-4e5f-6789-abcd-ef0123456789',
+  })
+  @Column({ type: 'uuid', nullable: true })
+  aegis_id: string | null
+
+  @ApiPropertyOptional({
+    description:
+      'ARN of the IAM user provisioned for relay SQS queue access (sqs_queue_mode=platform only). ' +
+      'Null until IAM provisioning is implemented.',
+  })
+  @Column({ type: 'text', nullable: true })
+  iam_user_arn: string | null
+
+  @ApiPropertyOptional({
+    description:
+      'Access key ID of the IAM credential created for the relay. ' +
+      'Stored for operator reference only — the secret access key is never stored.',
+  })
+  @Column({ type: 'text', nullable: true })
+  iam_access_key_id: string | null
 
   @ApiProperty({
     description:

@@ -23,9 +23,9 @@ export class CloudRelayJob {
   @Column({ type: 'uuid' })
   user_id: string
 
-  @ApiProperty({ enum: ['direct', 'relay-queue', 'platform-queue'] })
+  @ApiProperty({ enum: ['direct', 'relay-queue', 'platform-queue', 'hybrid'] })
   @Column({ type: 'varchar', length: 20 })
-  delivery_mode: 'direct' | 'relay-queue' | 'platform-queue'
+  delivery_mode: 'direct' | 'relay-queue' | 'platform-queue' | 'hybrid'
 
   @ApiProperty({ enum: ['pending', 'claimed', 'completed', 'failed'] })
   @Column({ type: 'varchar', length: 20, default: 'pending' })

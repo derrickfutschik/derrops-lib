@@ -43,7 +43,7 @@ export const ConfigSchema = z.object({
   DYNAMODB_ENDPOINT: z.string().min(1),
   AWS_S3_ENDPOINT: z.string().min(1).optional(),
 
-  APP_DEBUG: z.boolean().optional(),
+  APP_DEBUG: z.coerce.boolean().optional(),
 })
 
 export type AppConfigEnv = z.infer<typeof ConfigSchema>

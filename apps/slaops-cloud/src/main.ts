@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { config } from '@slaops/config'
 import { AppModule } from './app.module'
+import { VerboseExceptionFilter } from './common/verbose-exception.filter'
 import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.command'
 
 async function bootstrap() {
@@ -27,6 +28,9 @@ async function bootstrap() {
     res.setHeader('Access-Control-Allow-Private-Network', 'true')
     next()
   })
+
+  // Global exception filter — shows full stack traces when app.error.verbose is enabled
+  app.useGlobalFilters(new VerboseExceptionFilter())
 
   // Global validation pipe
   app.useGlobalPipes(

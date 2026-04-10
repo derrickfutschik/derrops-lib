@@ -8,6 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { randomUUID } from 'crypto'
 import { Repository } from 'typeorm'
 import { CreateCloudRelayConnectionDto } from './dto/create-cloud-relay-connection.dto'
+import { CreateCloudRelayConnectionResponseDto } from './dto/create-cloud-relay-connection-response.dto'
+import { UpdateCloudRelayConnectionDto } from './dto/update-cloud-relay-connection.dto'
 import { CreateCloudRelayJobDto } from './dto/create-cloud-relay-job.dto'
 import { CloudRelayConnection } from './entities/cloud-relay-connection.entity'
 import { CloudRelayJob } from './entities/cloud-relay-job.entity'
@@ -39,29 +41,40 @@ export class CloudRelayService {
     dto: CreateCloudRelayConnectionDto,
     tenantId: string,
     userId: string,
-  ): Promise<CloudRelayConnection> {
+  ): Promise<CreateCloudRelayConnectionResponseDto> {
     const type = dto.type ?? 'managed'
     const relayId = randomUUID()
 
     let sqsQueueUrl: string | null = null
     let sqsRegion: string | null = null
+    let sqsQueueMode: 'platform' | 'relay' | null = null
     let deliveryMode = dto.delivery_mode ?? 'direct'
     let url = dto.url ?? ''
     let name = dto.name ?? `relay-${relayId}`
 
     if (type === 'local-dev') {
+      // local-dev always uses platform-queue regardless of requested delivery_mode
       deliveryMode = 'platform-queue'
-      const sqsMode = dto.sqs_queue_mode ?? 'platform'
+      sqsQueueMode = dto.sqs_queue_mode ?? 'platform'
       sqsQueueUrl = await this.relayQueue.resolveRelayQueue(
-        sqsMode,
+        sqsQueueMode,
         tenantId,
-        userId,
         relayId,
         dto.relay_sqs_queue_url,
       )
       sqsRegion = this.relayQueue.getRegion()
       name = dto.name ?? `local-dev-${relayId}`
       url = dto.url ?? 'http://localhost'
+    } else if (deliveryMode === 'platform-queue' || deliveryMode === 'hybrid') {
+      // Non-local-dev connections can also use SQS delivery
+      sqsQueueMode = dto.sqs_queue_mode ?? 'platform'
+      sqsQueueUrl = await this.relayQueue.resolveRelayQueue(
+        sqsQueueMode,
+        tenantId,
+        relayId,
+        dto.relay_sqs_queue_url,
+      )
+      sqsRegion = this.relayQueue.getRegion()
     }
 
     const connection = this.connectionRepository.create({
@@ -72,25 +85,94 @@ export class CloudRelayService {
       url,
       delivery_mode: deliveryMode,
       api_key: randomUUID(),
-      sqs_queue_mode: type === 'local-dev' ? (dto.sqs_queue_mode ?? 'platform') : null,
+      sqs_queue_mode: sqsQueueMode,
       sqs_queue_url: sqsQueueUrl,
       sqs_region: sqsRegion,
+      aegis_id: dto.aegis_id ?? null,
+      iam_user_arn: null,
+      iam_access_key_id: null,
     })
+    const saved = await this.connectionRepository.save(connection)
+
+    // TODO(stage-2): IAM user + access key provisioning for sqs_queue_mode=platform
+    // When implemented, set saved.iam_user_arn and saved.iam_access_key_id, then
+    // return iam_access_key_id_created and iam_secret_access_key in the response.
+
+    return Object.assign(new CreateCloudRelayConnectionResponseDto(), saved)
+  }
+
+  async updateConnection(
+    id: string,
+    dto: UpdateCloudRelayConnectionDto,
+    tenantId: string,
+  ): Promise<CloudRelayConnection> {
+    const connection = await this.requireConnection(id, tenantId)
+    if (dto.name !== undefined) connection.name = dto.name
+    if (dto.url !== undefined) connection.url = dto.url
+    if (dto.aegis_id !== undefined) connection.aegis_id = dto.aegis_id
     return this.connectionRepository.save(connection)
   }
 
   async removeConnection(id: string, tenantId: string): Promise<void> {
-    const connection = await this.connectionRepository.findOne({ where: { id, tenant_id: tenantId } })
-    if (!connection) {
-      throw new NotFoundException(`Cloud relay connection ${id} not found`)
-    }
+    const connection = await this.requireConnection(id, tenantId)
 
     // Only delete platform-owned queues — relay-owned queues belong to the customer
     if (connection.sqs_queue_url && connection.sqs_queue_mode === 'platform') {
       await this.relayQueue.deleteRelayQueue(connection.sqs_queue_url)
     }
 
+    // TODO(stage-2): delete IAM user when connection.iam_user_arn is set
+
     await this.connectionRepository.delete({ id, tenant_id: tenantId })
+  }
+
+  /** Test HTTP reachability for direct and hybrid connections. */
+  async healthCheckConnection(
+    id: string,
+    tenantId: string,
+  ): Promise<{ reachable: boolean; latencyMs?: number; error?: string }> {
+    const connection = await this.requireConnection(id, tenantId)
+
+    const start = Date.now()
+    try {
+      const res = await fetch(`${connection.url}/health`, {
+        headers: { Authorization: `Bearer ${connection.api_key}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+      const latencyMs = Date.now() - start
+      if (res.ok) return { reachable: true, latencyMs }
+      return { reachable: false, error: `HTTP ${res.status}` }
+    } catch (err) {
+      return { reachable: false, error: (err as Error).message }
+    }
+  }
+
+  /** Test SQS connectivity by sending a canary message and verifying the send succeeds. */
+  async testQueueConnection(id: string, tenantId: string): Promise<{ sent: boolean; error?: string }> {
+    const connection = await this.requireConnection(id, tenantId)
+
+    if (!connection.sqs_queue_url) {
+      return { sent: false, error: 'No SQS queue configured on this connection' }
+    }
+
+    try {
+      await this.relayQueue.publishJob(connection.sqs_queue_url, connection.id, {
+        id: `canary-${randomUUID()}`,
+        request: { _canary: true },
+        tenant_id: tenantId,
+        user_id: 'health-check',
+      })
+      return { sent: true }
+    } catch (err) {
+      return { sent: false, error: (err as Error).message }
+    }
+  }
+
+  /** Resolve a connection by id+tenant, throwing 404 if not found. */
+  private async requireConnection(id: string, tenantId: string): Promise<CloudRelayConnection> {
+    const connection = await this.connectionRepository.findOne({ where: { id, tenant_id: tenantId } })
+    if (!connection) throw new NotFoundException(`Cloud relay connection ${id} not found`)
+    return connection
   }
 
   // ── Job submission ─────────────────────────────────────────────────────────
@@ -130,6 +212,8 @@ export class CloudRelayService {
         return this.submitRelayQueue(connection, dto, base)
       case 'platform-queue':
         return this.submitPlatformQueue(connection, dto, base)
+      case 'hybrid':
+        return this.submitHybrid(connection, dto, base)
     }
   }
 
@@ -250,6 +334,45 @@ export class CloudRelayService {
     }
 
     return saved
+  }
+
+  /**
+   * hybrid: attempt direct HTTP first (5s timeout); if it fails, fall back to
+   * platform-queue SQS delivery and return a pending job for async polling.
+   */
+  private async submitHybrid(
+    connection: CloudRelayConnection,
+    dto: CreateCloudRelayJobDto,
+    base: Partial<CloudRelayJob>,
+  ): Promise<CloudRelayJob> {
+    try {
+      const res = await fetch(`${connection.url}/cloud-relay/proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${connection.api_key}`,
+        },
+        body: JSON.stringify(dto.request),
+        signal: AbortSignal.timeout(5_000),
+      })
+      if (res.ok) {
+        const result = (await res.json()) as object
+        const job = this.jobRepository.create({
+          ...base,
+          delivery_mode: 'direct',
+          status: 'completed',
+          request: dto.request as object,
+          result,
+          completed_at: new Date(),
+        })
+        return this.jobRepository.save(job)
+      }
+    } catch {
+      // fall through to SQS path
+    }
+
+    // HTTP failed — enqueue via SQS (platform-queue path)
+    return this.submitPlatformQueue(connection, dto, { ...base, delivery_mode: 'platform-queue' })
   }
 
   // ── Job polling (portal → slaops-cloud) ───────────────────────────────────

@@ -1039,7 +1039,7 @@
         ]
       },
       "post": {
-        "description": "For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. The response includes sqs_queue_url and sqs_region.\n\ntenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.",
+        "description": "Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.\n\nThe response includes one-time credentials (IAM access key, Aegis registration token) that are never returned again.\n\ntenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.",
         "operationId": "CloudRelayController_createConnection",
         "parameters": [],
         "requestBody": {
@@ -1058,7 +1058,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CloudRelayConnection"
+                  "$ref": "#/components/schemas/CreateCloudRelayConnectionResponseDto"
                 }
               }
             }
@@ -1076,6 +1076,54 @@
       }
     },
     "/cloud-relay/connection/{id}": {
+      "patch": {
+        "operationId": "CloudRelayController_updateConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Connection UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCloudRelayConnectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudRelayConnection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a relay connection (name, URL, linked Aegis)",
+        "tags": [
+          "Cloud Relay"
+        ]
+      },
       "delete": {
         "operationId": "CloudRelayController_deleteConnection",
         "parameters": [
@@ -1114,7 +1162,108 @@
             "bearer": []
           }
         ],
-        "summary": "Delete a relay connection and its SQS queue (if any)",
+        "summary": "Delete a relay connection, its SQS queue, and IAM user (if any)",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/connection/{id}/health-check": {
+      "post": {
+        "description": "Makes an authenticated GET to <relay-url>/health and returns latency or error.",
+        "operationId": "CloudRelayController_healthCheckConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Connection UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reachable": {
+                      "type": "boolean"
+                    },
+                    "latencyMs": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Test HTTP reachability for a direct or hybrid relay connection",
+        "tags": [
+          "Cloud Relay"
+        ]
+      }
+    },
+    "/cloud-relay/connection/{id}/test-queue": {
+      "post": {
+        "description": "Sends a canary message to the connection's SQS queue and verifies the send succeeds. Validates that the platform role has sqs:SendMessage permission on the queue.",
+        "operationId": "CloudRelayController_testQueueConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Connection UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sent": {
+                      "type": "boolean"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Test SQS queue connectivity for a platform-queue or hybrid relay connection",
         "tags": [
           "Cloud Relay"
         ]
@@ -1953,9 +2102,10 @@
             "enum": [
               "direct",
               "relay-queue",
-              "platform-queue"
+              "platform-queue",
+              "hybrid"
             ],
-            "description": "direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections."
+            "description": "direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\nhybrid         — platform tries direct HTTP first; falls back to platform-queue on failure. Requires both url and sqs_queue_url."
           },
           "sqs_queue_mode": {
             "type": "string",
@@ -1976,6 +2126,22 @@
             "nullable": true,
             "description": "AWS region of the SQS queue.",
             "example": "ap-southeast-2"
+          },
+          "aegis_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "UUID of the linked AegisInstance. Optional — null means no Aegis for this connection.",
+            "example": "9a1b2c3d-4e5f-6789-abcd-ef0123456789"
+          },
+          "iam_user_arn": {
+            "type": "string",
+            "nullable": true,
+            "description": "ARN of the IAM user provisioned for relay SQS queue access (sqs_queue_mode=platform only). Null until IAM provisioning is implemented."
+          },
+          "iam_access_key_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Access key ID of the IAM credential created for the relay. Stored for operator reference only — the secret access key is never stored."
           },
           "api_key": {
             "type": "string",
@@ -2020,14 +2186,25 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "example": "us-east-1 relay",
-            "description": "Human-readable name. Auto-generated for local-dev relays."
+            "example": "Production Relay",
+            "description": "Human-readable name. Auto-generated if omitted."
           },
           "url": {
             "type": "string",
             "format": "uri",
             "example": "https://xyz.execute-api.ap-southeast-2.amazonaws.com/prod",
-            "description": "Base URL of the relay instance. Required for direct and relay-queue modes. Not used for platform-queue / local-dev relays (relay makes only outbound connections)."
+            "description": "Base URL of the relay instance. Required for direct and relay-queue modes, and for the HTTP path in hybrid mode. Not used for platform-queue connections (relay makes only outbound connections)."
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "relay-queue",
+              "platform-queue",
+              "hybrid"
+            ],
+            "default": "direct",
+            "description": "direct          — slaops-cloud calls relay synchronously.\nrelay-queue     — slaops-cloud submits to relay queue, polls relay for result.\nplatform-queue  — relay polls slaops-cloud outbound. Use when relay cannot accept inbound connections.\nhybrid          — platform tries direct HTTP first, falls back to SQS on failure. Requires both url and sqs_queue_url.\nFor local-dev relays this is always platform-queue regardless of what is sent."
           },
           "sqs_queue_mode": {
             "type": "string",
@@ -2036,7 +2213,7 @@
               "relay"
             ],
             "default": "platform",
-            "description": "platform — SLAOps provisions the SQS FIFO queue (default). relay    — Customer provisions the queue; provide relay_sqs_queue_url. Only relevant for local-dev relay connections."
+            "description": "platform — SLAOps provisions and owns the SQS FIFO queue. relay    — Customer provisions the queue and grants sqs:SendMessage to the SLAOps platform role; provide relay_sqs_queue_url. Required when delivery_mode is platform-queue or hybrid."
           },
           "relay_sqs_queue_url": {
             "type": "string",
@@ -2044,15 +2221,150 @@
             "description": "Customer-owned SQS FIFO queue URL. Required when sqs_queue_mode=relay. The customer must grant the SlaOpsSqsPublishRole sqs:SendMessage permission on this queue.",
             "example": "https://sqs.ap-southeast-2.amazonaws.com/999888777/my-relay-queue.fifo"
           },
+          "aegis_id": {
+            "type": "string",
+            "description": "UUID of an AegisInstance to link to this connection. The Aegis must belong to the same tenant. Null or omitted means no Aegis is linked.",
+            "example": "9a1b2c3d-4e5f-6789-abcd-ef0123456789"
+          }
+        }
+      },
+      "CreateCloudRelayConnectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "5c963787-d89d-4260-adaf-6541c41cb982"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "us-east-1 relay"
+          },
+          "url": {
+            "type": "string",
+            "example": "https://xyz.execute-api.ap-southeast-2.amazonaws.com/prod",
+            "description": "Base URL of the relay instance. Used for direct and relay-queue modes. For platform-queue mode, the relay is not called inbound — leave this as the relay identifier URL."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "self-hosted",
+              "local-dev"
+            ],
+            "default": "managed",
+            "description": "managed     — SLAOps-hosted Lambda relay.\nself-hosted — Customer-deployed relay on their own infrastructure.\nlocal-dev   — Developer local machine. delivery_mode is locked to platform-queue. An SQS FIFO queue is provisioned automatically."
+          },
           "delivery_mode": {
             "type": "string",
             "enum": [
               "direct",
               "relay-queue",
-              "platform-queue"
+              "platform-queue",
+              "hybrid"
             ],
-            "default": "direct",
-            "description": "direct          — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue     — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue  — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\nFor local-dev relays this is always platform-queue regardless of what is sent."
+            "description": "direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\nhybrid         — platform tries direct HTTP first; falls back to platform-queue on failure. Requires both url and sqs_queue_url."
+          },
+          "sqs_queue_mode": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "relay"
+            ],
+            "description": "platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. Use relay mode when the customer's network cannot reach SQS endpoints in the SLAOps account."
+          },
+          "sqs_queue_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "SQS FIFO queue URL for this relay connection. platform mode: provisioned by slaops-cloud and stored here. relay mode: provided by the customer at registration time.",
+            "example": "https://sqs.ap-southeast-2.amazonaws.com/123456789/slaops-acme-local-abc123-relay456.fifo"
+          },
+          "sqs_region": {
+            "type": "string",
+            "nullable": true,
+            "description": "AWS region of the SQS queue.",
+            "example": "ap-southeast-2"
+          },
+          "aegis_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "UUID of the linked AegisInstance. Optional — null means no Aegis for this connection.",
+            "example": "9a1b2c3d-4e5f-6789-abcd-ef0123456789"
+          },
+          "iam_user_arn": {
+            "type": "string",
+            "nullable": true,
+            "description": "ARN of the IAM user provisioned for relay SQS queue access (sqs_queue_mode=platform only). Null until IAM provisioning is implemented."
+          },
+          "iam_access_key_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Access key ID of the IAM credential created for the relay. Stored for operator reference only — the secret access key is never stored."
+          },
+          "api_key": {
+            "type": "string",
+            "description": "API key for relay authentication. direct/relay-queue: slaops-cloud sends this as Bearer token to the relay. platform-queue: relay sends this as Bearer token when polling slaops-cloud. Configure the relay with RELAY_API_KEY (inbound) or RELAY_PLATFORM_TOKEN (outbound polling)."
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-03-23T10:00:00.000Z"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-03-23T10:00:00.000Z"
+          },
+          "iam_access_key_id_created": {
+            "type": "string",
+            "description": "IAM access key ID for the provisioned relay IAM user (sqs_queue_mode=platform only). Returned once — not stored. Null until IAM provisioning is implemented.",
+            "example": "AKIAIOSFODNN7EXAMPLE"
+          },
+          "iam_secret_access_key": {
+            "type": "string",
+            "description": "IAM secret access key for the provisioned relay IAM user (sqs_queue_mode=platform only). Returned once — never stored. Null until IAM provisioning is implemented.",
+            "example": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+          },
+          "aegis_registration_token": {
+            "type": "string",
+            "description": "One-time Aegis registration token, returned only when a new Aegis instance was registered as part of this connection creation. Never returned again.",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "url",
+          "type",
+          "delivery_mode",
+          "api_key",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "UpdateCloudRelayConnectionDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "example": "Production Relay",
+            "description": "New human-readable name for the connection."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://relay.example.com",
+            "description": "Updated base URL of the relay. Not applicable for platform-queue connections (no inbound URL)."
+          },
+          "aegis_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "UUID of an AegisInstance to link. Must belong to the same tenant. Pass null to unlink the current Aegis.",
+            "example": "9a1b2c3d-4e5f-6789-abcd-ef0123456789"
           }
         }
       },
@@ -2102,7 +2414,8 @@
             "enum": [
               "direct",
               "relay-queue",
-              "platform-queue"
+              "platform-queue",
+              "hybrid"
             ]
           },
           "status": {

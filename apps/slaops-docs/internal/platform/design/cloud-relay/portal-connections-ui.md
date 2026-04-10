@@ -1,24 +1,36 @@
 ---
-sidebar_position: 8
+id: portal-connections-ui
 title: Portal UI — Connection Management
-tags: [cloud-relay, portal, ui, ux, design]
+sidebar_label: Portal — Connections UI
+sidebar_position: 8
+created_at: 2026-04-01
+updated_at: 2026-04-11
+implemented_at: ~
+author: SLAOps Team
+status: draft
+tags:
+  - ui
+  - ux
+  - portal
+  - relay
 ---
 
 # Portal UI — Connection Management
 
-> **Status**: Design Brief
+> **Status**: Draft (Stage 2 redesign)
 > **Author**: SLAOps Team
-> **Date**: 2026-04-01
-> **Related**: [Relay Connection Design](./relay-connection.md), [Local Relay](./local-relay.md), [Aegis Token Broker](./aegis-token-broker-design.md)
+> **Updated**: 2026-04-10
+> **Related**: [Relay Connection Design](./relay-connection.md), [Local Relay](./local-relay.md), [Aegis Token Broker](./aegis-token-broker-design.md), [Network Topology](./network-topology.md)
 
 ## Overview
 
-This document defines the portal UI for managing relay connections and Aegis instances. The implementation covers the deferred portal work from [relay-connection.md](./relay-connection.md):
+This document defines the portal UI for managing **SLAOps Platform Connections** — the unified entity that represents a connection between the SLAOps Platform, a relay deployment, and an optional Aegis authentication broker.
 
-- Relay Instances page (self-hosted, managed, and local-dev)
-- Aegis Instances page
-- Connection health dashboard
-- Local relay onboarding
+Stage 2 replaces the separate Relay Instances and Aegis Instances pages (Stage 1) with:
+
+- A single **Connections** list page
+- A **Create Connection Wizard** with guided, step-by-step setup
+- An optional **Aegis** configuration step within the wizard
 
 The UI sits under **Settings → Connections** in the portal navigation.
 
@@ -29,29 +41,50 @@ The UI sits under **Settings → Connections** in the portal navigation.
 ```
 Settings
 └── Connections
-    ├── Relay Instances      (tab / sub-nav)
-    ├── Aegis Instances      (tab / sub-nav)
-    └── Health Dashboard     (tab / sub-nav)
+    ├── Connections         (list view — default tab)
+    └── Health Dashboard    (tab)
 ```
+
+The Stage 1 "Relay Instances" and "Aegis Instances" tabs are removed. Aegis instances are managed as part of connection edit, not as a standalone page.
 
 ---
 
-## 1. Relay Instances Page
+## Implementation Status Matrix
+
+Before the wizard steps: a quick reference of which paths are implemented vs not. The wizard surfaces these inline as warnings when the user selects an unimplemented path.
+
+| Feature | Status |
+|---|---|
+| Direct HTTP — create, edit, delete | ✅ Implemented |
+| Direct HTTP — test connection (HTTP health check) | ✅ Implemented |
+| SQS — SLAOps-managed queue creation | ✅ Implemented |
+| SQS — IAM user + access key generation | ❌ Not yet implemented |
+| SQS — BYO (customer-provided) queue | ⚠️ Backend supported, no portal flow yet |
+| SQS — test SQS connectivity (canary message) | ❌ Not yet implemented |
+| SQS + HTTP hybrid delivery mode | ❌ Not yet implemented |
+| Aegis — link existing Aegis to connection | ✅ Implemented |
+| Aegis — register new Aegis inline in wizard | ✅ Implemented |
+| Connections list page (replaces relay/aegis tabs) | ❌ Not yet implemented (portal has Stage 1 tabs) |
+| Wizard progress/step UI | ❌ Not yet implemented |
+
+---
+
+## 1. Connections List Page
 
 ### Layout
 
-Full-width table with a **Register Relay** button in the top-right.
+Full-width table with a **New Connection** button in the top-right that opens the wizard.
 
 ### Table columns
 
 | Column | Notes |
 |---|---|
 | Name | Clickable — opens edit drawer |
-| Type | Badge: `Self-hosted` · `Managed` · `Local` |
-| URL | Shown for `self-hosted` and `managed`; `—` for `local-dev` (no inbound URL) |
+| Connectivity | Badge: `Direct HTTP` · `SQS` · `SQS + HTTP` |
+| Relay type | Badge: `Self-hosted` · `Managed` · `Local` |
+| Aegis | Linked Aegis name, or `None` |
 | Status | Color-coded badge — see status values below |
 | Last seen | Relative timestamp (e.g. "3 minutes ago"); `—` if never |
-| Aegis | Linked Aegis name, or `None` |
 | Actions | Test · Edit · Delete (icon buttons) |
 
 ### Status badges
@@ -63,114 +96,244 @@ Full-width table with a **Register Relay** button in the top-right.
 | `unreachable` | Red | Unreachable |
 | `disabled` | Muted | Disabled |
 
-### Register Relay — modal/drawer
+### Empty state
 
-Two paths, selected by a segmented control at the top:
-
-**Self-hosted / Managed**
-
-1. **Name** (text, required)
-2. **URL** (URL input, required) — base URL where the relay is reachable
-3. **Type** (select: `Self-hosted` / `Managed`) — defaults to `Self-hosted`
-
-On submit, the platform creates the relay record and shows:
-
-```
-Relay registered.
-
-Your relay ID:  abc-123-...  [copy]
-
-Set this as RELAY_ID on your relay deployment.
-Also set:
-  SLAOPS_VENDOR_JWKS_URL = https://api.slaops.com/cloud-relay/.well-known/jwks.json
-
-Then click "Test Connection" to confirm the relay is reachable.
-```
-
-**Local (developer machine)**
-
-No URL field — local relays use platform-queue delivery mode and have no inbound URL.
-
-1. **Name** (text, required; default: `<username>'s local relay`)
-
-On submit, the platform creates the `local-dev` relay record and shows:
-
-```
-Local relay registered.
-
-Run the following commands on your machine:
-
-  slaops relay init
-  slaops relay start
-
-The relay will appear as Active once it connects.
-```
-
-Include a copy-all button for the two commands.
-
-> If `slaops-cli` is already installed and the user has run `slaops relay init`, the relay will be auto-discovered. Show a secondary note: *Already initialized? Just run `slaops relay start`.*
-
-### Edit Relay — drawer
-
-Opens on row click or Edit icon.
-
-Fields:
-- **Name** (editable)
-- **URL** (editable; hidden for `local-dev`)
-- **Linked Aegis** (select from registered Aegis instances, or `None`)
-- **Relay ID** (read-only + copy button — shown for operator reference)
-- **Type** (read-only — cannot be changed after registration)
-- **Delivery mode** (read-only — always `platform-queue` for `local-dev`; not shown for other types in stage 1)
-
-Inline warning when Aegis is linked but `AEGIS_JWKS_URL` reminder is needed:
-> *After linking, set `AEGIS_JWKS_URL = <aegis-jwks-url>` on the relay and redeploy.*
-
-### Delete Relay — confirmation dialog
-
-> **Delete relay "Production Relay"?**
+> **No connections yet.**
 >
-> The relay UUID will be invalidated. The platform will no longer accept or route jobs to it.
-> This cannot be undone.
+> Create a connection to start routing API Tester requests through your infrastructure.
 >
-> [ Cancel ]  [ Delete ]
-
-### Test Connection — inline
-
-Triggered by the **Test** icon in the table row or a button in the edit drawer.
-
-Shows a loading spinner inline, then one of:
-
-- **Success**: `✓ Reachable — 42 ms` (green)
-- **Failure**: `✗ Unreachable — connection refused` (red, with error message)
-- **Local relay note**: For `local-dev` relays, show: *Local relays are not directly reachable. Status reflects the last time the relay polled for a job.*
+> [ New Connection ]
 
 ---
 
-## 2. Aegis Instances Page
+## 2. Create Connection Wizard
 
-### Layout
+A multi-step wizard opened from the **New Connection** button. Displayed as a full-screen modal or side panel. A progress indicator shows the current step number and title. The user can navigate back to earlier steps to change selections; navigating back does not lose data entered in later steps.
 
-Same table pattern as Relay Instances, with a **Register Aegis** button.
+Steps:
 
-### Table columns
+1. **Connectivity** — choose how the platform reaches the relay
+2. **HTTP Settings** — relay URL *(shown only if Direct HTTP or SQS + HTTP)*
+3. **SQS Settings** — queue ownership and configuration *(shown only if SQS or SQS + HTTP)*
+4. **Relay Details** — name and relay type
+5. **Aegis** — optional authentication broker
+6. **Review & Create** — summary before submission
+7. **Success** — connection ID and setup instructions
 
-| Column | Notes |
+---
+
+### Step 1 — Connectivity
+
+> *How will the SLAOps Platform deliver requests to your relay?*
+
+Three options as selection cards:
+
+#### Direct HTTP
+
+Platform calls the relay's HTTPS endpoint directly and waits for a response. Relay must be reachable from the public internet.
+
+- Delivery mode: `direct`
+- Requires: relay URL, relay must accept inbound HTTPS
+
+**✅ Implemented**
+
+---
+
+#### SQS
+
+Platform pushes jobs to an SQS FIFO queue. The relay polls the queue outbound — no inbound connections required. Suitable for relays on private networks, VPCs, or local developer machines.
+
+- Delivery mode: `platform-queue`
+- Requires: SQS queue (either SLAOps-provisioned or customer-owned)
+
+**✅ Implemented** (queue creation); ❌ IAM credential generation not yet available — inline warning shown if this path is selected.
+
+---
+
+#### SQS + HTTP
+
+Platform uses Direct HTTP when available; falls back to SQS if the relay is unreachable over HTTP. Suitable for relays that may move between network contexts.
+
+- Delivery mode: `hybrid` *(not yet implemented)*
+
+> ⚠️ **Not yet available.** SQS + HTTP is not yet supported. You can complete the wizard, but the connection cannot be activated until this delivery mode is implemented.
+
+Selecting this option shows the HTTP Settings and SQS Settings steps.
+
+---
+
+### Step 2 — HTTP Settings *(shown for Direct HTTP or SQS + HTTP)*
+
+- **Relay URL** (URL input, required) — HTTPS base URL where the relay is reachable. Example: `https://relay.example.com`
+- **Test reachability** (inline button) — sends a raw HTTP request to `<url>/health` and shows latency or error. Does not require a registered relay yet.
+
+---
+
+### Step 3 — SQS Settings *(shown for SQS or SQS + HTTP)*
+
+Two sub-options as a segmented control:
+
+#### Option A: SLAOps-managed queue
+
+SLAOps creates and owns the SQS FIFO queue in its AWS account. IAM credentials are provisioned for the relay to consume messages.
+
+No user input required on this screen. The wizard shows:
+
+- Queue name preview: `slaops--{tenant-id}--relay--middleware--{conn-id}.fifo`
+- A callout: *After you create the connection, IAM access credentials will be shown once. Store them before closing.*
+
+> ⚠️ **IAM credential generation not yet implemented.** The queue will be created but IAM access keys will not be generated automatically. You will need to configure relay queue access manually until this is available.
+
+#### Option B: Bring your own queue
+
+Customer provides an SQS FIFO queue in their own AWS account. The SLAOps platform role is granted `sqs:SendMessage` via a resource policy on the customer's queue.
+
+Fields:
+
+- **Queue URL** (URL input, required) — must be an SQS FIFO queue URL ending in `.fifo`
+- **Queue Region** (select, required) — AWS region where the queue resides
+
+After the queue URL is entered, the wizard shows the resource policy statement the user must add to their queue:
+
+```json
+{
+  "Sid": "AllowSLAOpsSendMessage",
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "arn:aws:iam::<slaops-account-id>:role/SLAOpsPlatformRole"
+  },
+  "Action": "sqs:SendMessage",
+  "Resource": "<your-queue-arn>"
+}
+```
+
+A **Copy policy** button copies the full policy statement with the SLAOps account ID pre-filled.
+
+A **Test queue access** button (inline): platform attempts to send a canary message to the queue. Shows `✓ Send successful` or `✗ Send failed — <error>`.
+
+> ⚠️ **BYO queue portal flow not yet implemented.** The backend supports customer-provided queues, but this wizard path has no portal implementation yet.
+
+---
+
+### Step 4 — Relay Details
+
+- **Connection name** (text, required; suggested default: `My Relay`)
+- **Relay type** (radio group):
+  - `Self-hosted` — customer-deployed relay
+  - `Managed` — SLAOps-hosted relay
+  - `Local` — developer's local machine
+
+> If `Local` is selected and the chosen connectivity in Step 1 is Direct HTTP:
+> *Local relays cannot accept inbound connections. Switch to SQS, or go back to Step 1 and choose a different connectivity option.*
+
+---
+
+### Step 5 — Aegis *(optional)*
+
+> *Aegis is an optional token broker that ensures only sessions authorised by your identity provider can use this relay.*
+
+Two options:
+
+**Skip** (default) — no Aegis for this connection.
+
+**Link Aegis** — choose an existing Aegis instance or register a new one:
+
+- *Select existing*: dropdown listing all registered Aegis instances with status badges. Select one to link.
+- *Register new*: inline sub-form expands with: Name, URL, JWKS URL (same fields as old Register Aegis dialog). The one-time registration token is shown in the Step 7 success panel.
+
+When an Aegis is linked, a note appears:
+> *After saving, set `AEGIS_JWKS_URL = <aegis-jwks-url>` on your relay and redeploy.*
+
+---
+
+### Step 6 — Review & Create
+
+Summary card before submission:
+
+| Setting | Value |
 |---|---|
-| Name | Clickable — opens edit drawer |
-| URL | Base URL of the Aegis service |
-| JWKS URL | Displayed truncated; full URL on hover/tooltip |
-| Status | Color-coded badge (same values as relay) |
-| Last seen | Relative timestamp |
-| Linked relays | Count badge — "3 relays"; click opens a popover listing them |
-| Actions | Test · Edit · Delete |
+| Connection name | *(entered value)* |
+| Connectivity | *(Direct HTTP / SQS / SQS + HTTP)* |
+| Relay URL | *(entered or `—`)* |
+| SQS queue | *(SLAOps-managed / `<queue-url>` / `—`)* |
+| Relay type | *(Self-hosted / Managed / Local)* |
+| Aegis | *(name or `None`)* |
 
-### Register Aegis — modal/drawer
+If any selected path is not yet implemented, a banner summarises the limitations:
 
-1. **Name** (text, required)
-2. **URL** (URL input, required) — base URL of the Aegis service
-3. **JWKS URL** (URL input, required) — defaults to `<URL>/.well-known/jwks.json` when URL is entered
+> ⚠️ Some features you selected are not yet available and will need to be configured manually after creation. See the implementation status table for details.
 
-On submit, shows the one-time registration token:
+**Create Connection** button triggers the API calls. **Back** navigates to the previous step. **Cancel** closes the wizard without saving.
+
+---
+
+### Step 7 — Success
+
+Shown after the connection is created. Content varies by connectivity mode.
+
+#### Direct HTTP
+
+```
+Connection created.
+
+Connection ID:  abc-123-...  [copy]
+
+Set the following on your relay deployment:
+  RELAY_ID               = abc-123-...
+  SLAOPS_VENDOR_JWKS_URL = https://api.slaops.com/cloud-relay/.well-known/jwks.json
+
+Then click "Test Connection" in the connections list to confirm.
+```
+
+#### SQS — SLAOps-managed queue
+
+```
+Connection created.
+
+Connection ID:   abc-123-...        [copy]
+SQS Queue:       slaops--{tid}--relay--middleware--...      [copy]
+Region:          ap-southeast-2
+
+IAM Credentials (shown once — save now):
+
+  Access Key ID:      AKIA...        [copy]
+  Secret Access Key:  ••••••         [reveal] [copy]
+
+⚠ Save these credentials before closing. They cannot be retrieved again.
+
+[Copy all env vars]
+
+  RELAY_ID               = abc-123-...
+  SQS_QUEUE_URL          = https://sqs.ap-southeast-2.amazonaws.com/...
+  AWS_ACCESS_KEY_ID      = AKIA...
+  AWS_SECRET_ACCESS_KEY  = <secret>
+  SLAOPS_VENDOR_JWKS_URL = https://api.slaops.com/cloud-relay/.well-known/jwks.json
+```
+
+The **Copy all env vars** button copies all lines as shell `export` statements.
+
+A dismiss button is blocked until the user checks *"I have saved the credentials"* (checkbox). After acknowledging, the dialog becomes dismissible.
+
+#### SQS — BYO queue
+
+```
+Connection created.
+
+Connection ID:  abc-123-...  [copy]
+Your queue:     <customer-queue-url>
+
+Ensure the resource policy on your queue allows the SLAOps
+platform role to send messages (see Step 3 for the policy snippet).
+
+Set the following on your relay deployment:
+  RELAY_ID               = abc-123-...
+  SQS_QUEUE_URL          = <customer-queue-url>
+  SLAOPS_VENDOR_JWKS_URL = https://api.slaops.com/cloud-relay/.well-known/jwks.json
+```
+
+#### Aegis registration token *(prepended if a new Aegis was registered in Step 5)*
+
+Shown above the relay setup section:
 
 ```
 Aegis registered.
@@ -179,493 +342,313 @@ One-time registration token (shown once):
 
   eyJhb...  [copy]
 
-Set this as SLAOPS_REGISTRATION_TOKEN on your Aegis deployment.
-Also set SLAOPS_PLATFORM_URL = https://api.slaops.com
+⚠ Save this token now. It cannot be retrieved after you close this dialog.
 
-Once Aegis calls back, status will change to Active.
+Set on your Aegis deployment:
+  SLAOPS_REGISTRATION_TOKEN = eyJhb...
+  SLAOPS_PLATFORM_URL       = https://api.slaops.com
 ```
-
-The token is shown only here and never again. Include a prominent warning:
-> *Save this token now. It cannot be retrieved after you close this dialog.*
-
-### Edit Aegis — drawer
-
-Fields:
-- **Name** (editable)
-- **URL** (editable)
-- **JWKS URL** (editable)
-- **Instance ID** (read-only + copy)
-- **Status** (read-only)
-- **Linked relays** (read-only list — shows which relays reference this Aegis; unlink via the relay edit drawer)
-
-Note: re-registration is not possible via edit. If the initial token was lost before the handshake, the operator must delete and re-register.
-
-### Delete Aegis — confirmation dialog
-
-> **Delete Aegis "Staging Aegis"?**
->
-> This instance is linked to **2 relays**. Those relays will have their Aegis link removed.
-> You will need to redeploy those relays without `AEGIS_JWKS_URL` or link them to a different Aegis instance.
->
-> [ Cancel ]  [ Delete ]
-
-Omit the relay count line if no relays are linked.
-
-### Test Connection — inline
-
-Fetches the JWKS URL and validates the key format.
-
-- **Success**: `✓ JWKS valid — 2 keys` (green)
-- **Failure**: `✗ Could not fetch JWKS — 404 Not Found` (red)
 
 ---
 
-## 3. Health Dashboard
+## 3. Edit Connection — Drawer
 
-A read-only summary page. Auto-refreshes every 60 seconds (with a manual refresh button).
+Opens on row click or Edit icon.
+
+Fields:
+
+- **Name** (editable)
+- **Relay URL** (editable; hidden for `Local` relay type)
+- **Linked Aegis** (select from registered Aegis instances, or `None`)
+- **Connection ID** (read-only + copy button)
+- **Relay type** (read-only — cannot be changed after creation)
+- **Connectivity mode** (read-only — cannot be changed after creation)
+- **SQS Queue URL** (read-only; shown for SQS and SQS + HTTP modes)
+- **IAM User** (read-only; shown for SLAOps-managed SQS if the IAM user was created; format: `slaops-middleware-{conn-id}`)
+
+Inline warning when Aegis is linked:
+> *After linking, set `AEGIS_JWKS_URL = <aegis-jwks-url>` on the relay and redeploy.*
+
+---
+
+## 4. Delete Connection — Confirmation Dialog
+
+> **Delete connection "Production Relay"?**
+>
+> The connection ID will be invalidated. The platform will no longer route jobs through it.
+>
+> *(If SLAOps-managed SQS queue)* The associated SQS queue and IAM user will also be deleted.
+>
+> This cannot be undone.
+>
+> [ Cancel ]  [ Delete ]
+
+---
+
+## 5. Test Connection — Inline
+
+Triggered by the **Test** icon in the table row or a button in the edit drawer.
+
+Behaviour varies by connectivity mode:
+
+- **Direct HTTP**: platform mints a relay-scoped JWT, calls `GET <relay-url>/health`. Shows `✓ Reachable — 42 ms` (green) or `✗ Unreachable — connection refused` (red).
+- **SQS**: platform sends a canary job to the SQS queue. Shows a spinner while waiting (up to 30s) for the relay to acknowledge, then `✓ Queue acknowledged — 4 s` or `✗ No acknowledgement within 30s`.
+- **Local relay note**: *Local relays are not directly reachable. Status reflects the last time the relay polled for a job.*
+
+---
+
+## 6. Health Dashboard
+
+A read-only summary page. Auto-refreshes every 60 seconds with a manual refresh button.
 
 ### Summary cards (top)
 
 Three metric cards:
-- **Active** — count of components with status `active`
+- **Active** — count of connections with status `active`
 - **Degraded** — count with status `unreachable`
 - **Pending setup** — count with status `pending`
 
 ### Combined status table
 
-All registered relays and Aegis instances in one table.
+All connections in one table.
 
 | Column | Notes |
 |---|---|
-| Component | Icon (relay vs Aegis) + name; link to edit drawer |
-| Type | Badge: Relay · Aegis · Local |
+| Name | Link to edit drawer |
+| Connectivity | Badge |
+| Aegis | Name or `None` |
 | Status | Color-coded badge |
 | Last seen | Relative timestamp |
 | Test | Button — triggers health check inline |
 
-### Empty state
-
-If no components are registered:
-
-> **No connections registered.**
->
-> Register a relay to start routing API Tester requests through your infrastructure.
->
-> [ Register Relay ]
-
 ---
 
-## 4. Local Relay Onboarding Banner
+## 7. Local Relay Onboarding Banner
 
-When a user opens the API Tester and their selected target URL starts with `localhost` or `127.0.0.1`, and no `local-dev` relay is registered or active:
+When a user opens the API Tester and their target URL starts with `localhost` or `127.0.0.1`, and no `local` relay connection is registered or active:
 
 > **Localhost target detected.**
 > No local relay is running. Start one to route this request.
 >
 > `slaops relay start`  [copy]
 >
-> [Set up local relay →]  (links to Settings → Connections → Register Local)
+> [Set up local relay →]  (links to Settings → Connections → New Connection)
 
-The banner is dismissible per session. It does not appear once a `local-dev` relay is registered (regardless of liveness — liveness tracking is out of scope for stage 1).
+Dismissible per session. Does not appear once a `local` relay connection exists.
 
 ---
 
-## 5. API Tester — Relay Selector
+## 8. API Tester — Relay Selector
 
-In the API Tester request panel, a **Relay** dropdown appears above the URL bar when a project has at least one registered relay.
+In the API Tester request panel, a **Relay** dropdown appears above the URL bar when a project has at least one registered connection.
 
 ### Dropdown items
 
 ```
-─ Cloud relays ─────────────────────
+─ Connections ──────────────────────────
   ● Production Relay      (active)
   ● Staging Relay         (active)
   ○ DR Relay              (unreachable)
-─ Local ────────────────────────────
+─ Local ────────────────────────────────
   ◉ My local relay        (local)   [Local badge]
 ```
 
-- Active relays are selectable.
-- Unreachable relays are shown greyed-out but still selectable (with a warning tooltip).
-- Local relays show a distinct **Local** badge.
-- If no relays are registered, the dropdown shows: *No relays — [Set up a relay]*
+- Active connections are selectable.
+- Unreachable connections are shown greyed-out but still selectable (with a warning tooltip).
+- Local connections show a distinct **Local** badge.
+- If no connections are registered: *No connections — [Set up a connection]*
 
 ### Relay selection persistence
 
-The selected relay is persisted per-project (localStorage). On project open, the last-used relay is pre-selected. If that relay has been deleted, fall back to the first active relay.
+The selected connection is persisted per-project (localStorage). On project open, the last-used connection is pre-selected. If that connection has been deleted, fall back to the first active connection.
 
 ---
 
-## Component States & Edge Cases
+## 9. Component States & Edge Cases
 
 | Scenario | Behaviour |
 |---|---|
-| Relay registered but health check never run | Status shows `Pending setup`; row shows a prompt: *Test connection to activate* |
-| Aegis registration token expired before handshake | Status stays `Pending`; edit drawer shows: *Registration handshake not completed. Delete and re-register to get a new token.* |
-| All relays unreachable | Banner in API Tester: *All relay connections are unreachable. Check your relay deployments.* |
-| `local-dev` relay — edit URL field | URL field is hidden; delivery mode shown as read-only `Platform Queue` |
-| Relay linked to a deleted Aegis | `aegis_id` FK is set null by DB cascade; relay shows `Aegis: None` — no error state needed |
+| Connection created but health check never run | Status `Pending setup`; row shows prompt: *Test connection to activate* |
+| SQS connection — no IAM credentials yet | Status `Pending setup`; edit drawer shows: *IAM credentials have not been generated. Configure relay queue access manually.* |
+| Connection linked to a deleted Aegis | `aegis_id` FK set null by DB cascade; connection shows `Aegis: None` — no error state |
+| Local relay — Direct HTTP connectivity selected | Blocked in wizard Step 4 with inline warning before the user can proceed |
+| SQS + HTTP selected | Shown with ⚠️ "not yet available" banner on step 1 and in review/create |
+| All connections unreachable | Banner in API Tester: *All connections are unreachable. Check your relay deployments.* |
+| BYO queue — policy not yet applied | Test queue shows `✗ Access denied — check your queue resource policy` |
 
 ---
 
-## Design Constraints
+## 10. Design Constraints
 
-- **No liveness tracking** for local relays in stage 1. The portal cannot tell if `slaops relay start` is currently running. Show status as `Pending` until the first SQS poll completes — when `last_seen_at` is set, show `Active`. Do not attempt to show real-time connected/disconnected state.
-- **Registration token shown once.** The plaintext token for Aegis registration is returned by the API only at creation time. The portal must surface it prominently and warn before the dialog is dismissed.
-- **No static secrets on relays.** The portal never generates or shows API keys for relays. The relay UUID is the only operator-facing credential.
-- **All pages require tenant-scoped auth.** Every API call filters by `tenant_id`. Cross-tenant data must never be accessible.
+- **No liveness tracking for local relays.** The portal cannot tell if `slaops relay start` is currently running. Status remains `Pending` until the first SQS poll completes — when `last_seen_at` is set, status becomes `Active`.
+- **IAM credentials shown once.** The `secretAccessKey` is returned by the API only at creation time. The portal must surface it prominently and block dismissal until the user acknowledges.
+- **Aegis registration token shown once.** Same constraint as above. If created inline in the wizard, shown in the Step 7 success panel before relay env vars.
+- **No static secrets on the platform side.** The relay uses its connection ID + IAM credentials (SQS) or just connection ID (HTTP). The platform never stores the IAM secret access key.
+- **All pages require tenant-scoped auth.** Every API call passes `x-tenant-id`. Cross-tenant data must never be accessible.
 
 ---
 
-## 6. Generated Client API Calls
+## 11. Generated Client API Calls
 
 All portal UI interactions use the generated OpenAPI client at
 `apps/slaops-portal/src/client/slaops-cloud/api/`.
 
-Every call requires `x-tenant-id` passed as the first argument (`xTenantId`).
-The portal reads this from the authenticated session context.
+Every call requires `x-tenant-id` passed as the first argument.
 
-> **Schema gap**: `RelayInstance` and `CreateRelayInstanceDto` do not yet carry a `type` field
-> (`'managed' | 'self-hosted' | 'local-dev'`). The `url` field on `CreateRelayInstanceDto` is
-> currently required, which conflicts with `local-dev` relays that have no inbound URL.
-> Both the OpenAPI spec and these DTOs must be updated before the local relay registration path
-> can be implemented. Until then, local relay registration can pass an empty string for `url` as
-> a temporary workaround — but the spec should be fixed first.
+> **Schema gaps to resolve before implementing the wizard:**
+>
+> - `GET/POST/DELETE /cloud-relay/connection` exist; `PATCH /cloud-relay/connection/:id` does not yet exist — needed for edit drawer.
+> - `POST /cloud-relay/connection/:id/health-check` does not exist — needed for HTTP test button.
+> - `POST /cloud-relay/connection/:id/test-queue` does not exist — needed for SQS connectivity test.
+> - `CreateCloudRelayConnectionDto` does not yet include `aegisId` — needed for Aegis linkage at creation time.
+> - `CloudRelayConnectionResponseDto` (or equivalent) should include `iam_user_arn` and connectivity mode fields.
 
 ---
 
-### 6.1 Relay Instances — `RelayInstanceApi`
+### 11.1 Connections — `CloudRelayConnectionApi`
 
-**Client class**: `relay-instance-api.ts` → `RelayInstanceApi`
-**Models**: `RelayInstance`, `CreateRelayInstanceDto`, `UpdateRelayInstanceDto`
+**Endpoint prefix**: `/cloud-relay/connection`
 
-#### Page load — list all relays
-
-Called when the Relay Instances tab mounts and on each manual refresh.
+#### List connections (page load)
 
 ```typescript
-// GET /cloud-relay/relay-instance
+// GET /cloud-relay/connection
 // Header: x-tenant-id: <tenantId>
-// Returns: RelayInstance[]
-relayInstanceApi.relayInstanceControllerFindAll(tenantId)
+// Returns: CloudRelayConnection[]
+cloudRelayApi.findAllConnections(tenantId)
 ```
 
-Response shape used by the table:
+Both the Connections list tab and Health Dashboard tab fire this on mount. Also used to populate the API Tester relay selector.
+
+---
+
+#### Create connection (wizard Step 6)
+
+```typescript
+// POST /cloud-relay/connection
+// Header: x-tenant-id: <tenantId>
+// Body: CreateCloudRelayConnectionDto
+// Returns: CreateCloudRelayConnectionResponseDto (includes one-time credentials if applicable)
+cloudRelayApi.createConnection(tenantId, {
+  name: formValues.name,
+  type: formValues.relayType,           // 'self-hosted' | 'managed' | 'local-dev'
+  delivery_mode: derivedDeliveryMode,   // 'direct' | 'platform-queue' | 'hybrid'
+  url: formValues.url,                  // omit for SQS-only connections
+  sqs_queue_mode: formValues.queueMode, // 'platform' | 'relay' | null
+  relay_sqs_queue_url: formValues.customerQueueUrl,  // BYO queue only
+  aegisId: formValues.aegisId,          // optional UUID
+})
+```
+
+`CreateCloudRelayConnectionResponseDto` fields used in Step 7:
 
 | Field | Usage |
 |---|---|
-| `id` | Row key; used in all subsequent calls |
-| `name` | Name column |
-| `url` | URL column; hidden for `local-dev` (once `type` is added) |
-| `status` | Status badge — values: `pending` · `active` · `unreachable` · `disabled` |
-| `last_seen_at` | Last seen column (ISO timestamp → relative display) |
-| `aegis_id` | Linked Aegis — `null` renders as `None` |
-| `created_at` | Available if needed for sorting |
-
-Also called after a health check to refresh the updated `status` and `last_seen_at`.
+| `id` | Connection ID — shown as `RELAY_ID` |
+| `sqs_queue_url` | SQS queue URL (if provisioned) |
+| `sqs_region` | Queue region (if provisioned) |
+| `iamAccessKeyId` | IAM access key ID (one-time; if IAM user was provisioned) |
+| `iamSecretAccessKey` | IAM secret (one-time; never stored — show and discard) |
+| `aegisRegistrationToken` | Aegis token (one-time; if new Aegis was registered in wizard) |
 
 ---
 
-#### Register relay — self-hosted / managed
-
-Called on Register Relay form submit (standard path).
+#### Edit connection (drawer save)
 
 ```typescript
-// POST /cloud-relay/relay-instance
+// PATCH /cloud-relay/connection/:id   ← not yet implemented on backend
 // Header: x-tenant-id: <tenantId>
-// Body: CreateRelayInstanceDto
-// Returns: RelayInstance
-relayInstanceApi.relayInstanceControllerCreate(tenantId, {
+// Body: UpdateCloudRelayConnectionDto
+// Returns: CloudRelayConnection
+cloudRelayApi.updateConnection(tenantId, connectionId, {
   name: formValues.name,
-  url: formValues.url,          // HTTPS URL required
-  // type: 'self-hosted'        // pending schema update
+  url: formValues.url,
+  aegisId: formValues.aegisId,  // null to unlink
 })
 ```
 
-On success: extract `id` from the response to display as the relay UUID the operator sets as `RELAY_ID`.
-
 ---
 
-#### Register relay — local-dev
-
-Same endpoint, but `url` will be an empty string (or omitted) pending the schema update that makes
-`url` optional for `local-dev`.
+#### Delete connection
 
 ```typescript
-// POST /cloud-relay/relay-instance
-// Header: x-tenant-id: <tenantId>
-// Returns: RelayInstance
-relayInstanceApi.relayInstanceControllerCreate(tenantId, {
-  name: formValues.name,
-  url: '',                       // local-dev has no inbound URL
-  // type: 'local-dev'           // pending schema update
-})
-```
-
-On success: surface the `id` to the success panel that shows the `slaops relay init / start` commands.
-
----
-
-#### Edit relay — open drawer
-
-Called when a row is clicked or the Edit icon is pressed, to populate the drawer with current values.
-
-```typescript
-// GET /cloud-relay/relay-instance/:id
-// Header: x-tenant-id: <tenantId>
-// Returns: RelayInstance
-relayInstanceApi.relayInstanceControllerFindOne(tenantId, relayId)
-```
-
-Alternatively, the drawer can be populated from the already-fetched list row — a `findOne` is only
-needed if the drawer must show data not present in the list response.
-
----
-
-#### Edit relay — save
-
-Called on drawer save.
-
-```typescript
-// PATCH /cloud-relay/relay-instance/:id
-// Header: x-tenant-id: <tenantId>
-// Body: UpdateRelayInstanceDto
-// Returns: RelayInstance
-relayInstanceApi.relayInstanceControllerUpdate(tenantId, relayId, {
-  name: formValues.name,         // optional
-  url: formValues.url,           // optional; omitted for local-dev
-  aegisId: formValues.aegisId,   // optional; null to unlink
-})
-```
-
-`aegisId` must be the UUID of an `AegisInstance` belonging to the same tenant, or `undefined` to
-leave the link unchanged. Passing `null` / empty string unlinks Aegis (confirm this with the
-backend — `UpdateRelayInstanceDto.aegisId` is typed `string?`, not `string | null`).
-
----
-
-#### Delete relay
-
-Called on Delete confirmation.
-
-```typescript
-// DELETE /cloud-relay/relay-instance/:id
+// DELETE /cloud-relay/connection/:id
 // Header: x-tenant-id: <tenantId>
 // Returns: void (204)
-relayInstanceApi.relayInstanceControllerRemove(tenantId, relayId)
+cloudRelayApi.removeConnection(tenantId, connectionId)
 ```
 
-On success: remove the row from local state; no re-fetch needed.
+Remove from local state on success; no re-fetch needed.
 
 ---
 
-#### Test connection
-
-Called by the Test icon in the table row or the Test button in the edit drawer.
+#### Test connection — HTTP
 
 ```typescript
-// POST /cloud-relay/relay-instance/:id/health-check
+// POST /cloud-relay/connection/:id/health-check  ← not yet implemented on backend
 // Header: x-tenant-id: <tenantId>
-// Returns: RelayInstance (updated with new status + last_seen_at)
-relayInstanceApi.relayInstanceControllerHealthCheck(tenantId, relayId)
+// Returns: CloudRelayConnection (updated status + last_seen_at)
+cloudRelayApi.healthCheckConnection(tenantId, connectionId)
 ```
-
-The response is the updated `RelayInstance` record. Update the row in local state with the new
-`status` and `last_seen_at` from the response.
-
-For `local-dev` relays: this button should be hidden or replaced with an informational note, since
-the platform cannot reach a local relay over HTTP. The health check endpoint will return an error
-for `local-dev` relays.
 
 ---
 
-### 6.2 Aegis Instances — `AegisInstanceApi`
-
-**Client class**: `aegis-instance-api.ts` → `AegisInstanceApi`
-**Models**: `AegisInstance`, `AegisCreateResponseDto`, `CreateAegisInstanceDto`, `UpdateAegisInstanceDto`
-
-#### Page load — list all Aegis instances
+#### Test connection — SQS
 
 ```typescript
-// GET /cloud-relay/aegis-instance
+// POST /cloud-relay/connection/:id/test-queue  ← not yet implemented on backend
 // Header: x-tenant-id: <tenantId>
-// Returns: AegisInstance[]
-aegisInstanceApi.aegisInstanceControllerFindAll(tenantId)
+// Returns: { acknowledged: boolean, latencyMs?: number, error?: string }
+cloudRelayApi.testQueueConnection(tenantId, connectionId)
 ```
-
-Response shape used by the table:
-
-| Field | Usage |
-|---|---|
-| `id` | Row key |
-| `name` | Name column |
-| `url` | URL column |
-| `jwks_url` | JWKS URL column (truncated) |
-| `status` | Status badge |
-| `last_seen_at` | Last seen column |
-| `registration_token_hash` | Not shown in UI — `null` means handshake complete; non-null means still pending |
-
-To show linked relay count, cross-reference the relay list: count relays whose `aegis_id` equals
-this Aegis `id`. No separate API call is needed if both lists are already loaded.
 
 ---
 
-#### Register Aegis
+### 11.2 Aegis Instances — `AegisInstanceApi`
 
-```typescript
-// POST /cloud-relay/aegis-instance
-// Header: x-tenant-id: <tenantId>
-// Body: CreateAegisInstanceDto
-// Returns: AegisCreateResponseDto  ← distinct from AegisInstance; includes registrationToken
-aegisInstanceApi.aegisInstanceControllerCreate(tenantId, {
-  name: formValues.name,
-  url: formValues.url,           // HTTPS base URL of Aegis
-  jwksUrl: formValues.jwksUrl,   // HTTPS JWKS endpoint
-})
-```
+Aegis instance management remains on the existing `AegisInstanceApi`. The wizard calls these to populate the "Link Aegis" dropdown and to register a new Aegis inline.
 
-`AegisCreateResponseDto` is the **only** response that includes `registrationToken` (plaintext).
-After this call returns, the token is gone from the backend — it is never returned again.
-The portal must display it immediately and block dismissal until the user confirms they have saved it.
+See Stage 1 section 6.2 of this document's prior revision for full call signatures — these are unchanged.
 
-`AegisCreateResponseDto` fields:
-
-| Field | Usage |
-|---|---|
-| `id` | Aegis instance UUID |
-| `registrationToken` | **One-time token** — display prominently and copy-enable |
-| `status` | Will be `pending` until Aegis completes the handshake |
-| `name`, `url`, `jwks_url` | Mirror the submitted values |
+Key calls:
+- `aegisInstanceApi.aegisInstanceControllerFindAll(tenantId)` — populates the dropdown in Step 5
+- `aegisInstanceApi.aegisInstanceControllerCreate(tenantId, dto)` — register new Aegis in Step 5
 
 ---
 
-#### Edit Aegis — open drawer
+### 11.3 Call Sequencing by Page
 
-```typescript
-// GET /cloud-relay/aegis-instance/:id
-// Header: x-tenant-id: <tenantId>
-// Returns: AegisInstance
-aegisInstanceApi.aegisInstanceControllerFindOne(tenantId, aegisId)
-```
-
-As with relay, can be skipped if drawer is populated from the list cache.
-
----
-
-#### Edit Aegis — save
-
-```typescript
-// PATCH /cloud-relay/aegis-instance/:id
-// Header: x-tenant-id: <tenantId>
-// Body: UpdateAegisInstanceDto
-// Returns: AegisInstance
-aegisInstanceApi.aegisInstanceControllerUpdate(tenantId, aegisId, {
-  name: formValues.name,         // optional
-  url: formValues.url,           // optional
-  jwksUrl: formValues.jwksUrl,   // optional
-})
-```
-
-Only the changed fields need to be sent. All fields in `UpdateAegisInstanceDto` are optional.
-
----
-
-#### Delete Aegis
-
-```typescript
-// DELETE /cloud-relay/aegis-instance/:id
-// Header: x-tenant-id: <tenantId>
-// Returns: void (204)
-aegisInstanceApi.aegisInstanceControllerRemove(tenantId, aegisId)
-```
-
-Before calling, check the relay list for any relays with `aegis_id === aegisId` and include the
-count in the confirmation dialog. The backend will null out the FK on those relays via ON DELETE SET NULL.
-
----
-
-#### Test connection (Aegis)
-
-```typescript
-// POST /cloud-relay/aegis-instance/:id/health-check
-// Header: x-tenant-id: <tenantId>
-// Returns: AegisInstance (updated with new status + last_seen_at)
-aegisInstanceApi.aegisInstanceControllerHealthCheck(tenantId, aegisId)
-```
-
-The backend fetches the JWKS URL and validates key format. Response is the updated `AegisInstance`
-record. Use `status` and `last_seen_at` from the response to update the row in local state.
-
----
-
-### 6.3 Call Sequencing by Page
-
-#### Relay Instances tab mount
+#### Connections list tab mount
 
 ```
-1. relayInstanceControllerFindAll(tenantId)          → populate relay table
-2. aegisInstanceControllerFindAll(tenantId)          → populate Aegis name lookup for relay rows
+1. cloudRelayApi.findAllConnections(tenantId)      → populate connections table
+2. aegisInstanceApi.findAll(tenantId)              → resolve Aegis names in table rows
 ```
 
-Both calls can be fired in parallel.
-
-#### Aegis Instances tab mount
-
-```
-1. aegisInstanceControllerFindAll(tenantId)          → populate Aegis table
-2. relayInstanceControllerFindAll(tenantId)          → cross-reference linked relay counts
-```
-
-Both calls can be fired in parallel. The relay list is already in cache if the Relay tab was visited first.
+Both in parallel.
 
 #### Health Dashboard tab mount
 
 ```
-1. relayInstanceControllerFindAll(tenantId)          → relay rows in combined table
-2. aegisInstanceControllerFindAll(tenantId)          → Aegis rows in combined table
+1. cloudRelayApi.findAllConnections(tenantId)      → rows in combined table
+2. aegisInstanceApi.findAll(tenantId)              → Aegis status sub-indicators
 ```
 
-Both in parallel. Auto-refresh repeats both calls every 60 seconds.
+Both in parallel. Auto-refresh repeats every 60 seconds.
 
-#### Register Relay (standard) flow
-
-```
-1. relayInstanceControllerCreate(tenantId, dto)      → get id from response
-2. (Show relay ID to operator)
-3. (Operator deploys relay with RELAY_ID env var)
-4. relayInstanceControllerHealthCheck(tenantId, id)  → confirm active
-```
-
-Step 4 is operator-triggered (Test button), not automatic.
-
-#### Register Aegis flow
+#### Wizard — Step 5 (Aegis) mount
 
 ```
-1. aegisInstanceControllerCreate(tenantId, dto)      → get registrationToken from AegisCreateResponseDto
-2. (Show token to operator — one time only)
-3. (Operator sets SLAOPS_REGISTRATION_TOKEN on Aegis and starts it)
-4. (Aegis calls POST /cloud-relay/aegis/register — backend-to-backend, not portal)
-5. aegisInstanceControllerFindOne(tenantId, id)      → poll until status === 'active'
+1. aegisInstanceApi.findAll(tenantId)              → populate "Link existing" dropdown
 ```
 
-Step 5 is either manual (operator refreshes) or a lightweight poll on the registration success dialog
-(e.g. every 5 seconds while the dialog is open, stop when `status` becomes `active`).
-
----
-
-### 6.4 Local state management notes
-
-- Keep relay and Aegis lists in a shared context/store so the Relay Instances tab can resolve
-  Aegis names and the Aegis Instances tab can compute linked relay counts without redundant fetches.
-- After any mutation (create, update, delete, health check), update the cached item rather than
-  re-fetching the full list — all mutation responses return the updated record.
-- `DELETE` returns `void` (204) — remove the item from local state by its `id`.
+Only if the "Link Aegis" option is chosen.
 
 ---
 
 ## Related Documents
 
-- [Relay Connection Design](./relay-connection.md) — API endpoints, RDS schema, registration flows
+- [Relay Connection Design](./relay-connection.md) — API endpoints, RDS schema, registration flows, IAM provisioning design, SQS + HTTP hybrid mode
 - [Local Relay](./local-relay.md) — Local relay architecture, SQS delivery, CLI commands
 - [Aegis Token Broker](./aegis-token-broker-design.md) — Aegis architecture, delegation JWT flow
 - [Network Topology](./network-topology.md) — Delivery modes and network requirements

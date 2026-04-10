@@ -6,10 +6,10 @@ tags: [cloud-relay, authentication, security, architecture, implemented]
 
 # Relay Connection Design
 
-> **Status**: Implemented (Stage 1)
+> **Status**: Implemented (Stage 1) · In Design (Stage 2)
 > **Author**: SLAOps Team
-> **Date**: 2026-03-24
-> **Related**: [component-cloud-relay.md](./component-cloud-relay.md), [aegis-token-broker-design.md](./aegis-token-broker-design.md)
+> **Created**: 2026-03-24 · **Updated**: 2026-04-10
+> **Related**: [component-cloud-relay.md](./component-cloud-relay.md), [aegis-token-broker-design.md](./aegis-token-broker-design.md), [Portal Connections UI](./portal-connections-ui.md)
 
 ## Overview
 
@@ -45,6 +45,16 @@ A working deployment requires all three components to know where each other live
 - JWKS endpoint used for relay → Aegis JWT validation
 - Portal UI for create / read / update / delete of both instance types and their mappings
 - Health check / connectivity test per registered instance
+
+### Stage 2 (this document — in design)
+
+- **Unified connection concept** (`platform_connection`) — replaces separate `relay_instance` and `aegis_instance` portal management with a single entity created through a wizard
+- **SQS + HTTP hybrid delivery mode** — platform tries HTTP first, falls back to SQS on failure
+- **IAM user provisioning** — when SLAOps manages the SQS queue, it also creates an IAM user + access key for the relay to consume messages; credentials returned once at creation time
+- **BYO SQS queue** — operator provides their own SQS FIFO queue; SLAOps platform role is granted `sqs:SendMessage` via a resource policy; full portal flow (wizard step + test endpoint)
+- **`PATCH /cloud-relay/connection/:id`** — edit connection name, URL, and linked Aegis after creation
+- **`POST /cloud-relay/connection/:id/health-check`** — trigger HTTP connectivity test via portal
+- **`POST /cloud-relay/connection/:id/test-queue`** — send canary message to SQS queue and wait for relay acknowledgement
 
 ### Deferred to later stages
 
@@ -195,6 +205,124 @@ CREATE INDEX aegis_instance_tenant_idx ON aegis_instance (tenant_id);
 `relay_instance.aegis_id` is a nullable FK to `aegis_instance`. This encodes the 1:N relationship: one Aegis instance can be referenced by many relay rows; each relay references at most one Aegis.
 
 All queries must filter by `tenant_id`. `aegis_id` on a relay must reference an `aegis_instance` belonging to the same tenant — enforced at the application layer.
+
+---
+
+## Stage 2 — Schema additions
+
+The active connection entity in the backend is `platform_connection` (mapped to `CloudRelayConnection` in the NestJS service at `apps/slaops-cloud/src/cloud-relay/`). Stage 2 extends it with IAM provisioning fields and a new hybrid delivery mode.
+
+### Extended `platform_connection` fields
+
+```sql
+-- New delivery_mode value added to the existing CHECK / enum:
+--   'direct' | 'relay-queue' | 'platform-queue' | 'hybrid'
+--   'hybrid' = SQS + HTTP: platform tries direct HTTP first, falls back to SQS
+
+-- IAM provisioning columns (nullable; only set when sqs_queue_mode = 'platform')
+ALTER TABLE platform_connection
+  ADD COLUMN iam_user_arn        TEXT,   -- ARN of the IAM user created for relay SQS access
+  ADD COLUMN iam_access_key_id   TEXT;   -- Key ID for operator reference (NOT the secret key)
+```
+
+The `iam_secret_access_key` is **never stored**. It is returned once in `CreateCloudRelayConnectionResponseDto` (alongside `iamAccessKeyId`) and then discarded — the same pattern as the Aegis one-time registration token.
+
+### `delivery_mode = 'hybrid'` constraints
+
+A hybrid connection requires both an `url` (HTTP path) and an `sqs_queue_url` (SQS fallback path). The platform validates at creation time that both are present.
+
+Job routing logic for hybrid connections:
+
+1. Attempt synchronous HTTP call to `url` with a 5-second timeout (same as `direct` mode).
+2. If the call succeeds (2xx): return the response immediately.
+3. If the call fails (timeout, network error, 5xx): enqueue the job to `sqs_queue_url` (same as `platform-queue` mode) and return a job ID for async polling.
+
+The relay must support both `/health` (HTTP) and SQS polling simultaneously.
+
+---
+
+## Stage 2 — IAM provisioning design
+
+When `sqs_queue_mode = 'platform'` during connection creation, the platform performs these steps atomically before returning the response:
+
+### Provisioning sequence
+
+1. **Create SQS FIFO queue** in the SLAOps AWS account.
+   - Name: `slaops--{tenant_id}--relay--middleware--{conn_id}.fifo`
+   - Attributes: `FifoQueue=true`, `ContentBasedDeduplication=true`, message retention and visibility timeout from config.
+
+2. **Create IAM policy** scoped to the queue:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage",
+                  "sqs:GetQueueAttributes", "sqs:ChangeMessageVisibility"],
+       "Resource": "arn:aws:sqs:<region>:<account>:<queue-name>"
+     }]
+   }
+   ```
+
+3. **Create IAM user**: `slaops-middleware-{conn_id}`
+
+4. **Attach the policy** to the user.
+
+5. **Create IAM access key** for the user.
+
+6. **Return credentials** in `CreateCloudRelayConnectionResponseDto`:
+   - `iamAccessKeyId` — key ID (also stored on the connection record as `iam_access_key_id`)
+   - `iamSecretAccessKey` — secret (never stored; discarded after the response is sent)
+
+7. **Store** `iam_user_arn` and `iam_access_key_id` on the `platform_connection` record.
+
+### Teardown on connection delete
+
+When a connection with `sqs_queue_mode = 'platform'` is deleted:
+
+1. Delete the IAM user (cascades to attached policies and access keys).
+2. Delete the SQS queue.
+
+Customer-provided queues (`sqs_queue_mode = 'relay'`) are never deleted by the platform.
+
+---
+
+## Stage 2 — BYO (customer-provided) SQS queue
+
+When `sqs_queue_mode = 'relay'`, the operator provides their own SQS FIFO queue. The platform uses its existing IAM role to send messages to the customer queue via a resource policy.
+
+### Required resource policy on the customer queue
+
+The operator must add the following statement to their queue's resource policy before the connection can deliver jobs:
+
+```json
+{
+  "Sid": "AllowSLAOpsSendMessage",
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "arn:aws:iam::<slaops-account-id>:role/SLAOpsPlatformRole"
+  },
+  "Action": "sqs:SendMessage",
+  "Resource": "<customer-queue-arn>"
+}
+```
+
+The portal wizard provides this snippet pre-filled with the SLAOps account ID in Step 3.
+
+### Test queue endpoint
+
+`POST /cloud-relay/connection/:id/test-queue` — platform sends a canary message to the queue URL stored on the connection, then waits up to 30 seconds for the relay to claim and acknowledge the job via `POST /cloud-relay/job/:id/result`. Returns:
+
+```typescript
+{
+  acknowledged: boolean
+  latencyMs?: number   // ms between send and acknowledgement
+  error?: string       // error if send or acknowledgement failed
+}
+```
+
+This endpoint applies to both `sqs_queue_mode = 'platform'` and `sqs_queue_mode = 'relay'` connections.
 
 ---
 
@@ -495,10 +623,21 @@ GET    /cloud-relay/.well-known/jwks.json   Vendor signing public keys (for rela
 - [x] Health check triggered from platform — `RelayInstanceService.healthCheck` mints JWT and calls relay `/health`
 - [x] Aegis JWKS health check — `AegisInstanceService.healthCheck` fetches and validates the JWKS endpoint
 
-### Deferred
+### Deferred (Stage 1)
 
-- [ ] Portal UI: relay instances page (create, edit, delete, health check)
-- [ ] Portal UI: Aegis instances page (register, edit, delete, health check)
-- [ ] Portal UI: connection health dashboard
+- [ ] Portal UI: relay instances page (create, edit, delete, health check) — *replaced by Stage 2 connection wizard*
+- [ ] Portal UI: Aegis instances page (register, edit, delete, health check) — *replaced by Stage 2 connection wizard*
+- [ ] Portal UI: connection health dashboard — *included in Stage 2 design*
 - [ ] mTLS between platform and relay (deferred — API Gateway MTLS endpoint)
 - [ ] Automatic background relay health monitoring (currently portal-triggered only)
+
+### Stage 2 — not yet implemented
+
+- [ ] `PATCH /cloud-relay/connection/:id` — edit connection (name, URL, aegisId)
+- [ ] `POST /cloud-relay/connection/:id/health-check` — HTTP connectivity test
+- [ ] `POST /cloud-relay/connection/:id/test-queue` — SQS canary message test
+- [ ] `delivery_mode = 'hybrid'` — SQS + HTTP dual-path delivery
+- [ ] IAM user provisioning on SLAOps-managed SQS queue creation
+- [ ] BYO queue portal wizard flow (backend supports `sqs_queue_mode = 'relay'`; portal step not yet built)
+- [ ] Connections list page (replaces Stage 1 relay/aegis tabs)
+- [ ] Create Connection Wizard UI

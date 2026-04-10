@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common'
@@ -23,6 +24,8 @@ import { VendorJwtService } from '../vendor-jwt/vendor-jwt.service'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { CloudRelayService } from './cloud-relay.service'
 import { CreateCloudRelayConnectionDto } from './dto/create-cloud-relay-connection.dto'
+import { CreateCloudRelayConnectionResponseDto } from './dto/create-cloud-relay-connection-response.dto'
+import { UpdateCloudRelayConnectionDto } from './dto/update-cloud-relay-connection.dto'
 import { CreateCloudRelayJobDto } from './dto/create-cloud-relay-job.dto'
 import { CloudRelayConnection } from './entities/cloud-relay-connection.entity'
 import { CloudRelayJob } from './entities/cloud-relay-job.entity'
@@ -74,21 +77,37 @@ export class CloudRelayController {
   @ApiOperation({
     summary: 'Register a new relay connection',
     description:
-      'For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. ' +
-      'The response includes sqs_queue_url and sqs_region.\n\n' +
+      'Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue ' +
+      'is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.\n\n' +
+      'The response includes one-time credentials (IAM access key, Aegis registration token) ' +
+      'that are never returned again.\n\n' +
       'tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.',
   })
-  @ApiResponse({ status: 201, type: CloudRelayConnection })
+  @ApiResponse({ status: 201, type: CreateCloudRelayConnectionResponseDto })
   createConnection(
     @Body() dto: CreateCloudRelayConnectionDto,
     @CurrentUser() user: User,
-  ): Promise<CloudRelayConnection> {
+  ): Promise<CreateCloudRelayConnectionResponseDto> {
     return this.cloudRelayService.createConnection(dto, user['custom:tenant_id'], user.sub)
+  }
+
+  @Patch('connection/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a relay connection (name, URL, linked Aegis)' })
+  @ApiParam({ name: 'id', description: 'Connection UUID' })
+  @ApiResponse({ status: 200, type: CloudRelayConnection })
+  @ApiResponse({ status: 404 })
+  updateConnection(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCloudRelayConnectionDto,
+    @CurrentUser() user: User,
+  ): Promise<CloudRelayConnection> {
+    return this.cloudRelayService.updateConnection(id, dto, user['custom:tenant_id'])
   }
 
   @Delete('connection/:id')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a relay connection and its SQS queue (if any)' })
+  @ApiOperation({ summary: 'Delete a relay connection, its SQS queue, and IAM user (if any)' })
   @ApiParam({ name: 'id', description: 'Connection UUID' })
   @ApiResponse({
     status: 200,
@@ -101,6 +120,61 @@ export class CloudRelayController {
   ): Promise<{ message: string }> {
     await this.cloudRelayService.removeConnection(id, user['custom:tenant_id'])
     return { message: 'Cloud relay connection deleted successfully' }
+  }
+
+  @Post('connection/:id/health-check')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Test HTTP reachability for a direct or hybrid relay connection',
+    description: 'Makes an authenticated GET to <relay-url>/health and returns latency or error.',
+  })
+  @ApiParam({ name: 'id', description: 'Connection UUID' })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      properties: {
+        reachable: { type: 'boolean' },
+        latencyMs: { type: 'number' },
+        error: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404 })
+  healthCheckConnection(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<{ reachable: boolean; latencyMs?: number; error?: string }> {
+    return this.cloudRelayService.healthCheckConnection(id, user['custom:tenant_id'])
+  }
+
+  @Post('connection/:id/test-queue')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Test SQS queue connectivity for a platform-queue or hybrid relay connection',
+    description:
+      'Sends a canary message to the connection\'s SQS queue and verifies the send succeeds. ' +
+      'Validates that the platform role has sqs:SendMessage permission on the queue.',
+  })
+  @ApiParam({ name: 'id', description: 'Connection UUID' })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      properties: {
+        sent: { type: 'boolean' },
+        error: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404 })
+  testQueueConnection(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<{ sent: boolean; error?: string }> {
+    return this.cloudRelayService.testQueueConnection(id, user['custom:tenant_id'])
   }
 
   // ── Job submission ────────────────────────────────────────────────────────

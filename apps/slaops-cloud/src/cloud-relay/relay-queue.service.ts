@@ -15,7 +15,7 @@ import { config } from '@slaops/config'
  * platform (default):
  *   slaops-cloud creates the queue in the SLAOps AWS account at relay
  *   registration time and deletes it when the connection is removed.
- *   Queue name convention: slaops-{tenantId}-local-{userId}-{relayId}.fifo
+ *   Queue name convention: slaops--{tenantId}--relay--middleware--{connId}.fifo
  *   The relay authenticates via Cognito Identity Pool → STS to consume.
  *
  * relay:
@@ -55,7 +55,6 @@ export class RelayQueueService {
   async resolveRelayQueue(
     mode: 'platform' | 'relay',
     tenantId: string,
-    userId: string,
     relayId: string,
     customerQueueUrl?: string,
   ): Promise<string> {
@@ -73,15 +72,15 @@ export class RelayQueueService {
       return customerQueueUrl
     }
 
-    return this.createRelayQueue(tenantId, userId, relayId)
+    return this.createRelayQueue(tenantId, relayId)
   }
 
   /**
    * Provision a new FIFO queue in the SLAOps account.
    * Returns the queue URL to store on the connection record.
    */
-  async createRelayQueue(tenantId: string, userId: string, relayId: string): Promise<string> {
-    const queueName = this.queueName(tenantId, userId, relayId)
+  async createRelayQueue(tenantId: string, relayId: string): Promise<string> {
+    const queueName = this.queueName(tenantId, relayId)
 
     const res = await this.sqs.send(
       new CreateQueueCommand({
@@ -148,7 +147,7 @@ export class RelayQueueService {
     return this.region
   }
 
-  private queueName(tenantId: string, userId: string, relayId: string): string {
-    return `slaops-${tenantId}-local-${userId}-${relayId}.fifo`
+  private queueName(tenantId: string, relayId: string): string {
+    return `slaops--${tenantId}--relay--middleware--${relayId}.fifo`
   }
 }
