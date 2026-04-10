@@ -42,7 +42,8 @@ export interface CloudRelayJob {
 export const CloudRelayJobDeliveryModeEnum = {
     Direct: 'direct',
     RelayQueue: 'relay-queue',
-    PlatformQueue: 'platform-queue'
+    PlatformQueue: 'platform-queue',
+    Hybrid: 'hybrid'
 } as const;
 
 export type CloudRelayJobDeliveryModeEnum = typeof CloudRelayJobDeliveryModeEnum[keyof typeof CloudRelayJobDeliveryModeEnum];

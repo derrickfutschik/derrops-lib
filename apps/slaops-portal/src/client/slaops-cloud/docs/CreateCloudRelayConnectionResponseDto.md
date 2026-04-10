@@ -1,4 +1,4 @@
-# CloudRelayConnection
+# CreateCloudRelayConnectionResponseDto
 
 
 ## Properties
@@ -20,13 +20,16 @@ Name | Type | Description | Notes
 **api_key** | **string** | API key for relay authentication. direct/relay-queue: slaops-cloud sends this as Bearer token to the relay. platform-queue: relay sends this as Bearer token when polling slaops-cloud. Configure the relay with RELAY_API_KEY (inbound) or RELAY_PLATFORM_TOKEN (outbound polling). | [default to undefined]
 **created_at** | **string** |  | [default to undefined]
 **updated_at** | **string** |  | [default to undefined]
+**iam_access_key_id_created** | **string** | IAM access key ID for the provisioned relay IAM user (sqs_queue_mode&#x3D;platform only). Returned once — not stored. Null until IAM provisioning is implemented. | [optional] [default to undefined]
+**iam_secret_access_key** | **string** | IAM secret access key for the provisioned relay IAM user (sqs_queue_mode&#x3D;platform only). Returned once — never stored. Null until IAM provisioning is implemented. | [optional] [default to undefined]
+**aegis_registration_token** | **string** | One-time Aegis registration token, returned only when a new Aegis instance was registered as part of this connection creation. Never returned again. | [optional] [default to undefined]
 
 ## Example
 
 ```typescript
-import { CloudRelayConnection } from './api';
+import { CreateCloudRelayConnectionResponseDto } from './api';
 
-const instance: CloudRelayConnection = {
+const instance: CreateCloudRelayConnectionResponseDto = {
     id,
     tenant_id,
     name,
@@ -42,6 +45,9 @@ const instance: CloudRelayConnection = {
     api_key,
     created_at,
     updated_at,
+    iam_access_key_id_created,
+    iam_secret_access_key,
+    aegis_registration_token,
 };
 ```
 

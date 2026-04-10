@@ -1,24 +1,22 @@
-import { AegisInstancesTab } from '@/components/connections/AegisInstancesTab'
+import { ConnectionsTab } from '@/components/connections/ConnectionsTab'
 import { HealthDashboardTab } from '@/components/connections/HealthDashboardTab'
-import { RelayInstancesTab } from '@/components/connections/RelayInstancesTab'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useAegisInstances, useRelayInstances } from '@/hooks/useConnectionsApi'
+import { useAegisInstances, useConnections } from '@/hooks/useConnectionsApi'
 import { signOut } from 'aws-amplify/auth'
-import { ArrowLeft, LogOut, Radio, Shield, Activity } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { ArrowLeft, LogOut, Activity, Cable } from 'lucide-react'
+import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const Connections = () => {
   const navigate = useNavigate()
-  const relaysQuery = useRelayInstances()
+  const connectionsQuery = useConnections()
   const aegisQuery = useAegisInstances()
-  const [registerRelayOpen, setRegisterRelayOpen] = useState(false)
 
   const handleRefresh = useCallback(() => {
-    relaysQuery.refetch()
+    connectionsQuery.refetch()
     aegisQuery.refetch()
-  }, [relaysQuery, aegisQuery])
+  }, [connectionsQuery, aegisQuery])
 
   const handleSignOut = async () => {
     await signOut({ global: true })
@@ -40,7 +38,7 @@ const Connections = () => {
                   Settings <span className="text-muted-foreground font-normal">/ Connections</span>
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  Manage relay and Aegis instances
+                  Manage relay connections and Aegis token brokers
                 </p>
               </div>
             </div>
@@ -53,15 +51,11 @@ const Connections = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="relays">
+        <Tabs defaultValue="connections">
           <TabsList className="bg-secondary/50 mb-6">
-            <TabsTrigger value="relays" className="gap-2">
-              <Radio className="h-3.5 w-3.5" />
-              Relay Instances
-            </TabsTrigger>
-            <TabsTrigger value="aegis" className="gap-2">
-              <Shield className="h-3.5 w-3.5" />
-              Aegis Instances
+            <TabsTrigger value="connections" className="gap-2">
+              <Cable className="h-3.5 w-3.5" />
+              Connections
             </TabsTrigger>
             <TabsTrigger value="health" className="gap-2">
               <Activity className="h-3.5 w-3.5" />
@@ -69,31 +63,21 @@ const Connections = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="relays">
-            <RelayInstancesTab
-              relays={relaysQuery.data ?? []}
+          <TabsContent value="connections">
+            <ConnectionsTab
+              connections={connectionsQuery.data ?? []}
               aegisInstances={aegisQuery.data ?? []}
-              isLoading={relaysQuery.isLoading}
-            />
-          </TabsContent>
-
-          <TabsContent value="aegis">
-            <AegisInstancesTab
-              aegisInstances={aegisQuery.data ?? []}
-              relayInstances={relaysQuery.data ?? []}
-              isLoading={aegisQuery.isLoading}
+              isLoading={connectionsQuery.isLoading}
             />
           </TabsContent>
 
           <TabsContent value="health">
             <HealthDashboardTab
-              relays={relaysQuery.data ?? []}
+              relays={[]}
               aegisInstances={aegisQuery.data ?? []}
-              isLoading={relaysQuery.isLoading || aegisQuery.isLoading}
+              isLoading={connectionsQuery.isLoading || aegisQuery.isLoading}
               onRefresh={handleRefresh}
-              onRegisterRelay={() => {
-                // Switch to relay tab — handled by user manually for now
-              }}
+              onRegisterRelay={() => {}}
             />
           </TabsContent>
         </Tabs>

@@ -28,11 +28,19 @@ import type { CloudRelayControllerDeleteConnection200Response } from '../models'
 // @ts-ignore
 import type { CloudRelayControllerGetJwks200Response } from '../models';
 // @ts-ignore
+import type { CloudRelayControllerHealthCheckConnection200Response } from '../models';
+// @ts-ignore
+import type { CloudRelayControllerTestQueueConnection200Response } from '../models';
+// @ts-ignore
 import type { CloudRelayJob } from '../models';
 // @ts-ignore
 import type { CreateCloudRelayConnectionDto } from '../models';
 // @ts-ignore
+import type { CreateCloudRelayConnectionResponseDto } from '../models';
+// @ts-ignore
 import type { CreateCloudRelayJobDto } from '../models';
+// @ts-ignore
+import type { UpdateCloudRelayConnectionDto } from '../models';
 /**
  * CloudRelayApi - axios parameter creator
  */
@@ -75,7 +83,7 @@ export const CloudRelayApiAxiosParamCreator = function (configuration?: Configur
             };
         },
         /**
-         * For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. The response includes sqs_queue_url and sqs_region.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
+         * Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.  The response includes one-time credentials (IAM access key, Aegis registration token) that are never returned again.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
          * @summary Register a new relay connection
          * @param {CreateCloudRelayConnectionDto} createCloudRelayConnectionDto 
          * @param {*} [options] Override http request option.
@@ -115,7 +123,7 @@ export const CloudRelayApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
-         * @summary Delete a relay connection and its SQS queue (if any)
+         * @summary Delete a relay connection, its SQS queue, and IAM user (if any)
          * @param {string} id Connection UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -337,6 +345,125 @@ export const CloudRelayApiAxiosParamCreator = function (configuration?: Configur
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * Makes an authenticated GET to <relay-url>/health and returns latency or error.
+         * @summary Test HTTP reachability for a direct or hybrid relay connection
+         * @param {string} id Connection UUID
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cloudRelayControllerHealthCheckConnection: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('cloudRelayControllerHealthCheckConnection', 'id', id)
+            const localVarPath = `/cloud-relay/connection/{id}/health-check`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Sends a canary message to the connection\'s SQS queue and verifies the send succeeds. Validates that the platform role has sqs:SendMessage permission on the queue.
+         * @summary Test SQS queue connectivity for a platform-queue or hybrid relay connection
+         * @param {string} id Connection UUID
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cloudRelayControllerTestQueueConnection: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('cloudRelayControllerTestQueueConnection', 'id', id)
+            const localVarPath = `/cloud-relay/connection/{id}/test-queue`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update a relay connection (name, URL, linked Aegis)
+         * @param {string} id Connection UUID
+         * @param {UpdateCloudRelayConnectionDto} updateCloudRelayConnectionDto 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cloudRelayControllerUpdateConnection: async (id: string, updateCloudRelayConnectionDto: UpdateCloudRelayConnectionDto, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('cloudRelayControllerUpdateConnection', 'id', id)
+            // verify required parameter 'updateCloudRelayConnectionDto' is not null or undefined
+            assertParamExists('cloudRelayControllerUpdateConnection', 'updateCloudRelayConnectionDto', updateCloudRelayConnectionDto)
+            const localVarPath = `/cloud-relay/connection/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(updateCloudRelayConnectionDto, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -360,13 +487,13 @@ export const CloudRelayApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. The response includes sqs_queue_url and sqs_region.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
+         * Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.  The response includes one-time credentials (IAM access key, Aegis registration token) that are never returned again.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
          * @summary Register a new relay connection
          * @param {CreateCloudRelayConnectionDto} createCloudRelayConnectionDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async cloudRelayControllerCreateConnection(createCloudRelayConnectionDto: CreateCloudRelayConnectionDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CloudRelayConnection>> {
+        async cloudRelayControllerCreateConnection(createCloudRelayConnectionDto: CreateCloudRelayConnectionDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateCloudRelayConnectionResponseDto>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.cloudRelayControllerCreateConnection(createCloudRelayConnectionDto, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['CloudRelayApi.cloudRelayControllerCreateConnection']?.[localVarOperationServerIndex]?.url;
@@ -374,7 +501,7 @@ export const CloudRelayApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @summary Delete a relay connection and its SQS queue (if any)
+         * @summary Delete a relay connection, its SQS queue, and IAM user (if any)
          * @param {string} id Connection UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -450,6 +577,46 @@ export const CloudRelayApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['CloudRelayApi.cloudRelayControllerGetJwks']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * Makes an authenticated GET to <relay-url>/health and returns latency or error.
+         * @summary Test HTTP reachability for a direct or hybrid relay connection
+         * @param {string} id Connection UUID
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async cloudRelayControllerHealthCheckConnection(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CloudRelayControllerHealthCheckConnection200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cloudRelayControllerHealthCheckConnection(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['CloudRelayApi.cloudRelayControllerHealthCheckConnection']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Sends a canary message to the connection\'s SQS queue and verifies the send succeeds. Validates that the platform role has sqs:SendMessage permission on the queue.
+         * @summary Test SQS queue connectivity for a platform-queue or hybrid relay connection
+         * @param {string} id Connection UUID
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async cloudRelayControllerTestQueueConnection(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CloudRelayControllerTestQueueConnection200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cloudRelayControllerTestQueueConnection(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['CloudRelayApi.cloudRelayControllerTestQueueConnection']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Update a relay connection (name, URL, linked Aegis)
+         * @param {string} id Connection UUID
+         * @param {UpdateCloudRelayConnectionDto} updateCloudRelayConnectionDto 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async cloudRelayControllerUpdateConnection(id: string, updateCloudRelayConnectionDto: UpdateCloudRelayConnectionDto, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CloudRelayConnection>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cloudRelayControllerUpdateConnection(id, updateCloudRelayConnectionDto, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['CloudRelayApi.cloudRelayControllerUpdateConnection']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -470,18 +637,18 @@ export const CloudRelayApiFactory = function (configuration?: Configuration, bas
             return localVarFp.cloudRelayControllerClaimNextJob(authorization, options).then((request) => request(axios, basePath));
         },
         /**
-         * For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. The response includes sqs_queue_url and sqs_region.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
+         * Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.  The response includes one-time credentials (IAM access key, Aegis registration token) that are never returned again.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
          * @summary Register a new relay connection
          * @param {CreateCloudRelayConnectionDto} createCloudRelayConnectionDto 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        cloudRelayControllerCreateConnection(createCloudRelayConnectionDto: CreateCloudRelayConnectionDto, options?: RawAxiosRequestConfig): AxiosPromise<CloudRelayConnection> {
+        cloudRelayControllerCreateConnection(createCloudRelayConnectionDto: CreateCloudRelayConnectionDto, options?: RawAxiosRequestConfig): AxiosPromise<CreateCloudRelayConnectionResponseDto> {
             return localVarFp.cloudRelayControllerCreateConnection(createCloudRelayConnectionDto, options).then((request) => request(axios, basePath));
         },
         /**
          * 
-         * @summary Delete a relay connection and its SQS queue (if any)
+         * @summary Delete a relay connection, its SQS queue, and IAM user (if any)
          * @param {string} id Connection UUID
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -539,6 +706,37 @@ export const CloudRelayApiFactory = function (configuration?: Configuration, bas
         cloudRelayControllerGetJwks(options?: RawAxiosRequestConfig): AxiosPromise<CloudRelayControllerGetJwks200Response> {
             return localVarFp.cloudRelayControllerGetJwks(options).then((request) => request(axios, basePath));
         },
+        /**
+         * Makes an authenticated GET to <relay-url>/health and returns latency or error.
+         * @summary Test HTTP reachability for a direct or hybrid relay connection
+         * @param {string} id Connection UUID
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cloudRelayControllerHealthCheckConnection(id: string, options?: RawAxiosRequestConfig): AxiosPromise<CloudRelayControllerHealthCheckConnection200Response> {
+            return localVarFp.cloudRelayControllerHealthCheckConnection(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Sends a canary message to the connection\'s SQS queue and verifies the send succeeds. Validates that the platform role has sqs:SendMessage permission on the queue.
+         * @summary Test SQS queue connectivity for a platform-queue or hybrid relay connection
+         * @param {string} id Connection UUID
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cloudRelayControllerTestQueueConnection(id: string, options?: RawAxiosRequestConfig): AxiosPromise<CloudRelayControllerTestQueueConnection200Response> {
+            return localVarFp.cloudRelayControllerTestQueueConnection(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update a relay connection (name, URL, linked Aegis)
+         * @param {string} id Connection UUID
+         * @param {UpdateCloudRelayConnectionDto} updateCloudRelayConnectionDto 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cloudRelayControllerUpdateConnection(id: string, updateCloudRelayConnectionDto: UpdateCloudRelayConnectionDto, options?: RawAxiosRequestConfig): AxiosPromise<CloudRelayConnection> {
+            return localVarFp.cloudRelayControllerUpdateConnection(id, updateCloudRelayConnectionDto, options).then((request) => request(axios, basePath));
+        },
     };
 };
 
@@ -558,7 +756,7 @@ export class CloudRelayApi extends BaseAPI {
     }
 
     /**
-     * For local-dev relays (type=local-dev), a dedicated SQS FIFO queue is provisioned automatically. The response includes sqs_queue_url and sqs_region.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
+     * Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.  The response includes one-time credentials (IAM access key, Aegis registration token) that are never returned again.  tenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.
      * @summary Register a new relay connection
      * @param {CreateCloudRelayConnectionDto} createCloudRelayConnectionDto 
      * @param {*} [options] Override http request option.
@@ -570,7 +768,7 @@ export class CloudRelayApi extends BaseAPI {
 
     /**
      * 
-     * @summary Delete a relay connection and its SQS queue (if any)
+     * @summary Delete a relay connection, its SQS queue, and IAM user (if any)
      * @param {string} id Connection UUID
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -632,6 +830,40 @@ export class CloudRelayApi extends BaseAPI {
      */
     public cloudRelayControllerGetJwks(options?: RawAxiosRequestConfig) {
         return CloudRelayApiFp(this.configuration).cloudRelayControllerGetJwks(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Makes an authenticated GET to <relay-url>/health and returns latency or error.
+     * @summary Test HTTP reachability for a direct or hybrid relay connection
+     * @param {string} id Connection UUID
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public cloudRelayControllerHealthCheckConnection(id: string, options?: RawAxiosRequestConfig) {
+        return CloudRelayApiFp(this.configuration).cloudRelayControllerHealthCheckConnection(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Sends a canary message to the connection\'s SQS queue and verifies the send succeeds. Validates that the platform role has sqs:SendMessage permission on the queue.
+     * @summary Test SQS queue connectivity for a platform-queue or hybrid relay connection
+     * @param {string} id Connection UUID
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public cloudRelayControllerTestQueueConnection(id: string, options?: RawAxiosRequestConfig) {
+        return CloudRelayApiFp(this.configuration).cloudRelayControllerTestQueueConnection(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update a relay connection (name, URL, linked Aegis)
+     * @param {string} id Connection UUID
+     * @param {UpdateCloudRelayConnectionDto} updateCloudRelayConnectionDto 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public cloudRelayControllerUpdateConnection(id: string, updateCloudRelayConnectionDto: UpdateCloudRelayConnectionDto, options?: RawAxiosRequestConfig) {
+        return CloudRelayApiFp(this.configuration).cloudRelayControllerUpdateConnection(id, updateCloudRelayConnectionDto, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
