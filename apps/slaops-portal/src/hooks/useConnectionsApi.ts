@@ -1,8 +1,3 @@
-import {
-  AegisInstanceApi,
-  CloudRelayApi,
-  RelayInstanceApi,
-} from '@/client/slaops-cloud'
 import type {
   AegisCreateResponseDto,
   AegisInstance,
@@ -14,6 +9,7 @@ import type {
   UpdateAegisInstanceDto,
   UpdateRelayInstanceDto,
 } from '@/client/slaops-cloud'
+import { AegisInstanceApi, CloudRelayApi, RelayInstanceApi } from '@/client/slaops-cloud'
 import { API_BASE_URL } from '@/config'
 import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -33,11 +29,14 @@ export interface UpdateConnectionDto {
 }
 
 function useApiClients() {
-  return useMemo(() => ({
-    relayApi: new RelayInstanceApi(cloudApiConfig, undefined, cloudAxios),
-    aegisApi: new AegisInstanceApi(cloudApiConfig, undefined, cloudAxios),
-    cloudRelayApi: new CloudRelayApi(cloudApiConfig, undefined, cloudAxios),
-  }), [])
+  return useMemo(
+    () => ({
+      relayApi: new RelayInstanceApi(cloudApiConfig, undefined, cloudAxios),
+      aegisApi: new AegisInstanceApi(cloudApiConfig, undefined, cloudAxios),
+      cloudRelayApi: new CloudRelayApi(cloudApiConfig, undefined, cloudAxios),
+    }),
+    [],
+  )
 }
 
 // ── Relay Hooks ──
@@ -215,9 +214,11 @@ export function useHealthCheckConnection() {
   const qc = useQueryClient()
   return useMutation<{ reachable: boolean; latencyMs?: number; error?: string }, Error, string>({
     mutationFn: async (id) => {
-      const { data } = await cloudAxios.post<{ reachable: boolean; latencyMs?: number; error?: string }>(
-        `${API_BASE_URL}/cloud-relay/connection/${id}/health-check`,
-      )
+      const { data } = await cloudAxios.post<{
+        reachable: boolean
+        latencyMs?: number
+        error?: string
+      }>(`${API_BASE_URL}/cloud-relay/connection/${id}/health-check`)
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['connections'] }),
