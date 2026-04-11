@@ -24,6 +24,7 @@ Design documents serve two purposes:
 The customer-deployed HTTP proxy for API testing. Covers component design, network topology, connection trust model, Aegis Token Broker (credential injection), local development relay, and security/auth methods.
 
 - [API Tester — Relay Execution](./cloud-relay/api-tester-relay-execution) — End-to-end job execution flow from portal through slaops-cloud and SQS to relay
+- [API Tester — Connection Switcher](./cloud-relay/api-tester-connection-switcher) — UX and state design for switching between relay connections and browser-direct mode
 
 ### [OpenAPI Indexer](./openapi-indexer/openapi-directory-indexer)
 

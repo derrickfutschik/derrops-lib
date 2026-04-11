@@ -7,6 +7,8 @@ description: Various endpoints used by the SLAOps Platform.
 
 # AWS
 
+- [Console](https://console.aws.amazon.com/console/home)
+
 - [SLAOps Portal](http://app.derrops.com)
 - [SLAOps Docs](http://app.derrops.com)
 - [Cognito Userpool](https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_XUMcOaNb2)
