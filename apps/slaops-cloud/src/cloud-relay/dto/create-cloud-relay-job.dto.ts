@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { Type } from 'class-transformer'
-import { IsUUID, ValidateNested } from 'class-validator'
+import { IsObject, IsUUID } from 'class-validator'
 
 /**
  * Mirrors CloudProxyRequestDto from apps/slaops-relay.
@@ -16,7 +15,6 @@ export class CreateCloudRelayJobDto {
   connectionId: string
 
   @ApiProperty({ description: 'Full CloudProxyRequestDto payload (HAR request + optional templateContext)' })
-  @ValidateNested()
-  @Type(() => CloudRelayJobRequestDto)
+  @IsObject()
   request: CloudRelayJobRequestDto
 }
