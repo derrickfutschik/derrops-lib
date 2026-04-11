@@ -29,6 +29,7 @@ export enum ActionGroup {
   // request area
   Navigation = 'navigation',
   Layout = 'layout',
+  SendRequest = 'send-request',
   // response area
   ViewMode = 'view-mode',
   Json = 'json',

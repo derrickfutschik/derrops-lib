@@ -24,19 +24,32 @@ export function useRelaySelector() {
 
   // After connections load: validate stored selection and auto-select if unset
   useEffect(() => {
-    if (isLoading || connections.length === 0) return
+    if (isLoading) return
 
     if (connectionId !== null) {
-      const found = connections.find((c) => c.id === connectionId)
-      if (!found) {
-        setConnectionIdState(null)
-        localStorage.removeItem(STORAGE_KEY)
-        setDeletedWarning(true)
+      // Validate the stored ID against the current connections list
+      if (connections.length > 0) {
+        const found = connections.find((c) => c.id === connectionId)
+        if (!found) {
+          setConnectionIdState(null)
+          // Store null explicitly so the auto-select below does not trigger
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(null))
+          setDeletedWarning(true)
+        }
       }
       return
     }
 
-    // No stored preference — auto-select first non-local connection
+    // connectionId === null — distinguish "explicit browser mode" from "no preference yet"
+    // An explicit browser selection stores the JSON string "null"; no preference means the key is absent.
+    const rawStored = localStorage.getItem(STORAGE_KEY)
+    if (rawStored !== null) {
+      // User explicitly chose browser mode — respect it
+      return
+    }
+
+    // No stored preference at all — auto-select first non-local connection
+    if (connections.length === 0) return
     const firstNonLocal = connections.find((c) => c.type !== 'local-dev')
     if (firstNonLocal) {
       setConnectionIdState(firstNonLocal.id)
@@ -47,11 +60,9 @@ export function useRelaySelector() {
   const setConnectionId = useCallback(
     (id: string | null) => {
       setConnectionIdState(id)
-      if (id === null) {
-        localStorage.removeItem(STORAGE_KEY)
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(id))
-      }
+      // Always persist explicitly — null stored as "null" so the effect can
+      // distinguish "user chose browser mode" from "no preference yet".
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(id))
     },
     [],
   )

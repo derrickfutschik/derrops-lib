@@ -51,7 +51,7 @@ export function RelaySelector({ connectionId, connections, isLoading, onSelect }
     if (val === BROWSER_VALUE) {
       onSelect(null)
     } else if (val === '__manage__') {
-      navigate('/connections')
+      navigate('/settings/connections')
     } else {
       onSelect(val)
     }
