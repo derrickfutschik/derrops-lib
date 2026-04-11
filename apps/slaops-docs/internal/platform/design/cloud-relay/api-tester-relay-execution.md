@@ -264,7 +264,6 @@ x-tenant-id: <tenantId>
 ```
 
 Returns the same shape as `/wait` but never blocks — always responds immediately with the current job state.
-```
 
 ### Result delivery (relay → slaops-cloud)
 
