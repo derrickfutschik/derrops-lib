@@ -8,7 +8,7 @@ import { secretStoreRegistry } from '../secrets/secret-store-registry'
 import { resolveTemplates, TemplateError } from '../template/template-resolver'
 import { maskSecrets } from '../masking/secret-masker'
 import type { CloudProxyRequestDto, TemplateVariableDefinitionDto } from './dto/cloud-proxy-request.dto'
-import type { CloudProxyResponseDto, CloudProxyErrorDto } from './dto/cloud-proxy-response.dto'
+import type { CloudProxyResponseDto } from './dto/cloud-proxy-response.dto'
 
 /** Hop-by-hop headers that must never be forwarded to the target. */
 const HOP_BY_HOP = new Set([
@@ -135,7 +135,7 @@ export class ProxyService {
     dto: CloudProxyRequestDto,
     userId: string,
     tenantId: string,
-  ): Promise<CloudProxyResponseDto | CloudProxyErrorDto> {
+  ): Promise<CloudProxyResponseDto> {
     const startTime = Date.now()
 
     // 1. Resolve template expressions in all HAR string fields
@@ -149,7 +149,7 @@ export class ProxyService {
       injectedSecrets = resolved.injectedSecrets
     } catch (err) {
       if (err instanceof TemplateError) {
-        return { error: err.message, code: 'TEMPLATE_ERROR', durationMs: Date.now() - startTime }
+        return { status: 0, statusText: 'Template Error', headers: {}, body: err.message, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
       }
       throw err
     }
@@ -159,11 +159,11 @@ export class ProxyService {
     try {
       parsedUrl = new URL(har.url)
     } catch {
-      return { error: `Invalid URL: ${har.url}`, code: 'INVALID_URL', durationMs: Date.now() - startTime }
+      return { status: 0, statusText: 'Invalid URL', headers: {}, body: `Invalid URL: ${har.url}`, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
     }
 
     if (!['https:', 'http:'].includes(parsedUrl.protocol)) {
-      return { error: `Unsupported protocol: ${parsedUrl.protocol}`, code: 'INVALID_URL', durationMs: Date.now() - startTime }
+      return { status: 0, statusText: 'Invalid URL', headers: {}, body: `Unsupported protocol: ${parsedUrl.protocol}`, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
     }
 
     // 3. Resolve DNS
@@ -202,7 +202,7 @@ export class ProxyService {
     const policyResult = evaluatePolicy(PLATFORM_DEFAULT_POLICY, ctx)
     if (!policyResult.allowed) {
       this.logger.warn(`Policy denied request to ${host}: ${policyResult.reason}`)
-      return { error: policyResult.reason, code: 'POLICY_DENIED', durationMs: Date.now() - startTime }
+      return { status: 0, statusText: 'Policy Denied', headers: {}, body: policyResult.reason, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
     }
 
     const enforce = policyResult.enforce
@@ -272,9 +272,9 @@ export class ProxyService {
     } catch (err: unknown) {
       const durationMs = Date.now() - startTime
       if (err instanceof Error && err.name === 'TimeoutError') {
-        return { error: 'Request timed out', code: 'TIMEOUT', durationMs }
+        return { status: 0, statusText: 'Timeout', headers: {}, body: 'Request timed out', durationMs, requestedAt: new Date(startTime).toISOString() }
       }
-      return { error: (err as Error).message ?? 'Network error', code: 'NETWORK_ERROR', durationMs }
+      return { status: 0, statusText: 'Network Error', headers: {}, body: (err as Error).message ?? 'Network error', durationMs, requestedAt: new Date(startTime).toISOString() }
     }
 
     // 12. Read response body

@@ -106,11 +106,11 @@ export function useSendRequest() {
     if (relayJob.status === 'completed' && relayJob.result) {
       const r = relayJob.result
       dispatch(setRequestResponse({
-        status: r.statusCode,
+        status: r.status,
         statusText: r.statusText,
         headers: r.headers,
         body: r.body,
-        duration: r.timingMs,
+        duration: r.durationMs,
         relayConnectionName: relayJob.connectionName ?? undefined,
         relayDeliveryMode: relayJob.deliveryMode ?? undefined,
       }))

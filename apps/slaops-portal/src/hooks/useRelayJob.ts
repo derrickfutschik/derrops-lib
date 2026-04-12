@@ -6,11 +6,11 @@ import { CloudRelayJob } from '@/client/slaops-cloud'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface RelayJobResult {
-  statusCode: number
+  status: number
   statusText: string
   headers: Record<string, string>
   body: string
-  timingMs: number
+  durationMs: number
 }
 
 interface RelayJobError {

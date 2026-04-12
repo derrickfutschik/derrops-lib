@@ -12,6 +12,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common'
+import { IsBoolean, IsObject, IsOptional } from 'class-validator'
 import {
   ApiHeader,
   ApiBearerAuth,
@@ -35,7 +36,11 @@ import { User } from '../user/user.dto'
 
 /** Body posted by the relay when delivering a platform-queue job result. */
 class DeliverJobResultDto {
+  @IsObject()
   result: object
+
+  @IsBoolean()
+  @IsOptional()
   failed?: boolean
 }
 

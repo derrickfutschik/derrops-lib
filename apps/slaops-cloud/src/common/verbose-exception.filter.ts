@@ -1,9 +1,11 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common'
 import { config } from '@slaops/config'
 import { Request, Response } from 'express'
 
 @Catch()
 export class VerboseExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(VerboseExceptionFilter.name)
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse<Response>()
@@ -13,6 +15,13 @@ export class VerboseExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
 
     const isHttpException = exception instanceof HttpException
+
+    // Log all 5xx errors server-side with full stack trace
+    if (status >= 500) {
+      const message = exception instanceof Error ? exception.message : String(exception)
+      const stack = exception instanceof Error ? exception.stack : undefined
+      this.logger.error(`${request.method} ${request.url} → ${status}: ${message}`, stack)
+    }
 
     if (config['app.error.verbose']) {
       const stack = exception instanceof Error ? exception.stack : undefined
@@ -28,8 +37,6 @@ export class VerboseExceptionFilter implements ExceptionFilter {
         timestamp: new Date().toISOString(),
       })
     } else {
-      // Default NestJS behaviour for HTTP exceptions; re-throw for unknown errors so
-      // NestJS's built-in handler produces the standard {"statusCode":500,"message":"Internal server error"}
       if (isHttpException) {
         const body = exception.getResponse()
         response.status(status).json(body)

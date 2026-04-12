@@ -470,10 +470,13 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
           signal: AbortSignal.timeout(15_000),
         })
         if (!postRes.ok) {
+          let errorBody: string
+          try { errorBody = await postRes.text() } catch { errorBody = '' }
           this.logger.warn(JSON.stringify({
             event: 'job_result_deliver_failed',
             job_id: jobId,
             http_status: postRes.status,
+            error_body: errorBody,
           }))
         } else {
           this.logger.log(JSON.stringify({

@@ -450,7 +450,7 @@ export class CloudRelayService {
         .andWhere('job.status = :status', { status: 'pending' })
         .andWhere('job.delivery_mode = :mode', { mode: 'platform-queue' })
         .orderBy('job.created_at', 'ASC')
-        .setLock('pessimistic_write_or_fail')
+        .setLock('pessimistic_partial_write')
         .getOne()
 
       if (!job) return null

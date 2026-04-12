@@ -15,7 +15,7 @@ import { PlatformJwtGuard } from '../auth/platform-jwt.guard'
 import { QueueService } from '../queue/queue.service'
 import type { QueueJobState } from '../queue/queue-store'
 import type { CloudProxyRequestDto } from './dto/cloud-proxy-request.dto'
-import { CloudProxyErrorDto, CloudProxyResponseDto } from './dto/cloud-proxy-response.dto'
+import { CloudProxyResponseDto } from './dto/cloud-proxy-response.dto'
 import { ProxyService } from './proxy.service'
 
 type EnqueueBody = { request: CloudProxyRequestDto; tenantId: string; userId: string }
@@ -36,12 +36,11 @@ export class CloudRelayController {
   @ApiHeader({ name: 'x-user-id', required: true, description: 'User UUID' })
   @ApiOperation({ summary: 'Proxy an HTTP request (direct mode)' })
   @ApiResponse({ status: 200, type: CloudProxyResponseDto })
-  @ApiResponse({ status: 200, type: CloudProxyErrorDto, description: 'Proxy error (also 200)' })
   async proxy(
     @Body() dto: CloudProxyRequestDto,
     @Headers('x-user-id') userId = 'anonymous',
     @Headers('x-tenant-id') tenantId = 'default',
-  ): Promise<CloudProxyResponseDto | CloudProxyErrorDto> {
+  ): Promise<CloudProxyResponseDto> {
     return this.proxyService.proxy(dto, userId, tenantId)
   }
 
