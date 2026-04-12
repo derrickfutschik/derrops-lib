@@ -79,8 +79,9 @@ export const env = {
    * RELAY_COGNITO_DOMAIN            — Cognito hosted UI domain (for token refresh calls)
    */
   platformSqs: {
-    queueUrl: process.env.RELAY_PLATFORM_SQS_QUEUE_URL,
-    region: process.env.RELAY_PLATFORM_SQS_REGION ?? 'ap-southeast-2',
+    // Accept both the canonical prefixed name and the shorter alias used by slaops-cloud
+    queueUrl: process.env.RELAY_PLATFORM_SQS_QUEUE_URL ?? process.env.SQS_QUEUE_URL,
+    region: process.env.RELAY_PLATFORM_SQS_REGION ?? process.env.SQS_REGION ?? 'ap-southeast-2',
     // Initial credentials injected by slaops-cli — refreshed autonomously by the relay
     initialAccessKeyId: process.env.RELAY_PLATFORM_SQS_ACCESS_KEY_ID,
     initialSecretAccessKey: process.env.RELAY_PLATFORM_SQS_SECRET_ACCESS_KEY,
