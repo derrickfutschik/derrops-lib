@@ -19,6 +19,24 @@ import { helper } from '../../slaops-cloud/src/...'
 
 Auth is handled by `cloudAxios` in `src/lib/cloud-api.ts` — its request interceptor attaches the Cognito Bearer token on every outgoing request automatically. **Do not call `getAuthHeaders()` or any other auth helper manually** — pass requests through `cloudAxios` and the token is injected for you.
 
+## CRITICAL: Never define local types for API response shapes
+
+**Never declare a local interface or type that mirrors a backend response.** Always import generated models from `src/client/slaops-cloud/models/`.
+
+The generated client is the single source of truth for the backend contract. When you declare a local type instead of importing the generated one, that local type immediately begins drifting — field names change, optional fields become required, new fields are added — and the compiler can't catch the mismatch because it only knows about the local type. The result is runtime breakage that looks like a frontend bug but is actually a schema sync problem.
+
+```typescript
+// ✅ Correct — generated model stays in sync with the backend
+import { SomeModel } from '@/client/slaops-cloud'
+const { data } = await cloudAxios.post<SomeModel>(...)
+
+// ❌ Wrong — local copy that will drift
+interface MyModel { field: string; ... }
+const { data } = await cloudAxios.post<MyModel>(...)
+```
+
+If the endpoint is not yet in the generated client (e.g. a long-poll `/wait` path), type the response as the closest matching generated model rather than inventing a local interface. Only define local types for shapes that are **purely internal** — data that has been mapped or transformed after the API response and has no corresponding backend model.
+
 =======
 
 - **Tech**: React 18 · Vite · TypeScript · Redux Toolkit · shadcn/ui · AWS Amplify (Cognito)

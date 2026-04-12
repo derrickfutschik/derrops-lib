@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { API_BASE_URL } from '@/config'
 import { cloudAxios } from '@/lib/cloud-api'
+import { CloudRelayJob } from '@/client/slaops-cloud'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -15,16 +16,6 @@ export interface RelayJobResult {
 interface RelayJobError {
   code: string
   message: string
-}
-
-interface JobResponse {
-  jobId: string
-  status: 'pending' | 'claimed' | 'completed' | 'failed'
-  connectionId: string
-  createdAt: string
-  completedAt: string | null
-  result: RelayJobResult | null
-  error: RelayJobError | null
 }
 
 export type RelayJobStatus = 'idle' | 'submitting' | 'waiting' | 'completed' | 'failed' | 'timed_out'
@@ -55,7 +46,7 @@ export interface RelayJobSubmitParams {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const MAX_TOTAL_WAIT_MS = 120_000
-const WAIT_TIMEOUT_S = 25
+const POLL_INTERVAL_MS = 1_000
 const MAX_NETWORK_RETRIES = 3
 const RETRY_DELAY_MS = 500
 
@@ -89,7 +80,7 @@ export function useRelayJob() {
 
     try {
       // 1. Submit the job to slaops-cloud
-      const { data: submitResp } = await cloudAxios.post<JobResponse>(
+      const { data: submitResp } = await cloudAxios.post<CloudRelayJob>(
         `${API_BASE_URL}/cloud-relay/job`,
         { connectionId: params.connectionId, request: params.request },
         { signal: abort.signal },
@@ -97,21 +88,22 @@ export function useRelayJob() {
 
       // Direct mode: result returned synchronously
       if (submitResp.status === 'completed' && submitResp.result) {
-        setState((s) => ({ ...s, jobId: submitResp.jobId, status: 'completed', result: submitResp.result }))
+        setState((s) => ({ ...s, jobId: submitResp.id, status: 'completed', result: submitResp.result as RelayJobResult }))
         return
       }
 
       if (submitResp.status === 'failed') {
+        const err = submitResp.result as RelayJobError | null
         setState((s) => ({
           ...s,
-          jobId: submitResp.jobId,
+          jobId: submitResp.id,
           status: 'failed',
-          error: submitResp.error?.message ?? 'Job failed on submission',
+          error: err?.message ?? 'Job failed on submission',
         }))
         return
       }
 
-      const { jobId } = submitResp
+      const jobId = submitResp.id
       setState((s) => ({ ...s, jobId, status: 'waiting' }))
 
       // 2. Long-poll loop
@@ -123,8 +115,8 @@ export function useRelayJob() {
 
         const waitStart = Date.now()
         try {
-          const { data: waitResp } = await cloudAxios.get<JobResponse>(
-            `${API_BASE_URL}/cloud-relay/job/${jobId}/wait?timeout=${WAIT_TIMEOUT_S}`,
+          const { data: waitResp } = await cloudAxios.get<CloudRelayJob>(
+            `${API_BASE_URL}/cloud-relay/job/${jobId}`,
             { signal: abort.signal },
           )
 
@@ -132,18 +124,20 @@ export function useRelayJob() {
           networkRetries = 0
 
           if (waitResp.status === 'completed') {
-            setState((s) => ({ ...s, status: 'completed', result: waitResp.result }))
+            setState((s) => ({ ...s, status: 'completed', result: waitResp.result as RelayJobResult }))
             return
           }
           if (waitResp.status === 'failed') {
+            const err = waitResp.result as RelayJobError | null
             setState((s) => ({
               ...s,
               status: 'failed',
-              error: waitResp.error?.message ?? 'Relay execution failed',
+              error: err?.message ?? 'Relay execution failed',
             }))
             return
           }
-          // status === 'pending' | 'claimed': re-issue immediately
+          // status === 'pending' | 'claimed': wait before next poll
+          await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
         } catch (err: unknown) {
           if (abort.signal.aborted) return
           networkRetries++
