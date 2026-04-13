@@ -326,19 +326,28 @@ The Cloud Relay extends the standard HAR format with a **template expression sys
 
 ### Expression Syntax
 
-Expressions use double-brace syntax: `{{type:qualifier}}`.
+Secret expressions embed a full secret URI inside double braces:
+
+```
+{{aws-secretsmanager://arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/api-key}}
+{{gcp-secretsmanager://projects/my-project-123/secrets/db-password/versions/latest}}
+{{azure-keyvault://myvault.vault.azure.net/secrets/api-key}}
+{{vault://vault.mycompany.com/secret/data/db-password}}
+```
+
+The URI scheme identifies the backend — no global `RELAY_SECRET_BACKEND` setting is required. Multiple backends may be used within a single request. For the full URI format reference and all supported backends, see [Relay Secret Injection](./relay-secret-injection).
+
+JIT and variable expressions do not reference a secret store:
 
 | Expression | Resolved to |
 |---|---|
-| `{{secret:MY_KEY}}` | Value of secret `MY_KEY` from the configured secret store |
-| `{{secret:MY_KEY.field}}` | Field `field` parsed from a JSON secret `MY_KEY` |
-| `{{jit:uuid}}` | A freshly generated UUID v4 (e.g. `f47ac10b-58cc-4372-a567-0e02b2c3d479`) |
-| `{{jit:uuid-short}}` | First 8 hex chars of a UUID (e.g. `f47ac10b`) |
-| `{{jit:timestamp}}` | Current UTC timestamp in ISO 8601 (e.g. `2026-03-22T10:00:00.000Z`) |
-| `{{jit:timestamp-unix}}` | Current Unix epoch in **seconds** (e.g. `1774068000`) |
-| `{{jit:timestamp-unix-ms}}` | Current Unix epoch in **milliseconds** (e.g. `1774068000000`) |
-| `{{jit:random-hex:N}}` | `N` cryptographically random hex characters (e.g. `{{jit:random-hex:16}}`) |
-| `{{var:NAME}}` | Named variable resolved from `templateContext.variables` (see below) |
+| `{{jit:uuid}}` | A freshly generated UUID v4 |
+| `{{jit:uuid-short}}` | First 8 hex chars of a UUID |
+| `{{jit:timestamp}}` | Current UTC timestamp in ISO 8601 |
+| `{{jit:timestamp-unix}}` | Current Unix epoch in seconds |
+| `{{jit:timestamp-unix-ms}}` | Current Unix epoch in milliseconds |
+| `{{jit:random-hex:N}}` | `N` cryptographically random hex characters |
+| `{{var:NAME}}` | Named variable resolved from `templateContext.variables` |
 
 Expressions are resolved in the following fields:
 - `url`
@@ -358,8 +367,8 @@ Expressions are resolved in the following fields:
  * The Relay resolves each variable once per request execution.
  */
 export type TemplateVariableDefinition =
-  /** Fetch a secret from the Relay's configured secret store. */
-  | { type: 'secret'; secretId: string; field?: string }
+  /** Fetch a secret using a full secret URI (e.g. aws-secretsmanager://...). */
+  | { type: 'secret'; secretUri: string; field?: string }
   /**
    * Read a value from a Relay environment variable.
    * Useful for non-sensitive per-environment values without a secret store.
@@ -372,8 +381,8 @@ export type TemplateVariableDefinition =
  * Template resolution context attached to a CloudProxyRequest.
  * Defines named variables that can be referenced as `{{var:NAME}}` inside HAR fields.
  *
- * JIT functions (`{{jit:*}}`) and direct secret references (`{{secret:*}}`)
- * do not require entries here — they are resolved inline from the expression alone.
+ * JIT functions (`{{jit:*}}`) and direct secret URIs do not require entries here —
+ * they are resolved inline from the expression alone.
  */
 export type TemplateContext = {
   variables?: Record<string, TemplateVariableDefinition>
@@ -397,462 +406,7 @@ export type CloudProxyRequest = {
 }
 ```
 
-### Secret Store Backends
-
-The Relay resolves `{{secret:*}}` expressions against a **`SecretStore`** implementation. The `SecretStore` interface is defined in the cloud-agnostic `app/` core. Built-in implementations ship with each cloud sub-package, and customers can bring their own by implementing the interface and registering it with the Relay factory.
-
-#### The `SecretStore` Interface
-
-Defined in `app/src/secrets/secret-store.ts`. All implementations must satisfy this contract.
-
-```typescript
-/**
- * Describes a secret retrieved from a secret store.
- * The raw value is always a string; structured secrets are JSON strings
- * that callers may parse to extract individual fields.
- */
-export type SecretValue = {
-  /** The raw secret string (or JSON string for structured secrets). */
-  value: string
-  /** ISO 8601 timestamp of when this value was last fetched or cached. */
-  fetchedAt: string
-  /** True if this value was served from the local cache rather than the store. */
-  fromCache: boolean
-}
-
-/**
- * Thrown by SecretStore implementations when a secret cannot be retrieved.
- * The `code` field allows callers to distinguish between "not found" and
- * "access denied" without parsing error messages.
- */
-export class SecretStoreError extends Error {
-  constructor(
-    message: string,
-    public readonly code:
-      | 'NOT_FOUND'        // Secret ID does not exist in the store
-      | 'ACCESS_DENIED'    // Credentials or IAM policy denied access
-      | 'STORE_UNAVAILABLE'// Secret store is unreachable (network, config)
-      | 'INVALID_FORMAT',  // Secret exists but cannot be parsed as expected
-    public readonly secretId: string,
-  ) {
-    super(message)
-    this.name = 'SecretStoreError'
-  }
-}
-
-/**
- * Cloud-agnostic interface for retrieving secrets.
- *
- * Implementations are provided per cloud/backend and are selected at
- * startup via RELAY_SECRET_BACKEND. Customers may supply a custom
- * implementation by registering it with SecretStoreRegistry.
- *
- * All methods are async to accommodate network-backed stores. Implementations
- * should apply their own internal caching where appropriate (see CachingSecretStore).
- */
-export interface SecretStore {
-  /**
-   * Retrieve a secret by ID.
-   *
-   * @param secretId  The identifier of the secret in the backing store.
-   *                  For AWS Secrets Manager this is the secret name or ARN.
-   *                  For env-var backend this is the environment variable name.
-   * @returns         The secret value.
-   * @throws          SecretStoreError if the secret cannot be retrieved.
-   */
-  getSecret(secretId: string): Promise<SecretValue>
-
-  /**
-   * Retrieve a single field from a structured (JSON) secret.
-   *
-   * Equivalent to getSecret(secretId) followed by JSON.parse(value)[field].
-   * Implementations may optimise this (e.g. AWS Secrets Manager supports
-   * fetching individual keys from a JSON secret natively).
-   *
-   * @throws SecretStoreError with code 'INVALID_FORMAT' if the secret is not
-   *         valid JSON or does not contain the requested field.
-   */
-  getSecretField(secretId: string, field: string): Promise<SecretValue>
-
-  /**
-   * Check whether a secret exists without fetching its value.
-   * Used at request-validation time to surface missing secrets early.
-   */
-  hasSecret(secretId: string): Promise<boolean>
-
-  /**
-   * Optional: list available secret IDs. Useful for admin tooling and
-   * autocomplete in the portal. Implementations that do not support listing
-   * (e.g. env-var backend) may return null to indicate unsupported.
-   */
-  listSecrets?(): Promise<string[] | null>
-
-  /**
-   * Optional: proactively warm the local cache for a set of secret IDs.
-   * Called by the Relay at startup when RELAY_SECRET_PREFETCH is set.
-   */
-  prefetch?(secretIds: string[]): Promise<void>
-}
-```
-
-#### Built-in Implementations
-
-| `RELAY_SECRET_BACKEND` | Package | Where credentials live | Notes |
-|---|---|---|---|
-| `env` | `app/` (built-in) | Relay process environment variables | Zero-dependency fallback; suits Docker Compose, local dev |
-| `aws-secrets-manager` | `app-aws/` | AWS Secrets Manager in the customer's account | IAM role authentication; supports JSON secrets |
-| `hashicorp-vault` | `app/` (built-in) | HashiCorp Vault (self-hosted or HCP Vault) | KV v1 and KV v2 engines; AppRole / token auth |
-| `azure-key-vault` | `app-azure/` | Azure Key Vault | Managed identity or client credentials auth |
-| `gcp-secret-manager` | `app-cp/` | GCP Secret Manager | Workload Identity or service account key auth |
-
-The `hashicorp-vault` backend ships in `app/` (not a cloud sub-package) because HashiCorp Vault is cloud-neutral and a common choice in on-premises and multi-cloud enterprise deployments.
-
-#### Caching
-
-All network-backed implementations should be wrapped with `CachingSecretStore` (provided in `app/`) to avoid a remote call for every request that uses a secret. The TTL is configurable via `RELAY_SECRET_CACHE_TTL_S` (default: `300` seconds / 5 minutes).
-
-```typescript
-/**
- * Decorator that wraps any SecretStore with an in-process LRU/TTL cache.
- * Defined in app/src/secrets/caching-secret-store.ts.
- *
- * The cache is process-local and does not survive Lambda cold starts or
- * container restarts. This is intentional — stale secrets are a bigger
- * risk than the latency of a re-fetch on restart.
- *
- * Cache is keyed by (secretId, field?) so getSecret and getSecretField
- * are cached independently.
- */
-export class CachingSecretStore implements SecretStore {
-  constructor(
-    private readonly inner: SecretStore,
-    private readonly ttlSeconds: number,
-  ) {}
-
-  // Delegates to inner after cache miss; populates cache on hit.
-  // getSecret, getSecretField, hasSecret all benefit from caching.
-  // listSecrets and prefetch pass through to inner directly.
-}
-```
-
-#### Secret Store Registry and Factory
-
-The Relay selects an implementation at startup via `SecretStoreRegistry`. Built-in backends are pre-registered. Customers extending the application can register custom implementations by calling `registry.register(name, factory)` before the application bootstraps.
-
-```typescript
-/**
- * A factory function that receives the process environment and returns a
- * configured SecretStore instance. Factories are called once at startup.
- */
-export type SecretStoreFactory = (env: NodeJS.ProcessEnv) => SecretStore
-
-/**
- * Registry of available SecretStore implementations.
- * Defined in app/src/secrets/secret-store-registry.ts.
- *
- * Built-in backends are registered in app/ and each cloud sub-package.
- * Customers building a custom relay application register their own factory
- * here before calling RelayApplication.bootstrap().
- */
-export class SecretStoreRegistry {
-  /** Register a named SecretStore factory. Throws if the name is already taken. */
-  register(name: string, factory: SecretStoreFactory): void
-
-  /**
-   * Create the active SecretStore from RELAY_SECRET_BACKEND.
-   * Wraps the result in CachingSecretStore automatically unless
-   * RELAY_SECRET_CACHE_TTL_S=0 is set.
-   * Throws if RELAY_SECRET_BACKEND names an unregistered backend.
-   */
-  create(env: NodeJS.ProcessEnv): SecretStore
-}
-
-/** Singleton registry used throughout the application. */
-export const secretStoreRegistry = new SecretStoreRegistry()
-```
-
-Built-in registrations happen in each package's entry point:
-
-```typescript
-// app/src/secrets/index.ts — registers built-in backends
-secretStoreRegistry.register('env', (env) => new EnvSecretStore(env))
-secretStoreRegistry.register('hashicorp-vault', (env) => new VaultSecretStore(env))
-
-// app-aws/src/index.ts — registers AWS backend
-secretStoreRegistry.register('aws-secrets-manager', (env) => new AwsSecretsManagerStore(env))
-
-// app-azure/src/index.ts
-secretStoreRegistry.register('azure-key-vault', (env) => new AzureKeyVaultStore(env))
-
-// app-cp/src/index.ts
-secretStoreRegistry.register('gcp-secret-manager', (env) => new GcpSecretManagerStore(env))
-```
-
-#### Bringing Your Own Implementation
-
-Customers who want to use a secret backend not provided out of the box — for example, CyberArk Conjur, 1Password Secrets Automation, or a proprietary internal vault — can implement `SecretStore` and register it before bootstrap.
-
-The Relay application exposes a `createRelayApp` factory that accepts pre-bootstrap hooks:
-
-```typescript
-// customer-relay/src/main.ts — example custom integration
-
-import { createRelayApp, secretStoreRegistry } from '@slaops/cloud-relay'
-import { ConjurSecretStore } from './conjur-secret-store'
-
-// Register before bootstrap — the registry will select this when
-// RELAY_SECRET_BACKEND=conjur is set in the environment.
-secretStoreRegistry.register('conjur', (env) => new ConjurSecretStore({
-  applianceUrl: env.CONJUR_APPLIANCE_URL!,
-  account: env.CONJUR_ACCOUNT!,
-  authnToken: env.CONJUR_AUTHN_TOKEN!,
-}))
-
-const app = await createRelayApp()
-await app.listen(process.env.PORT ?? 3000)
-```
-
-`ConjurSecretStore` only needs to implement the `SecretStore` interface:
-
-```typescript
-// customer-relay/src/conjur-secret-store.ts
-
-import { SecretStore, SecretValue, SecretStoreError } from '@slaops/cloud-relay'
-
-export class ConjurSecretStore implements SecretStore {
-  constructor(private readonly config: ConjurConfig) {}
-
-  async getSecret(secretId: string): Promise<SecretValue> {
-    // Call Conjur API, map errors to SecretStoreError codes
-    const raw = await this.fetchFromConjur(secretId)
-    return { value: raw, fetchedAt: new Date().toISOString(), fromCache: false }
-  }
-
-  async getSecretField(secretId: string, field: string): Promise<SecretValue> {
-    const { value, ...meta } = await this.getSecret(secretId)
-    const parsed = JSON.parse(value)
-    if (!(field in parsed)) {
-      throw new SecretStoreError(
-        `Field '${field}' not found in secret '${secretId}'`,
-        'INVALID_FORMAT',
-        secretId,
-      )
-    }
-    return { value: String(parsed[field]), ...meta }
-  }
-
-  async hasSecret(secretId: string): Promise<boolean> {
-    try { await this.getSecret(secretId); return true }
-    catch { return false }
-  }
-  // listSecrets and prefetch are optional — omit if unsupported
-}
-```
-
-#### Module Structure (Iteration 2)
-
-```
-apps/slaops-cloud-relay/
-├── app/                          # Cloud-agnostic NestJS core
-│   └── src/
-│       ├── secrets/
-│       │   ├── secret-store.ts           # SecretStore interface + SecretStoreError
-│       │   ├── secret-store-registry.ts  # SecretStoreRegistry + SecretStoreFactory
-│       │   ├── caching-secret-store.ts   # CachingSecretStore decorator
-│       │   ├── env-secret-store.ts       # Built-in: env-var backend
-│       │   └── vault-secret-store.ts     # Built-in: HashiCorp Vault backend
-│       ├── template/
-│       │   └── template-resolver.ts      # {{expr}} resolution + injectedSecrets tracking
-│       ├── masking/
-│       │   └── secret-masker.ts          # Response body/header masking
-│       └── relay-app.ts                  # createRelayApp() factory
-│
-├── app-aws/                      # AWS-specific implementations
-│   └── src/
-│       └── secrets/
-│           └── aws-secrets-manager-store.ts
-│
-├── app-azure/                    # Azure-specific implementations
-│   └── src/
-│       └── secrets/
-│           └── azure-key-vault-store.ts
-│
-└── app-cp/                       # GCP-specific implementations
-    └── src/
-        └── secrets/
-            └── gcp-secret-manager-store.ts
-```
-
-### Wire Format Example
-
-A request that uses a secret API key, a generated idempotency key, and a timestamp:
-
-```json
-{
-  "request": {
-    "method": "POST",
-    "url": "https://api.partner.com/v1/payments",
-    "httpVersion": "HTTP/1.1",
-    "headers": [
-      { "name": "Authorization", "value": "Bearer {{secret:PARTNER_API_KEY}}" },
-      { "name": "Idempotency-Key", "value": "{{jit:uuid}}" },
-      { "name": "X-Request-Time", "value": "{{jit:timestamp}}" },
-      { "name": "X-Correlation-Id", "value": "{{var:correlationId}}" }
-    ],
-    "queryString": [],
-    "cookies": [],
-    "postData": {
-      "mimeType": "application/json",
-      "text": "{\"amount\": 100, \"reference\": \"{{jit:uuid-short}}\"}"
-    },
-    "headersSize": -1,
-    "bodySize": -1
-  },
-  "timeoutMs": 15000,
-  "templateContext": {
-    "variables": {
-      "correlationId": {
-        "type": "env",
-        "envVar": "CORRELATION_ID_PREFIX"
-      }
-    }
-  }
-}
-```
-
-After template resolution (before the outbound HTTP request is sent):
-- `{{secret:PARTNER_API_KEY}}` → actual key fetched from Secrets Manager
-- `{{jit:uuid}}` → `f47ac10b-58cc-4372-a567-0e02b2c3d479`
-- `{{jit:timestamp}}` → `2026-03-22T10:00:00.123Z`
-- `{{var:correlationId}}` → value of `process.env.CORRELATION_ID_PREFIX`
-- `{{jit:uuid-short}}` in the body → `f47ac10b`
-
-### TypeScript Types for the DTO
-
-```typescript
-export class TemplateVariableDefinitionDto {
-  @IsIn(['secret', 'env', 'literal'])
-  type: 'secret' | 'env' | 'literal'
-
-  @IsString()
-  @IsOptional()
-  secretId?: string       // for type: 'secret'
-
-  @IsString()
-  @IsOptional()
-  field?: string          // for type: 'secret' (optional JSON field selector)
-
-  @IsString()
-  @IsOptional()
-  envVar?: string         // for type: 'env'
-
-  @IsString()
-  @IsOptional()
-  value?: string          // for type: 'literal'
-}
-
-export class TemplateContextDto {
-  @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => TemplateVariableDefinitionDto)
-  variables?: Record<string, TemplateVariableDefinitionDto>
-}
-
-export class CloudProxyRequestDto {
-  @ValidateNested()
-  @Type(() => HarRequestDto)
-  request: HarRequestDto
-
-  @IsInt()
-  @Min(1000)
-  @Max(60_000)
-  @IsOptional()
-  timeoutMs?: number
-
-  @ValidateNested()
-  @Type(() => TemplateContextDto)
-  @IsOptional()
-  templateContext?: TemplateContextDto
-}
-```
-
-## Response Secret Masking
-
-After template expressions are resolved and the outbound request is constructed, the Relay tracks the **resolved values of all secrets** that were injected into the request. On receiving the response, it scans both the response body and response headers for any of those values and **replaces them with a redaction marker** before returning the response to the caller.
-
-This guards against scenarios where a target API echoes back sensitive values — for example, an error response that reflects the `Authorization` header, or a body that contains a payment reference seeded from a secret.
-
-### Masking Algorithm
-
-```text
-FUNCTION maskSecrets(response, injectedSecrets):
-  FOR each secret in injectedSecrets:
-    IF secret.value appears in response.body:
-      response.body = replace(response.body, secret.value, '[REDACTED:' + secret.id + ']')
-      record secret.id in maskedSecretIds
-    FOR each headerName in response.headers:
-      IF secret.value appears in response.headers[headerName]:
-        response.headers[headerName] = replace(..., '[REDACTED:' + secret.id + ']')
-        record secret.id in maskedSecretIds
-  RETURN { response, maskedSecretIds }
-```
-
-Rules:
-- Masking is always performed — it cannot be disabled by the caller.
-- JIT-generated values (`{{jit:*}}`) are **not** masked in responses; only secrets from the secret store are tracked.
-- If a secret value is shorter than 8 characters it is **not** used for masking (too collision-prone); the Relay logs a warning at startup if any secret below this threshold is used in a request.
-- Masking is exact-string (case-sensitive). Partial or encoded matches are not detected in iteration 1.
-
-### Audit Metadata
-
-The `CloudProxyResponse` gains a `masking` field to inform the caller that masking occurred (without revealing which values or where):
-
-```typescript
-export type CloudProxyResponse = {
-  status: number
-  statusText: string
-  headers: Record<string, string>
-  body: string
-  durationMs: number
-  requestedAt: string
-  /** Present when one or more secrets were detected and masked in the response. */
-  masking?: {
-    /** IDs of secrets whose values were found and masked. */
-    maskedSecretIds: string[]
-    /** True if any masking occurred in the response body. */
-    bodyMasked: boolean
-    /** True if any masking occurred in the response headers. */
-    headersMasked: boolean
-  }
-}
-```
-
-### Example
-
-Request sends `Authorization: Bearer {{secret:PARTNER_API_KEY}}`. The target API returns a 401 with body:
-
-```json
-{ "error": "invalid_token", "token": "sk-abc123..." }
-```
-
-Where `sk-abc123...` is the value of `PARTNER_API_KEY`. The Relay masks it before returning:
-
-```json
-{ "error": "invalid_token", "token": "[REDACTED:PARTNER_API_KEY]" }
-```
-
-And the response includes:
-
-```json
-{
-  "status": 401,
-  "masking": {
-    "maskedSecretIds": ["PARTNER_API_KEY"],
-    "bodyMasked": true,
-    "headersMasked": false
-  }
-}
-```
+See [Relay Secret Injection](./relay-secret-injection) for the full `SecretStore` interface, built-in backend implementations (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, HashiCorp Vault), caching, registry, custom implementations, injection logging, and response secret masking.
 
 ## Architecture
 
