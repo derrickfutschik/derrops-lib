@@ -7,7 +7,10 @@ import type { RequestContext } from '../policy/types'
 import { secretStoreRegistry } from '../secrets/secret-store-registry'
 import { resolveTemplates, TemplateError } from '../template/template-resolver'
 import { maskSecrets } from '../masking/secret-masker'
-import type { CloudProxyRequestDto, TemplateVariableDefinitionDto } from './dto/cloud-proxy-request.dto'
+import type {
+  CloudProxyRequestDto,
+  TemplateVariableDefinitionDto,
+} from './dto/cloud-proxy-request.dto'
 import type { CloudProxyResponseDto } from './dto/cloud-proxy-response.dto'
 
 /** Hop-by-hop headers that must never be forwarded to the target. */
@@ -39,18 +42,14 @@ const LINK_LOCAL_RANGES = [/^169\.254\./, /^fe80:/i]
 const MULTICAST_RANGES = [/^22[4-9]\./, /^23\d\./, /^ff/i]
 
 /** Cloud metadata endpoints that must always be blocked. */
-const METADATA_HOSTS = new Set([
-  '169.254.169.254',
-  'metadata.google.internal',
-  '169.254.170.2',
-])
+const METADATA_HOSTS = new Set(['169.254.169.254', 'metadata.google.internal', '169.254.170.2'])
 
 function testRanges(ip: string, ranges: RegExp[]): boolean {
-  return ranges.some(r => r.test(ip))
+  return ranges.some((r) => r.test(ip))
 }
 
 function isPrivateIp(ip: string): boolean {
-  return PRIVATE_RANGES.some(r => r.test(ip))
+  return PRIVATE_RANGES.some((r) => r.test(ip))
 }
 
 function isLoopbackIp(ip: string): boolean {
@@ -81,7 +80,7 @@ async function resolveIps(host: string): Promise<string[]> {
   if (isIpLiteral(host)) return [host]
   try {
     const result = await dns.lookup(host, { all: true })
-    return result.map(r => r.address)
+    return result.map((r) => r.address)
   } catch {
     return []
   }
@@ -97,11 +96,14 @@ function normalizeResponseHeaders(headers: Headers): Record<string, string> {
 
 function encodeFormParams(params: Array<{ name: string; value?: string }>): string {
   return params
-    .map(p => `${encodeURIComponent(p.name)}=${encodeURIComponent(p.value ?? '')}`)
+    .map((p) => `${encodeURIComponent(p.name)}=${encodeURIComponent(p.value ?? '')}`)
     .join('&')
 }
 
-function mergeQueryString(rawUrl: string, queryParams: Array<{ name: string; value: string }>): string {
+function mergeQueryString(
+  rawUrl: string,
+  queryParams: Array<{ name: string; value: string }>,
+): string {
   if (queryParams.length === 0) return rawUrl
   const url = new URL(rawUrl)
   for (const { name, value } of queryParams) {
@@ -138,18 +140,63 @@ export class ProxyService {
   ): Promise<CloudProxyResponseDto> {
     const startTime = Date.now()
 
+    // Log immediately so every call is visible regardless of what happens next.
+    // URL may still contain unresolved template placeholders at this point.
+    this.logger.log(
+      JSON.stringify({
+        event: 'proxy_request',
+        method: dto.request.method,
+        url: dto.request.url,
+        header_count: dto.request.headers.length,
+        body_bytes: dto.request.bodySize >= 0 ? dto.request.bodySize : 0,
+        user_id: userId,
+        tenant_id: tenantId,
+        ...(env.relay.requestDebug
+          ? {
+              request_headers: Object.fromEntries(
+                dto.request.headers.map((h) => [h.name, h.value]),
+              ),
+              request_body: dto.request.postData?.text?.slice(0, 500) ?? null,
+            }
+          : {}),
+      }),
+    )
+
     // 1. Resolve template expressions in all HAR string fields
     const variables = resolveVariables(dto.templateContext?.variables)
     let har = dto.request
     let injectedSecrets: import('../template/template-resolver').InjectedSecret[] = []
 
     try {
-      const resolved = await resolveTemplates(har as unknown as Record<string, unknown>, this.secretStore, variables)
+      const resolved = await resolveTemplates(
+        har as unknown as Record<string, unknown>,
+        this.secretStore,
+        variables,
+      )
       har = resolved.value as unknown as typeof har
       injectedSecrets = resolved.injectedSecrets
     } catch (err) {
       if (err instanceof TemplateError) {
-        return { status: 0, statusText: 'Template Error', headers: {}, body: err.message, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
+        this.logger.warn(
+          JSON.stringify({
+            event: 'proxy_error',
+            reason: 'template_error',
+            url: dto.request.url,
+            method: dto.request.method,
+            user_id: userId,
+            tenant_id: tenantId,
+            error: err.message,
+            duration_ms: Date.now() - startTime,
+          }),
+        )
+        return {
+          status: 0,
+          statusText: 'Template Error',
+          headers: {},
+          body: err.message,
+          durationMs: Date.now() - startTime,
+          requestedAt: new Date(startTime).toISOString(),
+        }
       }
       throw err
     }
@@ -159,11 +206,48 @@ export class ProxyService {
     try {
       parsedUrl = new URL(har.url)
     } catch {
-      return { status: 0, statusText: 'Invalid URL', headers: {}, body: `Invalid URL: ${har.url}`, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
+      this.logger.warn(
+        JSON.stringify({
+          event: 'proxy_error',
+          reason: 'invalid_url',
+          url: har.url,
+          method: har.method,
+          user_id: userId,
+          tenant_id: tenantId,
+          duration_ms: Date.now() - startTime,
+        }),
+      )
+      return {
+        status: 0,
+        statusText: 'Invalid URL',
+        headers: {},
+        body: `Invalid URL: ${har.url}`,
+        durationMs: Date.now() - startTime,
+        requestedAt: new Date(startTime).toISOString(),
+      }
     }
 
     if (!['https:', 'http:'].includes(parsedUrl.protocol)) {
-      return { status: 0, statusText: 'Invalid URL', headers: {}, body: `Unsupported protocol: ${parsedUrl.protocol}`, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
+      this.logger.warn(
+        JSON.stringify({
+          event: 'proxy_error',
+          reason: 'unsupported_protocol',
+          url: har.url,
+          method: har.method,
+          protocol: parsedUrl.protocol,
+          user_id: userId,
+          tenant_id: tenantId,
+          duration_ms: Date.now() - startTime,
+        }),
+      )
+      return {
+        status: 0,
+        statusText: 'Invalid URL',
+        headers: {},
+        body: `Unsupported protocol: ${parsedUrl.protocol}`,
+        durationMs: Date.now() - startTime,
+        requestedAt: new Date(startTime).toISOString(),
+      }
     }
 
     // 3. Resolve DNS
@@ -184,25 +268,60 @@ export class ProxyService {
       tenant: { id: tenantId, plan: 'default', allowlist: [] },
       request: {
         method: har.method,
-        headers: Object.fromEntries(har.headers.map(h => [h.name.toLowerCase(), h.value])),
+        headers: Object.fromEntries(har.headers.map((h) => [h.name.toLowerCase(), h.value])),
         bodyBytes: har.bodySize >= 0 ? har.bodySize : 0,
       },
       url: {
         raw: har.url,
         scheme: parsedUrl.protocol.replace(':', ''),
         host,
-        port: parsedUrl.port ? parseInt(parsedUrl.port, 10) : parsedUrl.protocol === 'https:' ? 443 : 80,
+        port: parsedUrl.port
+          ? parseInt(parsedUrl.port, 10)
+          : parsedUrl.protocol === 'https:'
+            ? 443
+            : 80,
         path: parsedUrl.pathname,
         query: Object.fromEntries(parsedUrl.searchParams),
       },
-      host: { resolvedIps, isIp, isLocalhost, isPrivateNetwork, isLinkLocal, isLoopback, isMulticast, inTenantAllowlist: false },
+      host: {
+        resolvedIps,
+        isIp,
+        isLocalhost,
+        isPrivateNetwork,
+        isLinkLocal,
+        isLoopback,
+        isMulticast,
+        inTenantAllowlist: false,
+      },
     }
 
     // 5. Evaluate security policy
-    const policyResult = evaluatePolicy(PLATFORM_DEFAULT_POLICY, ctx)
+    // TODO : make it that if process.env.RELAY_DISABLE_POLICY === 'true' then we allow the policy and have reason : policy_disabled, and print a warning.
+    // TODO document all environment variables for relay
+    const policyResult = evaluatePolicy(PLATFORM_DEFAULT_POLICY, ctx, env.relay.policyDebug)
     if (!policyResult.allowed) {
-      this.logger.warn(`Policy denied request to ${host}: ${policyResult.reason}`)
-      return { status: 0, statusText: 'Policy Denied', headers: {}, body: policyResult.reason, durationMs: Date.now() - startTime, requestedAt: new Date(startTime).toISOString() }
+      this.logger.warn(
+        JSON.stringify({
+          event: 'proxy_error',
+          reason: 'policy_denied',
+          url: har.url,
+          method: har.method,
+          host,
+          resolved_ips: resolvedIps,
+          policy_reason: policyResult.reason,
+          user_id: userId,
+          tenant_id: tenantId,
+          duration_ms: Date.now() - startTime,
+        }),
+      )
+      return {
+        status: 0,
+        statusText: 'Policy Denied',
+        headers: {},
+        body: policyResult.reason,
+        durationMs: Date.now() - startTime,
+        requestedAt: new Date(startTime).toISOString(),
+      }
     }
 
     const enforce = policyResult.enforce
@@ -220,7 +339,7 @@ export class ProxyService {
 
     // 8. Merge cookies into Cookie header
     if (har.cookies.length > 0) {
-      const cookieString = har.cookies.map(c => `${c.name}=${c.value}`).join('; ')
+      const cookieString = har.cookies.map((c) => `${c.name}=${c.value}`).join('; ')
       rawHeaders.set('Cookie', cookieString)
     }
 
@@ -231,7 +350,7 @@ export class ProxyService {
       }
     }
     if (enforce.allowRequestHeaders) {
-      const allowed = new Set(enforce.allowRequestHeaders.map(h => h.toLowerCase()))
+      const allowed = new Set(enforce.allowRequestHeaders.map((h) => h.toLowerCase()))
       for (const name of [...rawHeaders.keys()]) {
         if (!allowed.has(name.toLowerCase())) rawHeaders.delete(name)
       }
@@ -272,9 +391,23 @@ export class ProxyService {
     } catch (err: unknown) {
       const durationMs = Date.now() - startTime
       if (err instanceof Error && err.name === 'TimeoutError') {
-        return { status: 0, statusText: 'Timeout', headers: {}, body: 'Request timed out', durationMs, requestedAt: new Date(startTime).toISOString() }
+        return {
+          status: 0,
+          statusText: 'Timeout',
+          headers: {},
+          body: 'Request timed out',
+          durationMs,
+          requestedAt: new Date(startTime).toISOString(),
+        }
       }
-      return { status: 0, statusText: 'Network Error', headers: {}, body: (err as Error).message ?? 'Network error', durationMs, requestedAt: new Date(startTime).toISOString() }
+      return {
+        status: 0,
+        statusText: 'Network Error',
+        headers: {},
+        body: (err as Error).message ?? 'Network error',
+        durationMs,
+        requestedAt: new Date(startTime).toISOString(),
+      }
     }
 
     // 12. Read response body
@@ -284,7 +417,7 @@ export class ProxyService {
 
     // 13. Apply response header allow-list
     if (enforce.allowResponseHeaders) {
-      const allowed = new Set(enforce.allowResponseHeaders.map(h => h.toLowerCase()))
+      const allowed = new Set(enforce.allowResponseHeaders.map((h) => h.toLowerCase()))
       responseHeaders = Object.fromEntries(
         Object.entries(responseHeaders).filter(([k]) => allowed.has(k)),
       )
@@ -298,10 +431,30 @@ export class ProxyService {
     }
 
     // 15. Mask injected secret values in response
-    const { body: maskedBody, headers: maskedHeaders, masking } = maskSecrets(
-      responseBody,
-      responseHeaders,
-      injectedSecrets,
+    const {
+      body: maskedBody,
+      headers: maskedHeaders,
+      masking,
+    } = maskSecrets(responseBody, responseHeaders, injectedSecrets)
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'proxy_response',
+        method: har.method,
+        url: har.url,
+        status: nativeResponse.status,
+        status_text: nativeResponse.statusText,
+        duration_ms: durationMs,
+        response_body_bytes: Buffer.byteLength(maskedBody, 'utf8'),
+        truncated: maskedHeaders['x-slaops-truncated'] === 'true',
+        secrets_masked: masking.maskedSecretIds.length,
+        ...(env.relay.requestDebug
+          ? {
+              response_headers: maskedHeaders,
+              response_body: maskedBody.slice(0, 500),
+            }
+          : {}),
+      }),
     )
 
     return {

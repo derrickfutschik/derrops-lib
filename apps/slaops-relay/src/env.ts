@@ -22,6 +22,10 @@ export const env = {
     proxyTimeoutMs: parseInt(process.env.RELAY_PROXY_TIMEOUT_MS ?? '30000', 10),
     proxyMaxBodyBytes: parseInt(process.env.RELAY_PROXY_MAX_BODY_BYTES ?? '10485760', 10),
     minSecretMaskLength: 8,
+    /** Log every policy rule evaluation when true. Set RELAY_POLICY_DEBUG=true to enable. */
+    policyDebug: process.env.RELAY_POLICY_DEBUG === 'true',
+    /** Log full request/response headers and body snippets. Set RELAY_REQUEST_DEBUG=true to enable. */
+    requestDebug: process.env.RELAY_REQUEST_DEBUG === 'true',
   },
 
   /**
