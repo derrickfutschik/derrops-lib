@@ -66,6 +66,12 @@ windows:
           RELAY_QUEUE_BACKEND=<%= ENV["RELAY_QUEUE_BACKEND"] %>
           RELAY_SECRET_BACKEND=<%= ENV["RELAY_SECRET_BACKEND"] %>
           AEGIS_JWKS_URL=<%= ENV["AEGIS_JWKS_URL"] %>
+          RELAY_PLATFORM_URL=<%= ENV["RELAY_PLATFORM_URL"] %>
+          RELAY_PLATFORM_TOKEN=<%= ENV["RELAY_PLATFORM_TOKEN"] %>
+          RELAY_REQUEST_DEBUG=<%= ENV["RELAY_REQUEST_DEBUG"] %>
+          RELAY_POLICY_DEBUG=<%= ENV["RELAY_POLICY_DEBUG"] %>
+          RELAY_DISABLE_POLICY=<%= ENV["RELAY_DISABLE_POLICY"] %>
+
           pnpm run dev
 
   - slaops-aegis:
@@ -162,4 +168,3 @@ windows:
       layout: even-vertical
       panes:
         - ssh -t <%= ENV["DEVSERVER_USER"] %>@<%= ENV["DEVSERVER_IP"] %> "cd <%= ENV["DEVSERVER_PATH"] %> && docker compose logs -f postgres"
-

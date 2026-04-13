@@ -1,6 +1,7 @@
 import type { QueueStore } from './queue-store'
 import { QueueStoreError } from './queue-store'
 import { InMemoryQueueStore } from './in-memory-queue-store'
+import { SqsQueueStore } from './sqs-queue-store'
 import { env } from '../env'
 
 export type QueueStoreFactory = (environment: NodeJS.ProcessEnv) => QueueStore
@@ -46,9 +47,4 @@ export const queueStoreRegistry = new QueueStoreRegistry()
 
 // Register built-in backends
 queueStoreRegistry.register('memory', () => new InMemoryQueueStore())
-queueStoreRegistry.register('sqs', envArg => {
-  // SqsQueueStore uses dynamic imports internally for the AWS SDKs so the
-  // relay doesn't fail to start when those packages aren't installed.
-  const { SqsQueueStore } = require('./sqs-queue-store') as typeof import('./sqs-queue-store')
-  return new SqsQueueStore(envArg)
-})
+queueStoreRegistry.register('sqs', envArg => new SqsQueueStore(envArg))

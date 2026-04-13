@@ -1,3 +1,4 @@
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import { SecretStore, SecretStoreError, SecretValue } from './secret-store'
 
 /**
@@ -17,23 +18,13 @@ import { SecretStore, SecretStoreError, SecretValue } from './secret-store'
  *   - Local dev: GOOGLE_APPLICATION_CREDENTIALS env var pointing to a key file,
  *     or `gcloud auth application-default login`
  *
- * Requires @google-cloud/secret-manager to be installed:
- *   pnpm add @google-cloud/secret-manager
+ * Requires @google-cloud/secret-manager (included in package.json).
  */
 export class GcpSecretManagerStore implements SecretStore {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private client: any
+  private readonly client: SecretManagerServiceClient
 
-  constructor(private readonly environment: NodeJS.ProcessEnv = process.env) {}
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async getClient(): Promise<any> {
-    if (!this.client) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { SecretManagerServiceClient } = require('@google-cloud/secret-manager')
-      this.client = new SecretManagerServiceClient()
-    }
-    return this.client
+  constructor(_environment: NodeJS.ProcessEnv = process.env) {
+    this.client = new SecretManagerServiceClient()
   }
 
   /**
@@ -55,8 +46,7 @@ export class GcpSecretManagerStore implements SecretStore {
     this.validatePath(secretId)
 
     try {
-      const client = await this.getClient()
-      const [version] = await client.accessSecretVersion({ name: secretId })
+      const [version] = await this.client.accessSecretVersion({ name: secretId })
 
       const payload = version?.payload?.data
       if (!payload) {
@@ -97,7 +87,7 @@ export class GcpSecretManagerStore implements SecretStore {
   }
 
   async getSecretField(secretId: string, field: string): Promise<SecretValue> {
-    const { value, ...meta } = await this.getSecret(secretId)
+    const { value, fetchedAt } = await this.getSecret(secretId)
     let parsed: unknown
     try {
       parsed = JSON.parse(value)
@@ -116,7 +106,7 @@ export class GcpSecretManagerStore implements SecretStore {
       )
     }
     const fieldValue = (parsed as Record<string, unknown>)[field]
-    return { value: String(fieldValue), fetchedAt: meta.fetchedAt, fromCache: false }
+    return { value: String(fieldValue), fetchedAt, fromCache: false }
   }
 
   async hasSecret(secretId: string): Promise<boolean> {

@@ -213,6 +213,9 @@ export const makeConfig = (cfg?: ConfigInput) => {
 
     /** Visibility timeout (in seconds) for relay job messages. If the relay crashes mid-job the message reappears after this period. */
     'relay.queue.visibility-timeout-seconds': 120,
+
+    /** Maximum JSON request body size accepted by the HTTP server (Express body-parser limit string). Relay job results can carry full HTTP response bodies, so this must be large enough to accommodate them. */
+    'app.body.json.limit': '10mb',
   }
 }
 

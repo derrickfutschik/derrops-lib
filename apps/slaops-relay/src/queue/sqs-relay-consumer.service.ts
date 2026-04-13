@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
+import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand, MessageSystemAttributeName } from '@aws-sdk/client-sqs'
 import { env } from '../env'
 import type { CloudProxyRequestDto } from '../cloud-relay/dto/cloud-proxy-request.dto'
 import { ProxyService } from '../cloud-relay/proxy.service'
@@ -38,8 +39,7 @@ interface AwsCredentials {
 export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SqsRelayConsumerService.name)
   private running = false
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private sqsClient: any = null
+  private sqsClient: SQSClient | null = null
 
   /** Current temporary AWS credentials — in memory only, never written to disk. */
   private credentials: AwsCredentials | null = null
@@ -193,9 +193,7 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     this.sqsClient = this.buildSqsClient(this.credentials)
   }
 
-  private buildSqsClient(creds?: AwsCredentials): unknown {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { SQSClient } = require('@aws-sdk/client-sqs')
+  private buildSqsClient(creds?: AwsCredentials): SQSClient {
     return new SQSClient({
       region: env.platformSqs.region,
       ...(creds
@@ -211,7 +209,7 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Returns a ready SQS client, refreshing credentials first if needed. */
-  private async getSqsClient(): Promise<unknown> {
+  private async getSqsClient(): Promise<SQSClient> {
     if (this.useCognito) {
       if (!this.credentials || this.isExpiringSoon(this.credentials)) {
         await this.refreshCredentials()
@@ -303,20 +301,16 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
   // ---------------------------------------------------------------------------
 
   private async consumeLoop(): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { ReceiveMessageCommand } = require('@aws-sdk/client-sqs')
-
     while (this.running) {
       try {
         const sqs = await this.getSqsClient()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response = await (sqs as any).send(
+        const response = await sqs.send(
           new ReceiveMessageCommand({
             QueueUrl: env.platformSqs.queueUrl,
             WaitTimeSeconds: 20,
             MaxNumberOfMessages: 1,
             VisibilityTimeout: 120,
-            AttributeNames: ['ApproximateReceiveCount'],
+            MessageSystemAttributeNames: [MessageSystemAttributeName.ApproximateReceiveCount],
           }),
         )
 
@@ -359,7 +353,7 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     Attributes?: Record<string, string>
   }): Promise<void> {
     const receiptHandle = message.ReceiptHandle
-    const receiveCount = message.Attributes?.['ApproximateReceiveCount'] ?? 'unknown'
+    const receiveCount = message.Attributes?.[MessageSystemAttributeName.ApproximateReceiveCount] ?? 'unknown'
 
     this.logger.log(JSON.stringify({
       event: 'sqs_message_received',
@@ -507,10 +501,7 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     if (!receiptHandle) return
     try {
       const sqs = await this.getSqsClient()
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { DeleteMessageCommand } = require('@aws-sdk/client-sqs')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (sqs as any).send(new DeleteMessageCommand({
+      await sqs.send(new DeleteMessageCommand({
         QueueUrl: env.platformSqs.queueUrl,
         ReceiptHandle: receiptHandle,
       }))

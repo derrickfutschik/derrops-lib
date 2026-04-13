@@ -4,7 +4,7 @@ import { promises as dns } from 'dns'
 import { env } from '../env'
 import { evaluatePolicy } from '../policy/evaluator'
 import { PLATFORM_DEFAULT_POLICY } from '../policy/types'
-import type { RequestContext } from '../policy/types'
+import type { PolicyResult, RequestContext } from '../policy/types'
 import { secretStoreRegistry } from '../secrets/secret-store-registry'
 import type { SecretLogger } from '../secrets/secret-store-registry'
 import { SecretStoreError } from '../secrets/secret-store'
@@ -233,11 +233,9 @@ export class ProxyService {
       const cacheHitCount = injectedSecrets.filter(
         (s) => s.value !== undefined, // all injected secrets have a value; fromCache is in SecretValue
       ).length
-      const schemes = [...new Set(
-        injectedSecrets
-          .map((s) => s.uri.split('://')[0])
-          .filter(Boolean),
-      )]
+      const schemes = [
+        ...new Set(injectedSecrets.map((s) => s.uri.split('://')[0]).filter(Boolean)),
+      ]
       if (injectedSecrets.length > 0) {
         this.logger.log(
           JSON.stringify({
@@ -371,10 +369,30 @@ export class ProxyService {
       },
     }
 
-    // 5. Evaluate security policy
-    // TODO : make it that if process.env.RELAY_DISABLE_POLICY === 'true' then we allow the policy and have reason : policy_disabled, and print a warning.
-    // TODO document all environment variables for relay
-    const policyResult = evaluatePolicy(PLATFORM_DEFAULT_POLICY, ctx, env.relay.policyDebug)
+    // 5. Evaluate security policy (optional bypass — dangerous; local/debug only)
+    let policyResult: PolicyResult
+    if (env.relay.disablePolicy) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'proxy_warn',
+          reason: 'policy_disabled',
+          message: 'RELAY_DISABLE_POLICY=true; SSRF policy evaluation is bypassed',
+          job_id: jobId,
+          url: har.url,
+          method: har.method,
+          host,
+          user_id: userId,
+          tenant_id: tenantId,
+        }),
+      )
+      policyResult = {
+        allowed: true,
+        ruleId: 'policy_disabled',
+        enforce: PLATFORM_DEFAULT_POLICY.defaults ?? {},
+      }
+    } else {
+      policyResult = evaluatePolicy(PLATFORM_DEFAULT_POLICY, ctx, env.relay.policyDebug)
+    }
     if (!policyResult.allowed) {
       this.logger.warn(
         JSON.stringify({

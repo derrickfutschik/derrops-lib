@@ -1,4 +1,7 @@
 import { randomUUID } from 'crypto'
+import { SQSClient, SendMessageCommand, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import type { QueueJobClaim, QueueJobState, QueueStore } from './queue-store'
 import { QueueStoreError } from './queue-store'
 
@@ -17,15 +20,10 @@ import { QueueStoreError } from './queue-store'
  * IAM permissions required by the relay's execution role:
  *  sqs:SendMessage, sqs:ReceiveMessage, sqs:DeleteMessage
  *  dynamodb:PutItem, dynamodb:GetItem, dynamodb:UpdateItem
- *
- * Install the AWS SDK before using this backend:
- *   pnpm add @aws-sdk/client-sqs @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
  */
 export class SqsQueueStore implements QueueStore {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private sqs: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private dynamo: any
+  private readonly sqs: SQSClient
+  private readonly dynamo: DynamoDBDocumentClient
   private readonly queueUrl: string
   private readonly tableName: string
 
@@ -39,26 +37,9 @@ export class SqsQueueStore implements QueueStore {
         'STORE_UNAVAILABLE',
       )
     }
-  }
 
-  private async getSqs(): Promise<any> {
-    if (!this.sqs) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { SQSClient } = require('@aws-sdk/client-sqs')
-      this.sqs = new SQSClient({})
-    }
-    return this.sqs
-  }
-
-  private async getDynamo(): Promise<any> {
-    if (!this.dynamo) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { DynamoDBClient } = require('@aws-sdk/client-dynamodb')
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb')
-      this.dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}))
-    }
-    return this.dynamo
+    this.sqs = new SQSClient({})
+    this.dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}))
   }
 
   async enqueue(
@@ -72,9 +53,7 @@ export class SqsQueueStore implements QueueStore {
     const expiresAt = new Date(now.getTime() + ttlMs).toISOString()
     const ttlEpoch = Math.floor((now.getTime() + ttlMs) / 1000)
 
-    const dynamo = await this.getDynamo()
-    const { PutCommand } = require('@aws-sdk/lib-dynamodb')
-    await dynamo.send(new PutCommand({
+    await this.dynamo.send(new PutCommand({
       TableName: this.tableName,
       Item: {
         id,
@@ -90,9 +69,7 @@ export class SqsQueueStore implements QueueStore {
       },
     }))
 
-    const sqs = await this.getSqs()
-    const { SendMessageCommand } = require('@aws-sdk/client-sqs')
-    await sqs.send(new SendMessageCommand({
+    await this.sqs.send(new SendMessageCommand({
       QueueUrl: this.queueUrl,
       MessageBody: id,
       MessageGroupId: 'relay-jobs',
@@ -103,9 +80,7 @@ export class SqsQueueStore implements QueueStore {
   }
 
   async getJob(id: string): Promise<QueueJobState | null> {
-    const dynamo = await this.getDynamo()
-    const { GetCommand } = require('@aws-sdk/lib-dynamodb')
-    const { Item } = await dynamo.send(new GetCommand({
+    const { Item } = await this.dynamo.send(new GetCommand({
       TableName: this.tableName,
       Key: { id },
     }))
@@ -113,22 +88,20 @@ export class SqsQueueStore implements QueueStore {
     if (!Item) return null
 
     return {
-      id: Item.id,
-      status: Item.status,
-      tenantId: Item.tenantId,
-      userId: Item.userId,
-      request: JSON.parse(Item.request),
-      result: Item.result ? JSON.parse(Item.result) : null,
-      createdAt: Item.createdAt,
-      completedAt: Item.completedAt ?? null,
-      expiresAt: Item.expiresAt,
+      id: Item['id'] as string,
+      status: Item['status'] as QueueJobState['status'],
+      tenantId: Item['tenantId'] as string,
+      userId: Item['userId'] as string,
+      request: JSON.parse(Item['request'] as string) as Record<string, unknown>,
+      result: Item['result'] ? JSON.parse(Item['result'] as string) as Record<string, unknown> : null,
+      createdAt: Item['createdAt'] as string,
+      completedAt: (Item['completedAt'] as string | null) ?? null,
+      expiresAt: Item['expiresAt'] as string,
     }
   }
 
   async pollNext(): Promise<QueueJobClaim | null> {
-    const sqs = await this.getSqs()
-    const { ReceiveMessageCommand } = require('@aws-sdk/client-sqs')
-    const { Messages } = await sqs.send(new ReceiveMessageCommand({
+    const { Messages } = await this.sqs.send(new ReceiveMessageCommand({
       QueueUrl: this.queueUrl,
       MaxNumberOfMessages: 1,
       WaitTimeSeconds: 20, // long poll
@@ -144,8 +117,7 @@ export class SqsQueueStore implements QueueStore {
     const job = await this.getJob(jobId)
     if (!job) {
       // Job expired — delete message and signal nothing to process
-      const { DeleteMessageCommand } = require('@aws-sdk/client-sqs')
-      await sqs.send(new DeleteMessageCommand({
+      await this.sqs.send(new DeleteMessageCommand({
         QueueUrl: this.queueUrl,
         ReceiptHandle: receiptHandle,
       }))
@@ -153,9 +125,7 @@ export class SqsQueueStore implements QueueStore {
     }
 
     // Mark as processing in DynamoDB
-    const dynamo = await this.getDynamo()
-    const { UpdateCommand } = require('@aws-sdk/lib-dynamodb')
-    await dynamo.send(new UpdateCommand({
+    await this.dynamo.send(new UpdateCommand({
       TableName: this.tableName,
       Key: { id: jobId },
       UpdateExpression: 'SET #s = :processing',
@@ -168,9 +138,7 @@ export class SqsQueueStore implements QueueStore {
   }
 
   async complete(id: string, ackHandle: string, result: Record<string, unknown>): Promise<void> {
-    const dynamo = await this.getDynamo()
-    const { UpdateCommand } = require('@aws-sdk/lib-dynamodb')
-    await dynamo.send(new UpdateCommand({
+    await this.dynamo.send(new UpdateCommand({
       TableName: this.tableName,
       Key: { id },
       UpdateExpression: 'SET #s = :completed, #r = :result, completedAt = :completedAt',
@@ -182,15 +150,11 @@ export class SqsQueueStore implements QueueStore {
       },
     }))
 
-    const sqs = await this.getSqs()
-    const { DeleteMessageCommand } = require('@aws-sdk/client-sqs')
-    await sqs.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }))
+    await this.sqs.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }))
   }
 
   async fail(id: string, ackHandle: string, error: Record<string, unknown>): Promise<void> {
-    const dynamo = await this.getDynamo()
-    const { UpdateCommand } = require('@aws-sdk/lib-dynamodb')
-    await dynamo.send(new UpdateCommand({
+    await this.dynamo.send(new UpdateCommand({
       TableName: this.tableName,
       Key: { id },
       UpdateExpression: 'SET #s = :failed, #r = :result, completedAt = :completedAt',
@@ -202,8 +166,6 @@ export class SqsQueueStore implements QueueStore {
       },
     }))
 
-    const sqs = await this.getSqs()
-    const { DeleteMessageCommand } = require('@aws-sdk/client-sqs')
-    await sqs.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }))
+    await this.sqs.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }))
   }
 }

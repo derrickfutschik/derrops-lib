@@ -10,6 +10,9 @@ import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.comman
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
 
+  // Raise the JSON body limit to handle relay job results carrying full HTTP response bodies
+  app.useBodyParser('json', { limit: config['app.body.json.limit'] })
+
   // Enable text body parsing for YAML/plain-text OpenAPI specs
   app.useBodyParser('text', {
     type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'],
