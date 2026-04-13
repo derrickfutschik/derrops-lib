@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 export class MaskingInfoDto {
-  @ApiProperty({ type: [String] })
-  declare maskedSecretIds: string[]
+  @ApiProperty({ type: [String], description: 'Full secret URIs whose values were found and masked in the response' })
+  declare maskedSecretUris: string[]
 
   @ApiProperty()
   declare bodyMasked: boolean

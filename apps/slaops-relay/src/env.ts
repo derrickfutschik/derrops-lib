@@ -14,8 +14,15 @@ export const env = {
   apiKey: process.env.RELAY_API_KEY,
 
   relay: {
-    secretBackend: process.env.RELAY_SECRET_BACKEND ?? 'env',
+    /**
+     * Per-scheme secret cache TTL in seconds (default 300 / 5 min).
+     * Set RELAY_SECRET_CACHE_TTL_S=0 to disable caching entirely.
+     */
     secretCacheTtlS: parseInt(process.env.RELAY_SECRET_CACHE_TTL_S ?? '300', 10),
+    /**
+     * Comma-separated list of full secret URIs to pre-warm at startup.
+     * Example: aws-secretsmanager://arn:...,vault://host/path
+     */
     secretPrefetch: process.env.RELAY_SECRET_PREFETCH
       ? process.env.RELAY_SECRET_PREFETCH.split(',').map(s => s.trim()).filter(Boolean)
       : [],
@@ -24,6 +31,8 @@ export const env = {
     minSecretMaskLength: 8,
     /** Log every policy rule evaluation when true. Set RELAY_POLICY_DEBUG=true to enable. */
     policyDebug: process.env.RELAY_POLICY_DEBUG === 'true',
+    /** When true, skip SSRF policy evaluation (dangerous; local/debug only). */
+    disablePolicy: process.env.RELAY_DISABLE_POLICY === 'true',
     /** Log full request/response headers and body snippets. Set RELAY_REQUEST_DEBUG=true to enable. */
     requestDebug: process.env.RELAY_REQUEST_DEBUG === 'true',
   },

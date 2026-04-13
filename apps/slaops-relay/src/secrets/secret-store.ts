@@ -15,6 +15,7 @@ export class SecretStoreError extends Error {
       | 'ACCESS_DENIED'
       | 'STORE_UNAVAILABLE'
       | 'INVALID_FORMAT',
+    /** The store-internal identifier (path within the store, not the full URI). */
     public readonly secretId: string,
   ) {
     super(message)
@@ -22,8 +23,15 @@ export class SecretStoreError extends Error {
   }
 }
 
+/**
+ * Cloud-agnostic secret store interface.
+ *
+ * Implementations receive the store-internal path (the part after scheme://)
+ * rather than the full secret URI. The registry strips the scheme before
+ * dispatching to the correct store.
+ */
 export interface SecretStore {
-  /** Retrieve a secret by ID. */
+  /** Retrieve a secret by its store-internal path. */
   getSecret(secretId: string): Promise<SecretValue>
 
   /**
@@ -39,6 +47,6 @@ export interface SecretStore {
   /** List available secret IDs, or null if the backend does not support listing. */
   listSecrets?(): Promise<string[] | null>
 
-  /** Proactively warm the local cache for a set of secret IDs. */
+  /** Proactively warm the local cache for a set of secret paths. */
   prefetch?(secretIds: string[]): Promise<void>
 }

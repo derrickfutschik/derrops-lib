@@ -8,12 +8,14 @@ export class TemplateVariableDefinitionDto {
   @IsIn(['secret', 'env', 'literal'])
   declare type: 'secret' | 'env' | 'literal'
 
-  @ApiPropertyOptional({ description: 'Secret ID (for type: secret)' })
+  @ApiPropertyOptional({
+    description: 'Full secret URI for type: secret (e.g. aws-secretsmanager://arn:... or vault://host/path)',
+  })
   @IsString()
   @IsOptional()
-  secretId?: string
+  secretUri?: string
 
-  @ApiPropertyOptional({ description: 'JSON field (for type: secret with structured secret)' })
+  @ApiPropertyOptional({ description: 'JSON field selector for structured secrets (for type: secret)' })
   @IsString()
   @IsOptional()
   field?: string

@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { randomUUID } from 'crypto'
 import { promises as dns } from 'dns'
 import { env } from '../env'
 import { evaluatePolicy } from '../policy/evaluator'
 import { PLATFORM_DEFAULT_POLICY } from '../policy/types'
 import type { RequestContext } from '../policy/types'
 import { secretStoreRegistry } from '../secrets/secret-store-registry'
+import type { SecretLogger } from '../secrets/secret-store-registry'
+import { SecretStoreError } from '../secrets/secret-store'
 import { resolveTemplates, TemplateError } from '../template/template-resolver'
+import type { InjectedSecret } from '../template/template-resolver'
 import { maskSecrets } from '../masking/secret-masker'
 import type {
   CloudProxyRequestDto,
@@ -112,26 +116,63 @@ function mergeQueryString(
   return url.toString()
 }
 
-function resolveVariables(
+/**
+ * Pre-resolve templateContext.variables into a flat string map.
+ * - literal: returned as-is
+ * - env: read from process.env
+ * - secret: resolved via the registry using the full secretUri
+ *
+ * Secrets resolved here are tracked in injectedFromVars for response masking.
+ * SecretStoreErrors are converted to TemplateErrors for consistent error handling.
+ */
+async function resolveVariables(
   defs: Record<string, TemplateVariableDefinitionDto> | undefined,
-): Record<string, string> {
-  if (!defs) return {}
-  const out: Record<string, string> = {}
+  jobId: string,
+  logger: SecretLogger,
+): Promise<{ variables: Record<string, string>; injectedFromVars: InjectedSecret[] }> {
+  if (!defs) return { variables: {}, injectedFromVars: [] }
+
+  const variables: Record<string, string> = {}
+  const injectedFromVars: InjectedSecret[] = []
+
   for (const [name, def] of Object.entries(defs)) {
     if (def.type === 'literal' && def.value !== undefined) {
-      out[name] = def.value
+      variables[name] = def.value
     } else if (def.type === 'env' && def.envVar) {
-      out[name] = process.env[def.envVar] ?? ''
+      variables[name] = process.env[def.envVar] ?? ''
+    } else if (def.type === 'secret' && def.secretUri) {
+      try {
+        const result = await secretStoreRegistry.resolve(def.secretUri, jobId, logger)
+        variables[name] = result.value
+        injectedFromVars.push({ uri: def.secretUri, value: result.value })
+      } catch (err) {
+        if (err instanceof SecretStoreError) {
+          throw new TemplateError(
+            `Failed to resolve variable '${name}' from secret '${def.secretUri}': ${err.message}`,
+            def.secretUri,
+          )
+        }
+        throw err
+      }
     }
-    // 'secret' type variables are resolved during template resolution via {{secret:*}}
   }
-  return out
+
+  return { variables, injectedFromVars }
 }
 
 @Injectable()
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name)
-  private readonly secretStore = secretStoreRegistry.create()
+
+  /** Adapt NestJS Logger to the SecretLogger interface expected by the registry. */
+  private makeSecretLogger(jobId: string): SecretLogger {
+    return {
+      debug: (obj: object) => this.logger.debug(JSON.stringify({ ...obj, job_id: jobId })),
+      info: (obj: object) => this.logger.log(JSON.stringify({ ...obj, job_id: jobId })),
+      warn: (obj: object) => this.logger.warn(JSON.stringify({ ...obj, job_id: jobId })),
+      error: (obj: object) => this.logger.error(JSON.stringify({ ...obj, job_id: jobId })),
+    }
+  }
 
   async proxy(
     dto: CloudProxyRequestDto,
@@ -139,12 +180,15 @@ export class ProxyService {
     tenantId: string,
   ): Promise<CloudProxyResponseDto> {
     const startTime = Date.now()
+    // Stable correlation ID for all secret-injection log events in this request.
+    const jobId = randomUUID()
 
     // Log immediately so every call is visible regardless of what happens next.
     // URL may still contain unresolved template placeholders at this point.
     this.logger.log(
       JSON.stringify({
         event: 'proxy_request',
+        job_id: jobId,
         method: dto.request.method,
         url: dto.request.url,
         header_count: dto.request.headers.length,
@@ -162,25 +206,55 @@ export class ProxyService {
       }),
     )
 
+    const secretLogger = this.makeSecretLogger(jobId)
+
     // 1. Resolve template expressions in all HAR string fields
-    const variables = resolveVariables(dto.templateContext?.variables)
     let har = dto.request
-    let injectedSecrets: import('../template/template-resolver').InjectedSecret[] = []
+    let injectedSecrets: InjectedSecret[] = []
 
     try {
+      const { variables, injectedFromVars } = await resolveVariables(
+        dto.templateContext?.variables,
+        jobId,
+        secretLogger,
+      )
+
       const resolved = await resolveTemplates(
         har as unknown as Record<string, unknown>,
-        this.secretStore,
+        secretStoreRegistry,
         variables,
+        jobId,
+        secretLogger,
       )
       har = resolved.value as unknown as typeof har
-      injectedSecrets = resolved.injectedSecrets
+      injectedSecrets = [...injectedFromVars, ...resolved.injectedSecrets]
+
+      // Log injection summary
+      const cacheHitCount = injectedSecrets.filter(
+        (s) => s.value !== undefined, // all injected secrets have a value; fromCache is in SecretValue
+      ).length
+      const schemes = [...new Set(
+        injectedSecrets
+          .map((s) => s.uri.split('://')[0])
+          .filter(Boolean),
+      )]
+      if (injectedSecrets.length > 0) {
+        this.logger.log(
+          JSON.stringify({
+            event: 'secret.inject.complete',
+            job_id: jobId,
+            injected_count: injectedSecrets.length,
+            schemes,
+          }),
+        )
+      }
     } catch (err) {
       if (err instanceof TemplateError) {
         this.logger.warn(
           JSON.stringify({
             event: 'proxy_error',
             reason: 'template_error',
+            job_id: jobId,
             url: dto.request.url,
             method: dto.request.method,
             user_id: userId,
@@ -210,6 +284,7 @@ export class ProxyService {
         JSON.stringify({
           event: 'proxy_error',
           reason: 'invalid_url',
+          job_id: jobId,
           url: har.url,
           method: har.method,
           user_id: userId,
@@ -232,6 +307,7 @@ export class ProxyService {
         JSON.stringify({
           event: 'proxy_error',
           reason: 'unsupported_protocol',
+          job_id: jobId,
           url: har.url,
           method: har.method,
           protocol: parsedUrl.protocol,
@@ -304,6 +380,7 @@ export class ProxyService {
         JSON.stringify({
           event: 'proxy_error',
           reason: 'policy_denied',
+          job_id: jobId,
           url: har.url,
           method: har.method,
           host,
@@ -437,9 +514,25 @@ export class ProxyService {
       masking,
     } = maskSecrets(responseBody, responseHeaders, injectedSecrets)
 
+    // Log masking events for any secrets found in the response
+    for (const uri of masking.maskedSecretUris) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'secret.mask.triggered',
+          job_id: jobId,
+          secretPath: uri,
+          maskedIn: [
+            ...(masking.bodyMasked ? ['body'] : []),
+            ...(masking.headersMasked ? ['headers'] : []),
+          ],
+        }),
+      )
+    }
+
     this.logger.log(
       JSON.stringify({
         event: 'proxy_response',
+        job_id: jobId,
         method: har.method,
         url: har.url,
         status: nativeResponse.status,
@@ -447,7 +540,7 @@ export class ProxyService {
         duration_ms: durationMs,
         response_body_bytes: Buffer.byteLength(maskedBody, 'utf8'),
         truncated: maskedHeaders['x-slaops-truncated'] === 'true',
-        secrets_masked: masking.maskedSecretIds.length,
+        secrets_masked: masking.maskedSecretUris.length,
         ...(env.relay.requestDebug
           ? {
               response_headers: maskedHeaders,
@@ -464,7 +557,7 @@ export class ProxyService {
       body: maskedBody,
       durationMs,
       requestedAt: new Date(startTime).toISOString(),
-      ...(masking.maskedSecretIds.length > 0 ? { masking } : {}),
+      ...(masking.maskedSecretUris.length > 0 ? { masking } : {}),
     }
   }
 }

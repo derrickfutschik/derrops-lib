@@ -1,7 +1,17 @@
 import { randomBytes, randomUUID } from 'crypto'
-import { SecretStore, SecretStoreError } from '../secrets/secret-store'
+import { SecretStoreError } from '../secrets/secret-store'
+import type { SecretStoreRegistry, SecretLogger } from '../secrets/secret-store-registry'
 
-export type InjectedSecret = { id: string; value: string }
+/**
+ * A secret that was injected into the request during template resolution.
+ * Tracked for response masking.
+ */
+export type InjectedSecret = {
+  /** Full secret URI (e.g. aws-secretsmanager://arn:...) */
+  uri: string
+  /** The resolved value — used by the masker to detect echoed secrets in responses. */
+  value: string
+}
 
 export type ResolveResult<T> = { value: T; injectedSecrets: InjectedSecret[] }
 
@@ -16,18 +26,21 @@ export class TemplateError extends Error {
   }
 }
 
+/** Matches any {{...}} placeholder, including those containing URIs with :// */
 const EXPR_REGEX = /\{\{([^}]+)\}\}/g
 
 /**
  * Resolve all {{expr}} placeholders in a single string.
- * Returns the resolved string and a list of secrets that were injected
- * (used later by the secret masker).
+ * Returns the resolved string and appends any injected secrets to the
+ * provided accumulator (used later by the secret masker).
  */
 async function resolveString(
   raw: string,
-  secretStore: SecretStore,
+  registry: SecretStoreRegistry,
   variables: Record<string, unknown>,
   injected: InjectedSecret[],
+  jobId: string | undefined,
+  logger: SecretLogger | undefined,
 ): Promise<string> {
   const matches = [...raw.matchAll(EXPR_REGEX)]
   if (matches.length === 0) return raw
@@ -36,7 +49,7 @@ async function resolveString(
   // Process in reverse order so replacement indices stay valid
   for (const match of [...matches].reverse()) {
     const expr = match[1].trim()
-    const resolved = await resolveExpression(expr, secretStore, variables, injected)
+    const resolved = await resolveExpression(expr, registry, variables, injected, jobId, logger)
     result = result.slice(0, match.index!) + resolved + result.slice(match.index! + match[0].length)
   }
   return result
@@ -44,10 +57,18 @@ async function resolveString(
 
 async function resolveExpression(
   expr: string,
-  secretStore: SecretStore,
+  registry: SecretStoreRegistry,
   variables: Record<string, unknown>,
   injected: InjectedSecret[],
+  jobId: string | undefined,
+  logger: SecretLogger | undefined,
 ): Promise<string> {
+  // URI-based secret expressions: scheme://path[#field]
+  // Detected by the presence of :// anywhere in the expression.
+  if (expr.includes('://')) {
+    return resolveSecretUri(expr, registry, injected, jobId, logger)
+  }
+
   const colonIdx = expr.indexOf(':')
   if (colonIdx === -1) {
     throw new TemplateError(`Unknown expression syntax '{{${expr}}}'`, expr)
@@ -57,9 +78,6 @@ async function resolveExpression(
   const qualifier = expr.slice(colonIdx + 1).trim()
 
   switch (type) {
-    case 'secret':
-      return resolveSecret(qualifier, secretStore, injected)
-
     case 'jit':
       return resolveJit(qualifier, expr)
 
@@ -71,27 +89,22 @@ async function resolveExpression(
   }
 }
 
-async function resolveSecret(
-  qualifier: string,
-  store: SecretStore,
+async function resolveSecretUri(
+  secretUri: string,
+  registry: SecretStoreRegistry,
   injected: InjectedSecret[],
+  jobId: string | undefined,
+  logger: SecretLogger | undefined,
 ): Promise<string> {
-  const dotIdx = qualifier.indexOf('.')
-  const secretId = dotIdx === -1 ? qualifier : qualifier.slice(0, dotIdx)
-  const field = dotIdx === -1 ? undefined : qualifier.slice(dotIdx + 1)
-
   try {
-    const result = field
-      ? await store.getSecretField(secretId, field)
-      : await store.getSecret(secretId)
-
-    injected.push({ id: qualifier, value: result.value })
+    const result = await registry.resolve(secretUri, jobId, logger)
+    injected.push({ uri: secretUri, value: result.value })
     return result.value
   } catch (err) {
     if (err instanceof SecretStoreError) {
       throw new TemplateError(
-        `Failed to resolve secret '${qualifier}': ${err.message}`,
-        `secret:${qualifier}`,
+        `Failed to resolve secret '${secretUri}': ${err.message}`,
+        secretUri,
       )
     }
     throw err
@@ -151,18 +164,24 @@ function resolveVar(
  * (url, header values, query param values, cookie values, postData.text,
  * postData.params values).
  *
- * Returns the mutated copy of the object plus all secrets that were injected.
+ * Secret expressions use URI syntax: {{aws-secretsmanager://arn:...}}
+ * JIT expressions: {{jit:uuid}}, {{jit:timestamp}}, etc.
+ * Variable expressions: {{var:NAME}} (resolved from the provided variables map)
+ *
+ * Returns the resolved object plus all secrets that were injected (used for masking).
  */
 export async function resolveTemplates<T extends Record<string, unknown>>(
   har: T,
-  secretStore: SecretStore,
+  registry: SecretStoreRegistry,
   variables: Record<string, unknown> = {},
+  jobId?: string,
+  logger?: SecretLogger,
 ): Promise<ResolveResult<T>> {
   const injectedSecrets: InjectedSecret[] = []
 
   async function walk(value: unknown): Promise<unknown> {
     if (typeof value === 'string') {
-      return resolveString(value, secretStore, variables, injectedSecrets)
+      return resolveString(value, registry, variables, injectedSecrets, jobId, logger)
     }
     if (Array.isArray(value)) {
       return Promise.all(value.map(walk))
