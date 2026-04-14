@@ -318,7 +318,7 @@ export type BuildInfo = {
   /** The build reference of the application */
   build: string
   /** The deployment reference of the application */
-  deploymentRef: string
+  deployment: string
 }
 
 /** JSON Statistics */

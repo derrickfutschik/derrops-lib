@@ -255,25 +255,114 @@ myAction.group // ActionGroup
 
 ## Component Conventions
 
-### Size and composition
+### File structure
+
+- **One component per file — no exceptions.** Filename must match the exported component name exactly (e.g. `UserCard.tsx`).
+- **Sibling files over sub-directories.** Extracted components live next to the file they came from (e.g. `JMESPathInputRow.tsx` alongside `MaximizableCodeViewer.tsx`), not in a generic `components/` subdirectory.
+- **Group related components in a folder** with an `index.ts` barrel export when a feature grows to multiple sibling files.
+- **Pure helpers travel with their consumer.** Utility functions used only by one component live in that component's file (or a sibling `*-utils.ts`).
+
+### Size and extraction
 
 - **Max ~300–400 lines per file.** If a component grows beyond this, extract sub-components.
+- **Extract into its own file** when a JSX block exceeds ~40–50 lines, has its own internal state or effects, is reused in more than one place, or has a clear nameable responsibility (e.g. `AvatarWithBadge`, `PricingCard`).
 - **No inline render functions longer than ~20 lines.** Extract them into named components in sibling files.
-- **Sibling files over sub-directories.** Extracted components live next to the file they came from (e.g. `JMESPathInputRow.tsx` alongside `MaximizableCodeViewer.tsx`), not in a generic `components/` subdirectory.
-- **Extract by responsibility.** If a chunk of JSX has its own local state, refs, and callbacks, it belongs in its own component file.
 - **Pass only what's needed as props.** Don't hoist state unnecessarily; the parent owns shared state, children own their own.
-- **Pure helpers travel with their consumer.** Utility functions used only by one component live in that component's file (or a sibling `*-utils.ts`).
+
+### Composition over nesting
+
+- **Parent components should read like a high-level outline.** Their JSX should be composed of named child components, not raw HTML elements.
+- **No more than 2–3 levels of JSX nesting** inside a single `return` — extract the inner levels into named components.
+- **Split data-fetching from rendering.** A component that fetches data and renders it should be split into a container (fetch logic) + presentational component (render only).
+
+### Prefer components over inline JSX blocks
+
+**Extract named JSX blocks into components rather than inlining them inside containers.** A container like `<CardContent>` should reference named components, not contain raw markup.
+
+```typescript
+// ❌ Wrong — verbose nested markup inside a container
+<CardContent>
+  <div className="space-y-4">
+    <div>
+      <h4 className="text-sm font-medium mb-2">Request Volume</h4>
+      <div className="h-48 flex items-center justify-center border border-border rounded-lg bg-muted/20">
+        <p className="text-muted-foreground">Chart coming soon</p>
+      </div>
+    </div>
+    <div>
+      <h4 className="text-sm font-medium mb-2">Response Time Trends</h4>
+      <div className="h-48 flex items-center justify-center border border-border rounded-lg bg-muted/20">
+        <p className="text-muted-foreground">Chart coming soon</p>
+      </div>
+    </div>
+  </div>
+</CardContent>
+
+// ✅ Correct — named components, container reads like an outline
+const RequestVolumeChart = () => (
+  <div>
+    <h4 className="text-sm font-medium mb-2">Request Volume</h4>
+    <div className="h-48 flex items-center justify-center border border-border rounded-lg bg-muted/20">
+      <p className="text-muted-foreground">Chart coming soon</p>
+    </div>
+  </div>
+)
+
+const ResponseTimeTrendsChart = () => (
+  <div>
+    <h4 className="text-sm font-medium mb-2">Response Time Trends</h4>
+    <div className="h-48 flex items-center justify-center border border-border rounded-lg bg-muted/20">
+      <p className="text-muted-foreground">Chart coming soon</p>
+    </div>
+  </div>
+)
+
+<CardContent>
+  <div className="space-y-4">
+    <RequestVolumeChart />
+    <ResponseTimeTrendsChart />
+  </div>
+</CardContent>
+```
+
+**Minimum size:** a component must be at least 4–5 lines. Don't extract single-element wrappers into their own components — the overhead outweighs the benefit.
+
+**Reduce duplication with factory functions.** When multiple components share the same structure and differ only in data (labels, configs), write a factory or higher-order component rather than copy-pasting:
+
+```typescript
+// ✅ Factory reduces repetition when structure is identical
+const createChartPanel = (title: string) => () => (
+  <div>
+    <h4 className="text-sm font-medium mb-2">{title}</h4>
+    <div className="h-48 flex items-center justify-center border border-border rounded-lg bg-muted/20">
+      <p className="text-muted-foreground">Chart coming soon</p>
+    </div>
+  </div>
+)
+
+const RequestVolumeChart = createChartPanel('Request Volume')
+const ResponseTimeTrendsChart = createChartPanel('Response Time Trends')
+```
 
 ### Anti-patterns to avoid
 
 - A single `.tsx` file exceeding ~500 lines without a clear reason.
-- Inline JSX assigned to variables (`const row = () => <div>...100 lines...</div>`) — these are components; make them components.
+- Inline anonymous components (`const Item = () => <div>...` defined inside another component's file) — these are components; give them their own file.
+- A single exported file with multiple exported components.
 - Dumping all logic into one parent and passing dozens of props through layers — co-locate instead.
+
+### Building new components
+
+When building a component:
+1. Plan the component tree first — list the sub-components before writing code.
+2. Create each sub-component in its own file.
+3. If you find yourself writing a 100+ line component, stop and decompose before continuing.
 
 ### Naming
 
 - **PascalCase** for component files and component names: `DashboardHeader.tsx`, `OpenAPIParameterForm.tsx`.
 - **Props interface** named `<ComponentName>Props`.
+- **Hooks**: `camelCase` prefixed with `use`.
 - **Page components** in `src/pages/`, one per route, PascalCase.
 - **Feature groupings** in `src/components/<feature-name>/`.
 
@@ -406,6 +495,32 @@ catch (error: unknown) {
 ```
 
 ## TypeScript Conventions
+
+### Prefer lookup objects over nested ternaries
+
+When mapping a value to one of several outcomes, use a dictionary (object literal) instead of nested ternary chains. Nested ternaries are hard to read and easy to break when new cases are added.
+
+```typescript
+// ✅ Correct — flat, easy to extend
+const COLOR_FOR_METHOD: Record<string, string> = {
+  GET: 'text-green-500',
+  POST: 'text-yellow-500',
+  PUT: 'text-blue-500',
+  DELETE: 'text-red-500',
+}
+return COLOR_FOR_METHOD[method] ?? 'text-gray-500'
+
+// ❌ Wrong — nested ternaries
+method === 'GET'
+  ? 'text-green-500'
+  : method === 'POST'
+    ? 'text-yellow-500'
+    : method === 'PUT'
+      ? 'text-blue-500'
+      : 'text-red-500'
+```
+
+This applies to any value-to-value mapping: colours, labels, icons, config keys, etc. Use `Record<string, T>` and a `?? fallback` for the default case.
 
 - Path alias `@/*` maps to `src/*`. Always use this over relative imports that cross feature boundaries.
 - Props interfaces use the `<ComponentName>Props` suffix.

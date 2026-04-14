@@ -18,7 +18,8 @@
       "Bash(python3 *)",
       "Bash(./node_modules/.bin/*)",
       "Skill(update-config)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(wc -l /Users/dfutschik/slaops/slaops-platform/apps/slaops-portal/src/components/api-tester/*.tsx)"
     ]
   }
 }
