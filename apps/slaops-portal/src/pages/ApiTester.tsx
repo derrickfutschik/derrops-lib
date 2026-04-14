@@ -122,6 +122,7 @@ const ApiTester = () => {
     bodyParams: {},
   })
 
+  const [standardParamsTab, setStandardParamsTab] = useState('params')
   const [mobilePanelTab, setMobilePanelTab] = useState<'request' | 'response'>('request')
   const isMobile = useIsMobile()
 
@@ -560,6 +561,8 @@ const ApiTester = () => {
             onSelectRelay={relaySelector.setConnectionId}
           />
           <StandardParamsPanel
+            activeTab={standardParamsTab}
+            onActiveTabChange={setStandardParamsTab}
             queryParams={queryParams}
             onAddQueryParam={addQueryParam}
             onRemoveQueryParam={removeQueryParam}
