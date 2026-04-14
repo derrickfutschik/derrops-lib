@@ -337,6 +337,10 @@ const ApiTester = () => {
 
   // Sync query params to URL
   useEffect(() => {
+    if (isUrlDrivenParamUpdateRef.current) {
+      isUrlDrivenParamUpdateRef.current = false
+      return
+    }
     if (!url) return
     try {
       const urlObj = new URL(url)
@@ -372,6 +376,7 @@ const ApiTester = () => {
     }
   }, [builderMode, openAPIServiceId, openAPIOperationKey, selectedServiceId, selectedOperationKey])
 
+  const isUrlDrivenParamUpdateRef = useRef(false)
   const cmdEnterHandlerRef = useRef<() => void>(() => {})
   useEffect(() => {
     cmdEnterHandlerRef.current = () => {
@@ -461,6 +466,7 @@ const ApiTester = () => {
         params.push({ key, value, enabled: true })
       })
       params.push({ key: '', value: '', enabled: true })
+      isUrlDrivenParamUpdateRef.current = true
       setQueryParams(params)
     } catch {
       // Invalid URL, ignore
