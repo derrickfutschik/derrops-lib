@@ -9,6 +9,22 @@ import { Activity, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+type ServiceStatus = 'healthy' | 'warning' | 'critical' | 'unknown'
+
+const BADGE_VARIANT: Record<ServiceStatus, 'default' | 'secondary' | 'destructive'> = {
+  healthy: 'default',
+  warning: 'secondary',
+  critical: 'destructive',
+  unknown: 'destructive',
+}
+
+const BADGE_CLASS: Record<ServiceStatus, string> = {
+  healthy: 'bg-success/20 text-success border-success/50',
+  warning: 'bg-warning/20 text-warning border-warning/50',
+  critical: 'bg-destructive/20 text-destructive border-destructive/50',
+  unknown: 'bg-destructive/20 text-destructive border-destructive/50',
+}
+
 const ServicesList = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -47,7 +63,7 @@ const ServicesList = () => {
     }
   }
 
-  const getStatusFromAvailability = (availability: number | null) => {
+  const getStatusFromAvailability = (availability: number | null): ServiceStatus => {
     if (!availability) return 'unknown'
     if (availability >= 99.5) return 'healthy'
     if (availability >= 98) return 'warning'
@@ -106,22 +122,7 @@ const ServicesList = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-foreground">{service.name}</h3>
-                      <Badge
-                        variant={
-                          status === 'healthy'
-                            ? 'default'
-                            : status === 'warning'
-                              ? 'secondary'
-                              : 'destructive'
-                        }
-                        className={
-                          status === 'healthy'
-                            ? 'bg-success/20 text-success border-success/50'
-                            : status === 'warning'
-                              ? 'bg-warning/20 text-warning border-warning/50'
-                              : 'bg-destructive/20 text-destructive border-destructive/50'
-                        }
-                      >
+                      <Badge variant={BADGE_VARIANT[status]} className={BADGE_CLASS[status]}>
                         <Activity className="h-3 w-3 mr-1" />
                         {status}
                       </Badge>

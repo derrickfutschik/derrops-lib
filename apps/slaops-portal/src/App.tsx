@@ -17,7 +17,7 @@ import Connections from './pages/Connections'
 import Dashboard from './pages/Dashboard'
 import Landing from './pages/Landing'
 import NotFound from './pages/NotFound'
-import ServiceDetails from './pages/ServiceDetails'
+import ServiceDetails from './pages/service-details'
 
 import outputs from '../amplify_outputs.json'
 

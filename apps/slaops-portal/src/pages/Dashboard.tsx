@@ -1,10 +1,9 @@
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import ServicesList from '@/components/dashboard/ServicesList'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import StatsOverview from '@/components/dashboard/StatsOverview'
 import { supabase } from '@/integrations/supabase/client'
 import { Session, User } from '@supabase/supabase-js'
 import { signOut } from 'aws-amplify/auth'
-import { Activity, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -62,68 +61,7 @@ const Dashboard = () => {
       <DashboardHeader user={user} onSignOut={handleSignOut} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="border-border bg-card/50 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Services
-              </CardTitle>
-              <Activity className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">12</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-success">+2</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">API Calls</CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">2.4M</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-success">+15%</span> from last week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Active Alerts
-              </CardTitle>
-              <AlertTriangle className="h-4 w-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">3</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-warning">2</span> require attention
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Monthly Cost
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">$12,450</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-destructive">+8%</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Services List */}
+        <StatsOverview />
         <ServicesList />
       </main>
     </div>
