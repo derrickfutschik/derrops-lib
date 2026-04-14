@@ -548,6 +548,7 @@ const ApiTester = () => {
             onMethodChange={setMethod}
             url={url}
             onUrlChange={handleUrlChange}
+            queryParams={queryParams}
             urlValidation={urlValidation}
             urlHistory={urlHistory}
             urlHistoryIndex={urlHistoryIndex}

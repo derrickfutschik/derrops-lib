@@ -9,6 +9,8 @@ import {
 } from '@/components/api-tester/RequestBodyEditor'
 import { Plus, Trash2 } from 'lucide-react'
 import { type KeyValuePair } from '@/hooks/useSendRequest'
+import { useAppDispatch } from '@/store/hooks'
+import { setFocusedQueryParam, clearFocusedQueryParam } from '@/store/apiTesterSlice'
 
 interface StandardParamsPanelProps {
   activeTab: string
@@ -64,6 +66,8 @@ export function StandardParamsPanel({
   isQueryParamDuplicate,
   isHeaderDuplicate,
 }: StandardParamsPanelProps) {
+  const dispatch = useAppDispatch()
+
   return (
     <Tabs value={activeTab} onValueChange={onActiveTabChange} className="w-full">
       <TabsList className="w-full justify-start bg-muted/50">
@@ -89,12 +93,16 @@ export function StandardParamsPanel({
                 placeholder="Parameter name"
                 value={param.key}
                 onChange={(e) => onUpdateQueryParam(index, 'key', e.target.value)}
+                onFocus={() => dispatch(setFocusedQueryParam({ index, field: 'key' }))}
+                onBlur={() => dispatch(clearFocusedQueryParam())}
                 className={`flex-1 bg-background ${borderClass}`}
               />
               <Input
                 placeholder="Value"
                 value={param.value}
                 onChange={(e) => onUpdateQueryParam(index, 'value', e.target.value)}
+                onFocus={() => dispatch(setFocusedQueryParam({ index, field: 'value' }))}
+                onBlur={() => dispatch(clearFocusedQueryParam())}
                 className={`flex-1 bg-background ${borderClass}`}
               />
               <Button

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,12 +17,16 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertCircle, ChevronDown, Eye, Search, Send } from 'lucide-react'
 import { HTTP_METHODS, ActionMode } from '../types'
+import { useAppSelector } from '@/store/hooks'
+import { selectFocusedQueryParam } from '@/store/apiTesterSlice'
+import { type KeyValuePair } from '@/hooks/useSendRequest'
 
 interface StandardOperationPanelProps {
   method: string
   onMethodChange: (method: string) => void
   url: string
   onUrlChange: (url: string) => void
+  queryParams: KeyValuePair[]
   urlValidation: { isValid: boolean; isEmpty: boolean; message: string }
   urlHistory: string[]
   urlHistoryIndex: number
@@ -133,9 +137,56 @@ const ActionButton = ({
   </div>
 )
 
+// Returns the character range [start, end) of the focused param's key or value
+// within the full URL string, or null if it can't be found.
+function getParamHighlightRange(
+  url: string,
+  params: KeyValuePair[],
+  focused: { index: number; field: 'key' | 'value' },
+): { start: number; end: number } | null {
+  const { index, field } = focused
+  if (index < 0 || index >= params.length) return null
+
+  const param = params[index]
+  if (!param.enabled || !param.key.trim()) return null
+
+  const questionPos = url.indexOf('?')
+  if (questionPos === -1) return null
+
+  // Count how many times the same key appears before this index (for duplicate keys)
+  let nthOccurrence = 0
+  for (let i = 0; i < index; i++) {
+    if (params[i].enabled && params[i].key === param.key) nthOccurrence++
+  }
+
+  const queryString = url.slice(questionPos + 1)
+  let charOffset = questionPos + 1
+  let occurrenceSeen = 0
+
+  for (const segment of queryString.split('&')) {
+    const eqIdx = segment.indexOf('=')
+    const rawKey = eqIdx >= 0 ? segment.slice(0, eqIdx) : segment
+    const decodedKey = (() => { try { return decodeURIComponent(rawKey) } catch { return rawKey } })()
+
+    if (rawKey === param.key || decodedKey === param.key) {
+      if (occurrenceSeen === nthOccurrence) {
+        if (field === 'key') return { start: charOffset, end: charOffset + rawKey.length }
+        if (eqIdx >= 0) return { start: charOffset + eqIdx + 1, end: charOffset + segment.length }
+        return null
+      }
+      occurrenceSeen++
+    }
+
+    charOffset += segment.length + 1 // +1 for '&'
+  }
+
+  return null
+}
+
 const UrlInput = ({
   url,
   onUrlChange,
+  queryParams,
   urlValidation,
   urlHistory,
   urlHistoryIndex,
@@ -148,6 +199,7 @@ const UrlInput = ({
 }: {
   url: string
   onUrlChange: (url: string) => void
+  queryParams: KeyValuePair[]
   urlValidation: { isValid: boolean; isEmpty: boolean; message: string }
   urlHistory: string[]
   urlHistoryIndex: number
@@ -157,68 +209,152 @@ const UrlInput = ({
   urlInputFocusedRef: React.MutableRefObject<boolean>
   onUrlKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   className?: string
-}) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <div className={`relative ${className}`}>
-        <Input
-          placeholder="Enter request URL (e.g., https://api.example.com/users)"
-          value={url}
-          onChange={(e) => { onUrlChange(e.target.value); onUrlHistoryIndexChange(-1) }}
-          onFocus={(e) => {
-            if (!urlInputFocusedRef.current) {
-              e.target.select()
-              urlInputFocusedRef.current = true
-            }
-          }}
-          onBlur={() => { urlInputFocusedRef.current = false; onShowUrlHistoryChange(false) }}
-          onDoubleClick={() => { if (urlHistory.length > 0) onShowUrlHistoryChange(!showUrlHistory) }}
-          onKeyDown={onUrlKeyDown}
-          onPaste={(e) => {
-            const pasted = e.clipboardData.getData('text')
-            const match = pasted.match(/(https?:\/\/\S+)/)
-            if (match) {
-              e.preventDefault()
-              const raw = pasted.slice(pasted.indexOf(match[1]))
-              onUrlChange(raw.replace(/[\s\r\n]+/g, ''))
-            }
-          }}
-          className={`bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-          title="↑↓ to browse URL history | Double-click to show history"
-        />
-        {showUrlHistory && urlHistory.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
-            {urlHistory.map((histUrl, i) => (
-              <button
-                key={i}
-                className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === urlHistoryIndex ? 'bg-muted' : ''}`}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onUrlChange(histUrl)
-                  onUrlHistoryIndexChange(-1)
-                  onShowUrlHistoryChange(false)
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const focusedQueryParam = useAppSelector(selectFocusedQueryParam)
+
+  const highlightRange = useMemo(
+    () => (focusedQueryParam ? getParamHighlightRange(url, queryParams, focusedQueryParam) : null),
+    [url, queryParams, focusedQueryParam],
+  )
+
+  // Keep overlay scroll in sync with input scroll
+  const syncScroll = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (overlayRef.current && inputRef.current) {
+        overlayRef.current.scrollLeft = inputRef.current.scrollLeft
+      }
+    })
+  }, [])
+
+  // Auto-scroll the URL input when the focused param changes so the highlighted
+  // segment is centred in the visible area.
+  useEffect(() => {
+    if (!highlightRange || !inputRef.current) return
+
+    const { start, end } = highlightRange
+    const input = inputRef.current
+    const computed = getComputedStyle(input)
+
+    // Measure character-pixel widths using a throwaway span with the same font
+    const measureEl = document.createElement('span')
+    measureEl.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font-size:${computed.fontSize};font-family:${computed.fontFamily};letter-spacing:${computed.letterSpacing};`
+    document.body.appendChild(measureEl)
+    measureEl.textContent = url.slice(0, start)
+    const startPx = measureEl.getBoundingClientRect().width
+    measureEl.textContent = url.slice(0, end)
+    const endPx = measureEl.getBoundingClientRect().width
+    document.body.removeChild(measureEl)
+
+    // Centre the highlight in the visible area (subtract px-3 padding on each side)
+    const paddingLeft = 12
+    const availableWidth = input.clientWidth - paddingLeft * 2
+    const midPx = (startPx + endPx) / 2
+    const targetScrollLeft = Math.max(0, midPx - availableWidth / 2)
+
+    input.scrollLeft = targetScrollLeft
+    if (overlayRef.current) overlayRef.current.scrollLeft = targetScrollLeft
+  }, [highlightRange?.start, highlightRange?.end, url])
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={`relative ${className}`}>
+          <Input
+            ref={inputRef}
+            placeholder="Enter request URL (e.g., https://api.example.com/users)"
+            value={url}
+            onChange={(e) => { onUrlChange(e.target.value); onUrlHistoryIndexChange(-1); syncScroll() }}
+            onFocus={(e) => {
+              if (!urlInputFocusedRef.current) {
+                e.target.select()
+                urlInputFocusedRef.current = true
+              }
+            }}
+            onBlur={() => { urlInputFocusedRef.current = false; onShowUrlHistoryChange(false) }}
+            onDoubleClick={() => { if (urlHistory.length > 0) onShowUrlHistoryChange(!showUrlHistory) }}
+            onKeyDown={onUrlKeyDown}
+            onScroll={syncScroll}
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData('text')
+              const match = pasted.match(/(https?:\/\/\S+)/)
+              if (match) {
+                e.preventDefault()
+                const raw = pasted.slice(pasted.indexOf(match[1]))
+                onUrlChange(raw.replace(/[\s\r\n]+/g, ''))
+              }
+            }}
+            className={`bg-background ${!urlValidation.isValid && !urlValidation.isEmpty ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+            title="↑↓ to browse URL history | Double-click to show history"
+          />
+          {highlightRange && (
+            <div
+              ref={overlayRef}
+              className="absolute inset-y-0 pointer-events-none select-none overflow-hidden"
+              style={{
+                // Align with the input's text area (px-3 = 12px padding on each side)
+                left: '12px',
+                right: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '0.875rem',
+                fontFamily: 'inherit',
+                letterSpacing: 'inherit',
+                whiteSpace: 'pre',
+                color: 'transparent',
+              }}
+              aria-hidden="true"
+            >
+              {url.slice(0, highlightRange.start)}
+              <mark
+                style={{
+                  background: 'rgba(34, 197, 94, 0.25)',
+                  color: 'transparent',
+                  borderRadius: '2px',
+                  padding: 0,
                 }}
               >
-                {histUrl}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </TooltipTrigger>
-    {!urlValidation.isValid && !urlValidation.isEmpty && (
-      <TooltipContent side="bottom" className="bg-destructive text-destructive-foreground">
-        <p>{urlValidation.message}</p>
-      </TooltipContent>
-    )}
-  </Tooltip>
-)
+                {url.slice(highlightRange.start, highlightRange.end)}
+              </mark>
+              {url.slice(highlightRange.end)}
+            </div>
+          )}
+          {showUrlHistory && urlHistory.length > 0 && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
+              {urlHistory.map((histUrl, i) => (
+                <button
+                  key={i}
+                  className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-muted truncate block ${i === urlHistoryIndex ? 'bg-muted' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    onUrlChange(histUrl)
+                    onUrlHistoryIndexChange(-1)
+                    onShowUrlHistoryChange(false)
+                  }}
+                >
+                  {histUrl}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </TooltipTrigger>
+      {!urlValidation.isValid && !urlValidation.isEmpty && (
+        <TooltipContent side="bottom" className="bg-destructive text-destructive-foreground">
+          <p>{urlValidation.message}</p>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  )
+}
 
 export function StandardOperationPanel({
   method,
   onMethodChange,
   url,
   onUrlChange,
+  queryParams,
   urlValidation,
   urlHistory,
   urlHistoryIndex,
@@ -269,6 +405,7 @@ export function StandardOperationPanel({
       <UrlInput
         url={url}
         onUrlChange={onUrlChange}
+        queryParams={queryParams}
         urlValidation={urlValidation}
         urlHistory={urlHistory}
         urlHistoryIndex={urlHistoryIndex}
@@ -318,6 +455,7 @@ export function StandardOperationPanel({
         <UrlInput
           url={url}
           onUrlChange={onUrlChange}
+          queryParams={queryParams}
           urlValidation={urlValidation}
           urlHistory={urlHistory}
           urlHistoryIndex={urlHistoryIndex}
