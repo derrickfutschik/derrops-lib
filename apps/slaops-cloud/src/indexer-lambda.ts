@@ -69,8 +69,21 @@ export async function handler(event: S3Event, context: Context): Promise<IndexRe
       eventName: record.eventName,
     }
 
-    const result = await indexerService.processFromStaging(s3Record.bucket, s3Record.key)
-    results.push(result)
+    // Direct S3-triggered indexing is not supported in the new pipeline —
+    // indexing requires an apiId. Log the event and skip.
+    console.warn(
+      `S3-triggered indexing not supported without apiId. Bucket: ${s3Record.bucket}, Key: ${s3Record.key}`,
+    )
+    results.push({
+      success: false,
+      documentId: '',
+      s3Key: s3Record.key,
+      operationCount: 0,
+      pathCount: 0,
+      truncated: false,
+      error: 'S3-triggered indexing requires an apiId — use POST /openapi/index instead',
+      duration: 0,
+    })
   }
 
   // Log summary

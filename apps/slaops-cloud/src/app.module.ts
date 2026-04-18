@@ -10,6 +10,7 @@ import { CloudRelayModule } from './cloud-relay/cloud-relay.module'
 import { SLAConfigModule } from './config/config.module'
 import { RelayInstanceModule } from './relay-instance/relay-instance.module'
 import { VendorJwtModule } from './vendor-jwt/vendor-jwt.module'
+import { ApiModule } from './api/api.module'
 import { OpenApiIndexerModule } from './openapi-indexer/openapi-indexer.module'
 import { OpenApiSearchModule } from './openapi-search/openapi-search.module'
 import { OpenSearchModule } from './opensearch/opensearch.module'
@@ -65,6 +66,7 @@ import { AuthModule } from './auth/auth.module'
       },
     }),
     ServiceModule,
+    ApiModule,
     VendorJwtModule,
     CloudRelayModule,
     RelayInstanceModule,

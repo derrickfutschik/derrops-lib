@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common'
+import { ApiModule } from '../api/api.module'
 import { OpenSearchModule } from '../opensearch/opensearch.module'
 import { OpenApiIndexerController } from './openapi-indexer.controller'
 import { OpenApiIndexerService } from './openapi-indexer.service'
 import { OpenApiParserService } from './openapi-parser.service'
 
 @Module({
-  imports: [OpenSearchModule],
+  imports: [OpenSearchModule, ApiModule],
   controllers: [OpenApiIndexerController],
   providers: [OpenApiIndexerService, OpenApiParserService],
   exports: [OpenApiIndexerService, OpenApiParserService],

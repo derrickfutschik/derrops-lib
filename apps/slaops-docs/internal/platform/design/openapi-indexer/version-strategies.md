@@ -95,6 +95,10 @@ The tenant uploads spec files directly via the portal wizard or the REST API. No
 
 ### `url_fetch`
 
+:::info Future State
+The `url_fetch` scheduled job is designed but **not yet implemented**. The `fetch_*` columns are stored on the `api` row and `version_strategy: 'url_fetch'` is accepted by the API, but no scheduler runs automatically. Manual triggering via `POST /apis/:id/fetch` is also deferred to this phase. When implemented, this will require `@nestjs/schedule` and a new `url-fetch.scheduler.ts` service.
+:::
+
 The platform periodically fetches the spec from a configured URL and re-indexes if the content has changed.
 
 **Configuration:**
@@ -117,11 +121,11 @@ The platform periodically fetches the spec from a configured URL and re-indexes 
 
 - On fetch failure (timeout, non-2xx, parse error): log the error, set `last_fetch_status: 'error'`, and leave the current indexed version unchanged.
 - Exponential backoff for repeated failures: after 3 consecutive failures, reduce to weekly retries and surface a warning badge in the portal.
-- A tenant can manually trigger an immediate re-fetch via `POST /api/:id/fetch`.
+- A tenant can manually trigger an immediate re-fetch via `POST /apis/:id/fetch`.
 
 **Content-change detection:**
 
-Version comparison uses `info.version` string equality. If the remote spec updates without bumping the version, it will not be re-indexed automatically. Tenants can force a re-index via `POST /api/:id/fetch?force=true`.
+Version comparison uses `info.version` string equality. If the remote spec updates without bumping the version, it will not be re-indexed automatically. Tenants can force a re-index via `POST /apis/:id/fetch?force=true`.
 
 ---
 
@@ -145,6 +149,14 @@ Adding a new strategy requires: a new `version_strategy` value, any additional c
 |---|---|
 | `platform` → `private` | Tenant takes ownership. The existing global spec documents remain in the global index (unchanged). A private index is provisioned lazily on first upload. The `global_opensearch_id` reference is cleared. |
 | `private` → `platform` | Only allowed if the API exists in the platform catalogue. The tenant's private index documents for this API are deleted (or retained, configurable). `global_opensearch_id` is set to the matching global doc. |
+
+---
+
+## S3 Bucket Isolation
+
+:::info Future State
+Per-tenant dedicated S3 buckets are a future infrastructure task. Currently a **single shared bucket** is used (`slaops.oaspec.storage.bucket`) with all object keys prefixed by `{tenantId}/` — e.g. `t-acme0001/APIs/stripe.com/payments/2024-01/openapi.yaml`. This provides logical isolation without the provisioning overhead of per-tenant buckets. Dedicated per-tenant buckets will be introduced when stronger IAM isolation or billing granularity is required.
+:::
 
 ---
 

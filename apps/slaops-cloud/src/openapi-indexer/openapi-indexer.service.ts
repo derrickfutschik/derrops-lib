@@ -1,27 +1,14 @@
-/**
- * OpenAPI Indexer Service
- *
- * Responsibilities:
- *  1. Generate a pre-signed PUT URL to the OASpec staging bucket
- *  2. Download a spec from the staging bucket and validate it
- *  3. Save the validated spec to the OASpec storage bucket
- *  4. Index the spec document into OpenSearch
- */
-
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { Client } from '@opensearch-project/opensearch'
-import {
-  IndexResult,
-  IndexingError,
-  IndexingErrorCode,
-  OpenApiIndexDocument,
-} from '@slaops/cloud/openapi-search/types/openapi-index.types'
+import { IndexingError, IndexingErrorCode } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { config } from '@slaops/config'
-import * as yaml from 'yaml'
-import { calculateId, OpenApiParserService } from './openapi-parser.service'
 import { v4 as uuid } from 'uuid'
+import { OpenApiParserService } from './openapi-parser.service'
+import { oaspecId } from './oaspec-id'
+import { ApiService } from '../api/api.service'
+import { OpenSearchService } from '../opensearch/opensearch.service'
 
 /**
  * Build an S3Client that works for both local (MinIO) and cloud environments.
@@ -30,9 +17,6 @@ import { v4 as uuid } from 'uuid'
  * bypassed by supplying credentials explicitly (MinIO default or whatever the
  * environment has). This avoids dynamic-import errors in Jest when
  * --experimental-vm-modules is absent.
- *
- * When the endpoint is an official AWS endpoint the normal SDK credential chain
- * is used so real AWS credentials are picked up from the environment.
  */
 export function buildS3Client(): S3Client {
   const endpoint = config['aws.s3.endpoint']
@@ -58,7 +42,115 @@ export interface PresignedUrlResult {
   expiresIn: number
 }
 
+export interface IndexingResponse {
+  success: boolean
+  apiId: string
+  version: string
+  specOpensearchId: string
+  durationMs: number
+  counts: {
+    operations: number
+    servers: number
+    parameters: number
+    models: number
+  }
+  truncated: {
+    operations: boolean
+    models: boolean
+  }
+  versionsPruned: number
+  errors: Array<{
+    step: 'spec' | 'server' | 'operation' | 'param' | 'model' | 'sql'
+    message: string
+  }>
+}
+
 const PRESIGNED_URL_EXPIRES_IN = 3600 // 1 hour
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'] as const
+const METHOD_INITIAL: Record<string, string> = {
+  GET: 'G',
+  POST: 'P',
+  PUT: 'U',
+  DELETE: 'D',
+  PATCH: 'A',
+  HEAD: 'H',
+  OPTIONS: 'O',
+}
+
+function oaspecIndex(tenantId: string, entity: string): string {
+  return `slaops--${tenantId}--oaspec--${entity}`
+}
+
+function compactPath(path: string): string {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => {
+      if (!seg.startsWith('{')) return seg
+      // heuristic: treat as integer param
+      return '{i}'
+    })
+    .join('/')
+}
+
+function deriveHostShape(serverUrl: string): {
+  scheme: string
+  hostTemplate: string
+  hostShape: string
+  dnsSuffix: string
+  fixedLabelsText: string
+  varLabelsText: string
+  basePath: string
+} {
+  let parsed: URL
+  try {
+    parsed = new URL(serverUrl.replace(/\{[^}]+\}/g, 'placeholder'))
+  } catch {
+    return {
+      scheme: 'https',
+      hostTemplate: serverUrl,
+      hostShape: serverUrl,
+      dnsSuffix: '',
+      fixedLabelsText: '',
+      varLabelsText: '',
+      basePath: '/',
+    }
+  }
+
+  const scheme = parsed.protocol.replace(':', '')
+  const basePath = parsed.pathname || '/'
+
+  // Restore {var} placeholders for hostTemplate
+  const hostTemplate = serverUrl.includes('://')
+    ? serverUrl.split('://')[1]?.split('/')[0] ?? parsed.hostname
+    : parsed.hostname
+
+  const varPattern = /\{([^}]+)\}/g
+  const varLabels: string[] = []
+  let m: RegExpExecArray | null
+  const tmpl = hostTemplate
+  while ((m = varPattern.exec(tmpl)) !== null) {
+    varLabels.push(m[1]!)
+  }
+
+  const hostShape = hostTemplate.replace(/\{[^}]+\}/g, '*')
+
+  const labels = hostShape.split('.')
+  const dnsSuffix =
+    labels.length >= 2 ? labels.slice(-2).join('.') : hostShape
+
+  const fixedLabels = hostShape.split('.').filter((l) => l !== '*' && l !== '')
+
+  return {
+    scheme,
+    hostTemplate,
+    hostShape,
+    dnsSuffix,
+    fixedLabelsText: fixedLabels.join(' '),
+    varLabelsText: varLabels.join(' '),
+    basePath,
+  }
+}
 
 @Injectable()
 export class OpenApiIndexerService implements OnModuleInit {
@@ -68,6 +160,8 @@ export class OpenApiIndexerService implements OnModuleInit {
   constructor(
     private readonly parserService: OpenApiParserService,
     private readonly opensearchClient: Client,
+    private readonly apiService: ApiService,
+    private readonly openSearchService: OpenSearchService,
   ) {}
 
   async onModuleInit() {
@@ -75,147 +169,486 @@ export class OpenApiIndexerService implements OnModuleInit {
   }
 
   // ---------------------------------------------------------------------------
-  // 1. Generate pre-signed upload URL → staging bucket
+  // Pre-signed upload URL — points at the permanent OASpec storage bucket
   // ---------------------------------------------------------------------------
 
-  async generatePresignedUploadUrl(file: string): Promise<PresignedUrlResult> {
-    const bucket = config['slaops.oaspec.staging.bucket']
-    const key = `${uuid()}/${file}`
-    const command = new PutObjectCommand({ Bucket: bucket, Key: key })
+  async generatePresignedUploadUrl(apiId: string, key: string): Promise<PresignedUrlResult> {
+    const bucket = config['slaops.oaspec.storage.bucket']
+    const objectKey = key || `${uuid()}/openapi.yaml`
+    const command = new PutObjectCommand({ Bucket: bucket, Key: objectKey })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const url = await getSignedUrl(this.s3Client as any, command, {
       expiresIn: PRESIGNED_URL_EXPIRES_IN,
     })
-    return { url, key, bucket, expiresIn: PRESIGNED_URL_EXPIRES_IN }
+    return { url, key: objectKey, bucket, expiresIn: PRESIGNED_URL_EXPIRES_IN }
   }
 
   // ---------------------------------------------------------------------------
-  // 2. Download from staging + validate
+  // 6-step indexing pipeline
   // ---------------------------------------------------------------------------
 
-  async fetchAndValidate(
+  async indexSpec(
+    apiId: string,
+    tenantId: string,
     bucket: string,
     key: string,
-  ): Promise<{ content: string; document: OpenApiIndexDocument; truncated: boolean }> {
-    const content = await this.fetchS3Object(bucket, key)
-    const { document, truncated } = this.parserService.parseAndTransform(content, key, bucket)
-    return { content, document, truncated }
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3. Save spec to OASpec storage bucket
-  // ---------------------------------------------------------------------------
-
-  async saveToStorage(content: string, key: string): Promise<void> {
-    const bucket = config['slaops.oaspec.storage.bucket']
-    const contentType = key.toLowerCase().endsWith('.json') ? 'application/json' : 'text/yaml'
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: content,
-        ContentType: contentType,
-      }),
-    )
-    this.logger.log(`Saved spec to storage: s3://${bucket}/${key}`)
-  }
-
-  // ---------------------------------------------------------------------------
-  // 4. Index document into OpenSearch
-  // ---------------------------------------------------------------------------
-
-  async indexDocument(document: OpenApiIndexDocument) {
-    const id = calculateId(document.provider, document.serviceName, document.version)
-    return this.opensearchClient.index({
-      index: config['opensearch.index.openapi.apis'],
-      id,
-      pipeline: config['opensearch.pipeline.openapi.apis'],
-      body: document as unknown as Record<string, unknown>,
-      refresh: true,
-    })
-  }
-
-  // ---------------------------------------------------------------------------
-  // Full pipeline: staging → validate → storage → OpenSearch
-  // ---------------------------------------------------------------------------
-
-  async processFromStaging(stagingBucket: string, key: string): Promise<IndexResult> {
+  ): Promise<IndexingResponse> {
     const startTime = Date.now()
+    const errors: IndexingResponse['errors'] = []
+    let specOpensearchId = ''
+    let version = ''
+    let versionsPruned = 0
+
+    const counts = { operations: 0, servers: 0, parameters: 0, models: 0 }
+    const truncated = { operations: false, models: false }
+
+    // ── Verify api row belongs to this tenant ─────────────────────────────────
     try {
-      const { content, document, truncated } = await this.fetchAndValidate(stagingBucket, key)
-
-      const derivedS3Key = this.deriveS3Key(content)
-
-      document.s3Location.key = derivedS3Key
-
-      await this.saveToStorage(content, derivedS3Key)
-      await this.indexDocument(document)
-
-      const documentId = calculateId(document.provider, document.serviceName, document.version)
-      this.logger.log(
-        `Indexed: ${documentId} (${document.operationStats.total} operations, ${document.paths.length} paths${truncated ? ', truncated' : ''})`,
-      )
-
-      return {
-        success: true,
-        documentId,
-        s3Key: key,
-        operationCount: document.operationStats.total,
-        pathCount: document.paths.length,
-        truncated,
-        duration: Date.now() - startTime,
-      }
-    } catch (error: any) {
-      this.logger.error(`Failed to process ${key} from staging:`, error)
+      await this.apiService.findOne(apiId, tenantId)
+    } catch (err: any) {
       return {
         success: false,
-        documentId: '',
-        s3Key: key,
-        operationCount: 0,
-        pathCount: 0,
-        truncated: false,
-        error: error.message,
-        duration: Date.now() - startTime,
+        apiId,
+        version: '',
+        specOpensearchId: '',
+        durationMs: Date.now() - startTime,
+        counts,
+        truncated,
+        versionsPruned: 0,
+        errors: [{ step: 'spec', message: `API row not found: ${err.message}` }],
       }
+    }
+
+    // ── Parse spec ────────────────────────────────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rawSpec: any
+    let content: string
+    try {
+      content = await this.fetchS3Object(bucket, key)
+      const format = key.toLowerCase().endsWith('.json') ? 'json' : 'yaml'
+      const parsed = this.parserService.parseContent(content, format)
+      this.parserService.validateOpenApi3(parsed, key)
+      rawSpec = parsed
+    } catch (err: any) {
+      return {
+        success: false,
+        apiId,
+        version: '',
+        specOpensearchId: '',
+        durationMs: Date.now() - startTime,
+        counts,
+        truncated,
+        versionsPruned: 0,
+        errors: [{ step: 'spec', message: `Parse error: ${err.message}` }],
+      }
+    }
+
+    version = rawSpec.info.version ?? 'unknown'
+    const title = rawSpec.info.title ?? ''
+    const now = new Date().toISOString()
+    const format = key.toLowerCase().endsWith('.json') ? 'json' : 'yaml'
+    const fileSize = Buffer.byteLength(content!, 'utf8')
+
+    // Lazy alias provisioning (ensures private indices exist for this tenant)
+    try {
+      await this.openSearchService.addPrivateIndicesToAliases(tenantId)
+    } catch (err: any) {
+      this.logger.warn(`Alias provisioning warning for tenant ${tenantId}: ${err.message}`)
+    }
+
+    // ── Step 1: Spec document ─────────────────────────────────────────────────
+    specOpensearchId = oaspecId(tenantId, title, version)
+    try {
+      await this._setLatestFalse(tenantId, 'spec', apiId)
+
+      const tagsText = [
+        ...(rawSpec.tags?.map((t: any) => t.name) ?? []),
+      ].join(' ')
+
+      const contactText = rawSpec.info.contact
+        ? [rawSpec.info.contact.name, rawSpec.info.contact.email, rawSpec.info.contact.url]
+            .filter(Boolean)
+            .join(' ')
+        : undefined
+
+      const licenseText = rawSpec.info.license
+        ? [rawSpec.info.license.name, rawSpec.info.license.url].filter(Boolean).join(' ')
+        : undefined
+
+      await this.opensearchClient.index({
+        index: oaspecIndex(tenantId, 'spec'),
+        id: specOpensearchId,
+        body: {
+          id: specOpensearchId,
+          apiId,
+          tenantId,
+          version,
+          specVersion: rawSpec.openapi,
+          latest: true,
+          indexedAt: now,
+          updatedAt: now,
+          title,
+          description: rawSpec.info.description ?? '',
+          termsOfService: rawSpec.info.termsOfService,
+          contactText,
+          licenseText,
+          externalDocsText: rawSpec.externalDocs
+            ? [rawSpec.externalDocs.description, rawSpec.externalDocs.url]
+                .filter(Boolean)
+                .join(' ')
+            : undefined,
+          tagsText,
+          operationCount: 0,
+          serverCount: 0,
+          parameterCount: 0,
+          modelCount: 0,
+          s3Bucket: bucket,
+          s3Key: key,
+          fileSize,
+          fileFormat: format,
+        },
+        refresh: true,
+      })
+    } catch (err: any) {
+      errors.push({ step: 'spec', message: err.message })
+    }
+
+    // ── Step 2: Server documents ──────────────────────────────────────────────
+    const servers: any[] = rawSpec.servers ?? []
+    try {
+      await this._setLatestFalse(tenantId, 'server', apiId)
+
+      const serverDocs = servers.map((server: any, idx: number) => {
+        const fields = deriveHostShape(server.url ?? '')
+        const serverId = oaspecId(tenantId, title, version, server.url ?? String(idx))
+        return {
+          id: serverId,
+          apiId,
+          specId: specOpensearchId,
+          tenantId,
+          version,
+          serverIndex: idx,
+          latest: true,
+          indexedAt: now,
+          rawUrl: server.url ?? '',
+          description: server.description,
+          ...fields,
+          variablesText: server.variables
+            ? Object.entries(server.variables)
+                .map(([k, v]: any) => `${k}:${v?.default ?? ''}`)
+                .join(' ')
+            : undefined,
+        }
+      })
+
+      if (serverDocs.length > 0) {
+        await this.opensearchClient.bulk({
+          body: serverDocs.flatMap((doc) => [
+            { index: { _index: oaspecIndex(tenantId, 'server'), _id: doc.id } },
+            doc,
+          ]),
+          refresh: true,
+        })
+      }
+
+      counts.servers = serverDocs.length
+    } catch (err: any) {
+      errors.push({ step: 'server', message: err.message })
+    }
+
+    // ── Step 3: Operation documents ───────────────────────────────────────────
+    const operations: any[] = []
+    try {
+      await this._setLatestFalse(tenantId, 'operation', apiId)
+
+      const paths = rawSpec.paths ?? {}
+      for (const [path, pathItem] of Object.entries<any>(paths)) {
+        for (const method of HTTP_METHODS) {
+          const op = pathItem[method]
+          if (!op) continue
+
+          const methodUpper = method.toUpperCase()
+          const initial = METHOD_INITIAL[methodUpper] ?? methodUpper[0]
+          const pathKey = `${initial}:${compactPath(path)}`
+          const opId = oaspecId(tenantId, title, version, methodUpper, path)
+
+          operations.push({
+            id: opId,
+            apiId,
+            specId: specOpensearchId,
+            tenantId,
+            version,
+            latest: true,
+            indexedAt: now,
+            method: methodUpper,
+            path,
+            operationId: op.operationId,
+            summary: op.summary,
+            description: op.description,
+            tagsText: (op.tags ?? []).join(' '),
+            deprecated: op.deprecated ?? false,
+            pathKey,
+            parameterIdsText: '',
+            requestModelId: undefined,
+            responseModelIdsText: '',
+          })
+        }
+      }
+
+      if (operations.length > config['app.pagination.default.size'] * 50) {
+        truncated.operations = true
+      }
+
+      if (operations.length > 0) {
+        await this.opensearchClient.bulk({
+          body: operations.flatMap((doc) => [
+            { index: { _index: oaspecIndex(tenantId, 'operation'), _id: doc.id } },
+            doc,
+          ]),
+          refresh: true,
+        })
+      }
+
+      counts.operations = operations.length
+    } catch (err: any) {
+      errors.push({ step: 'operation', message: err.message })
+    }
+
+    // ── Step 4: Parameter documents ───────────────────────────────────────────
+    try {
+      await this._setLatestFalse(tenantId, 'param', apiId)
+
+      const paramMap = new Map<
+        string,
+        { doc: any; operationIds: Set<string> }
+      >()
+
+      const allPaths = rawSpec.paths ?? {}
+
+      // Shared components.parameters
+      for (const [name, param] of Object.entries<any>(rawSpec.components?.parameters ?? {})) {
+        const paramId = oaspecId(tenantId, title, version, name, param.in ?? 'query')
+        if (!paramMap.has(paramId)) {
+          paramMap.set(paramId, {
+            doc: {
+              id: paramId,
+              apiId,
+              specId: specOpensearchId,
+              tenantId,
+              version,
+              latest: true,
+              indexedAt: now,
+              name: param.name ?? name,
+              location: param.in ?? 'query',
+              required: param.required ?? false,
+              deprecated: param.deprecated ?? false,
+              description: param.description,
+              schemaType: param.schema?.type,
+              schemaFormat: param.schema?.format,
+              exampleText: param.example != null ? JSON.stringify(param.example) : undefined,
+            },
+            operationIds: new Set(),
+          })
+        }
+      }
+
+      // Per-operation parameters
+      for (const [path, pathItem] of Object.entries<any>(allPaths)) {
+        for (const method of HTTP_METHODS) {
+          const op = pathItem[method]
+          if (!op?.parameters) continue
+          const opId = oaspecId(tenantId, title, version, method.toUpperCase(), path)
+          for (const param of op.parameters) {
+            const name = param.name ?? ''
+            const location = param.in ?? 'query'
+            const paramId = oaspecId(tenantId, title, version, name, location)
+            if (!paramMap.has(paramId)) {
+              paramMap.set(paramId, {
+                doc: {
+                  id: paramId,
+                  apiId,
+                  specId: specOpensearchId,
+                  tenantId,
+                  version,
+                  latest: true,
+                  indexedAt: now,
+                  name,
+                  location,
+                  required: param.required ?? false,
+                  deprecated: param.deprecated ?? false,
+                  description: param.description,
+                  schemaType: param.schema?.type,
+                  schemaFormat: param.schema?.format,
+                  exampleText: param.example != null ? JSON.stringify(param.example) : undefined,
+                },
+                operationIds: new Set(),
+              })
+            }
+            paramMap.get(paramId)!.operationIds.add(opId)
+          }
+        }
+      }
+
+      const paramDocs = Array.from(paramMap.values()).map(({ doc, operationIds }) => ({
+        ...doc,
+        operationIdsText: Array.from(operationIds).join(' '),
+      }))
+
+      if (paramDocs.length > 0) {
+        await this.opensearchClient.bulk({
+          body: paramDocs.flatMap((doc) => [
+            { index: { _index: oaspecIndex(tenantId, 'param'), _id: doc.id } },
+            doc,
+          ]),
+          refresh: true,
+        })
+      }
+
+      counts.parameters = paramDocs.length
+    } catch (err: any) {
+      errors.push({ step: 'param', message: err.message })
+    }
+
+    // ── Step 5: Model documents ───────────────────────────────────────────────
+    try {
+      await this._setLatestFalse(tenantId, 'model', apiId)
+
+      const modelDocs: any[] = []
+      const schemas = rawSpec.components?.schemas ?? {}
+
+      for (const [modelName, schema] of Object.entries<any>(schemas)) {
+        const modelId = oaspecId(tenantId, title, version, modelName)
+        const props = schema.properties ?? {}
+        const propertiesText = Object.entries<any>(props)
+          .map(([propName, propSchema]) => {
+            const parts = [propName, propSchema.type, propSchema.format]
+              .filter(Boolean)
+              .join(' ')
+            return propSchema.description ? `${parts} - ${propSchema.description}` : parts
+          })
+          .join('\n')
+
+        modelDocs.push({
+          id: modelId,
+          apiId,
+          specId: specOpensearchId,
+          tenantId,
+          version,
+          latest: true,
+          indexedAt: now,
+          name: modelName,
+          description: schema.description,
+          schemaType: schema.type ?? 'object',
+          propertiesText,
+          operationIdsText: '',
+          usedInText: '',
+        })
+      }
+
+      if (modelDocs.length > 500) {
+        truncated.models = true
+      }
+
+      const docsToIndex = modelDocs.slice(0, 500)
+
+      if (docsToIndex.length > 0) {
+        await this.opensearchClient.bulk({
+          body: docsToIndex.flatMap((doc) => [
+            { index: { _index: oaspecIndex(tenantId, 'model'), _id: doc.id } },
+            doc,
+          ]),
+          refresh: true,
+        })
+      }
+
+      counts.models = modelDocs.length
+    } catch (err: any) {
+      errors.push({ step: 'model', message: err.message })
+    }
+
+    // ── Version pruning ───────────────────────────────────────────────────────
+    try {
+      versionsPruned = await this._pruneOldVersions(tenantId, apiId, version)
+    } catch (err: any) {
+      this.logger.warn(`Version pruning failed for ${apiId}: ${err.message}`)
+    }
+
+    // ── Step 6: Update api SQL row ────────────────────────────────────────────
+    try {
+      await this.apiService.updateOaSpecStats(apiId, tenantId, {
+        bucket,
+        key,
+        latestVersion: version,
+        globalOpensearchId: specOpensearchId,
+        operationCount: counts.operations,
+        serverCount: counts.servers,
+        parameterCount: counts.parameters,
+        modelCount: counts.models,
+        lastIndexedAt: new Date(),
+      })
+
+      // Back-fill spec doc with final counts
+      await this.opensearchClient.update({
+        index: oaspecIndex(tenantId, 'spec'),
+        id: specOpensearchId,
+        body: {
+          doc: {
+            operationCount: counts.operations,
+            serverCount: counts.servers,
+            parameterCount: counts.parameters,
+            modelCount: counts.models,
+          },
+        },
+        refresh: true,
+      })
+    } catch (err: any) {
+      errors.push({ step: 'sql', message: err.message })
+    }
+
+    return {
+      success: errors.length === 0 || errors.every((e) => e.step !== 'spec'),
+      apiId,
+      version,
+      specOpensearchId,
+      durationMs: Date.now() - startTime,
+      counts,
+      truncated,
+      versionsPruned,
+      errors,
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Direct content flow (body upload)
+  // Platform catalogue search (Managed Search — global tier only)
   // ---------------------------------------------------------------------------
 
-  async createFromContent(content: string): Promise<IndexResult> {
-    const startTime = Date.now()
-    try {
-      const key = this.deriveS3Key(content)
-      const bucket = config['slaops.oaspec.storage.bucket']
-      const { document, truncated } = this.parserService.parseAndTransform(content, key, bucket)
+  async searchCatalogue(
+    query: string,
+    limit: number,
+    offset: number,
+  ): Promise<{ total: number; hits: any[] }> {
+    const globalTenantId = config['opensearch.oaspec.global-tenant-id']
+    const index = oaspecIndex(globalTenantId, 'spec')
 
-      await this.saveToStorage(content, key)
-      await this.indexDocument(document)
+    const body: any = {
+      from: offset,
+      size: limit,
+      query: query
+        ? {
+            multi_match: {
+              query,
+              fields: ['title^3', 'description', 'tagsText'],
+            },
+          }
+        : { match_all: {} },
+      _source: ['title', 'description', 'version', 'operationCount', 'serverCount', 'tagsText'],
+    }
 
-      const documentId = calculateId(document.provider, document.serviceName, document.version)
-      return {
-        success: true,
-        documentId,
-        s3Key: key,
-        operationCount: document.operationStats.total,
-        pathCount: document.paths.length,
-        truncated,
-        duration: Date.now() - startTime,
-      }
-    } catch (error: any) {
-      this.logger.error('Failed to create spec from content:', error)
-      return {
-        success: false,
-        documentId: '',
-        s3Key: '',
-        operationCount: 0,
-        pathCount: 0,
-        truncated: false,
-        error: error.message,
-        duration: Date.now() - startTime,
-      }
+    const response = await this.opensearchClient.search({ index, body })
+    const hits = response.body.hits
+    return {
+      total: typeof hits.total === 'object' ? hits.total.value : hits.total,
+      hits: hits.hits.map((h: any) => ({ id: h._id, ...h._source })),
     }
   }
 
@@ -231,57 +664,69 @@ export class OpenApiIndexerService implements OnModuleInit {
     return response.Body.transformToString('utf-8')
   }
 
-  async deleteDocument(documentId: string) {
-    try {
-      return await this.opensearchClient.delete({
-        index: config['opensearch.index.openapi.apis'],
-        id: documentId,
+  /** Set latest=false on the single current-latest document for an apiId in a given index. */
+  private async _setLatestFalse(
+    tenantId: string,
+    entity: string,
+    apiId: string,
+  ): Promise<void> {
+    await this.opensearchClient.updateByQuery({
+      index: oaspecIndex(tenantId, entity),
+      body: {
+        query: {
+          bool: {
+            filter: [{ term: { apiId } }, { term: { latest: true } }],
+          },
+        },
+        script: { source: 'ctx._source.latest = false', lang: 'painless' },
+      },
+      refresh: true,
+    })
+  }
+
+  /** Prune versions outside the retention window across all 5 indices. Returns count deleted. */
+  private async _pruneOldVersions(
+    tenantId: string,
+    apiId: string,
+    _currentVersion: string,
+  ): Promise<number> {
+    const retention = config['opensearch.oaspec.version-retention']
+    const entities = ['spec', 'server', 'operation', 'param', 'model']
+
+    // Find versions ordered by indexedAt desc from spec index
+    const specIndex = oaspecIndex(tenantId, 'spec')
+    const response = await this.opensearchClient.search({
+      index: specIndex,
+      body: {
+        query: { term: { apiId } },
+        sort: [{ indexedAt: { order: 'desc' } }],
+        _source: ['version'],
+        size: 100,
+      },
+    })
+
+    const allVersions: string[] = response.body.hits.hits.map((h: any) => h._source.version)
+    const versionsToDelete = allVersions.slice(retention)
+
+    if (versionsToDelete.length === 0) return 0
+
+    let deleted = 0
+    for (const entity of entities) {
+      const result = await this.opensearchClient.deleteByQuery({
+        index: oaspecIndex(tenantId, entity),
+        body: {
+          query: {
+            bool: {
+              filter: [{ term: { apiId } }, { terms: { version: versionsToDelete } }],
+            },
+          },
+        },
         refresh: true,
       })
-    } catch (error: any) {
-      if (error.statusCode !== 404) throw error
+      deleted += (result.body as any).deleted ?? 0
     }
+
+    return deleted
   }
 
-  /**
-   * Derive the S3 key from the raw OpenAPI spec content using the APIs-guru
-   * convention: APIs/{provider}/{service}/{version}/openapi.{yaml|json}
-   */
-  private deriveS3Key(content: string): string {
-    let spec: any
-    let format: 'yaml' | 'json' = 'yaml'
-
-    try {
-      spec = JSON.parse(content)
-      format = 'json'
-    } catch {
-      try {
-        const sanitized = content.replace(/^(\s*(?:-\s+)?[\w.-]+:\s+)(https?:)\s*$/gm, "$1'$2'")
-        spec = yaml.parse(sanitized)
-      } catch {
-        // malformed – parseAndTransform will surface the real error
-      }
-      if (!spec) return 'APIs/unknown/default/unknown/openapi.yaml'
-    }
-
-    const version = spec?.info?.version ?? 'unknown'
-
-    let provider = 'unknown'
-    if (spec?.servers?.[0]?.url) {
-      try {
-        provider = new URL(spec.servers[0].url).hostname
-      } catch {
-        // non-parseable URL – keep default
-      }
-    }
-
-    const service = spec?.info?.title
-      ? spec.info.title
-          .toLowerCase()
-          .replace(/[^a-z0-9._-]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-      : 'default'
-
-    return `APIs/${provider}/${service}/${version}/openapi.${format}`
-  }
 }

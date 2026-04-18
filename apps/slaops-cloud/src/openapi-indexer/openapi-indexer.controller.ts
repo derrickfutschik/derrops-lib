@@ -1,80 +1,112 @@
-/**
- * Controller for the OpenAPI Indexer module.
- *
- * Endpoints:
- *   POST /openapi/upload-url   – generate a pre-signed PUT URL for the staging bucket
- *   POST /openapi/index        – process a spec already uploaded to S3 (staging → storage + OpenSearch)
- *   POST /openapi              – index a spec submitted directly as a request body (JSON or YAML)
- */
-
 import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
   Post,
+  Query,
 } from '@nestjs/common'
-import { IndexResult } from '@slaops/cloud/openapi-search/types/openapi-index.types'
-import { OpenApiIndexerService, PresignedUrlResult } from './openapi-indexer.service'
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
+import { IsString, IsUUID, IsUrl, MaxLength } from 'class-validator'
+import { CurrentUser } from '../auth/current-user.decorator'
+import { User } from '../user/user.dto'
+import { IndexingResponse, OpenApiIndexerService, PresignedUrlResult } from './openapi-indexer.service'
 
 class UploadUrlDto {
+  @IsUUID()
+  apiId!: string
+
+  @IsString()
+  @MaxLength(500)
   key!: string
 }
 
 class IndexFromS3Dto {
+  @IsUUID()
+  apiId!: string
+
+  @IsString()
   bucket!: string
+
+  @IsString()
   key!: string
 }
 
+@ApiTags('OpenAPI Indexer')
+@ApiBearerAuth()
 @Controller('openapi')
 export class OpenApiIndexerController {
   constructor(private readonly indexerService: OpenApiIndexerService) {}
 
   /**
-   * Generate a pre-signed PUT URL for uploading an OASpec to the staging bucket.
-   *
-   * Body: { key: string }  – S3 key, e.g. "APIs/ably.net/control/v1/openapi.yaml"
+   * Generate a pre-signed PUT URL for uploading an OASpec directly to the OASpec storage bucket.
+   * Body: { apiId, key }
    */
   @Post('upload-url')
   @HttpCode(HttpStatus.OK)
-  async getUploadUrl(@Body() body: UploadUrlDto): Promise<PresignedUrlResult> {
-    if (!body?.key) {
-      throw new BadRequestException('Missing required field: key')
+  @ApiOperation({ summary: 'Get a pre-signed PUT URL for uploading a spec to the OASpec bucket' })
+  @ApiResponse({ status: 200 })
+  async getUploadUrl(
+    @Body() body: UploadUrlDto,
+    @CurrentUser() _user: User,
+  ): Promise<PresignedUrlResult> {
+    if (!body?.apiId || !body?.key) {
+      throw new BadRequestException('Missing required fields: apiId, key')
     }
-    return this.indexerService.generatePresignedUploadUrl(body.key)
+    return this.indexerService.generatePresignedUploadUrl(body.apiId, body.key)
   }
 
   /**
-   * Process a spec that has already been uploaded to S3 (typically the staging bucket).
-   * Validates the spec, saves it to the storage bucket, and indexes it into OpenSearch.
-   *
-   * Body: { bucket: string, key: string }
+   * Trigger the 6-step indexing pipeline for a spec already in S3.
+   * Body: { apiId, bucket, key }
    */
   @Post('index')
   @HttpCode(HttpStatus.OK)
-  async indexFromS3(@Body() body: IndexFromS3Dto): Promise<IndexResult> {
-    if (!body?.bucket || !body?.key) {
-      throw new BadRequestException('Missing required fields: bucket, key')
+  @ApiOperation({ summary: 'Index a spec from S3 — runs the 6-step OASpec pipeline' })
+  @ApiResponse({ status: 200 })
+  async indexFromS3(
+    @Body() body: IndexFromS3Dto,
+    @CurrentUser() user: User,
+  ): Promise<IndexingResponse> {
+    if (!body?.apiId || !body?.bucket || !body?.key) {
+      throw new BadRequestException('Missing required fields: apiId, bucket, key')
     }
-    return this.indexerService.processFromStaging(body.bucket, body.key)
+    return this.indexerService.indexSpec(
+      body.apiId,
+      user['custom:tenant_id'],
+      body.bucket,
+      body.key,
+    )
   }
 
   /**
-   * Accept an OpenAPI spec as a request body (JSON object or YAML/JSON string),
-   * save it to the storage bucket, and index it into OpenSearch.
-   *
-   * Supports Content-Type: application/json, text/plain, text/yaml, application/yaml.
+   * Search the SLAOps-managed platform catalogue (global tier, unauthenticated-friendly).
+   * Returns spec summaries from the t-glbl0000 index.
    */
-  @Post()
-  @HttpCode(HttpStatus.OK)
-  async indexFromBody(@Body() body: string | Record<string, unknown>): Promise<IndexResult> {
-    if (!body || (typeof body === 'object' && Object.keys(body).length === 0)) {
-      throw new BadRequestException(
-        'Empty request body. Send an OpenAPI spec as JSON or YAML (Content-Type: application/json, text/yaml, or text/plain).',
-      )
-    }
-    const content = typeof body === 'string' ? body : JSON.stringify(body)
-    return this.indexerService.createFromContent(content)
+  @Get('catalogue')
+  @ApiOperation({ summary: 'Search the platform-managed API catalogue' })
+  @ApiQuery({ name: 'q', required: false, description: 'Search query' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max results (default 10)' })
+  @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Offset (default 0)' })
+  @ApiResponse({ status: 200 })
+  async searchCatalogue(
+    @Query('q') q = '',
+    @Query('limit') limit = '10',
+    @Query('offset') offset = '0',
+  ): Promise<{ total: number; hits: any[] }> {
+    return this.indexerService.searchCatalogue(
+      q,
+      Math.min(parseInt(limit, 10) || 10, 100),
+      parseInt(offset, 10) || 0,
+    )
   }
 }

@@ -52,6 +52,10 @@ async function generateOpenApi() {
     )
     const { CloudRelayJob } = await import('./cloud-relay/entities/cloud-relay-job.entity')
     const { VendorJwtService } = await import('./vendor-jwt/vendor-jwt.service')
+    const { ApiService } = await import('./api/api.service')
+    const { ApiEntity } = await import('./api/entities/api.entity')
+    const { ApiController } = await import('./api/api.controller')
+    const { OpenSearchService } = await import('./opensearch/opensearch.service')
 
     const mockValue = {} as any
 
@@ -59,6 +63,7 @@ async function generateOpenApi() {
       imports: [ConfigModule.forRoot(nestConfigOptions())],
       controllers: [
         ServiceController,
+        ApiController,
         OpenApiIndexerController,
         OpenApiSearchController,
         ConfigController,
@@ -69,6 +74,8 @@ async function generateOpenApi() {
       ],
       providers: [
         ServiceService,
+        ApiService,
+        OpenSearchService,
         OpenApiIndexerService,
         OpenApiParserService,
         OpenApiSearchService,
@@ -78,6 +85,7 @@ async function generateOpenApi() {
         RelayQueueService,
         VendorJwtService,
         { provide: getRepositoryToken(Service), useValue: mockValue },
+        { provide: getRepositoryToken(ApiEntity), useValue: mockValue },
         { provide: getRepositoryToken(RelayInstance), useValue: mockValue },
         { provide: getRepositoryToken(AegisInstance), useValue: mockValue },
         { provide: getRepositoryToken(CloudRelayConnection), useValue: mockValue },

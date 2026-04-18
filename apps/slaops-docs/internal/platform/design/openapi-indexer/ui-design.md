@@ -92,7 +92,7 @@ The user drops a YAML/JSON file or pastes raw content into a text area. The port
 ### Step 2: Select or create the parent API
 
 The portal runs two parallel searches using `info.title` as the query:
-1. `GET /api/search?q={title}` — tenant's own existing APIs
+1. `GET /apis/search?q={title}` — tenant's own existing APIs
 2. `GET /openapi/catalogue?q={title}` — platform catalogue (global OpenSearch index, no SQL)
 
 Results are presented in three groups:
@@ -106,7 +106,7 @@ Results are presented in three groups:
 **Platform catalogue matches (second group)**
 - Shown only if `management_mode: 'platform'` APIs are found in the global index.
 - Each row shows title, description, and latest platform-managed version.
-- Selecting one creates an `api` row via `POST /api/adopt` — the user cannot upload their own version for a platform-managed API. The wizard exits after adoption.
+- Selecting one creates an `api` row via `POST /apis/adopt` — the user cannot upload their own version for a platform-managed API. The wizard exits after adoption.
 - A "Use my own version instead" link bypasses this and falls through to "Create new API".
 
 **Create new API (always available)**

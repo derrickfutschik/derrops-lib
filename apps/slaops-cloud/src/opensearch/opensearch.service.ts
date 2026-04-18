@@ -5,6 +5,17 @@ import { config } from '@slaops/config'
 import { ALL_INDICES_TEMPLATES } from './resource/indices'
 import { ALL_INGEST_PIPELINES } from './resource/pipelines'
 
+const OASPEC_ENTITIES = ['spec', 'server', 'operation', 'param', 'model'] as const
+type OaspecEntity = (typeof OASPEC_ENTITIES)[number]
+
+function oaspecIndex(tenantId: string, entity: OaspecEntity): string {
+  return `slaops--${tenantId}--oaspec--${entity}`
+}
+
+function oaspecSearchAlias(tenantId: string, entity: OaspecEntity): string {
+  return `slaops--${tenantId}--oaspec--${entity}--search`
+}
+
 @Injectable()
 export class OpenSearchService {
   private readonly logger = new Logger(OpenSearchService.name)
@@ -48,6 +59,8 @@ export class OpenSearchService {
 
     await this.ensureIndexExists()
 
+    await this.ensureGlobalTierIndices()
+
     // Ensure alias exists pointing at some physical index (optional but recommended)
     // this.logger.log('Ensuring write alias exists')
     // await this.ensureWriteAlias()
@@ -69,6 +82,82 @@ export class OpenSearchService {
           this.logger.log(`Index already exists: ${config[key]}`)
         }
       })
+  }
+
+  /**
+   * Provision 5 search aliases for a tenant pointing at the global tier only.
+   * Called on tenant onboarding. Each alias resolves to slaops--t-glbl0000--oaspec--{entity}.
+   * Idempotent — skips aliases that already exist.
+   */
+  async provisionTenantAliases(tenantId: string): Promise<void> {
+    const globalTenantId = config['opensearch.oaspec.global-tenant-id']
+
+    const actions = OASPEC_ENTITIES.flatMap((entity) => [
+      {
+        add: {
+          index: oaspecIndex(globalTenantId, entity),
+          alias: oaspecSearchAlias(tenantId, entity),
+          indices_boost: 1.0,
+        },
+      },
+    ])
+
+    await this.client.indices.updateAliases({ body: { actions } })
+    this.logger.log(`Provisioned search aliases for tenant ${tenantId} (global tier only)`)
+  }
+
+  /**
+   * Expand all 5 search aliases for a tenant to include the tenant's private indices.
+   * Called lazily on first private spec upload. Idempotent.
+   */
+  async addPrivateIndicesToAliases(tenantId: string): Promise<void> {
+    const globalTenantId = config['opensearch.oaspec.global-tenant-id']
+    const tenantBoost = config['opensearch.oaspec.tenant-boost']
+
+    for (const entity of OASPEC_ENTITIES) {
+      const privateIndex = oaspecIndex(tenantId, entity)
+      const exists = await this.client.indices.exists({ index: privateIndex })
+      if (!exists.body) {
+        await this.client.indices.create({ index: privateIndex })
+      }
+    }
+
+    const actions = OASPEC_ENTITIES.flatMap((entity) => [
+      {
+        add: {
+          index: oaspecIndex(tenantId, entity),
+          alias: oaspecSearchAlias(tenantId, entity),
+          indices_boost: tenantBoost,
+        },
+      },
+      {
+        add: {
+          index: oaspecIndex(globalTenantId, entity),
+          alias: oaspecSearchAlias(tenantId, entity),
+          indices_boost: 1.0,
+        },
+      },
+    ])
+
+    await this.client.indices.updateAliases({ body: { actions } })
+    this.logger.log(`Expanded search aliases for tenant ${tenantId} to include private indices`)
+  }
+
+  /**
+   * Ensure the global tier indices exist (required before any tenant alias can point at them).
+   * Called during opensearch:migrate.
+   */
+  async ensureGlobalTierIndices(): Promise<void> {
+    const globalTenantId = config['opensearch.oaspec.global-tenant-id']
+
+    for (const entity of OASPEC_ENTITIES) {
+      const index = oaspecIndex(globalTenantId, entity)
+      const exists = await this.client.indices.exists({ index })
+      if (!exists.body) {
+        this.logger.log(`Creating global tier index: ${index}`)
+        await this.client.indices.create({ index })
+      }
+    }
   }
 
   /**

@@ -83,11 +83,30 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'app.auth.mock.payload.custom:tenant_id': 't-test0000',
     'app.auth.mock.payload.custom:customer_id': 'c-bank0000',
 
-    /** The bucket for the OASpecs Storage */
+    /** Single shared bucket for all tenant OASpec raw files. Object keys are prefixed with {tenantId}/.
+     *  Per-tenant dedicated buckets are a future infrastructure task. */
     'slaops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
 
-    /** The bucket for the OASpec Staging Bucket */
-    'slaops.oaspec.staging.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--staging`,
+    /** Global tenant ID for the SLAOps-managed public catalogue */
+    'opensearch.oaspec.global-tenant-id': 't-glbl0000',
+
+    /** Number of spec versions to retain in OpenSearch per API (older versions are pruned after indexing) */
+    'opensearch.oaspec.version-retention': 2,
+
+    /** Relevance boost applied to tenant private index documents in global search results */
+    'opensearch.oaspec.tenant-boost': 2.0,
+
+    /** Default cron schedule for the url_fetch version strategy (UTC) */
+    'oaspec.url-fetch.default-cron': '0 2 * * *',
+
+    /** HTTP fetch timeout in milliseconds for the url_fetch version strategy */
+    'oaspec.url-fetch.timeout-ms': 30_000,
+
+    /** Consecutive fetch failures before reducing retry cadence to weekly */
+    'oaspec.url-fetch.backoff-threshold': 3,
+
+    /** TTL in seconds for DynamoDB host→specId enrichment cache entries */
+    'dynamodb.oaspec-cache.ttl-seconds': 300,
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
