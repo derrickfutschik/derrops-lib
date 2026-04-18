@@ -14,11 +14,12 @@
 
 
 
+export * from './api/apiapi';
 export * from './api/aegis-instance-api';
 export * from './api/cloud-relay-api';
 export * from './api/config-api';
+export * from './api/open-apiindexer-api';
 export * from './api/open-apisearch-api';
-export * from './api/open-api-indexer-api';
 export * from './api/relay-instance-api';
 export * from './api/service-api';
 
