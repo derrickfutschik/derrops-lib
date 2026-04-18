@@ -95,6 +95,7 @@ const config: Config = {
         },
         blog: {
           showReadingTime: true,
+          exclude: ['**/CLAUDE.md'],
           feedOptions: {
             type: ['rss', 'atom'],
             xslt: true,

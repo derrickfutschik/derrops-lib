@@ -1,15 +1,30 @@
 ---
-sidebar_position: 1
-title: OpenAPI Directory Indexer
-tags: [openapi-indexer, data-pipeline, component-design, implemented]
+id: openapi-directory-indexer
+title: OpenAPI Directory Indexer (Legacy)
+sidebar_label: Indexer (Legacy)
+sidebar_position: 7
+created_at: 2025-01-21
+updated_at: 2026-04-18
+implemented_at: 2025-01-21
+author: Derrick
+status: superseded
+tags:
+  - openapi-indexer
+  - data-pipeline
+  - component-design
+  - implemented
+  - oaspec
 ---
+
+:::caution Superseded
+This document describes the original S3-event-triggered Lambda indexer design. The implementation has since moved to a NestJS service. The overall indexing and search architecture has been revised — see the [OpenAPI Indexer overview](./index) for the current design.
+:::
 
 # Component Proposal: OpenAPI Directory Indexer
 
-> **Status**: Implemented
+> **Status**: Superseded — see [OpenAPI Indexer](./index)
 > **Author**: Derrick
 > **Date**: 2025-01-21
-> **Related Issue**: [Link to GitHub issue if applicable]
 
 ## Overview
 

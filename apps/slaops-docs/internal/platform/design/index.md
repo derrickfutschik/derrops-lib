@@ -26,11 +26,16 @@ The customer-deployed HTTP proxy for API testing. Covers component design, netwo
 - [API Tester — Relay Execution](./cloud-relay/api-tester-relay-execution) — End-to-end job execution flow from portal through slaops-cloud and SQS to relay
 - [API Tester — Connection Switcher](./cloud-relay/api-tester-connection-switcher) — UX and state design for switching between relay connections and browser-direct mode
 
-### [OpenAPI Indexer](./openapi-indexer/openapi-directory-indexer)
+### [OpenAPI Indexer](./openapi-indexer/openapi-indexer-index)
 
-Event-driven S3-to-OpenSearch indexing pipeline for OpenAPI specifications. Covers architecture, indexing flow, search query design, and rollout plan.
+Design for the OASpec domain: API and OpenAPI spec management, five-index OpenSearch architecture, sequential indexing pipeline, search use-cases, and portal UI.
 
-- [OpenAPI Index Access Pattern](./openapi-indexer/openapi-index-access-pattern) — Two-tier multi-tenant index architecture: SLAOps managed public catalogue (`oaspec-slaops`) and per-tenant private indices, including search resolution order, access control, and the managed index ingestion component.
+- [API & OASpec Data Model](./openapi-indexer/api-oaspec-data-model) — SQL entities for APIs and OASpec records; API-first constraint; multi-tenancy
+- [OpenSearch Indices](./openapi-indexer/opensearch-indices) — Five dedicated indices (spec, server, operation, parameter, model); versioning strategy and retention
+- [Indexing Pipeline](./openapi-indexer/indexing-pipeline) — Six-step sequential indexing flow; version lifecycle; indexing response stats
+- [Search Design](./openapi-indexer/search-design) — Operation, server, API, parameter, and model search; host-shape matching; enrichment lookup
+- [UI Design](./openapi-indexer/ui-design) — APIs tab; upload wizard; version browser; diff view; operation explorer
+- [OpenAPI Index Access Pattern](./openapi-indexer/openapi-index-access-pattern) — Two-tier multi-tenant index architecture: SLAOps managed public catalogue (`oaspec-slaops`) and per-tenant private indices
 
 ### [Infrastructure](./infrastructure)
 

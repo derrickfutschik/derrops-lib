@@ -43,6 +43,20 @@ When creating a new subdirectory:
 
 The index does **not** need to quote or reproduce content — one sentence per document is enough.
 
+## Field Naming Conventions
+
+When writing TypeScript interfaces or code samples in design docs, follow the platform's layer conventions:
+
+| Layer | Convention | Example |
+|---|---|---|
+| TypeScript | camelCase | `tenantId`, `createdAt`, `tagsText` |
+| SQL columns | snake_case | `tenant_id`, `created_at`, `tags_text` |
+| OpenSearch fields | camelCase | `tenantId`, `indexedAt`, `hostShape` |
+
+This applies to all interface definitions, query snippets, and prose field references in design docs. Inconsistencies found in existing docs should be fixed as they are encountered.
+
+---
+
 ## Tagging conventions
 
 Every design document must include tags in its frontmatter. Tags come from two places:

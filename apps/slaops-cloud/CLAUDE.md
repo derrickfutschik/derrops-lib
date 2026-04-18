@@ -33,6 +33,18 @@ pnpm --filter @slaops/cloud run opensearch:migrate:dev
 
 ## Conventions
 
+### Field Naming Conventions
+
+Field names follow the convention of the layer they belong to:
+
+| Layer | Convention | Example |
+|---|---|---|
+| TypeScript (classes, interfaces, DTOs) | camelCase | `tenantId`, `createdAt`, `tagsText` |
+| SQL columns | snake_case | `tenant_id`, `created_at`, `tags_text` |
+| OpenSearch fields | camelCase | `tenantId`, `indexedAt`, `hostShape` |
+
+TypeORM entities use camelCase properties with explicit `@Column({ name: 'snake_case' })` to map to SQL column names. OpenSearch document interfaces use camelCase to match the field names stored in the index.
+
 ### Singular Naming
 
 Use singular names for modules, folders, files, database tables, and API routes:

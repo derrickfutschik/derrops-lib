@@ -1,15 +1,32 @@
 ---
-sidebar_position: 2
+id: openapi-index-access-pattern
 title: OpenAPI Index Access Pattern
-tags: [openapi-indexer, data-pipeline, component-design, architecture, multi-tenant]
+sidebar_label: Index Access Pattern
+sidebar_position: 8
+created_at: 2026-03-30
+updated_at: 2026-04-18
+implemented_at: ~
+author: Derrick
+status: draft
+tags:
+  - openapi-indexer
+  - data-pipeline
+  - component-design
+  - architecture
+  - multi-tenant
+  - oaspec
 ---
+
+:::info Updated
+Search alias strategy expanded — all five entity indices now have `--search` aliases. Three named search modes replace the prior single-alias pattern.
+:::
 
 # Design: OpenAPI Index Access Pattern
 
 > **Status**: Draft
 > **Author**: Derrick
 > **Date**: 2026-03-30
-> **Related Design**: [OpenAPI Directory Indexer](./openapi-directory-indexer)
+> **Related Design**: [OpenAPI Indexer Overview](./index), [OpenSearch Indices](./opensearch-indices)
 
 ## Overview
 
@@ -19,7 +36,7 @@ This document defines the multi-tenant OpenAPI index architecture: how OpenAPI s
 
 - Tenants can search a rich, curated catalogue of well-known APIs without managing it themselves (read-only)
 - Tenants can maintain private OASpec definitions (e.g., internal APIs not in the public directory) that take precedence during enrichment
-- SLAOps is modelled as a first-class tenant internally; the managed index is just a tenant index with `tenantId = slaops`
+- SLAOps is modelled as a first-class tenant internally; the managed index is just a tenant index with `tenantId = t-glbl0000`
 - Search across both tiers is transparent: callers get a merged, deduplicated result set
 
 ---
@@ -30,51 +47,53 @@ This document defines the multi-tenant OpenAPI index architecture: how OpenAPI s
 graph TB
     subgraph OpenSearch ["OpenSearch Serverless Collection"]
         subgraph Tier1 ["Tier 1 — SLAOps Managed (Read-Only for tenants)"]
-            IdxSlaops[(oaspec-slaops\ntenantId: slaops\n~50 000+ specs)]
+            IdxGlbl["slaops--t-glbl0000--oaspec--{entity}\ntenantId: t-glbl0000\n~50 000+ specs"]
         end
 
         subgraph Tier2 ["Tier 2 — Tenant Private (optional, per tenant)"]
-            IdxTenant[(oaspec-tenantId\nFull CRUD by tenant\nPrivate / internal specs)]
+            IdxTenant["slaops--{tenantId}--oaspec--{entity}\nFull CRUD by tenant\nPrivate / internal specs"]
         end
 
-        Alias[oaspec-search-tenantId\nSearch Alias]
+        Alias["slaops--{tenantId}--oaspec--{entity}--search\nGlobal Search Alias (per entity)"]
     end
 
-    Alias -->|always| IdxSlaops
+    Alias -->|always| IdxGlbl
     Alias -.->|after first private upload| IdxTenant
 
-    SearchService[Search Service] -->|single query| Alias
-    Pipeline[SLAOps Ingestion Pipeline] -->|write| IdxSlaops
+    SearchService[Search Service] -->|global search| Alias
+    SearchService -->|tenant search| IdxTenant
+    SearchService -->|managed search| IdxGlbl
+    Pipeline["SLAOps Ingestion Pipeline"] -->|write| IdxGlbl
     TenantUpload[Tenant Upload API] -->|write| IdxTenant
 
-    style IdxSlaops fill:#4a9eff,stroke:#333,color:#fff
+    style IdxGlbl fill:#4a9eff,stroke:#333,color:#fff
     style IdxTenant fill:#f59e0b,stroke:#333,color:#fff
     style Alias fill:#10b981,stroke:#333,color:#fff
     style Pipeline fill:#6366f1,stroke:#333,color:#fff
     style TenantUpload fill:#6366f1,stroke:#333,color:#fff
 ```
 
-### Tier 1 — SLAOps Managed Index (`oaspec-slaops`)
+### Tier 1 — SLAOps Managed Index (`slaops--t-glbl0000--oaspec--spec` and siblings)
 
 | Property | Value |
 |---|---|
-| Index name | `oaspec-slaops` |
-| Owner `tenantId` | `slaops` (the platform's own tenant) |
+| Index name | `slaops--t-glbl0000--oaspec--{entity}` (one per entity type) |
+| Owner `tenantId` | `t-glbl0000` (the platform's global tenant) |
 | Write access | SLAOps internal pipeline only |
 | Read access | All authenticated tenants |
 | Primary source | APIs-guru/openapi-directory + curated additions |
 | Update cadence | Nightly sync + on-demand trigger |
 
-The SLAOps platform is itself modelled as a tenant (`tenantId = "slaops"`). This means:
+The SLAOps platform is itself modelled as a tenant (`tenantId = "t-glbl0000"`). This means:
 - All existing multi-tenant access-control, indexing, and search machinery works unchanged
 - The managed index is just an ordinary tenant index that happens to be populated automatically and is read-only to other tenants
 - Future platform tenants (e.g., `stripe`, `github` as verified providers) follow the same pattern
 
-### Tier 2 — Tenant Private Index (`oaspec-{tenantId}`)
+### Tier 2 — Tenant Private Index (`slaops--{tenantId}--oaspec--{entity}`)
 
 | Property | Value |
 |---|---|
-| Index name | `oaspec-{tenantId}` |
+| Index name | `slaops--{tenantId}--oaspec--{entity}` (one per entity type) |
 | Owner `tenantId` | The specific tenant |
 | Write access | That tenant only |
 | Read access | That tenant only |
@@ -89,86 +108,101 @@ Tenant private indices are optional. A tenant with no private index falls back e
 
 ### Physical indices
 
+Following the [Derrops naming conventions](/blog/derrops-naming-sheet) silo pattern:
+
 ```
-oaspec-{tenantId}
+slaops--{tenantId}--oaspec--{entity}
 ```
+
+Entity types: `spec`, `server`, `operation`, `param`, `model`
 
 Examples:
-- `oaspec-slaops` — SLAOps managed public catalogue
-- `oaspec-acme-corp` — ACME Corp's private definitions
-- `oaspec-7f3a9b12` — UUID-based tenant ID
+- `slaops--t-glbl0000--oaspec--spec` — SLAOps managed public catalogue (spec index)
+- `slaops--t-acme0001--oaspec--spec` — ACME's private spec index
+- `slaops--t-acme0001--oaspec--operation` — ACME's operation index
 
-`tenantId` is lowercase, alphanumeric, hyphen-separated. The prefix `oaspec-` namespaces all spec indices in the OpenSearch collection.
+`tenantId` is always the opaque `t-<8 alphanum>` format (e.g. `t-acme0001`). The `slaops--{tenantId}--oaspec--` prefix namespaces all OASpec indices in the OpenSearch collection.
 
-### Search alias
+### Search aliases — all five entity types
 
-Each tenant gets a single alias used by all search requests:
+Each tenant gets **five search aliases** — one per entity type — each using the `--search` suffix:
 
 ```
-oaspec-search-{tenantId}
+slaops--{tenantId}--oaspec--{entity}--search
 ```
 
-The alias is the only target that search callers ever address. It abstracts away how many underlying indices back a given tenant's view.
+The five aliases for tenant `t-acme0001`:
 
-| Alias | Backing indices | When created |
+| Alias | Initial backing indices | After first private upload |
 |---|---|---|
-| `oaspec-search-{tenantId}` | `oaspec-slaops` only | On tenant onboarding |
-| `oaspec-search-{tenantId}` | `oaspec-{tenantId}` + `oaspec-slaops` | After first private spec upload |
+| `slaops--t-acme0001--oaspec--spec--search` | `slaops--t-glbl0000--oaspec--spec` | + `slaops--t-acme0001--oaspec--spec` |
+| `slaops--t-acme0001--oaspec--server--search` | `slaops--t-glbl0000--oaspec--server` | + `slaops--t-acme0001--oaspec--server` |
+| `slaops--t-acme0001--oaspec--operation--search` | `slaops--t-glbl0000--oaspec--operation` | + `slaops--t-acme0001--oaspec--operation` |
+| `slaops--t-acme0001--oaspec--param--search` | `slaops--t-glbl0000--oaspec--param` | + `slaops--t-acme0001--oaspec--param` |
+| `slaops--t-acme0001--oaspec--model--search` | `slaops--t-glbl0000--oaspec--model` | + `slaops--t-acme0001--oaspec--model` |
 
-The alias is updated (not recreated) when the private index is provisioned — a single `POST /_aliases` call that adds the new index.
+All five aliases are created on tenant onboarding, initially pointing only at the global tier. When a tenant uploads their first private spec, all five aliases are updated in a single `POST /_aliases` bulk action to add the tenant's private indices.
+
+---
+
+## Search Modes
+
+Three named search modes are used consistently across the platform. Every query in [Search Design](./search-design) specifies which mode it uses.
+
+### Global Search
+
+**Target:** `slaops--{tenantId}--oaspec--{entity}--search` (alias)
+
+Searches both the current tenant's private index **and** the `t-glbl0000` managed index. Used whenever platform-managed APIs must be visible alongside tenant-private APIs — the common case for discovery and enrichment.
+
+```
+GET /slaops--{tenantId}--oaspec--{entity}--search/_search
+{
+  "query": { ... },
+  "indices_boost": [
+    { "slaops--{tenantId}--oaspec--{entity}": 2.0 },
+    { "slaops--t-glbl0000--oaspec--{entity}": 1.0 }
+  ]
+}
+```
+
+Tenant-private documents are boosted so they win over global matches when content overlaps (e.g., a tenant's internal version of a public API). The service has no conditional logic for "does this tenant have a private index?" — the alias encodes that entirely.
+
+### Tenant Search
+
+**Target:** `slaops--{tenantId}--oaspec--{entity}` (direct index)
+
+Searches only the current tenant's private index. Used when global catalogue data is irrelevant — listing a tenant's own API versions, version management operations, stats.
+
+### Managed Search
+
+**Target:** `slaops--t-glbl0000--oaspec--{entity}` (direct index)
+
+Searches only the SLAOps managed catalogue. Used by the wizard's catalogue browse step and the platform stats sync job. No tenant context is required.
 
 ---
 
 ## Search Resolution Order
 
-When a caller queries OASpecs (e.g., during log enrichment to resolve an incoming request against a known API), the search follows this precedence:
+Within Global Search, when tenant and managed documents overlap (same API, different versions or overrides), the resolution order is:
 
 ```
-1. Tenant private index  (oaspec-{tenantId})   — highest precedence
-2. SLAOps managed index  (oaspec-slaops)        — fallback
+1. Tenant private index  (slaops--{tenantId}--oaspec--{entity})   — highest precedence
+2. SLAOps managed index  (slaops--t-glbl0000--oaspec--{entity})   — fallback
 ```
 
 **Why tenant-first?** Tenants may want to override or extend a public spec (e.g., a private staging variant of a public API, or a spec with additional internal routes). The private definition wins.
 
-**Implementation**: The search service queries the tenant's alias — a single, stable index name. OpenSearch resolves the alias to its backing indices. `indices_boost` is included in the query body to give the tenant's private index higher relevance than the managed catalogue for overlapping results.
-
-```
-GET /oaspec-search-{tenantId}/_search
-{
-  "query": { ... },
-  "indices_boost": [
-    { "oaspec-{tenantId}": 2.0 },
-    { "oaspec-slaops": 1.0 }
-  ]
-}
-```
-
-The search service has no conditional logic for "does this tenant have a private index?" — that is entirely encoded in the alias. If the alias points to one index or two, the query is identical.
-
 ---
 
-## OASpec Document Schema
+## Document Schema
 
-Both tiers share the same `OpenApiIndexDocument` schema (defined in [openapi-directory-indexer](./openapi-directory-indexer)) with two additional fields:
+Both tiers share the same five-index schema defined in [OpenSearch Indices](./opensearch-indices). Every document in every index carries:
 
-```typescript
-interface OpenApiIndexDocument {
-  // ... all existing fields ...
+- `tenantId` — `"t-glbl0000"` for managed specs; the tenant's own ID for private specs
+- `latest: boolean` — exactly one document per `apiId` per index is `true`
 
-  /**
-   * The tenant that owns this document.
-   * "slaops" for managed specs; the tenant's ID for private specs.
-   */
-  tenantId: string
-
-  /**
-   * Visibility of this document.
-   * - "public"  → SLAOps managed, readable by all tenants
-   * - "private" → Tenant-owned, readable only by that tenant
-   */
-  visibility: 'public' | 'private'
-}
-```
+There is no `visibility` field. Access control is enforced at the index level (IAM data access policies), not at the document level. A tenant can read their own indices and the global indices; they cannot read other tenants' indices regardless of query.
 
 ---
 
@@ -193,7 +227,7 @@ graph TD
     S3 -->|S3 Event| IndexerLambda[OpenAPI Indexer Lambda]
 
     IndexerLambda -->|Parse + Enrich| Normalizer[Normaliser]
-    Normalizer -->|tenantId=slaops, visibility=public| OS[(OpenSearch<br/>oaspec-slaops)]
+    Normalizer -->|tenantId=t-glbl0000| OS[(OpenSearch<br/>slaops--t-glbl0000--oaspec--spec)]
 
     style Sync fill:#4a9eff,stroke:#333
     style IndexerLambda fill:#ff6b6b,stroke:#333
@@ -206,25 +240,24 @@ Triggered on a nightly schedule (and manually via SNS). Responsibilities:
 
 1. **Fetch** the APIs-guru directory (shallow clone or tarball download from GitHub)
 2. **Diff** against last known commit SHA stored in SSM Parameter Store
-3. **Upload** changed/new specs to the SLAOps-managed OASpec bucket (`{region}--{env}--slaops--slaops--oaspec--storage--specs`) under `APIs/{provider}/{service}/{version}/openapi.yaml`
+3. **Upload** changed/new specs to the SLAOps-managed OASpec bucket (`{region}--{env}--slaops--t-glbl0000--oaspec--storage--specs`) under `APIs/{provider}/{service}/{version}/openapi.yaml`
 4. **Delete** removed specs from S3 (triggers indexer delete via S3 event)
 5. **Update** the last-sync commit SHA in SSM
 
-The SLAOps platform's managed OASpec bucket follows the same naming convention as tenant buckets, using the reserved `slaops` tenant ID in the bucket name. See [Multi-Tenancy (Infrastructure Design)](../infrastructure/multi-tenancy#s3-buckets).
+The SLAOps platform's managed OASpec bucket follows the same naming convention as tenant buckets, using the reserved `t-glbl0000` tenant ID in the bucket name. See [Multi-Tenancy (Infrastructure Design)](../infrastructure/multi-tenancy#s3-buckets).
 
 ### Indexer Lambda — Document Enrichment for SLAOps Tier
 
-The existing OpenAPI Indexer Lambda processes S3 events. For the `slaops/` prefix it sets:
+The existing OpenAPI Indexer Lambda processes S3 events. For the `t-glbl0000/` prefix it sets:
 
 ```typescript
 {
-  tenantId: 'slaops',
-  visibility: 'public',
-  // targetIndex: 'oaspec-slaops'  (resolved from tenantId)
+  tenantId: 't-glbl0000',
+  // targetIndex: 'slaops--t-glbl0000--oaspec--spec'  (resolved from tenantId)
 }
 ```
 
-No other changes to the indexer are required — the multi-tenant fields are injected by the S3 key prefix resolver.
+No other changes to the indexer are required — `tenantId` is injected by the S3 key prefix resolver and is sufficient to determine the target index.
 
 ### Deduplication and Versioning
 
@@ -252,27 +285,43 @@ The upload handler:
 1. Validates the spec (OpenAPI 3.x only; Swagger 2.0 converted upstream)
 2. Writes the spec to the tenant's dedicated OASpec S3 bucket (`{region}--{env}--slaops--{tenantId}--oaspec--storage--specs`) under `APIs/{provider}/{service}/{version}/openapi.yaml`
 3. S3 event triggers the shared Indexer Lambda
-4. Indexer sets `tenantId = caller's tenantId`, `visibility = "private"`, target index `oaspec-{tenantId}`
+4. Indexer sets `tenantId = caller's tenantId`, target index `slaops--{tenantId}--oaspec--spec`
 
 Each tenant has a dedicated S3 bucket for their specs — there is no shared bucket with tenant-prefixed keys. See [Multi-Tenancy (Infrastructure Design)](../infrastructure/multi-tenancy#s3-buckets) for the full bucket naming conventions.
 
 ### Lazy Index and Alias Provisioning
 
-On the tenant's first private spec write, the Indexer Lambda performs a one-time setup if the private index does not yet exist:
-
-1. **Create** `oaspec-{tenantId}` with the standard mapping
-2. **Update** the tenant's search alias to include both indices:
+On tenant onboarding, the platform creates the five `--search` aliases pointing only at the global tier:
 
 ```json
 POST /_aliases
 {
   "actions": [
-    { "add": { "index": "oaspec-{tenantId}", "alias": "oaspec-search-{tenantId}" } }
+    { "add": { "index": "slaops--t-glbl0000--oaspec--spec",      "alias": "slaops--{tenantId}--oaspec--spec--search" } },
+    { "add": { "index": "slaops--t-glbl0000--oaspec--server",    "alias": "slaops--{tenantId}--oaspec--server--search" } },
+    { "add": { "index": "slaops--t-glbl0000--oaspec--operation", "alias": "slaops--{tenantId}--oaspec--operation--search" } },
+    { "add": { "index": "slaops--t-glbl0000--oaspec--param",     "alias": "slaops--{tenantId}--oaspec--param--search" } },
+    { "add": { "index": "slaops--t-glbl0000--oaspec--model",     "alias": "slaops--{tenantId}--oaspec--model--search" } }
   ]
 }
 ```
 
-After this, the alias points to `["oaspec-{tenantId}", "oaspec-slaops"]`. No further alias changes are needed for that tenant. The search service is unaffected — it continues to query `oaspec-search-{tenantId}` identically.
+On the tenant's first private spec write, the Indexer creates the five private indices and expands all five aliases in a single operation:
+
+```json
+POST /_aliases
+{
+  "actions": [
+    { "add": { "index": "slaops--{tenantId}--oaspec--spec",      "alias": "slaops--{tenantId}--oaspec--spec--search" } },
+    { "add": { "index": "slaops--{tenantId}--oaspec--server",    "alias": "slaops--{tenantId}--oaspec--server--search" } },
+    { "add": { "index": "slaops--{tenantId}--oaspec--operation", "alias": "slaops--{tenantId}--oaspec--operation--search" } },
+    { "add": { "index": "slaops--{tenantId}--oaspec--param",     "alias": "slaops--{tenantId}--oaspec--param--search" } },
+    { "add": { "index": "slaops--{tenantId}--oaspec--model",     "alias": "slaops--{tenantId}--oaspec--model--search" } }
+  ]
+}
+```
+
+After this, each alias points to both `slaops--{tenantId}--oaspec--{entity}` and `slaops--t-glbl0000--oaspec--{entity}`. No further alias changes are needed. The search service is unaffected — it continues to query `slaops--{tenantId}--oaspec--{entity}--search` identically.
 
 ### Delete Path
 
@@ -286,33 +335,37 @@ Removes from both S3 and OpenSearch. The S3 delete triggers an indexer event tha
 
 ## Access Control Summary
 
-| Actor | `oaspec-slaops` | `oaspec-{tenantId}` | `oaspec-search-{tenantId}` (alias) |
+The table below uses `{entity}` as shorthand for any of the five entity types (`spec`, `server`, `operation`, `param`, `model`).
+
+| Actor | `slaops--t-glbl0000--oaspec--{entity}` | `slaops--{tenantId}--oaspec--{entity}` | `slaops--{tenantId}--oaspec--{entity}--search` (alias) |
 |---|---|---|---|
 | SLAOps ingestion pipeline | Read + Write | — | — |
 | Tenant (own) | Read-only | Read + Write | Read (resolves to both) |
 | Tenant (other) | Read-only | No access | No access |
-| SLAOps platform services (enrichment) | Read | Read (tenant's index only) | Read |
+| SLAOps platform services (enrichment) | Read | Read | Read (global search) |
 
 OpenSearch index-level permissions are enforced via AWS IAM data access policies on the OpenSearch Serverless collection. Each tenant's Lambda execution role is granted:
-- Read access to `oaspec-slaops`
-- Read + Write access to `oaspec-{tenantId}`
-- Read access to alias `oaspec-search-{tenantId}` (alias permissions are separate from index permissions in OpenSearch Serverless)
+- Read access to all `slaops--t-glbl0000--oaspec--{entity}` indices
+- Read + Write access to all `slaops--{tenantId}--oaspec--{entity}` indices (own tenant only)
+- Read access to all `slaops--{tenantId}--oaspec--{entity}--search` aliases
 
-The search alias is created during tenant onboarding pointing only at `oaspec-slaops`, then updated (not recreated) to add `oaspec-{tenantId}` on first private spec write.
+Alias permissions are separate from index permissions in OpenSearch Serverless — both must be explicitly granted.
 
 ---
 
 ## Enrichment Integration
 
-During log enrichment (the hot path):
+During log enrichment (the hot path), enrichment uses **Global Search** — it must match both tenant-private and platform-managed APIs:
 
 1. Incoming HTTP request arrives at the relay
 2. Enrichment service extracts the `host` / base URL
-3. OpenSearch search is issued against alias `oaspec-search-{tenantId}` (tenant-boosted via `indices_boost`)
-4. Best matching OASpec is returned; the matched operation is attached to the log event
-5. DynamoDB cache stores `{tenantId}:{host} → {specId}` for sub-millisecond repeat lookups (TTL: 5 min)
+3. **Global Search** against `slaops--{tenantId}--oaspec--server--search` to find a matching server by `hostShape` (includes both tenant-private and platform-managed servers)
+4. Best matching server is resolved; `specId` is retrieved
+5. **Global Search** against `slaops--{tenantId}--oaspec--operation--search` to match method + path
+6. Matched operation is attached to the log event
+7. DynamoDB cache stores `{tenantId}:{hostShape} → {specId, serverIndex}` for sub-millisecond repeat lookups (TTL: 5 min)
 
-The DynamoDB cache key includes `tenantId` to prevent cross-tenant cache pollution.
+The DynamoDB cache key includes `tenantId` to prevent cross-tenant cache pollution. See [Search Design — Enrichment Lookup](./search-design#enrichment-lookup-hot-path) for the full sequence.
 
 ---
 
@@ -321,25 +374,29 @@ The DynamoDB cache key includes `tenantId` to prevent cross-tenant cache polluti
 The following config keys will be added to `packages/slaops-config/src/config.ts`:
 
 ```typescript
-/** Index name prefix for OASpec physical indices */
-'opensearch.oaspec.index-prefix': 'oaspec',
+/** Global tenant ID for the SLAOps-managed public catalogue */
+'opensearch.oaspec.global-tenant-id': 't-glbl0000',
 
-/** Alias name prefix for OASpec search aliases */
-'opensearch.oaspec.alias-prefix': 'oaspec-search',
-
-/** Tenant ID for the SLAOps managed public catalogue */
-'opensearch.oaspec.slaops-tenant-id': 'slaops',
-
-/** Boost factor applied to tenant private index in multi-index search */
+/** Boost factor applied to tenant private index in global search */
 'opensearch.oaspec.tenant-boost': 2.0,
 
 /** DynamoDB cache TTL for host→specId mappings (seconds) */
 'dynamodb.oaspec-cache.ttl-seconds': 300,
 ```
 
-Derived names:
-- Index: `` `${config['opensearch.oaspec.index-prefix']}-${tenantId}` ``
-- Alias: `` `${config['opensearch.oaspec.alias-prefix']}-${tenantId}` ``
+Derived names (see `opensearch-indices.md` for the helper functions):
+
+```typescript
+// Physical index
+function oaspecIndex(tenantId: string, entity: string): string {
+  return `slaops--${tenantId}--oaspec--${entity}`
+}
+
+// Global search alias (tenant + managed)
+function oaspecSearchAlias(tenantId: string, entity: string): string {
+  return `slaops--${tenantId}--oaspec--${entity}--search`
+}
+```
 
 ---
 
@@ -347,7 +404,7 @@ Derived names:
 
 1. **Index per tenant vs. shared index with tenant filter** — This design uses a dedicated index per tenant for access-control simplicity and OpenSearch IAM alignment. A shared index with a `tenantId` filter field is an alternative but complicates row-level access control in Serverless. Decision: dedicated index per tenant.
 
-2. **SLAOps tenantId format** — Using the literal string `"slaops"` (not a UUID) to make it human-readable in index names and logs. This is a reserved identifier that cannot be claimed by external tenants.
+2. **Global tenantId format** — Using the reserved ID `"t-glbl0000"` (same `t-<8 alphanum>` format as all tenant IDs) for the managed catalogue. This is a built-in tenant that cannot be claimed by external tenants.
 
 3. **Curated additions beyond APIs-guru** — The design leaves a `curated/` S3 prefix open for the SLAOps team to manually upload specs (e.g., AWS service specs, internal SLAOps API). These are treated identically to APIs-guru specs in the pipeline.
 
