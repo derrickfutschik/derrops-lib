@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { ServiceApi } from '@/client/slaops-cloud'
 import {
   selectCollapsedSections,
   selectRightPanelTab,
@@ -10,6 +9,7 @@ import {
   setRightPanelTab as setRightPanelTabAction,
   setActiveTab as setActiveTabAction,
 } from '@/store/apiTesterSlice'
+import { selectIsSendingRequest, selectRequestResponse, setRequestResponse } from '@/store/apiRequestSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { Service } from '@/client/slaops-cloud/models/service'
 import { ExpandableParameterRow } from '@/components/api-tester/ExpandableParameterRow'
@@ -47,8 +47,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useServices } from '@/hooks/useServices'
+import { useSendRequest } from '@/hooks/useSendRequest'
+import { RelaySelector } from '@/components/api-tester/RelaySelector'
 import yaml from 'js-yaml'
 import {
   AlertCircle,
@@ -77,11 +79,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-interface KeyValuePair {
-  key: string
-  value: string
-  enabled: boolean
-}
+import { type KeyValuePair } from '@/hooks/useSendRequest'
 
 interface ParameterInfo {
   name: string
@@ -157,6 +155,12 @@ interface OperationOption {
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
+function deliveryModeBadgeLabel(mode: string): string {
+  if (mode === 'platform-queue') return 'SQS'
+  if (mode === 'hybrid') return 'HTTP+SQS'
+  return 'HTTP'
+}
+
 /**
  * Extract validation errors from match result to display in response JSON tooltips
  */
@@ -231,6 +235,8 @@ const ApiTester = () => {
   const collapsedSections = useAppSelector(selectCollapsedSections)
   const rightPanelTab = useAppSelector(selectRightPanelTab)
   const activeTab = useAppSelector(selectActiveTab)
+  const isSendingRequest = useAppSelector(selectIsSendingRequest)
+  const requestResponse = useAppSelector(selectRequestResponse)
   const [url, setUrl] = useState('')
   const [method, setMethod] = useState('GET')
   const [headers, setHeaders] = useState<KeyValuePair[]>([
@@ -243,7 +249,7 @@ const ApiTester = () => {
   const [bodyType, setBodyType] = useState<BodyType>('raw')
   const [rawType, setRawType] = useState<RawType>('json')
   const [formData, setFormData] = useState<FormDataEntry[]>([{ key: '', value: '', enabled: true }])
-  const [services, setServices] = useState<Service[]>([])
+  const { data: services = [] } = useServices()
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showDescription, setShowDescription] = useState(false)
@@ -251,17 +257,11 @@ const ApiTester = () => {
   // Action mode: "analyze", "request", or "preview"
   type ActionMode = 'analyze' | 'request' | 'preview'
   const [actionMode, setActionMode] = useState<ActionMode>('request')
-  const [isSendingRequest, setIsSendingRequest] = useState(false)
-  const [requestResponse, setRequestResponse] = useState<{
-    status: number
-    statusText: string
-    headers: Record<string, string>
-    body: string
-    duration: number
-  } | null>(null)
   const setRightPanelTab = (tab: 'match' | 'response' | 'preview') => dispatch(setRightPanelTabAction(tab))
   const toggleSection = (section: string) => dispatch(toggleSectionAction(section))
   const setActiveTab = (tab: string) => dispatch(setActiveTabAction(tab))
+
+  const { sendRequest, relaySelector, relayJobStatus } = useSendRequest()
 
   // Manual selection state
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
@@ -400,6 +400,17 @@ const ApiTester = () => {
       return { isValid: false, isEmpty: false, message: 'Invalid URL format' }
     }
   }, [url])
+
+  // Show a warning when the URL targets localhost/127.0.0.1 while browser (direct) mode is active
+  const isLocalhostInBrowserMode = useMemo(() => {
+    if (relaySelector.connectionId !== null) return false
+    try {
+      const parsed = new URL(url)
+      return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
+    } catch {
+      return false
+    }
+  }, [url, relaySelector.connectionId])
 
   // Check if all required params are filled in OpenAPI mode and get validation message
   const openAPIValidationResult = useMemo(() => {
@@ -580,9 +591,15 @@ const ApiTester = () => {
     </th>
   )
 
+  // Show toast once when a previously-selected relay connection has been deleted
   useEffect(() => {
-    fetchServices()
+    if (relaySelector.deletedWarning) {
+      toast.warning('Your previously selected relay connection was deleted. Switched to Browser (direct).')
+      relaySelector.clearDeletedWarning()
+    }
+  }, [relaySelector.deletedWarning])
 
+  useEffect(() => {
     // Restore last successful request from localStorage
     const savedState = localStorage.getItem('apiTester_lastRequest')
     if (savedState) {
@@ -1116,25 +1133,6 @@ const ApiTester = () => {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [])
 
-  const fetchServices = async () => {
-    try {
-      const serviceApi = new ServiceApi(cloudApiConfig, undefined, cloudAxios)
-
-      const response = await serviceApi.serviceControllerFindAll()
-      const data = response.data
-
-      // Map API Service to local Service format
-      const mappedServices: Service[] = data
-
-      setServices(mappedServices)
-    } catch (error) {
-      const errorObj = error as { response?: { data?: { message?: string } }; message?: string }
-      const errorMessage =
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to fetch services'
-      toast.error(errorMessage)
-    }
-  }
-
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '', enabled: true }])
   }
@@ -1304,147 +1302,6 @@ const ApiTester = () => {
     return { errors, warnings }
   }
 
-  const sendRequest = async () => {
-    // In OpenAPI mode, construct URL from server + path if url is empty
-    let requestUrl = url
-    if (builderMode === 'openapi' && openAPIOperation && openAPIServerUrl) {
-      let fullPath = openAPIOperation.path
-      if (openAPIFormValues.pathParams) {
-        Object.entries(openAPIFormValues.pathParams).forEach(([key, value]) => {
-          fullPath = fullPath.replace(`{${key}}`, encodeURIComponent(String(value || '')))
-        })
-      }
-      const baseUrl = openAPIServerUrl.replace(/\/$/, '')
-
-      // Build query string from openAPIFormValues.queryParams
-      const queryParts: string[] = []
-      if (openAPIFormValues.queryParams) {
-        Object.entries(openAPIFormValues.queryParams).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') {
-            // Handle array values
-            if (Array.isArray(value)) {
-              value.forEach((v) => {
-                queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`)
-              })
-            } else {
-              queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
-            }
-          }
-        })
-      }
-
-      const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
-      requestUrl = `${baseUrl}${fullPath}${queryString}`
-    }
-
-    if (!requestUrl.trim()) {
-      toast.error('Please enter a URL')
-      return
-    }
-
-    setIsSendingRequest(true)
-    setRightPanelTab('response')
-
-    const startTime = performance.now()
-
-    try {
-      // Build headers object
-      const headersObj: Record<string, string> = {}
-      headers
-        .filter((h) => h.enabled && h.key.trim())
-        .forEach((h) => {
-          headersObj[h.key] = h.value
-        })
-
-      // Build request options
-      const requestOptions: RequestInit = {
-        method,
-        headers: headersObj,
-      }
-
-      // Add body for methods that support it
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
-        if (bodyType === 'raw') {
-          requestOptions.body = body
-        } else if (bodyType === 'form-data') {
-          const formDataObj = new FormData()
-          formData
-            .filter((f) => f.enabled && f.key.trim())
-            .forEach((f) => {
-              formDataObj.append(f.key, f.value)
-            })
-          requestOptions.body = formDataObj
-          // Remove content-type header to let browser set it with boundary
-          delete headersObj['Content-Type']
-        } else if (bodyType === 'x-www-form-urlencoded') {
-          const params = new URLSearchParams()
-          formData
-            .filter((f) => f.enabled && f.key.trim())
-            .forEach((f) => {
-              params.append(f.key, f.value)
-            })
-          requestOptions.body = params.toString()
-          headersObj['Content-Type'] = 'application/x-www-form-urlencoded'
-        }
-      }
-
-      const response = await fetch(requestUrl, requestOptions)
-      const endTime = performance.now()
-
-      // Extract response headers
-      const responseHeaders: Record<string, string> = {}
-      response.headers.forEach((value, key) => {
-        responseHeaders[key] = value
-      })
-
-      // Get response body as text
-      const responseBody = await response.text()
-
-      setRequestResponse({
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders,
-        body: responseBody,
-        duration: Math.round(endTime - startTime),
-      })
-
-      // Save URL to history on any request
-      addUrlToHistory(requestUrl)
-
-      // Save successful request state to localStorage
-      if (response.ok) {
-        const savedState = {
-          url: requestUrl,
-          method,
-          headers,
-          queryParams,
-          body,
-          bodyType,
-          rawType,
-          formData,
-          builderMode,
-          openAPIServiceId,
-          openAPIOperationKey,
-          openAPIServerUrl,
-          openAPIFormValues,
-        }
-        localStorage.setItem('apiTester_lastRequest', JSON.stringify(savedState))
-      }
-    } catch (error) {
-      const endTime = performance.now()
-      setRequestResponse({
-        status: 0,
-        statusText: 'Network Error',
-        headers: {},
-        body: error instanceof Error ? error.message : 'Failed to send request',
-        duration: Math.round(endTime - startTime),
-      })
-      toast.error('Failed to send request')
-    } finally {
-      setIsSendingRequest(false)
-    }
-  }
-
   const handleActionButton = async () => {
     // For request mode, check validation errors first
     if (actionMode === 'request' && openAPIValidationResult.hasErrors) {
@@ -1468,7 +1325,24 @@ const ApiTester = () => {
     } else {
       // Request mode: analyze first, then send request
       await analyzeRequest()
-      sendRequest()
+      setRightPanelTab('response')
+      sendRequest({
+        url,
+        method,
+        headers,
+        queryParams,
+        body,
+        bodyType,
+        rawType,
+        formData,
+        builderMode,
+        openAPIOperation,
+        openAPIServerUrl,
+        openAPIFormValues,
+        openAPIServiceId,
+        openAPIOperationKey,
+        onRequestSent: addUrlToHistory,
+      })
       if (isMobile) setMobilePanelTab('response')
     }
   }
@@ -2410,17 +2284,25 @@ const ApiTester = () => {
       {/* Header */}
       <header className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-10">
         <div className="max-w-[2200px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">API Request Tester</h1>
-              <p className="text-sm text-muted-foreground">
-                Test requests against your OpenAPI specifications
-              </p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">API Request Tester</h1>
+                <p className="text-sm text-muted-foreground">
+                  Test requests against your OpenAPI specifications
+                </p>
+              </div>
             </div>
+            <RelaySelector
+              connectionId={relaySelector.connectionId}
+              connections={relaySelector.connections}
+              isLoading={relaySelector.isLoading}
+              onSelect={relaySelector.setConnectionId}
+            />
           </div>
         </div>
       </header>
@@ -2633,6 +2515,27 @@ const ApiTester = () => {
                             </TooltipContent>
                           )}
                         </Tooltip>
+
+                        {/* Localhost-in-browser-mode warning */}
+                        {isLocalhostInBrowserMode && (
+                          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>
+                              <strong>Localhost target detected.</strong> Browser mode cannot reach local services on another machine. Start a local relay or{' '}
+                              <button
+                                className="underline underline-offset-2 hover:no-underline"
+                                onClick={() => relaySelector.setConnectionId(
+                                  relaySelector.connections.find((c) => c.type === 'local-dev')?.id ?? null
+                                )}
+                              >
+                                switch to a local relay connection
+                              </button>
+                              {relaySelector.connections.filter((c) => c.type === 'local-dev').length === 0 && (
+                                <> — <a href="/connections" className="underline underline-offset-2 hover:no-underline">set one up</a></>
+                              )}.
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Standard Mode - Tabs for Params, Headers, Body */}
@@ -3786,7 +3689,7 @@ const ApiTester = () => {
                       {isSendingRequest && !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-                          <p>Sending request...</p>
+                          <p>{relayJobStatus === 'waiting' ? 'Waiting for relay…' : 'Sending request…'}</p>
                         </div>
                       ) : !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
@@ -3814,6 +3717,16 @@ const ApiTester = () => {
                                 ? `${(new Blob([requestResponse.body]).size / 1024).toFixed(1)} KB`
                                 : `${new Blob([requestResponse.body]).size} B`}
                             </span>
+                            {requestResponse.relayConnectionName && (
+                              <Badge variant="outline" className="text-xs font-normal">
+                                Via {requestResponse.relayConnectionName}
+                              </Badge>
+                            )}
+                            {requestResponse.relayDeliveryMode && (
+                              <Badge variant="secondary" className="text-xs font-mono font-normal">
+                                {deliveryModeBadgeLabel(requestResponse.relayDeliveryMode)}
+                              </Badge>
+                            )}
                           </div>
 
                           {/* Response Headers */}
@@ -3894,10 +3807,10 @@ const ApiTester = () => {
                               try {
                                 const parsed = JSON.parse(requestResponse.body)
                                 const formatted = JSON.stringify(parsed, null, 2)
-                                setRequestResponse({
+                                dispatch(setRequestResponse({
                                   ...requestResponse,
                                   body: formatted,
-                                })
+                                }))
                                 toast.success('Response formatted')
                               } catch {
                                 toast.error('Invalid JSON - cannot format')
@@ -4254,6 +4167,28 @@ const ApiTester = () => {
                             </TooltipContent>
                           )}
                         </Tooltip>
+
+                        {/* Localhost-in-browser-mode warning (mobile) */}
+                        {isLocalhostInBrowserMode && (
+                          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>
+                              <strong>Localhost target detected.</strong> Browser mode cannot reach local services on another machine. Start a local relay or{' '}
+                              <button
+                                className="underline underline-offset-2 hover:no-underline"
+                                onClick={() => relaySelector.setConnectionId(
+                                  relaySelector.connections.find((c) => c.type === 'local-dev')?.id ?? null
+                                )}
+                              >
+                                switch to a local relay connection
+                              </button>
+                              {relaySelector.connections.filter((c) => c.type === 'local-dev').length === 0 && (
+                                <> — <a href="/connections" className="underline underline-offset-2 hover:no-underline">set one up</a></>
+                              )}.
+                            </span>
+                          </div>
+                        )}
+
                         {/* Desktop layout - all on one row */}
                         <div className="hidden xl:flex gap-2">
                           <Select value={method} onValueChange={setMethod}>
@@ -6162,7 +6097,7 @@ const ApiTester = () => {
                       {isSendingRequest && !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-                          <p>Sending request...</p>
+                          <p>{relayJobStatus === 'waiting' ? 'Waiting for relay…' : 'Sending request…'}</p>
                         </div>
                       ) : !requestResponse ? (
                         <div className="text-center py-12 text-muted-foreground">
@@ -6171,6 +6106,38 @@ const ApiTester = () => {
                         </div>
                       ) : (
                         <div className="space-y-6">
+                          {/* Status ribbon */}
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <Badge
+                              variant={
+                                requestResponse.status >= 200 && requestResponse.status < 300
+                                  ? 'default'
+                                  : 'destructive'
+                              }
+                              className={`text-sm px-3 py-1 ${requestResponse.status >= 200 && requestResponse.status < 300 ? 'bg-green-600' : ''}`}
+                            >
+                              {requestResponse.status} {requestResponse.statusText}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {requestResponse.duration}ms
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {new Blob([requestResponse.body]).size >= 1024
+                                ? `${(new Blob([requestResponse.body]).size / 1024).toFixed(1)} KB`
+                                : `${new Blob([requestResponse.body]).size} B`}
+                            </span>
+                            {requestResponse.relayConnectionName && (
+                              <Badge variant="outline" className="text-xs font-normal">
+                                Via {requestResponse.relayConnectionName}
+                              </Badge>
+                            )}
+                            {requestResponse.relayDeliveryMode && (
+                              <Badge variant="secondary" className="text-xs font-mono font-normal">
+                                {deliveryModeBadgeLabel(requestResponse.relayDeliveryMode)}
+                              </Badge>
+                            )}
+                          </div>
+
                           {/* Response Headers */}
                           <Collapsible defaultOpen>
                             <div className="flex items-center justify-between">
@@ -6265,10 +6232,10 @@ const ApiTester = () => {
                                 try {
                                   const parsed = JSON.parse(requestResponse.body)
                                   const formatted = JSON.stringify(parsed, null, 2)
-                                  setRequestResponse({
+                                  dispatch(setRequestResponse({
                                     ...requestResponse,
                                     body: formatted,
-                                  })
+                                  }))
                                   toast.success('Response formatted')
                                 } catch {
                                   toast.error('Invalid JSON - cannot format')
@@ -6473,7 +6440,7 @@ const ApiTester = () => {
                     try {
                       const parsed = JSON.parse(requestResponse.body)
                       const formatted = JSON.stringify(parsed, null, 2)
-                      setRequestResponse({ ...requestResponse, body: formatted })
+                      dispatch(setRequestResponse({ ...requestResponse, body: formatted }))
                       toast.success('Response formatted')
                     } catch {
                       toast.error('Invalid JSON - cannot format')

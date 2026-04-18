@@ -58,7 +58,8 @@ src/store/
 ├── actionMeta.ts          # ActionArea/ActionGroup enums, ActionMeta type,
 │                          #   RegisteredAction type, ActionRegistry class,
 │                          #   actionRegistry singleton
-├── apiTesterSlice.ts      # Request-building UI state
+├── apiTesterSlice.ts      # Request-building UI state (tabs, section collapse)
+├── apiRequestSlice.ts     # Send-request state (isSendingRequest, requestResponse)
 └── responseViewerSlice.ts # Response viewer state (view mode, JMESPath, sorting, columns)
 ```
 
@@ -68,6 +69,59 @@ src/store/
 - **One slice per feature area.** Create a new slice file under `src/store/` when a new feature requires shared state.
 - **Export selectors from the slice.** Define `select*` selectors alongside the slice and export them, so components don't need to know the store shape.
 - **Local UI state stays local.** Use `useState` for state that belongs entirely within a single component (hover, open/closed, input value while typing).
+
+### Logic belongs outside components
+
+**Components must not contain business logic inline.** Any logic that goes beyond rendering should live in a dedicated hook or Redux slice:
+
+| Logic type | Where it lives |
+| --- | --- |
+| Async operations (API calls, fetch, polling) | A custom hook in `src/hooks/` that dispatches to Redux |
+| Multi-step side effects (relay job → response mapping) | A hook; the hook dispatches actions, the component reads selectors |
+| Shared mutable state (loading flags, response data) | A Redux slice — components read via `useAppSelector`, write via `dispatch` |
+| Pure UI state (controlled input value, hover, open/closed) | `useState` local to the component |
+
+**The test:** if you need to inline an `async` function, a multi-branch `if/else`, or more than ~3 lines of data transformation inside a component body or event handler, extract it.
+
+```typescript
+// ❌ Wrong — business logic inline in a component
+const handleSend = async () => {
+  setLoading(true)
+  try {
+    const response = await fetch(url, { method, headers, body })
+    setResponse({ status: response.status, body: await response.text() })
+  } catch (e) {
+    setResponse({ status: 0, body: String(e) })
+  } finally {
+    setLoading(false)
+  }
+}
+
+// ✅ Correct — logic in a hook, component only calls it
+const { sendRequest } = useSendRequest()
+const handleSend = () => sendRequest({ url, method, headers, body })
+```
+
+**Hooks that dispatch:** a custom hook may call `useAppDispatch()` and dispatch to Redux slices. This is the preferred pattern for async logic that produces shared state — the hook owns the async work, Redux owns the result.
+
+```typescript
+// src/hooks/useSendRequest.ts
+export function useSendRequest() {
+  const dispatch = useAppDispatch()
+  const sendRequest = useCallback(async (params) => {
+    dispatch(setIsSendingRequest(true))
+    // ... fetch logic ...
+    dispatch(setRequestResponse(result))
+    dispatch(setIsSendingRequest(false))
+  }, [dispatch])
+  return { sendRequest }
+}
+
+// src/pages/MyPage.tsx
+const { sendRequest } = useSendRequest()
+const isSending = useAppSelector(selectIsSendingRequest)
+const response = useAppSelector(selectRequestResponse)
+```
 
 ### Action creator registry
 
@@ -94,6 +148,7 @@ Every Redux action creator in this app must be registered via `actionRegistry.re
 | -------------------------- | ---------- | ---------------------------------------------------------------------------- |
 | `ActionGroup.Navigation`   | `Request`  | Tab and panel selection in the API tester.                                   |
 | `ActionGroup.Layout`       | `Request`  | Section collapse/expand state.                                               |
+| `ActionGroup.SendRequest`  | `Request`  | In-flight state and response result for the active API request.              |
 | `ActionGroup.ViewMode`     | `Response` | Top-level view selector and cross-view settings (e.g. highlight duplicates). |
 | `ActionGroup.Json`         | `Response` | JMESPath filtering, truncation, unique filter, and bulk JSON state.          |
 | `ActionGroup.Table`        | `Response` | SQL query, join configuration.                                               |

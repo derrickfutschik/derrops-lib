@@ -20,10 +20,13 @@ docs/CloudRelayApi.md
 docs/CloudRelayConnection.md
 docs/CloudRelayControllerDeleteConnection200Response.md
 docs/CloudRelayControllerGetJwks200Response.md
+docs/CloudRelayControllerHealthCheckConnection200Response.md
+docs/CloudRelayControllerTestQueueConnection200Response.md
 docs/CloudRelayJob.md
 docs/ConfigApi.md
 docs/CreateAegisInstanceDto.md
 docs/CreateCloudRelayConnectionDto.md
+docs/CreateCloudRelayConnectionResponseDto.md
 docs/CreateCloudRelayJobDto.md
 docs/CreateRelayInstanceDto.md
 docs/CreateServiceDto.md
@@ -40,6 +43,7 @@ docs/Service.md
 docs/ServiceApi.md
 docs/ServiceControllerRemove200Response.md
 docs/UpdateAegisInstanceDto.md
+docs/UpdateCloudRelayConnectionDto.md
 docs/UpdateRelayInstanceDto.md
 docs/UpdateServiceDto.md
 git_push.sh
@@ -51,9 +55,12 @@ models/aggregation-bucket.ts
 models/cloud-relay-connection.ts
 models/cloud-relay-controller-delete-connection200-response.ts
 models/cloud-relay-controller-get-jwks200-response.ts
+models/cloud-relay-controller-health-check-connection200-response.ts
+models/cloud-relay-controller-test-queue-connection200-response.ts
 models/cloud-relay-job.ts
 models/create-aegis-instance-dto.ts
 models/create-cloud-relay-connection-dto.ts
+models/create-cloud-relay-connection-response-dto.ts
 models/create-cloud-relay-job-dto.ts
 models/create-relay-instance-dto.ts
 models/create-service-dto.ts
@@ -67,5 +74,6 @@ models/search-aggregations.ts
 models/service-controller-remove200-response.ts
 models/service.ts
 models/update-aegis-instance-dto.ts
+models/update-cloud-relay-connection-dto.ts
 models/update-relay-instance-dto.ts
 models/update-service-dto.ts

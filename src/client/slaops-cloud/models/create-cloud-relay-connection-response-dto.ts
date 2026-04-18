@@ -14,7 +14,7 @@
 
 
 
-export interface CloudRelayConnection {
+export interface CreateCloudRelayConnectionResponseDto {
     'id': string;
     'tenant_id': string;
     'name': string;
@@ -25,15 +25,15 @@ export interface CloudRelayConnection {
     /**
      * managed     — SLAOps-hosted Lambda relay. self-hosted — Customer-deployed relay on their own infrastructure. local-dev   — Developer local machine. delivery_mode is locked to platform-queue. An SQS FIFO queue is provisioned automatically.
      */
-    'type': CloudRelayConnectionTypeEnum;
+    'type': CreateCloudRelayConnectionResponseDtoTypeEnum;
     /**
      * direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud. relay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud. platform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections. hybrid         — platform tries direct HTTP first; falls back to platform-queue on failure. Requires both url and sqs_queue_url.
      */
-    'delivery_mode': CloudRelayConnectionDeliveryModeEnum;
+    'delivery_mode': CreateCloudRelayConnectionResponseDtoDeliveryModeEnum;
     /**
      * platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. Use relay mode when the customer\'s network cannot reach SQS endpoints in the SLAOps account.
      */
-    'sqs_queue_mode'?: CloudRelayConnectionSqsQueueModeEnum;
+    'sqs_queue_mode'?: CreateCloudRelayConnectionResponseDtoSqsQueueModeEnum;
     /**
      * SQS FIFO queue URL for this relay connection. platform mode: provisioned by slaops-cloud and stored here. relay mode: provided by the customer at registration time.
      */
@@ -60,28 +60,40 @@ export interface CloudRelayConnection {
     'api_key': string;
     'created_at': string;
     'updated_at': string;
+    /**
+     * IAM access key ID for the provisioned relay IAM user (sqs_queue_mode=platform only). Returned once — not stored. Null until IAM provisioning is implemented.
+     */
+    'iam_access_key_id_created'?: string;
+    /**
+     * IAM secret access key for the provisioned relay IAM user (sqs_queue_mode=platform only). Returned once — never stored. Null until IAM provisioning is implemented.
+     */
+    'iam_secret_access_key'?: string;
+    /**
+     * One-time Aegis registration token, returned only when a new Aegis instance was registered as part of this connection creation. Never returned again.
+     */
+    'aegis_registration_token'?: string;
 }
 
-export const CloudRelayConnectionTypeEnum = {
+export const CreateCloudRelayConnectionResponseDtoTypeEnum = {
     Managed: 'managed',
     SelfHosted: 'self-hosted',
     LocalDev: 'local-dev'
 } as const;
 
-export type CloudRelayConnectionTypeEnum = typeof CloudRelayConnectionTypeEnum[keyof typeof CloudRelayConnectionTypeEnum];
-export const CloudRelayConnectionDeliveryModeEnum = {
+export type CreateCloudRelayConnectionResponseDtoTypeEnum = typeof CreateCloudRelayConnectionResponseDtoTypeEnum[keyof typeof CreateCloudRelayConnectionResponseDtoTypeEnum];
+export const CreateCloudRelayConnectionResponseDtoDeliveryModeEnum = {
     Direct: 'direct',
     RelayQueue: 'relay-queue',
     PlatformQueue: 'platform-queue',
     Hybrid: 'hybrid'
 } as const;
 
-export type CloudRelayConnectionDeliveryModeEnum = typeof CloudRelayConnectionDeliveryModeEnum[keyof typeof CloudRelayConnectionDeliveryModeEnum];
-export const CloudRelayConnectionSqsQueueModeEnum = {
+export type CreateCloudRelayConnectionResponseDtoDeliveryModeEnum = typeof CreateCloudRelayConnectionResponseDtoDeliveryModeEnum[keyof typeof CreateCloudRelayConnectionResponseDtoDeliveryModeEnum];
+export const CreateCloudRelayConnectionResponseDtoSqsQueueModeEnum = {
     Platform: 'platform',
     Relay: 'relay'
 } as const;
 
-export type CloudRelayConnectionSqsQueueModeEnum = typeof CloudRelayConnectionSqsQueueModeEnum[keyof typeof CloudRelayConnectionSqsQueueModeEnum];
+export type CreateCloudRelayConnectionResponseDtoSqsQueueModeEnum = typeof CreateCloudRelayConnectionResponseDtoSqsQueueModeEnum[keyof typeof CreateCloudRelayConnectionResponseDtoSqsQueueModeEnum];
 
 

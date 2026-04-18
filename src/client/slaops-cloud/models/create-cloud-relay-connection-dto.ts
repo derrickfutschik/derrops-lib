@@ -20,15 +20,19 @@ export interface CreateCloudRelayConnectionDto {
      */
     'type'?: CreateCloudRelayConnectionDtoTypeEnum;
     /**
-     * Human-readable name. Auto-generated for local-dev relays.
+     * Human-readable name. Auto-generated if omitted.
      */
     'name'?: string;
     /**
-     * Base URL of the relay instance. Required for direct and relay-queue modes. Not used for platform-queue / local-dev relays (relay makes only outbound connections).
+     * Base URL of the relay instance. Required for direct and relay-queue modes, and for the HTTP path in hybrid mode. Not used for platform-queue connections (relay makes only outbound connections).
      */
     'url'?: string;
     /**
-     * platform — SLAOps provisions the SQS FIFO queue (default). relay    — Customer provisions the queue; provide relay_sqs_queue_url. Only relevant for local-dev relay connections.
+     * direct          — slaops-cloud calls relay synchronously. relay-queue     — slaops-cloud submits to relay queue, polls relay for result. platform-queue  — relay polls slaops-cloud outbound. Use when relay cannot accept inbound connections. hybrid          — platform tries direct HTTP first, falls back to SQS on failure. Requires both url and sqs_queue_url. For local-dev relays this is always platform-queue regardless of what is sent.
+     */
+    'delivery_mode'?: CreateCloudRelayConnectionDtoDeliveryModeEnum;
+    /**
+     * platform — SLAOps provisions and owns the SQS FIFO queue. relay    — Customer provisions the queue and grants sqs:SendMessage to the SLAOps platform role; provide relay_sqs_queue_url. Required when delivery_mode is platform-queue or hybrid.
      */
     'sqs_queue_mode'?: CreateCloudRelayConnectionDtoSqsQueueModeEnum;
     /**
@@ -36,9 +40,9 @@ export interface CreateCloudRelayConnectionDto {
      */
     'relay_sqs_queue_url'?: string;
     /**
-     * direct          — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud. relay-queue     — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud. platform-queue  — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections. For local-dev relays this is always platform-queue regardless of what is sent.
+     * UUID of an AegisInstance to link to this connection. The Aegis must belong to the same tenant. Null or omitted means no Aegis is linked.
      */
-    'delivery_mode'?: CreateCloudRelayConnectionDtoDeliveryModeEnum;
+    'aegis_id'?: string;
 }
 
 export const CreateCloudRelayConnectionDtoTypeEnum = {
@@ -48,18 +52,19 @@ export const CreateCloudRelayConnectionDtoTypeEnum = {
 } as const;
 
 export type CreateCloudRelayConnectionDtoTypeEnum = typeof CreateCloudRelayConnectionDtoTypeEnum[keyof typeof CreateCloudRelayConnectionDtoTypeEnum];
+export const CreateCloudRelayConnectionDtoDeliveryModeEnum = {
+    Direct: 'direct',
+    RelayQueue: 'relay-queue',
+    PlatformQueue: 'platform-queue',
+    Hybrid: 'hybrid'
+} as const;
+
+export type CreateCloudRelayConnectionDtoDeliveryModeEnum = typeof CreateCloudRelayConnectionDtoDeliveryModeEnum[keyof typeof CreateCloudRelayConnectionDtoDeliveryModeEnum];
 export const CreateCloudRelayConnectionDtoSqsQueueModeEnum = {
     Platform: 'platform',
     Relay: 'relay'
 } as const;
 
 export type CreateCloudRelayConnectionDtoSqsQueueModeEnum = typeof CreateCloudRelayConnectionDtoSqsQueueModeEnum[keyof typeof CreateCloudRelayConnectionDtoSqsQueueModeEnum];
-export const CreateCloudRelayConnectionDtoDeliveryModeEnum = {
-    Direct: 'direct',
-    RelayQueue: 'relay-queue',
-    PlatformQueue: 'platform-queue'
-} as const;
-
-export type CreateCloudRelayConnectionDtoDeliveryModeEnum = typeof CreateCloudRelayConnectionDtoDeliveryModeEnum[keyof typeof CreateCloudRelayConnectionDtoDeliveryModeEnum];
 
 
