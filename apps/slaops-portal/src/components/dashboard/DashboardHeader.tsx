@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { User } from '@supabase/supabase-js'
-import { FlaskConical, LogOut, Plus, Settings } from 'lucide-react'
+import { FlaskConical, LogOut, Plus, Settings, BookOpen } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface DashboardHeaderProps {
@@ -30,6 +30,10 @@ const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
             <Button variant="outline" size="sm" onClick={() => navigate('/add-service')}>
               <Plus className="h-4 w-4 mr-2" />
               Add SAAS
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/apis')}>
+              <BookOpen className="h-4 w-4 mr-2" />
+              APIs
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/settings/connections')}>
               <Settings className="h-4 w-4 mr-2" />

@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit'
 import { apiRequestReducer } from './apiRequestSlice'
 import { apiTesterReducer } from './apiTesterSlice'
 import { responseViewerReducer } from './responseViewerSlice'
+import { apisReducer } from './apisSlice'
 
 export const store = configureStore({
   reducer: {
     responseViewer: responseViewerReducer,
     apiTester: apiTesterReducer,
     apiRequest: apiRequestReducer,
+    apis: apisReducer,
   },
 })
 

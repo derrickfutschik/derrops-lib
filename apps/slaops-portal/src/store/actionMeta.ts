@@ -35,6 +35,8 @@ export enum ActionGroup {
   Json = 'json',
   Table = 'table',
   TableColumns = 'table-columns',
+  // apis area
+  Apis = 'apis',
 }
 
 // ---------------------------------------------------------------------------

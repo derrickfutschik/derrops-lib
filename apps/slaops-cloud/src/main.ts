@@ -1,10 +1,10 @@
-import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { config } from '@slaops/config'
 import { AppModule } from './app.module'
 import { VerboseExceptionFilter } from './common/verbose-exception.filter'
+import { StrictStringPipe } from './validation/strict-string.pipe'
 import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.command'
 
 async function bootstrap() {
@@ -35,9 +35,9 @@ async function bootstrap() {
   // Global exception filter — shows full stack traces when app.error.verbose is enabled
   app.useGlobalFilters(new VerboseExceptionFilter())
 
-  // Global validation pipe
+  // Global validation pipe — rejects strings with leading/trailing whitespace by default
   app.useGlobalPipes(
-    new ValidationPipe({
+    new StrictStringPipe({
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,

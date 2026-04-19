@@ -20,6 +20,7 @@ import { IsString, IsUUID, IsUrl, MaxLength } from 'class-validator'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { User } from '../user/user.dto'
 import { IndexingResponse, OpenApiIndexerService, PresignedUrlResult } from './openapi-indexer.service'
+import { CatalogueHit } from './oaspec-documents'
 
 class UploadUrlDto {
   @IsUUID()
@@ -102,7 +103,7 @@ export class OpenApiIndexerController {
     @Query('q') q = '',
     @Query('limit') limit = '10',
     @Query('offset') offset = '0',
-  ): Promise<{ total: number; hits: any[] }> {
+  ): Promise<{ total: number; hits: CatalogueHit[] }> {
     return this.indexerService.searchCatalogue(
       q,
       Math.min(parseInt(limit, 10) || 10, 100),

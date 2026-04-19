@@ -4,9 +4,18 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { Client } from '@opensearch-project/opensearch'
 import { IndexingError, IndexingErrorCode } from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { config } from '@slaops/config'
+import { Search, TypescriptOSProxyClient } from 'opensearch-ts'
 import { v4 as uuid } from 'uuid'
 import { OpenApiParserService } from './openapi-parser.service'
 import { oaspecId } from './oaspec-id'
+import {
+  CatalogueHit,
+  OaModelDocument,
+  OaOperationDocument,
+  OaParamDocument,
+  OaServerDocument,
+  OaSpecDocument,
+} from './oaspec-documents'
 import { ApiService } from '../api/api.service'
 import { OpenSearchService } from '../opensearch/opensearch.service'
 
@@ -78,7 +87,9 @@ const METHOD_INITIAL: Record<string, string> = {
 }
 
 function oaspecIndex(tenantId: string, entity: string): string {
-  return `slaops--${tenantId}--oaspec--${entity}`
+  const prefix = config['opensearch.prefix']
+  const env = config['opensearch.suffix']
+  return `${prefix}--${env}--${tenantId}--oaspec--${entity}`
 }
 
 function compactPath(path: string): string {
@@ -160,6 +171,7 @@ export class OpenApiIndexerService implements OnModuleInit {
   constructor(
     private readonly parserService: OpenApiParserService,
     private readonly opensearchClient: Client,
+    private readonly tsClient: TypescriptOSProxyClient,
     private readonly apiService: ApiService,
     private readonly openSearchService: OpenSearchService,
   ) {}
@@ -261,9 +273,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     try {
       await this._setLatestFalse(tenantId, 'spec', apiId)
 
-      const tagsText = [
-        ...(rawSpec.tags?.map((t: any) => t.name) ?? []),
-      ].join(' ')
+      const tagsText = (rawSpec.tags?.map((t: { name: string }) => t.name) ?? []).join(' ')
 
       const contactText = rawSpec.info.contact
         ? [rawSpec.info.contact.name, rawSpec.info.contact.email, rawSpec.info.contact.url]
@@ -275,38 +285,40 @@ export class OpenApiIndexerService implements OnModuleInit {
         ? [rawSpec.info.license.name, rawSpec.info.license.url].filter(Boolean).join(' ')
         : undefined
 
+      const specDoc: OaSpecDocument = {
+        id: specOpensearchId,
+        apiId,
+        tenantId,
+        version,
+        specVersion: rawSpec.openapi,
+        latest: true,
+        indexedAt: now,
+        updatedAt: now,
+        title,
+        description: rawSpec.info.description ?? '',
+        termsOfService: rawSpec.info.termsOfService,
+        contactText,
+        licenseText,
+        externalDocsText: rawSpec.externalDocs
+          ? [rawSpec.externalDocs.description, rawSpec.externalDocs.url]
+              .filter(Boolean)
+              .join(' ')
+          : undefined,
+        tagsText,
+        operationCount: 0,
+        serverCount: 0,
+        parameterCount: 0,
+        modelCount: 0,
+        s3Bucket: bucket,
+        s3Key: key,
+        fileSize,
+        fileFormat: format,
+      }
+
       await this.opensearchClient.index({
         index: oaspecIndex(tenantId, 'spec'),
         id: specOpensearchId,
-        body: {
-          id: specOpensearchId,
-          apiId,
-          tenantId,
-          version,
-          specVersion: rawSpec.openapi,
-          latest: true,
-          indexedAt: now,
-          updatedAt: now,
-          title,
-          description: rawSpec.info.description ?? '',
-          termsOfService: rawSpec.info.termsOfService,
-          contactText,
-          licenseText,
-          externalDocsText: rawSpec.externalDocs
-            ? [rawSpec.externalDocs.description, rawSpec.externalDocs.url]
-                .filter(Boolean)
-                .join(' ')
-            : undefined,
-          tagsText,
-          operationCount: 0,
-          serverCount: 0,
-          parameterCount: 0,
-          modelCount: 0,
-          s3Bucket: bucket,
-          s3Key: key,
-          fileSize,
-          fileFormat: format,
-        },
+        body: specDoc,
         refresh: true,
       })
     } catch (err: any) {
@@ -314,11 +326,12 @@ export class OpenApiIndexerService implements OnModuleInit {
     }
 
     // ── Step 2: Server documents ──────────────────────────────────────────────
-    const servers: any[] = rawSpec.servers ?? []
+    const servers: Array<{ url?: string; description?: string; variables?: Record<string, { default?: string }> }> =
+      rawSpec.servers ?? []
     try {
       await this._setLatestFalse(tenantId, 'server', apiId)
 
-      const serverDocs = servers.map((server: any, idx: number) => {
+      const serverDocs: OaServerDocument[] = servers.map((server, idx) => {
         const fields = deriveHostShape(server.url ?? '')
         const serverId = oaspecId(tenantId, title, version, server.url ?? String(idx))
         return {
@@ -332,12 +345,12 @@ export class OpenApiIndexerService implements OnModuleInit {
           indexedAt: now,
           rawUrl: server.url ?? '',
           description: server.description,
-          ...fields,
           variablesText: server.variables
             ? Object.entries(server.variables)
-                .map(([k, v]: any) => `${k}:${v?.default ?? ''}`)
+                .map(([k, v]) => `${k}:${v?.default ?? ''}`)
                 .join(' ')
             : undefined,
+          ...fields,
         }
       })
 
@@ -357,18 +370,19 @@ export class OpenApiIndexerService implements OnModuleInit {
     }
 
     // ── Step 3: Operation documents ───────────────────────────────────────────
-    const operations: any[] = []
+    const operations: OaOperationDocument[] = []
     try {
       await this._setLatestFalse(tenantId, 'operation', apiId)
 
-      const paths = rawSpec.paths ?? {}
-      for (const [path, pathItem] of Object.entries<any>(paths)) {
+      const paths: Record<string, Record<string, { operationId?: string; summary?: string; description?: string; tags?: string[]; deprecated?: boolean; parameters?: unknown[] }>> =
+        rawSpec.paths ?? {}
+      for (const [path, pathItem] of Object.entries(paths)) {
         for (const method of HTTP_METHODS) {
           const op = pathItem[method]
           if (!op) continue
 
           const methodUpper = method.toUpperCase()
-          const initial = METHOD_INITIAL[methodUpper] ?? methodUpper[0]
+          const initial = METHOD_INITIAL[methodUpper] ?? methodUpper[0]!
           const pathKey = `${initial}:${compactPath(path)}`
           const opId = oaspecId(tenantId, title, version, methodUpper, path)
 
@@ -418,15 +432,22 @@ export class OpenApiIndexerService implements OnModuleInit {
     try {
       await this._setLatestFalse(tenantId, 'param', apiId)
 
-      const paramMap = new Map<
-        string,
-        { doc: any; operationIds: Set<string> }
-      >()
+      type RawParam = {
+        name?: string
+        in?: string
+        required?: boolean
+        deprecated?: boolean
+        description?: string
+        schema?: { type?: string; format?: string }
+        example?: unknown
+      }
 
-      const allPaths = rawSpec.paths ?? {}
+      const paramMap = new Map<string, { doc: Omit<OaParamDocument, 'operationIdsText'>; operationIds: Set<string> }>()
+
+      const allPaths: Record<string, Record<string, { parameters?: RawParam[] }>> = rawSpec.paths ?? {}
 
       // Shared components.parameters
-      for (const [name, param] of Object.entries<any>(rawSpec.components?.parameters ?? {})) {
+      for (const [name, param] of Object.entries<RawParam>(rawSpec.components?.parameters ?? {})) {
         const paramId = oaspecId(tenantId, title, version, name, param.in ?? 'query')
         if (!paramMap.has(paramId)) {
           paramMap.set(paramId, {
@@ -453,7 +474,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       }
 
       // Per-operation parameters
-      for (const [path, pathItem] of Object.entries<any>(allPaths)) {
+      for (const [path, pathItem] of Object.entries(allPaths)) {
         for (const method of HTTP_METHODS) {
           const op = pathItem[method]
           if (!op?.parameters) continue
@@ -489,7 +510,7 @@ export class OpenApiIndexerService implements OnModuleInit {
         }
       }
 
-      const paramDocs = Array.from(paramMap.values()).map(({ doc, operationIds }) => ({
+      const paramDocs: OaParamDocument[] = Array.from(paramMap.values()).map(({ doc, operationIds }) => ({
         ...doc,
         operationIdsText: Array.from(operationIds).join(' '),
       }))
@@ -513,17 +534,21 @@ export class OpenApiIndexerService implements OnModuleInit {
     try {
       await this._setLatestFalse(tenantId, 'model', apiId)
 
-      const modelDocs: any[] = []
-      const schemas = rawSpec.components?.schemas ?? {}
+      type RawSchema = {
+        description?: string
+        type?: string
+        properties?: Record<string, { type?: string; format?: string; description?: string }>
+      }
 
-      for (const [modelName, schema] of Object.entries<any>(schemas)) {
+      const modelDocs: OaModelDocument[] = []
+      const schemas: Record<string, RawSchema> = rawSpec.components?.schemas ?? {}
+
+      for (const [modelName, schema] of Object.entries(schemas)) {
         const modelId = oaspecId(tenantId, title, version, modelName)
         const props = schema.properties ?? {}
-        const propertiesText = Object.entries<any>(props)
+        const propertiesText = Object.entries(props)
           .map(([propName, propSchema]) => {
-            const parts = [propName, propSchema.type, propSchema.format]
-              .filter(Boolean)
-              .join(' ')
+            const parts = [propName, propSchema.type, propSchema.format].filter(Boolean).join(' ')
             return propSchema.description ? `${parts} - ${propSchema.description}` : parts
           })
           .join('\n')
@@ -626,30 +651,48 @@ export class OpenApiIndexerService implements OnModuleInit {
     query: string,
     limit: number,
     offset: number,
-  ): Promise<{ total: number; hits: any[] }> {
+  ): Promise<{ total: number; hits: CatalogueHit[] }> {
     const globalTenantId = config['opensearch.oaspec.global-tenant-id']
     const index = oaspecIndex(globalTenantId, 'spec')
 
-    const body: any = {
+    // multi_match is a raw OpenSearch query not covered by opensearch-ts's typed query
+    // builder; cast the query portion to `never` to keep the rest of the body typed.
+    type CatalogueSearch = Search<OaSpecDocument, Record<string, never>>
+
+    const rawQuery = query
+      ? { multi_match: { query, fields: ['title^3', 'description', 'tagsText'] } }
+      : { match_all: {} }
+
+    const body: CatalogueSearch = {
       from: offset,
       size: limit,
-      query: query
-        ? {
-            multi_match: {
-              query,
-              fields: ['title^3', 'description', 'tagsText'],
-            },
-          }
-        : { match_all: {} },
-      _source: ['title', 'description', 'version', 'operationCount', 'serverCount', 'tagsText'],
+      query: rawQuery as never,
     }
 
-    const response = await this.opensearchClient.search({ index, body })
-    const hits = response.body.hits
-    return {
-      total: typeof hits.total === 'object' ? hits.total.value : hits.total,
-      hits: hits.hits.map((h: any) => ({ id: h._id, ...h._source })),
-    }
+    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({
+      body,
+      index,
+    })
+
+    const hitsTotal = response.hits.total
+    // TotalHits can be number | TotalHits | null depending on the OpenSearch version
+    const total = hitsTotal == null
+      ? 0
+      : typeof hitsTotal === 'object' && hitsTotal != null
+        ? (hitsTotal as { value: number }).value
+        : (hitsTotal as number)
+
+    const hits: CatalogueHit[] = response.hits.hits.map((h) => ({
+      id: h._id,
+      title: h._source.title,
+      description: h._source.description,
+      version: h._source.version,
+      operationCount: h._source.operationCount,
+      serverCount: h._source.serverCount,
+      tagsText: h._source.tagsText,
+    }))
+
+    return { total, hits }
   }
 
   // ---------------------------------------------------------------------------
@@ -695,17 +738,16 @@ export class OpenApiIndexerService implements OnModuleInit {
 
     // Find versions ordered by indexedAt desc from spec index
     const specIndex = oaspecIndex(tenantId, 'spec')
-    const response = await this.opensearchClient.search({
-      index: specIndex,
+    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({
       body: {
-        query: { term: { apiId } },
-        sort: [{ indexedAt: { order: 'desc' } }],
-        _source: ['version'],
+        query: { term: { apiId } } as never,
+        sort: [{ indexedAt: { order: 'desc' } }] as never,
         size: 100,
       },
+      index: specIndex,
     })
 
-    const allVersions: string[] = response.body.hits.hits.map((h: any) => h._source.version)
+    const allVersions: string[] = response.hits.hits.map((h) => h._source.version)
     const versionsToDelete = allVersions.slice(retention)
 
     if (versionsToDelete.length === 0) return 0

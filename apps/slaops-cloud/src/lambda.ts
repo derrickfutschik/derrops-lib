@@ -1,10 +1,10 @@
 import serverlessExpress from '@codegenie/serverless-express'
-import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda'
 import { AppModule } from './app.module'
+import { StrictStringPipe } from './validation/strict-string.pipe'
 import express = require('express')
 
 let cachedServer: any
@@ -32,9 +32,9 @@ async function bootstrapServer(): Promise<any> {
       credentials: true,
     })
 
-    // Global validation pipe
+    // Global validation pipe — rejects strings with leading/trailing whitespace by default
     nestApp.useGlobalPipes(
-      new ValidationPipe({
+      new StrictStringPipe({
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,

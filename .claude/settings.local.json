@@ -19,7 +19,9 @@
       "Bash(./node_modules/.bin/*)",
       "Skill(update-config)",
       "WebSearch",
-      "Bash(wc -l /Users/dfutschik/slaops/slaops-platform/apps/slaops-portal/src/components/api-tester/*.tsx)"
+      "Bash(wc -l /Users/dfutschik/slaops/slaops-platform/apps/slaops-portal/src/components/api-tester/*.tsx)",
+      "Bash(git checkout *)",
+      "Bash(git add *)"
     ]
   }
 }

@@ -13,6 +13,9 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-route
 import { store } from './store'
 import AddService from './pages/AddService'
 import ApiTester from './pages/ApiTester'
+import Apis from './pages/Apis'
+import ApisNew from './pages/ApisNew'
+import ApiDetail from './pages/ApiDetail'
 import Connections from './pages/Connections'
 import Dashboard from './pages/Dashboard'
 import Landing from './pages/Landing'
@@ -197,6 +200,30 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Connections />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apis"
+            element={
+              <ProtectedRoute>
+                <Apis />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apis/new"
+            element={
+              <ProtectedRoute>
+                <ApisNew />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apis/:id"
+            element={
+              <ProtectedRoute>
+                <ApiDetail />
               </ProtectedRoute>
             }
           />
