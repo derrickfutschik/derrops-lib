@@ -75,6 +75,24 @@ afterEach(() => {
 })
 ```
 
+## OpenSearch index names
+
+**Never construct OpenSearch index names manually.** All index naming conventions (prefix, environment suffix, tenant segment) are centralised in `src/config.ts`. Always use the provided config functions:
+
+```typescript
+import { config } from '@slaops/config'
+
+// OASpec indices — {prefix}--{env}--{tenantId}--oaspec--{entity}
+config['opensearch.oaspec.index']('t-abc123', 'spec')          // slaops--dev--t-abc123--oaspec--spec
+config['opensearch.oaspec.search-alias']('t-abc123', 'spec')   // slaops--dev--t-abc123--oaspec--spec--search
+
+// Legacy indices
+config['opensearch.index.openapi.apis']     // slaops-openapi-apis-dev
+config['opensearch.index.openapi.operations']
+```
+
+Do **not** define local `oaspecIndex()` or similar helpers in feature modules — they will miss the environment segment and diverge from the canonical naming.
+
 ## Commands
 
 ```bash
