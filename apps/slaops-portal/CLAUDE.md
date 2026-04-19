@@ -354,9 +354,10 @@ const ResponseTimeTrendsChart = createChartPanel('Response Time Trends')
 ### Building new components
 
 When building a component:
-1. Plan the component tree first — list the sub-components before writing code.
-2. Create each sub-component in its own file.
-3. If you find yourself writing a 100+ line component, stop and decompose before continuing.
+1. **Plan the component tree first** — before writing any JSX, list the sub-components and their responsibilities.
+2. **If you anticipate the component will exceed ~100 lines, name and sketch all sub-components first.** Do not start writing a large component and plan to split it later — decompose before you write.
+3. Create each sub-component in its own file.
+4. **If a component grows past ~150 lines during implementation, stop immediately and extract** — do not finish the large version and refactor later. The extraction cost is lowest when the context is still fresh.
 
 ### Naming
 
