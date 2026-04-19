@@ -25,11 +25,14 @@ This section covers the design of the OASpec domain: how APIs and their OpenAPI 
 |---|---|---|
 | [API & OASpec Data Model](./api-oaspec-data-model) | Draft | SQL entities for APIs and OASpec records; entity relationships; multi-tenancy |
 | [OpenSearch Indices](./opensearch-indices) | Draft | Five dedicated indices (spec, server, operation, parameter, model); versioning strategy |
+| [Spec Field Extraction](./spec-field-extraction) | Draft | How raw OpenAPI spec fields are parsed and transformed into the five index document types |
+| [Extractor Pattern](./extractor-pattern) | Draft | Common `ISpecExtractor<TDoc>` pattern — shared context, extraction result, and per-entity `ExtractionState[]` returned by the indexer |
 | [Indexing Pipeline](./indexing-pipeline) | Draft | Six-step sequential indexing flow; indexing stats; version lifecycle management |
 | [Search Design](./search-design) | Draft | Operation, server, API, parameter, and model search; host-shape matching; enrichment lookup |
 | [API Matching Algorithm](./api-matching) | Draft | Server resolution, base-path disambiguation, operation matching; host shape rules; AWS URL reference test cases |
 | [UI Design](./ui-design) | Draft | APIs tab; upload wizard; version browser; diff view; operation explorer |
 | [Version Strategies](./version-strategies) | Draft | Management modes (platform vs. private); platform catalogue; url_fetch strategy and future strategies |
+| [New API Wizard](./new-api-wizard) | Draft | `/apis/new` wizard: Redux slice design, URL auto-populate via `GET /apis/info`, component tree |
 
 ### Legacy / Reference
 
