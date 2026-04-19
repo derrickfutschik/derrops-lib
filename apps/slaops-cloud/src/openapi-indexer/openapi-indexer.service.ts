@@ -86,11 +86,6 @@ const METHOD_INITIAL: Record<string, string> = {
   OPTIONS: 'O',
 }
 
-function oaspecIndex(tenantId: string, entity: string): string {
-  const prefix = config['opensearch.prefix']
-  const env = config['opensearch.suffix']
-  return `${prefix}--${env}--${tenantId}--oaspec--${entity}`
-}
 
 function compactPath(path: string): string {
   return path
@@ -316,7 +311,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       }
 
       await this.opensearchClient.index({
-        index: oaspecIndex(tenantId, 'spec'),
+        index: config['opensearch.oaspec.index'](tenantId, 'spec'),
         id: specOpensearchId,
         body: specDoc,
         refresh: true,
@@ -357,7 +352,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       if (serverDocs.length > 0) {
         await this.opensearchClient.bulk({
           body: serverDocs.flatMap((doc) => [
-            { index: { _index: oaspecIndex(tenantId, 'server'), _id: doc.id } },
+            { index: { _index: config['opensearch.oaspec.index'](tenantId, 'server'), _id: doc.id } },
             doc,
           ]),
           refresh: true,
@@ -416,7 +411,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       if (operations.length > 0) {
         await this.opensearchClient.bulk({
           body: operations.flatMap((doc) => [
-            { index: { _index: oaspecIndex(tenantId, 'operation'), _id: doc.id } },
+            { index: { _index: config['opensearch.oaspec.index'](tenantId, 'operation'), _id: doc.id } },
             doc,
           ]),
           refresh: true,
@@ -518,7 +513,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       if (paramDocs.length > 0) {
         await this.opensearchClient.bulk({
           body: paramDocs.flatMap((doc) => [
-            { index: { _index: oaspecIndex(tenantId, 'param'), _id: doc.id } },
+            { index: { _index: config['opensearch.oaspec.index'](tenantId, 'param'), _id: doc.id } },
             doc,
           ]),
           refresh: true,
@@ -579,7 +574,7 @@ export class OpenApiIndexerService implements OnModuleInit {
       if (docsToIndex.length > 0) {
         await this.opensearchClient.bulk({
           body: docsToIndex.flatMap((doc) => [
-            { index: { _index: oaspecIndex(tenantId, 'model'), _id: doc.id } },
+            { index: { _index: config['opensearch.oaspec.index'](tenantId, 'model'), _id: doc.id } },
             doc,
           ]),
           refresh: true,
@@ -614,7 +609,7 @@ export class OpenApiIndexerService implements OnModuleInit {
 
       // Back-fill spec doc with final counts
       await this.opensearchClient.update({
-        index: oaspecIndex(tenantId, 'spec'),
+        index: config['opensearch.oaspec.index'](tenantId, 'spec'),
         id: specOpensearchId,
         body: {
           doc: {
@@ -653,7 +648,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     offset: number,
   ): Promise<{ total: number; hits: CatalogueHit[] }> {
     const globalTenantId = config['opensearch.oaspec.global-tenant-id']
-    const index = oaspecIndex(globalTenantId, 'spec')
+    const index = config['opensearch.oaspec.index'](globalTenantId, 'spec')
 
     // multi_match is a raw OpenSearch query not covered by opensearch-ts's typed query
     // builder; cast the query portion to `never` to keep the rest of the body typed.
@@ -714,7 +709,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     apiId: string,
   ): Promise<void> {
     await this.opensearchClient.updateByQuery({
-      index: oaspecIndex(tenantId, entity),
+      index: config['opensearch.oaspec.index'](tenantId, entity),
       body: {
         query: {
           bool: {
@@ -737,7 +732,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     const entities = ['spec', 'server', 'operation', 'param', 'model']
 
     // Find versions ordered by indexedAt desc from spec index
-    const specIndex = oaspecIndex(tenantId, 'spec')
+    const specIndex = config['opensearch.oaspec.index'](tenantId, 'spec')
     const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({
       body: {
         query: { term: { apiId } } as never,
@@ -755,7 +750,7 @@ export class OpenApiIndexerService implements OnModuleInit {
     let deleted = 0
     for (const entity of entities) {
       const result = await this.opensearchClient.deleteByQuery({
-        index: oaspecIndex(tenantId, entity),
+        index: config['opensearch.oaspec.index'](tenantId, entity),
         body: {
           query: {
             bool: {

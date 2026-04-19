@@ -8,13 +8,6 @@ import { ALL_INGEST_PIPELINES } from './resource/pipelines'
 const OASPEC_ENTITIES = ['spec', 'server', 'operation', 'param', 'model'] as const
 type OaspecEntity = (typeof OASPEC_ENTITIES)[number]
 
-function oaspecIndex(tenantId: string, entity: OaspecEntity): string {
-  return `slaops--${tenantId}--oaspec--${entity}`
-}
-
-function oaspecSearchAlias(tenantId: string, entity: OaspecEntity): string {
-  return `slaops--${tenantId}--oaspec--${entity}--search`
-}
 
 @Injectable()
 export class OpenSearchService {
@@ -95,8 +88,8 @@ export class OpenSearchService {
     const actions = OASPEC_ENTITIES.flatMap((entity) => [
       {
         add: {
-          index: oaspecIndex(globalTenantId, entity),
-          alias: oaspecSearchAlias(tenantId, entity),
+          index: config['opensearch.oaspec.index'](globalTenantId, entity),
+          alias: config['opensearch.oaspec.search-alias'](tenantId, entity),
           indices_boost: 1.0,
         },
       },
@@ -115,7 +108,7 @@ export class OpenSearchService {
     const tenantBoost = config['opensearch.oaspec.tenant-boost']
 
     for (const entity of OASPEC_ENTITIES) {
-      const privateIndex = oaspecIndex(tenantId, entity)
+      const privateIndex = config['opensearch.oaspec.index'](tenantId, entity)
       const exists = await this.client.indices.exists({ index: privateIndex })
       if (!exists.body) {
         await this.client.indices.create({ index: privateIndex })
@@ -125,15 +118,15 @@ export class OpenSearchService {
     const actions = OASPEC_ENTITIES.flatMap((entity) => [
       {
         add: {
-          index: oaspecIndex(tenantId, entity),
-          alias: oaspecSearchAlias(tenantId, entity),
+          index: config['opensearch.oaspec.index'](tenantId, entity),
+          alias: config['opensearch.oaspec.search-alias'](tenantId, entity),
           indices_boost: tenantBoost,
         },
       },
       {
         add: {
-          index: oaspecIndex(globalTenantId, entity),
-          alias: oaspecSearchAlias(tenantId, entity),
+          index: config['opensearch.oaspec.index'](globalTenantId, entity),
+          alias: config['opensearch.oaspec.search-alias'](tenantId, entity),
           indices_boost: 1.0,
         },
       },
@@ -151,7 +144,7 @@ export class OpenSearchService {
     const globalTenantId = config['opensearch.oaspec.global-tenant-id']
 
     for (const entity of OASPEC_ENTITIES) {
-      const index = oaspecIndex(globalTenantId, entity)
+      const index = config['opensearch.oaspec.index'](globalTenantId, entity)
       const exists = await this.client.indices.exists({ index })
       if (!exists.body) {
         this.logger.log(`Creating global tier index: ${index}`)

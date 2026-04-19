@@ -5,9 +5,6 @@ import { config } from '@slaops/config'
 import { Repository } from 'typeorm'
 import { ApiEntity } from './entities/api.entity'
 
-function oaspecIndex(tenantId: string, entity: string): string {
-  return `slaops--${tenantId}--oaspec--${entity}`
-}
 
 /**
  * Nightly job that refreshes cached OASpec stats on platform-managed api rows
@@ -28,7 +25,7 @@ export class PlatformStatsSyncScheduler {
 
   async syncPlatformManagedStats(): Promise<void> {
     const globalTenantId = config['opensearch.oaspec.global-tenant-id']
-    const specIndex = oaspecIndex(globalTenantId, 'spec')
+    const specIndex = config['opensearch.oaspec.index'](globalTenantId, 'spec')
 
     const platformApis = await this.repo.find({
       where: { managementMode: 'platform' },
