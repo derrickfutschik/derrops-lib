@@ -3,6 +3,7 @@ import { useAppDispatch } from '@/store/hooks'
 import { cloudAxios, cloudApiConfig } from '@/lib/cloud-api'
 import {
   setInfoFetchStatus,
+  setInfoFetchUrl,
   setInfoFetchResult,
   type OpenApiInfoResult,
 } from '@/store/newApiWizardSlice'
@@ -13,6 +14,7 @@ export function useApiInfo() {
   const fetchInfo = useCallback(
     async (url: string) => {
       dispatch(setInfoFetchStatus('loading'))
+      dispatch(setInfoFetchUrl(url))
       dispatch(setInfoFetchResult(null))
       try {
         const { data } = await cloudAxios.get<OpenApiInfoResult>(
@@ -30,6 +32,7 @@ export function useApiInfo() {
 
   const clearInfo = useCallback(() => {
     dispatch(setInfoFetchStatus('idle'))
+    dispatch(setInfoFetchUrl(null))
     dispatch(setInfoFetchResult(null))
   }, [dispatch])
 

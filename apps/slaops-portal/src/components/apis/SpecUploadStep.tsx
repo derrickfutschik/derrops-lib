@@ -3,17 +3,19 @@ import { SpecUploadCard } from './SpecUploadCard'
 
 interface SpecUploadStepProps {
   apiId: string
+  specUrl?: string | null
   specContent?: string | null
   onSkip: () => void
   onViewApi: () => void
 }
 
-export function SpecUploadStep({ apiId, specContent, onSkip, onViewApi }: SpecUploadStepProps) {
+export function SpecUploadStep({ apiId, specUrl, specContent, onSkip, onViewApi }: SpecUploadStepProps) {
   return (
     <div className="space-y-6">
       <SpecUploadCard
         apiId={apiId}
         title="Upload initial spec"
+        initialUrl={specUrl ?? undefined}
         initialContent={specContent ?? undefined}
       />
       <div className="flex gap-3">

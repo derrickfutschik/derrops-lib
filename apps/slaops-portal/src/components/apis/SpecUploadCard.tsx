@@ -13,10 +13,11 @@ import { useQueryClient } from '@tanstack/react-query'
 interface SpecUploadCardProps {
   apiId: string
   title?: string
+  initialUrl?: string
   initialContent?: string
 }
 
-export function SpecUploadCard({ apiId, title = 'Upload Spec', initialContent }: SpecUploadCardProps) {
+export function SpecUploadCard({ apiId, title = 'Upload Spec', initialUrl, initialContent }: SpecUploadCardProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const getUploadUrl = useUploadUrl()
@@ -63,7 +64,7 @@ export function SpecUploadCard({ apiId, title = 'Upload Spec', initialContent }:
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Tabs defaultValue={initialContent ? 'paste' : 'upload'}>
+        <Tabs defaultValue={initialUrl ? 'url' : initialContent ? 'paste' : 'upload'}>
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="upload">Upload file</TabsTrigger>
             <TabsTrigger value="paste">Paste content</TabsTrigger>
@@ -83,7 +84,12 @@ export function SpecUploadCard({ apiId, title = 'Upload Spec', initialContent }:
           </TabsContent>
 
           <TabsContent value="url" className="mt-3">
-            <SpecUploadUrlTab isPending={isPending} onSubmit={handleUploadAndIndex} />
+            <SpecUploadUrlTab
+              isPending={isPending}
+              initialUrl={initialUrl}
+              initialContent={initialContent}
+              onSubmit={handleUploadAndIndex}
+            />
           </TabsContent>
         </Tabs>
 

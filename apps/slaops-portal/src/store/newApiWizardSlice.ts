@@ -17,6 +17,7 @@ interface NewApiWizardState {
   path: 'catalogue' | 'private' | null
   selectedCatalogueHit: CatalogueHit | null
   infoFetchStatus: InfoFetchStatus
+  infoFetchUrl: string | null
   infoFetchResult: OpenApiInfoResult | null
   lastAutoPopulatedName: string | null
   lastAutoPopulatedDescription: string | null
@@ -28,6 +29,7 @@ const initialState: NewApiWizardState = {
   path: null,
   selectedCatalogueHit: null,
   infoFetchStatus: 'idle',
+  infoFetchUrl: null,
   infoFetchResult: null,
   lastAutoPopulatedName: null,
   lastAutoPopulatedDescription: null,
@@ -49,6 +51,9 @@ const newApiWizardSlice = createSlice({
     },
     setInfoFetchStatus(state, action: PayloadAction<InfoFetchStatus>) {
       state.infoFetchStatus = action.payload
+    },
+    setInfoFetchUrl(state, action: PayloadAction<string | null>) {
+      state.infoFetchUrl = action.payload
     },
     setInfoFetchResult(state, action: PayloadAction<OpenApiInfoResult | null>) {
       state.infoFetchResult = action.payload
@@ -74,6 +79,7 @@ export const {
   setPath,
   setSelectedCatalogueHit,
   setInfoFetchStatus,
+  setInfoFetchUrl,
   setInfoFetchResult,
   setLastAutoPopulated,
   setCreatedApiId,
@@ -96,6 +102,11 @@ export const {
   },
   setInfoFetchStatus: {
     description: "Sets the status of the GET /apis/info fetch: idle | loading | success | error.",
+    area: ActionArea.UI,
+    group: ActionGroup.NewApiWizard,
+  },
+  setInfoFetchUrl: {
+    description: 'Stores the URL that was used for the GET /apis/info fetch.',
     area: ActionArea.UI,
     group: ActionGroup.NewApiWizard,
   },
@@ -129,6 +140,7 @@ export const selectWizardPath = (state: RootState) => state.newApiWizard.path
 export const selectSelectedCatalogueHit = (state: RootState) =>
   state.newApiWizard.selectedCatalogueHit
 export const selectInfoFetchStatus = (state: RootState) => state.newApiWizard.infoFetchStatus
+export const selectInfoFetchUrl = (state: RootState) => state.newApiWizard.infoFetchUrl
 export const selectInfoFetchResult = (state: RootState) => state.newApiWizard.infoFetchResult
 export const selectLastAutoPopulated = (state: RootState) => ({
   name: state.newApiWizard.lastAutoPopulatedName,

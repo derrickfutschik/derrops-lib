@@ -93,6 +93,15 @@ export const makeConfig = (cfg?: ConfigInput) => {
     /** Number of spec versions to retain in OpenSearch per API (older versions are pruned after indexing) */
     'opensearch.oaspec.version-retention': 2,
 
+    /** Maximum number of operation documents indexed per spec run (excess truncated) */
+    'opensearch.oaspec.max-operations-per-spec': 2000,
+
+    /** Maximum number of parameter documents indexed per spec run (excess truncated) */
+    'opensearch.oaspec.max-params-per-spec': 5000,
+
+    /** Maximum number of model documents indexed per spec run (excess truncated) */
+    'opensearch.oaspec.max-models-per-spec': 1000,
+
     /** Relevance boost applied to tenant private index documents in global search results */
     'opensearch.oaspec.tenant-boost': 2.0,
 

@@ -16,6 +16,7 @@ import {
   selectSelectedCatalogueHit,
   selectCreatedApiId,
   selectSpecContent,
+  selectInfoFetchUrl,
 } from '@/store/newApiWizardSlice'
 import { useToast } from '@/components/ui/use-toast'
 import { PathSelector } from '@/components/apis/PathSelector'
@@ -58,6 +59,7 @@ const ApisNew = () => {
   const selectedHit = useAppSelector(selectSelectedCatalogueHit)
   const createdApiId = useAppSelector(selectCreatedApiId)
   const specContent = useAppSelector(selectSpecContent)
+  const specUrl = useAppSelector(selectInfoFetchUrl)
 
   const createApi = useCreateApi()
   const adoptApi = useAdoptApi()
@@ -167,6 +169,7 @@ const ApisNew = () => {
         {step === 3 && createdApiId && (
           <SpecUploadStep
             apiId={createdApiId}
+            specUrl={specUrl}
             specContent={specContent}
             onSkip={() => navigate(`/apis/${createdApiId}`)}
             onViewApi={() => navigate(`/apis/${createdApiId}`)}

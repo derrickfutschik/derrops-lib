@@ -11,13 +11,15 @@ type FetchStatus = 'idle' | 'loading' | 'success' | 'error'
 
 interface SpecUploadUrlTabProps {
   isPending: boolean
+  initialUrl?: string
+  initialContent?: string
   onSubmit: (content: string, filename: string) => Promise<void>
 }
 
-export function SpecUploadUrlTab({ isPending, onSubmit }: SpecUploadUrlTabProps) {
-  const [url, setUrl] = useState('')
-  const [specContent, setSpecContent] = useState('')
-  const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
+export function SpecUploadUrlTab({ isPending, initialUrl, initialContent, onSubmit }: SpecUploadUrlTabProps) {
+  const [url, setUrl] = useState(initialUrl ?? '')
+  const [specContent, setSpecContent] = useState(initialContent ?? '')
+  const [fetchStatus, setFetchStatus] = useState<FetchStatus>(initialContent ? 'success' : 'idle')
 
   const debouncedUrl = useDebounce(url, 500)
 
@@ -35,6 +37,9 @@ export function SpecUploadUrlTab({ isPending, onSubmit }: SpecUploadUrlTabProps)
       setSpecContent('')
       return
     }
+
+    // Skip fetch if the URL matches the pre-filled initial content (already loaded)
+    if (debouncedUrl === initialUrl && initialContent) return
 
     let cancelled = false
 
