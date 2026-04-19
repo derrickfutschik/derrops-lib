@@ -123,6 +123,7 @@ sidebar_position: {integer — check neighbouring files}
 created_at: {YYYY-MM-DD}
 updated_at: {YYYY-MM-DD}
 implemented_at: ~          # Set to YYYY-MM-DD when shipped; ~ means not yet implemented
+implements: ~              # Set to a YAML list of monorepo-root-relative file paths when implemented
 author: {GitHub handle or name}
 status: draft              # draft | proposed | accepted | implemented | superseded
 tags:
@@ -142,6 +143,7 @@ tags:
 | `created_at` | Yes | ISO date `YYYY-MM-DD` — set once, never change |
 | `updated_at` | Yes | ISO date `YYYY-MM-DD` — update on every meaningful edit |
 | `implemented_at` | Yes | ISO date `YYYY-MM-DD` or `~` (YAML null) if not yet shipped |
+| `implements` | No | YAML list of monorepo-root-relative paths to implementing files, or `~` if not yet implemented |
 | `author` | Yes | GitHub handle or name of the primary author |
 | `status` | Yes | See lifecycle below |
 | `tags` | Yes | At least one topic tag + exactly one domain tag from `tags.yml` |
