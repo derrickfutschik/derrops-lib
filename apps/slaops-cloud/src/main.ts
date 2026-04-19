@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { config } from '@slaops/config'
 import { AppModule } from './app.module'
+import { HttpLoggerMiddleware } from './common/http-logger.middleware'
 import { VerboseExceptionFilter } from './common/verbose-exception.filter'
 import { StrictStringPipe } from './validation/strict-string.pipe'
 import { OpenSearchMigrateCommand } from './opensearch/opensearch.migrate.command'
@@ -31,6 +32,10 @@ async function bootstrap() {
     res.setHeader('Access-Control-Allow-Private-Network', 'true')
     next()
   })
+
+  // HTTP request/response logging middleware
+  const httpLogger = new HttpLoggerMiddleware()
+  app.use(httpLogger.use.bind(httpLogger))
 
   // Global exception filter — shows full stack traces when app.error.verbose is enabled
   app.useGlobalFilters(new VerboseExceptionFilter())
