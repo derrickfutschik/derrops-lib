@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,13 +10,22 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { User } from '../user/user.dto'
 import { ApiService } from './api.service'
 import { AdoptApiDto } from './dto/adopt-api.dto'
 import { CreateApiDto } from './dto/create-api.dto'
+import { OpenApiInfoResultDto } from './dto/open-api-info-result.dto'
 import { UpdateApiDto } from './dto/update-api.dto'
 import { ApiEntity } from './entities/api.entity'
 
@@ -24,6 +34,23 @@ import { ApiEntity } from './entities/api.entity'
 @Controller('apis')
 export class ApiController {
   constructor(private readonly apiService: ApiService) {}
+
+  @Get('info')
+  @ApiOperation({
+    summary: 'Fetch the info block from a remote OpenAPI document',
+    description:
+      'Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) ' +
+      'and returns the info.title, info.description, and info.version fields.',
+  })
+  @ApiQuery({ name: 'openapi_doc_url', required: true, description: 'URL of the remote OpenAPI document' })
+  @ApiResponse({ status: 200, type: OpenApiInfoResultDto })
+  @ApiResponse({ status: 400, description: 'Missing or invalid URL, or private/loopback address' })
+  @ApiResponse({ status: 422, description: 'Could not parse the document or extract the info block' })
+  @ApiResponse({ status: 502, description: 'Remote URL could not be reached' })
+  getInfo(@Query('openapi_doc_url') url: string): Promise<OpenApiInfoResultDto> {
+    if (!url) throw new BadRequestException('openapi_doc_url is required')
+    return this.apiService.getInfo(url)
+  }
 
   @Get()
   @ApiOperation({ summary: "List the tenant's APIs" })

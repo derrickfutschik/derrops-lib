@@ -202,6 +202,53 @@
         ]
       }
     },
+    "/apis/info": {
+      "get": {
+        "description": "Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) and returns the info.title, info.description, and info.version fields.",
+        "operationId": "ApiController_getInfo",
+        "parameters": [
+          {
+            "name": "openapi_doc_url",
+            "required": true,
+            "in": "query",
+            "description": "URL of the remote OpenAPI document",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenApiInfoResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid URL, or private/loopback address"
+          },
+          "422": {
+            "description": "Could not parse the document or extract the info block"
+          },
+          "502": {
+            "description": "Remote URL could not be reached"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch the info block from a remote OpenAPI document",
+        "tags": [
+          "API"
+        ]
+      }
+    },
     "/apis": {
       "get": {
         "operationId": "ApiController_findAll",
@@ -1874,6 +1921,26 @@
             "example": 80
           }
         }
+      },
+      "OpenApiInfoResultDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "OpenAPI info.title"
+          },
+          "description": {
+            "type": "string",
+            "description": "OpenAPI info.description"
+          },
+          "version": {
+            "type": "string",
+            "description": "OpenAPI info.version"
+          }
+        },
+        "required": [
+          "title"
+        ]
       },
       "OaSpecRef": {
         "type": "object",
