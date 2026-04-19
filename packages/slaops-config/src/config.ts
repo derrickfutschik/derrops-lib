@@ -54,10 +54,10 @@ export const makeConfig = (cfg?: ConfigInput) => {
   const env = (input.NODE_ENV ?? 'dev').toLowerCase()
   const globalTenantId = 't-glbl0000'
 
-  const opensearchPrefix = input.OPENSEARCH_INDEX_PREFIX ?? `${app}`.toLowerCase()
+  const opensearchPrefix = input.OPENSEARCH_INDEX_PREFIX ?? `${env}--${app}`.toLowerCase()
   const opensearchSuffix = input.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
 
-  const opensearchName = (entity: string) =>
+  const opensearchIndexName = (entity: string) =>
     `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
 
   const logBucketName = (tenantId: string) =>
@@ -197,22 +197,34 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'opensearch.suffix': opensearchSuffix,
 
     /** Index of the OpenAPI APIs */
-    'opensearch.index.openapi.apis': opensearchName('openapi-apis'),
+    'opensearch.index.openapi.apis': opensearchIndexName('openapi-apis'),
 
     /** Index of the OpenAPI Operations */
-    'opensearch.index.openapi.operations': opensearchName('openapi-operations'),
+    'opensearch.index.openapi.operations': opensearchIndexName('openapi-operations'),
 
     /** Template of the OpenAPI APIs */
-    'opensearch.template.openapi.apis': opensearchName('openapi-apis'),
+    'opensearch.template.openapi.apis': opensearchIndexName('openapi-apis'),
 
     /** Template of the OpenAPI Operations */
-    'opensearch.template.openapi.operations': opensearchName('openapi-operations'),
+    'opensearch.template.openapi.operations': opensearchIndexName('openapi-operations'),
 
     /** Pipeline of the OpenAPI APIs */
-    'opensearch.pipeline.openapi.apis': opensearchName('openapi-apis'),
+    'opensearch.pipeline.openapi.apis': opensearchIndexName('openapi-apis'),
 
     /** Pipeline of the OpenAPI Operations */
-    'opensearch.pipeline.openapi.operations': opensearchName('openapi-operations'),
+    'opensearch.pipeline.openapi.operations': opensearchIndexName('openapi-operations'),
+
+    /** Returns the OASpec index name for a given tenant and entity type.
+     *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}
+     *  Example: slaops--dev--t-abc123--oaspec--spec */
+    'opensearch.oaspec.index': (tenantId: string, entity: string) =>
+      `${opensearchPrefix}--${opensearchSuffix}--${tenantId}--oaspec--${entity}`,
+
+    /** Returns the OASpec search alias name for a given tenant and entity type.
+     *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}--search
+     *  Example: slaops--dev--t-abc123--oaspec--spec--search */
+    'opensearch.oaspec.search-alias': (tenantId: string, entity: string) =>
+      `${opensearchPrefix}--${opensearchSuffix}--${tenantId}--oaspec--${entity}--search`,
 
     'app.pagination.default.size': 20,
 
