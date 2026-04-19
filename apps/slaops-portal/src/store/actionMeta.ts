@@ -37,6 +37,8 @@ export enum ActionGroup {
   TableColumns = 'table-columns',
   // apis area
   Apis = 'apis',
+  // new api wizard
+  NewApiWizard = 'new-api-wizard',
 }
 
 // ---------------------------------------------------------------------------

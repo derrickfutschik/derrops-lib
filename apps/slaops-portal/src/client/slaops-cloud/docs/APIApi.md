@@ -8,6 +8,7 @@ All URIs are relative to *http://localhost*
 |[**apiControllerCreate**](#apicontrollercreate) | **POST** /apis | Create a new API|
 |[**apiControllerFindAll**](#apicontrollerfindall) | **GET** /apis | List the tenant\&#39;s APIs|
 |[**apiControllerFindOne**](#apicontrollerfindone) | **GET** /apis/{id} | Get a single API|
+|[**apiControllerGetInfo**](#apicontrollergetinfo) | **GET** /apis/info | Fetch the info block from a remote OpenAPI document|
 |[**apiControllerRemove**](#apicontrollerremove) | **DELETE** /apis/{id} | Delete an API|
 |[**apiControllerUpdate**](#apicontrollerupdate) | **PATCH** /apis/{id} | Update an API (name, description, externalUrl, fetch strategy)|
 
@@ -204,6 +205,60 @@ const { status, data } = await apiInstance.apiControllerFindOne(
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 |**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **apiControllerGetInfo**
+> OpenApiInfoResultDto apiControllerGetInfo()
+
+Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) and returns the info.title, info.description, and info.version fields.
+
+### Example
+
+```typescript
+import {
+    APIApi,
+    Configuration
+} from './api';
+
+const configuration = new Configuration();
+const apiInstance = new APIApi(configuration);
+
+let openapiDocUrl: string; //URL of the remote OpenAPI document (default to undefined)
+
+const { status, data } = await apiInstance.apiControllerGetInfo(
+    openapiDocUrl
+);
+```
+
+### Parameters
+
+|Name | Type | Description  | Notes|
+|------------- | ------------- | ------------- | -------------|
+| **openapiDocUrl** | [**string**] | URL of the remote OpenAPI document | defaults to undefined|
+
+
+### Return type
+
+**OpenApiInfoResultDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+|**200** |  |  -  |
+|**400** | Missing or invalid URL, or private/loopback address |  -  |
+|**422** | Could not parse the document or extract the info block |  -  |
+|**502** | Remote URL could not be reached |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

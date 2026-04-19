@@ -28,6 +28,8 @@ import type { ApiEntity } from '../models';
 // @ts-ignore
 import type { CreateApiDto } from '../models';
 // @ts-ignore
+import type { OpenApiInfoResultDto } from '../models';
+// @ts-ignore
 import type { UpdateApiDto } from '../models';
 /**
  * APIApi - axios parameter creator
@@ -185,6 +187,47 @@ export const APIApiAxiosParamCreator = function (configuration?: Configuration) 
             };
         },
         /**
+         * Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) and returns the info.title, info.description, and info.version fields.
+         * @summary Fetch the info block from a remote OpenAPI document
+         * @param {string} openapiDocUrl URL of the remote OpenAPI document
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiControllerGetInfo: async (openapiDocUrl: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'openapiDocUrl' is not null or undefined
+            assertParamExists('apiControllerGetInfo', 'openapiDocUrl', openapiDocUrl)
+            const localVarPath = `/apis/info`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (openapiDocUrl !== undefined) {
+                localVarQueryParameter['openapi_doc_url'] = openapiDocUrl;
+            }
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @summary Delete an API
          * @param {string} id 
@@ -325,6 +368,19 @@ export const APIApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) and returns the info.title, info.description, and info.version fields.
+         * @summary Fetch the info block from a remote OpenAPI document
+         * @param {string} openapiDocUrl URL of the remote OpenAPI document
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async apiControllerGetInfo(openapiDocUrl: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<OpenApiInfoResultDto>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiControllerGetInfo(openapiDocUrl, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['APIApi.apiControllerGetInfo']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @summary Delete an API
          * @param {string} id 
@@ -400,6 +456,16 @@ export const APIApiFactory = function (configuration?: Configuration, basePath?:
             return localVarFp.apiControllerFindOne(id, options).then((request) => request(axios, basePath));
         },
         /**
+         * Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) and returns the info.title, info.description, and info.version fields.
+         * @summary Fetch the info block from a remote OpenAPI document
+         * @param {string} openapiDocUrl URL of the remote OpenAPI document
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiControllerGetInfo(openapiDocUrl: string, options?: RawAxiosRequestConfig): AxiosPromise<OpenApiInfoResultDto> {
+            return localVarFp.apiControllerGetInfo(openapiDocUrl, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @summary Delete an API
          * @param {string} id 
@@ -468,6 +534,17 @@ export class APIApi extends BaseAPI {
      */
     public apiControllerFindOne(id: string, options?: RawAxiosRequestConfig) {
         return APIApiFp(this.configuration).apiControllerFindOne(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) and returns the info.title, info.description, and info.version fields.
+     * @summary Fetch the info block from a remote OpenAPI document
+     * @param {string} openapiDocUrl URL of the remote OpenAPI document
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public apiControllerGetInfo(openapiDocUrl: string, options?: RawAxiosRequestConfig) {
+        return APIApiFp(this.configuration).apiControllerGetInfo(openapiDocUrl, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

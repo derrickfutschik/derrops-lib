@@ -19,6 +19,7 @@ export * from './create-relay-instance-dto';
 export * from './create-service-dto';
 export * from './index-stats-response-dto';
 export * from './oa-spec-ref';
+export * from './open-api-info-result-dto';
 export * from './open-api-search-hit';
 export * from './open-api-search-response-dto';
 export * from './provider-list-response-dto';

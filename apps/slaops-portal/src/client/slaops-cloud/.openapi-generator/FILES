@@ -39,6 +39,7 @@ docs/IndexStatsResponseDto.md
 docs/OaSpecRef.md
 docs/OpenAPIIndexerApi.md
 docs/OpenAPISearchApi.md
+docs/OpenApiInfoResultDto.md
 docs/OpenApiSearchHit.md
 docs/OpenApiSearchResponseDto.md
 docs/ProviderListResponseDto.md
@@ -78,6 +79,7 @@ models/create-service-dto.ts
 models/index-stats-response-dto.ts
 models/index.ts
 models/oa-spec-ref.ts
+models/open-api-info-result-dto.ts
 models/open-api-search-hit.ts
 models/open-api-search-response-dto.ts
 models/provider-list-response-dto.ts
