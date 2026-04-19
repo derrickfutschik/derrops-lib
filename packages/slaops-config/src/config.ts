@@ -102,6 +102,9 @@ export const makeConfig = (cfg?: ConfigInput) => {
     /** HTTP fetch timeout in milliseconds for the url_fetch version strategy */
     'oaspec.url-fetch.timeout-ms': 30_000,
 
+    /** HTTP fetch timeout in milliseconds for the GET /apis/info proxy endpoint */
+    'api.info.fetch.timeout-ms': 10_000,
+
     /** Consecutive fetch failures before reducing retry cadence to weekly */
     'oaspec.url-fetch.backoff-threshold': 3,
 
