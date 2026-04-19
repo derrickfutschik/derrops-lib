@@ -45,6 +45,10 @@ Field names follow the convention of the layer they belong to:
 
 TypeORM entities use camelCase properties with explicit `@Column({ name: 'snake_case' })` to map to SQL column names. OpenSearch document interfaces use camelCase to match the field names stored in the index.
 
+### Design doc references
+
+Service and controller files that implement a formal design document carry a `@designDoc` tag in their file-level JSDoc block. When editing one of these files, check the linked design doc and update it if the change alters publicly observable behaviour. See `.claude/rules/design-sync.md`.
+
 ### Singular Naming
 
 Use singular names for modules, folders, files, database tables, and API routes:

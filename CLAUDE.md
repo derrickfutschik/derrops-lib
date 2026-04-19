@@ -129,13 +129,17 @@ Every configurable value (limits, sizes, timeouts, names, prefixes) must be a na
 
 Use DynamoDB **only** for ultra-latency-sensitive hot paths (e.g. OASpec lookups during log enrichment). Default to Aurora Serverless v2 (PostgreSQL) for everything else.
 
+### Design-Code Sync
+
+When a code file implements a formal design document, add a `@designDoc` tag in its file-level JSDoc block referencing the design doc path (monorepo-root-relative). When editing a tagged file, check whether the change requires updating the linked design doc(s). See `.claude/rules/design-sync.md` for the full convention.
+
 ## Development Workflow
 
 Follow these steps for any feature, fix, or significant change:
 
 1. **Design** — write a design doc in `apps/slaops-docs/internal/platform/design/`
 2. **Plan** — store the implementation plan in `apps/slaops-docs/plan/` (`.md`, Docusaurus format); cross-reference the design
-3. **Implement** — follow the plan; keep developer notes in `.md` files alongside code
+3. **Implement** — follow the plan; add `@designDoc` tags to implementing files and `implements:` frontmatter to the design doc (see `.claude/rules/design-sync.md`); set `status: implemented` once shipped
 4. **Document** — add/update public docs in `apps/slaops-docs/public/docs/`
 5. **Commit** — Conventional Commits format (see [CONVENTIONS.md](CONVENTIONS.md))
 6. **Release** — tag `vX.Y.Z`, add `apps/slaops-docs/changelog/source/X.Y.Z.md`
