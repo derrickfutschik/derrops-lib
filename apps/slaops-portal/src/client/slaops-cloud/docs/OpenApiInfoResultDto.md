@@ -8,6 +8,7 @@ Name | Type | Description | Notes
 **title** | **string** | OpenAPI info.title | [default to undefined]
 **description** | **string** | OpenAPI info.description | [optional] [default to undefined]
 **version** | **string** | OpenAPI info.version | [optional] [default to undefined]
+**rawContent** | **string** | Raw YAML/JSON spec content fetched from the URL | [default to undefined]
 
 ## Example
 
@@ -18,6 +19,7 @@ const instance: OpenApiInfoResultDto = {
     title,
     description,
     version,
+    rawContent,
 };
 ```
 

@@ -27,5 +27,9 @@ export interface OpenApiInfoResultDto {
      * OpenAPI info.version
      */
     'version'?: string;
+    /**
+     * Raw YAML/JSON spec content fetched from the URL
+     */
+    'rawContent': string;
 }
 

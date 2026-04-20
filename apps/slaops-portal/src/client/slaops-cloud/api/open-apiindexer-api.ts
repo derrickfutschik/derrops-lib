@@ -28,6 +28,307 @@ export const OpenAPIIndexerApiAxiosParamCreator = function (configuration?: Conf
     return {
         /**
          * 
+         * @summary Paginated models for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetModelsOrderEnum} [order] 
+         * @param {string} [q] 
+         * @param {string} [usedIn] request | response
+         * @param {string} [operationId] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetModels: async (apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetModelsOrderEnum, q?: string, usedIn?: string, operationId?: string, sort?: string, version?: any, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'apiId' is not null or undefined
+            assertParamExists('openApiIndexerControllerGetModels', 'apiId', apiId)
+            const localVarPath = `/openapi/api/{apiId}/models`
+                .replace(`{${"apiId"}}`, encodeURIComponent(String(apiId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (from !== undefined) {
+                localVarQueryParameter['from'] = from;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
+
+            if (q !== undefined) {
+                localVarQueryParameter['q'] = q;
+            }
+
+            if (usedIn !== undefined) {
+                localVarQueryParameter['usedIn'] = usedIn;
+            }
+
+            if (operationId !== undefined) {
+                localVarQueryParameter['operationId'] = operationId;
+            }
+
+            if (sort !== undefined) {
+                localVarQueryParameter['sort'] = sort;
+            }
+
+            if (version !== undefined) {
+                for (const [key, value] of Object.entries(version)) {
+                    localVarQueryParameter[key] = value;
+                }
+            }
+
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Paginated operations for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetOperationsOrderEnum} [order] 
+         * @param {string} [q] Free-text search
+         * @param {string} [method] Comma-separated HTTP method filter
+         * @param {string} [tag] Tag filter
+         * @param {string} [sort] 
+         * @param {any} [version] Specific version or \&quot;latest\&quot; (default)
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetOperations: async (apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetOperationsOrderEnum, q?: string, method?: string, tag?: string, sort?: string, version?: any, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'apiId' is not null or undefined
+            assertParamExists('openApiIndexerControllerGetOperations', 'apiId', apiId)
+            const localVarPath = `/openapi/api/{apiId}/operations`
+                .replace(`{${"apiId"}}`, encodeURIComponent(String(apiId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (from !== undefined) {
+                localVarQueryParameter['from'] = from;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
+
+            if (q !== undefined) {
+                localVarQueryParameter['q'] = q;
+            }
+
+            if (method !== undefined) {
+                localVarQueryParameter['method'] = method;
+            }
+
+            if (tag !== undefined) {
+                localVarQueryParameter['tag'] = tag;
+            }
+
+            if (sort !== undefined) {
+                localVarQueryParameter['sort'] = sort;
+            }
+
+            if (version !== undefined) {
+                for (const [key, value] of Object.entries(version)) {
+                    localVarQueryParameter[key] = value;
+                }
+            }
+
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Paginated parameters for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetParametersOrderEnum} [order] 
+         * @param {string} [q] 
+         * @param {string} [location] path | query | header | cookie
+         * @param {string} [operationId] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetParameters: async (apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetParametersOrderEnum, q?: string, location?: string, operationId?: string, sort?: string, version?: any, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'apiId' is not null or undefined
+            assertParamExists('openApiIndexerControllerGetParameters', 'apiId', apiId)
+            const localVarPath = `/openapi/api/{apiId}/parameters`
+                .replace(`{${"apiId"}}`, encodeURIComponent(String(apiId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (from !== undefined) {
+                localVarQueryParameter['from'] = from;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
+
+            if (q !== undefined) {
+                localVarQueryParameter['q'] = q;
+            }
+
+            if (location !== undefined) {
+                localVarQueryParameter['location'] = location;
+            }
+
+            if (operationId !== undefined) {
+                localVarQueryParameter['operationId'] = operationId;
+            }
+
+            if (sort !== undefined) {
+                localVarQueryParameter['sort'] = sort;
+            }
+
+            if (version !== undefined) {
+                for (const [key, value] of Object.entries(version)) {
+                    localVarQueryParameter[key] = value;
+                }
+            }
+
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Paginated servers for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetServersOrderEnum} [order] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetServers: async (apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetServersOrderEnum, sort?: string, version?: any, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'apiId' is not null or undefined
+            assertParamExists('openApiIndexerControllerGetServers', 'apiId', apiId)
+            const localVarPath = `/openapi/api/{apiId}/servers`
+                .replace(`{${"apiId"}}`, encodeURIComponent(String(apiId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (from !== undefined) {
+                localVarQueryParameter['from'] = from;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
+
+            if (sort !== undefined) {
+                localVarQueryParameter['sort'] = sort;
+            }
+
+            if (version !== undefined) {
+                for (const [key, value] of Object.entries(version)) {
+                    localVarQueryParameter[key] = value;
+                }
+            }
+
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Get a pre-signed PUT URL for uploading a spec to the OASpec bucket
          * @param {object} body 
          * @param {*} [options] Override http request option.
@@ -58,6 +359,63 @@ export const OpenAPIIndexerApiAxiosParamCreator = function (configuration?: Conf
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(body, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Paginated spec version history for an API
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetVersionsOrderEnum} [order] 
+         * @param {string} [sort] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetVersions: async (apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetVersionsOrderEnum, sort?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'apiId' is not null or undefined
+            assertParamExists('openApiIndexerControllerGetVersions', 'apiId', apiId)
+            const localVarPath = `/openapi/api/{apiId}/versions`
+                .replace(`{${"apiId"}}`, encodeURIComponent(String(apiId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (from !== undefined) {
+                localVarQueryParameter['from'] = from;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
+
+            if (sort !== undefined) {
+                localVarQueryParameter['sort'] = sort;
+            }
+
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -163,6 +521,87 @@ export const OpenAPIIndexerApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Paginated models for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetModelsOrderEnum} [order] 
+         * @param {string} [q] 
+         * @param {string} [usedIn] request | response
+         * @param {string} [operationId] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerGetModels(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetModelsOrderEnum, q?: string, usedIn?: string, operationId?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetModels(apiId, from, size, order, q, usedIn, operationId, sort, version, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenAPIIndexerApi.openApiIndexerControllerGetModels']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Paginated operations for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetOperationsOrderEnum} [order] 
+         * @param {string} [q] Free-text search
+         * @param {string} [method] Comma-separated HTTP method filter
+         * @param {string} [tag] Tag filter
+         * @param {string} [sort] 
+         * @param {any} [version] Specific version or \&quot;latest\&quot; (default)
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerGetOperations(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetOperationsOrderEnum, q?: string, method?: string, tag?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetOperations(apiId, from, size, order, q, method, tag, sort, version, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenAPIIndexerApi.openApiIndexerControllerGetOperations']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Paginated parameters for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetParametersOrderEnum} [order] 
+         * @param {string} [q] 
+         * @param {string} [location] path | query | header | cookie
+         * @param {string} [operationId] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerGetParameters(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetParametersOrderEnum, q?: string, location?: string, operationId?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetParameters(apiId, from, size, order, q, location, operationId, sort, version, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenAPIIndexerApi.openApiIndexerControllerGetParameters']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Paginated servers for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetServersOrderEnum} [order] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerGetServers(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetServersOrderEnum, sort?: string, version?: any, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetServers(apiId, from, size, order, sort, version, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenAPIIndexerApi.openApiIndexerControllerGetServers']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Get a pre-signed PUT URL for uploading a spec to the OASpec bucket
          * @param {object} body 
          * @param {*} [options] Override http request option.
@@ -172,6 +611,23 @@ export const OpenAPIIndexerApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetUploadUrl(body, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['OpenAPIIndexerApi.openApiIndexerControllerGetUploadUrl']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Paginated spec version history for an API
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetVersionsOrderEnum} [order] 
+         * @param {string} [sort] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async openApiIndexerControllerGetVersions(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetVersionsOrderEnum, sort?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.openApiIndexerControllerGetVersions(apiId, from, size, order, sort, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['OpenAPIIndexerApi.openApiIndexerControllerGetVersions']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -213,6 +669,75 @@ export const OpenAPIIndexerApiFactory = function (configuration?: Configuration,
     return {
         /**
          * 
+         * @summary Paginated models for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetModelsOrderEnum} [order] 
+         * @param {string} [q] 
+         * @param {string} [usedIn] request | response
+         * @param {string} [operationId] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetModels(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetModelsOrderEnum, q?: string, usedIn?: string, operationId?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.openApiIndexerControllerGetModels(apiId, from, size, order, q, usedIn, operationId, sort, version, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Paginated operations for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetOperationsOrderEnum} [order] 
+         * @param {string} [q] Free-text search
+         * @param {string} [method] Comma-separated HTTP method filter
+         * @param {string} [tag] Tag filter
+         * @param {string} [sort] 
+         * @param {any} [version] Specific version or \&quot;latest\&quot; (default)
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetOperations(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetOperationsOrderEnum, q?: string, method?: string, tag?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.openApiIndexerControllerGetOperations(apiId, from, size, order, q, method, tag, sort, version, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Paginated parameters for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetParametersOrderEnum} [order] 
+         * @param {string} [q] 
+         * @param {string} [location] path | query | header | cookie
+         * @param {string} [operationId] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetParameters(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetParametersOrderEnum, q?: string, location?: string, operationId?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.openApiIndexerControllerGetParameters(apiId, from, size, order, q, location, operationId, sort, version, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Paginated servers for an API version
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetServersOrderEnum} [order] 
+         * @param {string} [sort] 
+         * @param {any} [version] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetServers(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetServersOrderEnum, sort?: string, version?: any, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.openApiIndexerControllerGetServers(apiId, from, size, order, sort, version, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Get a pre-signed PUT URL for uploading a spec to the OASpec bucket
          * @param {object} body 
          * @param {*} [options] Override http request option.
@@ -220,6 +745,20 @@ export const OpenAPIIndexerApiFactory = function (configuration?: Configuration,
          */
         openApiIndexerControllerGetUploadUrl(body: object, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.openApiIndexerControllerGetUploadUrl(body, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Paginated spec version history for an API
+         * @param {string} apiId API UUID
+         * @param {number} [from] 
+         * @param {number} [size] 
+         * @param {OpenApiIndexerControllerGetVersionsOrderEnum} [order] 
+         * @param {string} [sort] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        openApiIndexerControllerGetVersions(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetVersionsOrderEnum, sort?: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.openApiIndexerControllerGetVersions(apiId, from, size, order, sort, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -252,6 +791,79 @@ export const OpenAPIIndexerApiFactory = function (configuration?: Configuration,
 export class OpenAPIIndexerApi extends BaseAPI {
     /**
      * 
+     * @summary Paginated models for an API version
+     * @param {string} apiId API UUID
+     * @param {number} [from] 
+     * @param {number} [size] 
+     * @param {OpenApiIndexerControllerGetModelsOrderEnum} [order] 
+     * @param {string} [q] 
+     * @param {string} [usedIn] request | response
+     * @param {string} [operationId] 
+     * @param {string} [sort] 
+     * @param {any} [version] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerGetModels(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetModelsOrderEnum, q?: string, usedIn?: string, operationId?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig) {
+        return OpenAPIIndexerApiFp(this.configuration).openApiIndexerControllerGetModels(apiId, from, size, order, q, usedIn, operationId, sort, version, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Paginated operations for an API version
+     * @param {string} apiId API UUID
+     * @param {number} [from] 
+     * @param {number} [size] 
+     * @param {OpenApiIndexerControllerGetOperationsOrderEnum} [order] 
+     * @param {string} [q] Free-text search
+     * @param {string} [method] Comma-separated HTTP method filter
+     * @param {string} [tag] Tag filter
+     * @param {string} [sort] 
+     * @param {any} [version] Specific version or \&quot;latest\&quot; (default)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerGetOperations(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetOperationsOrderEnum, q?: string, method?: string, tag?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig) {
+        return OpenAPIIndexerApiFp(this.configuration).openApiIndexerControllerGetOperations(apiId, from, size, order, q, method, tag, sort, version, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Paginated parameters for an API version
+     * @param {string} apiId API UUID
+     * @param {number} [from] 
+     * @param {number} [size] 
+     * @param {OpenApiIndexerControllerGetParametersOrderEnum} [order] 
+     * @param {string} [q] 
+     * @param {string} [location] path | query | header | cookie
+     * @param {string} [operationId] 
+     * @param {string} [sort] 
+     * @param {any} [version] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerGetParameters(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetParametersOrderEnum, q?: string, location?: string, operationId?: string, sort?: string, version?: any, options?: RawAxiosRequestConfig) {
+        return OpenAPIIndexerApiFp(this.configuration).openApiIndexerControllerGetParameters(apiId, from, size, order, q, location, operationId, sort, version, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Paginated servers for an API version
+     * @param {string} apiId API UUID
+     * @param {number} [from] 
+     * @param {number} [size] 
+     * @param {OpenApiIndexerControllerGetServersOrderEnum} [order] 
+     * @param {string} [sort] 
+     * @param {any} [version] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerGetServers(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetServersOrderEnum, sort?: string, version?: any, options?: RawAxiosRequestConfig) {
+        return OpenAPIIndexerApiFp(this.configuration).openApiIndexerControllerGetServers(apiId, from, size, order, sort, version, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @summary Get a pre-signed PUT URL for uploading a spec to the OASpec bucket
      * @param {object} body 
      * @param {*} [options] Override http request option.
@@ -259,6 +871,21 @@ export class OpenAPIIndexerApi extends BaseAPI {
      */
     public openApiIndexerControllerGetUploadUrl(body: object, options?: RawAxiosRequestConfig) {
         return OpenAPIIndexerApiFp(this.configuration).openApiIndexerControllerGetUploadUrl(body, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Paginated spec version history for an API
+     * @param {string} apiId API UUID
+     * @param {number} [from] 
+     * @param {number} [size] 
+     * @param {OpenApiIndexerControllerGetVersionsOrderEnum} [order] 
+     * @param {string} [sort] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public openApiIndexerControllerGetVersions(apiId: string, from?: number, size?: number, order?: OpenApiIndexerControllerGetVersionsOrderEnum, sort?: string, options?: RawAxiosRequestConfig) {
+        return OpenAPIIndexerApiFp(this.configuration).openApiIndexerControllerGetVersions(apiId, from, size, order, sort, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -286,3 +913,28 @@ export class OpenAPIIndexerApi extends BaseAPI {
     }
 }
 
+export const OpenApiIndexerControllerGetModelsOrderEnum = {
+    Asc: 'asc',
+    Desc: 'desc'
+} as const;
+export type OpenApiIndexerControllerGetModelsOrderEnum = typeof OpenApiIndexerControllerGetModelsOrderEnum[keyof typeof OpenApiIndexerControllerGetModelsOrderEnum];
+export const OpenApiIndexerControllerGetOperationsOrderEnum = {
+    Asc: 'asc',
+    Desc: 'desc'
+} as const;
+export type OpenApiIndexerControllerGetOperationsOrderEnum = typeof OpenApiIndexerControllerGetOperationsOrderEnum[keyof typeof OpenApiIndexerControllerGetOperationsOrderEnum];
+export const OpenApiIndexerControllerGetParametersOrderEnum = {
+    Asc: 'asc',
+    Desc: 'desc'
+} as const;
+export type OpenApiIndexerControllerGetParametersOrderEnum = typeof OpenApiIndexerControllerGetParametersOrderEnum[keyof typeof OpenApiIndexerControllerGetParametersOrderEnum];
+export const OpenApiIndexerControllerGetServersOrderEnum = {
+    Asc: 'asc',
+    Desc: 'desc'
+} as const;
+export type OpenApiIndexerControllerGetServersOrderEnum = typeof OpenApiIndexerControllerGetServersOrderEnum[keyof typeof OpenApiIndexerControllerGetServersOrderEnum];
+export const OpenApiIndexerControllerGetVersionsOrderEnum = {
+    Asc: 'asc',
+    Desc: 'desc'
+} as const;
+export type OpenApiIndexerControllerGetVersionsOrderEnum = typeof OpenApiIndexerControllerGetVersionsOrderEnum[keyof typeof OpenApiIndexerControllerGetVersionsOrderEnum];
