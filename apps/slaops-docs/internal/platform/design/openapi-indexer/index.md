@@ -33,7 +33,7 @@ This section covers the design of the OASpec domain: how APIs and their OpenAPI 
 | [UI Design](./ui-design) | Draft | APIs tab; upload wizard; version browser; diff view; operation explorer |
 | [Version Strategies](./version-strategies) | Draft | Management modes (platform vs. private); platform catalogue; url_fetch strategy and future strategies |
 | [New API Wizard](./new-api-wizard) | Draft | `/apis/new` wizard: Redux slice design, URL auto-populate via `GET /apis/info`, component tree |
-| [Tab Views](./views/index) | Draft | Per-tab backend endpoints and frontend design for Versions, Operations, Servers, Parameters, and Models tabs |
+| [Tab Views](./views/index.md) | Draft | Per-tab backend endpoints and frontend design for Versions, Operations, Servers, Parameters, and Models tabs |
 
 ### Legacy / Reference
 

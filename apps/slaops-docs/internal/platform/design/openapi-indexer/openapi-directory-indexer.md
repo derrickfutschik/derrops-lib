@@ -17,12 +17,12 @@ tags:
 ---
 
 :::caution Superseded
-This document describes the original S3-event-triggered Lambda indexer design. The implementation has since moved to a NestJS service. The overall indexing and search architecture has been revised — see the [OpenAPI Indexer overview](./index) for the current design.
+This document describes the original S3-event-triggered Lambda indexer design. The implementation has since moved to a NestJS service. The overall indexing and search architecture has been revised — see the [OpenAPI Indexer overview](./index.md) for the current design.
 :::
 
 # Component Proposal: OpenAPI Directory Indexer
 
-> **Status**: Superseded — see [OpenAPI Indexer](./index)
+> **Status**: Superseded — see [OpenAPI Indexer](./index.md)
 > **Author**: Derrick
 > **Date**: 2025-01-21
 

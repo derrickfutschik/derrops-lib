@@ -141,7 +141,7 @@ Clicking a row opens `OperationDetailPanel` as a side sheet. The panel fetches n
 
 ### IndexedDataTable conventions
 
-All column headers follow the [IndexedDataTable convention](./index#indexeddatatable-convention):
+All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
 - Clicking a sortable column header sends a new `sort` + `order` query to the server.
 - EyeOff appears on hover for hideable columns; clicking hides the column client-side.
 - "N columns hidden — Show all" banner appears above the table when any column is hidden.

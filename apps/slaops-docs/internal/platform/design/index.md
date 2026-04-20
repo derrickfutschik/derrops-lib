@@ -26,7 +26,7 @@ The customer-deployed HTTP proxy for API testing. Covers component design, netwo
 - [API Tester — Relay Execution](./cloud-relay/api-tester-relay-execution) — End-to-end job execution flow from portal through slaops-cloud and SQS to relay
 - [API Tester — Connection Switcher](./cloud-relay/api-tester-connection-switcher) — UX and state design for switching between relay connections and browser-direct mode
 
-### [OpenAPI Indexer](./openapi-indexer/openapi-indexer-index)
+### [OpenAPI Indexer](./openapi-indexer/index.md)
 
 Design for the OASpec domain: API and OpenAPI spec management, five-index OpenSearch architecture, sequential indexing pipeline, search use-cases, and portal UI.
 
@@ -36,7 +36,7 @@ Design for the OASpec domain: API and OpenAPI spec management, five-index OpenSe
 - [Search Design](./openapi-indexer/search-design) — Operation, server, API, parameter, and model search; host-shape matching; enrichment lookup
 - [UI Design](./openapi-indexer/ui-design) — APIs tab; upload wizard; version browser; diff view; operation explorer
 - [New API Wizard](./openapi-indexer/new-api-wizard) — `/apis/new` wizard Redux slice, External URL auto-populate via `GET /apis/info`, and component tree
-- [Tab Views](./openapi-indexer/views/index) — Backend endpoints and frontend design for the five API detail tabs: Versions, Operations, Servers, Parameters, Models
+- [Tab Views](./openapi-indexer/views/index.md) — Backend endpoints and frontend design for the five API detail tabs: Versions, Operations, Servers, Parameters, Models
 - [OpenAPI Index Access Pattern](./openapi-indexer/openapi-index-access-pattern) — Two-tier multi-tenant index architecture: SLAOps managed public catalogue (`oaspec-slaops`) and per-tenant private indices
 
 ### [Infrastructure](./infrastructure)

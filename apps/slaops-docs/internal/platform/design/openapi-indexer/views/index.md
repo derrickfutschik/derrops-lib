@@ -46,7 +46,7 @@ All tabs are backed by paginated OpenSearch queries. No tab loads all documents 
 
 ### IndexedDataTable convention
 
-All tabs follow the **IndexedDataTable** convention defined in the [portal CLAUDE.md](../../../../../../../../../slaops-portal/CLAUDE.md):
+All tabs follow the **IndexedDataTable** convention defined in the portal CLAUDE.md:
 
 - **Sortable columns** — header click toggles asc/desc; ArrowUp / ArrowDown / ArrowUpDown icons signal sort state.
 - **Hideable columns** — EyeOff button appears on column header hover; a "N hidden — Show all" banner appears when any column is hidden.

@@ -132,7 +132,7 @@ interface ParameterHit {
 
 ### IndexedDataTable conventions
 
-All column headers follow the [IndexedDataTable convention](./index#indexeddatatable-convention):
+All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
 - Sorting sends `sort` + `order` to the server.
 - EyeOff hides a column client-side.
 - Status bar at the bottom: `{filtered}/{total} parameters` when a search or location filter is active, otherwise `{total} parameters`.

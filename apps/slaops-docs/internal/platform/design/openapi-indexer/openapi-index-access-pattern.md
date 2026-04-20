@@ -26,7 +26,7 @@ Search alias strategy expanded — all five entity indices now have `--search` a
 > **Status**: Draft
 > **Author**: Derrick
 > **Date**: 2026-03-30
-> **Related Design**: [OpenAPI Indexer Overview](./index), [OpenSearch Indices](./opensearch-indices)
+> **Related Design**: [OpenAPI Indexer Overview](./index.md), [OpenSearch Indices](./opensearch-indices)
 
 ## Overview
 

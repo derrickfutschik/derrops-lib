@@ -101,14 +101,14 @@ Step 1 — Choose path
     └── Register my own  → Step 2B (private registration)
 
 Step 2A — Adopt platform API
-    └── Click "Adopt API" → navigate /apis/{id}
+    └── Click "Adopt API" → navigate /apis/\{id\}
 
 Step 2B — Private API details
-    └── Submit → if url_fetch → navigate /apis/{id}
+    └── Submit → if url_fetch → navigate /apis/\{id\}
              → if manual → Step 3 (upload initial spec)
 
 Step 3 — Upload initial spec
-    └── Skip / View API → navigate /apis/{id}
+    └── Skip / View API → navigate /apis/\{id\}
 ```
 
 The `StepIndicator` total is 2 for the catalogue path and 3 for the private path, as today.
@@ -180,7 +180,7 @@ Immediately below the External URL field, the wizard shows contextual feedback:
 |---|---|
 | `idle` | Nothing shown |
 | `loading` | Spinner with label "Fetching spec info…" |
-| `success` | Green check + "Found: **{title}** v{version}" + **"Use these details"** button |
+| `success` | Green check + "Found: **\{title\}** v\{version\}" + **"Use these details"** button |
 | `error` | Warning icon + "Couldn't read spec from this URL" (non-blocking; user can still fill fields manually) |
 
 Clicking **"Use these details"** dispatches `applyInfoResult`, which:

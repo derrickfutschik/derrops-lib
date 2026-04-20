@@ -136,7 +136,7 @@ Clicking a row opens `ModelDetailPanel` as a side sheet. The panel renders from 
 
 ### IndexedDataTable conventions
 
-All column headers follow the [IndexedDataTable convention](./index#indexeddatatable-convention):
+All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
 - Sorting sends `sort` + `order` to the server.
 - EyeOff hides a column client-side.
 - Status bar at the bottom: `{filtered}/{total} models` when a filter is active, otherwise `{total} models`.
