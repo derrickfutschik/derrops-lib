@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
+import { ActionArea, ActionGroup, actionRegistry } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,8 @@ export const {
     group: ActionGroup.Layout,
   },
   setCollapsedSections: {
-    description: 'Partially updates the collapsed state of one or more sections without affecting others.',
+    description:
+      'Partially updates the collapsed state of one or more sections without affecting others.',
     area: ActionArea.Request,
     group: ActionGroup.Layout,
   },
@@ -112,12 +113,14 @@ export const {
     group: ActionGroup.Navigation,
   },
   setActiveTab: {
-    description: "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body').",
+    description:
+      "Sets the active tab in the main API tester tab bar (e.g. 'params', 'headers', 'body').",
     area: ActionArea.Request,
     group: ActionGroup.Navigation,
   },
   setFocusedQueryParam: {
-    description: 'Records which query param field (key or value) the user is currently editing, so the URL bar can highlight the corresponding segment.',
+    description:
+      'Records which query param field (key or value) the user is currently editing, so the URL bar can highlight the corresponding segment.',
     area: ActionArea.Request,
     group: ActionGroup.Navigation,
   },

@@ -4,19 +4,19 @@ import type { CognitoTokenPayload, RequestedEndpoint } from './cedar-entity.buil
 const NOW_EPOCH = Math.floor(Date.now() / 1000)
 
 const BASE_TOKEN: CognitoTokenPayload = {
-  sub:       'user-1',
-  amr:       ['mfa', 'software_totp'],
+  sub: 'user-1',
+  amr: ['mfa', 'software_totp'],
   auth_time: NOW_EPOCH - 300,
-  iat:       NOW_EPOCH - 300,
-  exp:       NOW_EPOCH + 3300,
+  iat: NOW_EPOCH - 300,
+  exp: NOW_EPOCH + 3300,
   client_id: 'portal-client-abc',
 }
 
 const BASE_ENDPOINT: RequestedEndpoint = {
-  host:        'payments.internal',
-  method:      'GET',
-  path:        '/v1/orders/{id}',
-  relayId:     'relay-01',
+  host: 'payments.internal',
+  method: 'GET',
+  path: '/v1/orders/{id}',
+  relayId: 'relay-01',
   environment: 'prod',
 }
 

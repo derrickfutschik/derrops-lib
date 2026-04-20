@@ -20,19 +20,19 @@ export function buildContext(
   const nbf = token.nbf ?? iat
 
   return {
-    mfaVerified:           deriveMfaVerified(token),
-    authMethod:            deriveAuthMethod(token),
-    authTime:              epochToIso(token.auth_time ?? iat),
-    tokenAud:              token.client_id ?? (token.aud as string | undefined) ?? '',
-    tokenIat:              epochToIso(iat),
-    tokenNbf:              epochToIso(nbf),
-    tokenAgeSeconds:       Math.max(0, nowEpoch - iat),
+    mfaVerified: deriveMfaVerified(token),
+    authMethod: deriveAuthMethod(token),
+    authTime: epochToIso(token.auth_time ?? iat),
+    tokenAud: token.client_id ?? (token.aud as string | undefined) ?? '',
+    tokenIat: epochToIso(iat),
+    tokenNbf: epochToIso(nbf),
+    tokenAgeSeconds: Math.max(0, nowEpoch - iat),
     tokenExpiresInSeconds: Math.max(0, exp - nowEpoch),
     ipAddress,
-    time:                  now.toISOString(),
-    timeOfDayHour:         now.getUTCHours(),
-    relayId:               endpoint.relayId,
-    environment:           endpoint.environment ?? 'default',
+    time: now.toISOString(),
+    timeOfDayHour: now.getUTCHours(),
+    relayId: endpoint.relayId,
+    environment: endpoint.environment ?? 'default',
   }
 }
 
@@ -44,8 +44,8 @@ function deriveMfaVerified(token: CognitoTokenPayload): boolean {
 function deriveAuthMethod(token: CognitoTokenPayload): string {
   const amr = token.amr ?? []
   if (amr.includes('external-provider')) return 'EXTERNAL_IDP'
-  if (amr.includes('software_totp'))     return 'SOFTWARE_TOTP'
-  if (amr.includes('hardware_totp'))     return 'HARDWARE_TOTP'
+  if (amr.includes('software_totp')) return 'SOFTWARE_TOTP'
+  if (amr.includes('hardware_totp')) return 'HARDWARE_TOTP'
   return 'PASSWORD'
 }
 

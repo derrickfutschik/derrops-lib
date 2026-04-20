@@ -8,7 +8,6 @@
 - 3.  Return the paths sorted by relevance (shorter paths first, then alphabetical)
 - 4.  Keep those as the options until a new valid expression is entered, and then go back to 0.
 
-
 ## Autocomplete Strategy (as the user types)
 
 Two strategies run in order of preference. The first one that produces results wins.
@@ -26,6 +25,7 @@ Triggered when the current query evaluates to a **non-null object** (not an arra
    to each child path to form the suggestion list.
 
 **Example**: user has typed `hits[2].document`
+
 - Evaluate → `{ name: "Doc", tags: ["a","b"] }`
 - Child paths → `name`, `tags[*]`
 - Suggestions → `hits[2].document.name`, `hits[2].document.tags[*]`
@@ -52,17 +52,16 @@ Used when Strategy 1 does not apply (empty query, eval fails, or result is an ar
 5. Return up to 15 results, hiding the list if the only suggestion is an exact
    match of the current query.
 
-**Options always use `[*]`** regardless of view mode.  The table-view flattening
+**Options always use `[*]`** regardless of view mode. The table-view flattening
 (see below) is a separate, invisible concern and never leaks into the suggestions.
-
 
 ## Table-View Array Flattening (invisible to the user)
 
 When the user switches to **Table view**, the raw JMESPath result may be a
 **nested array** (array-of-arrays, or deeper) that the table cannot display
-directly as rows.  Rather than appending operators to the user's visible query,
+directly as rows. Rather than appending operators to the user's visible query,
 the system selects the best effective query under the hood and passes its
-flattened output to the table.  The input field always shows the user's original
+flattened output to the table. The input field always shows the user's original
 expression unchanged.
 
 ### Decision algorithm (`tableQuery` memo)
@@ -99,29 +98,29 @@ A hard cap of 8 iterations prevents pathological infinite loops.
 
 ### Why `[*][]` beats `[]` at each level
 
-`detectJoiningContext` parses the query string into array-traversal *segments*;
-`joiningColumns.length = segments.length - 1`.  The last segment produces rows;
+`detectJoiningContext` parses the query string into array-traversal _segments_;
+`joiningColumns.length = segments.length - 1`. The last segment produces rows;
 all earlier ones produce joining columns.
 
 - `'[]'` adds one segment → one more joining column.
 - `'[*][]'` adds **two** segments → two more joining columns.
 
 The extra `[*]` is only counted when `computeRowIndices` can successfully walk
-the data for that segment.  When it cannot (e.g. because the elements at that
+the data for that segment. When it cannot (e.g. because the elements at that
 level are already objects, not arrays), `detectJoiningContext` returns `null`
 (0 cols) and `[]` is chosen instead.
 
 ### Suffix-building examples
 
-| User query                              | Nesting depth | Suffix chosen  | tableQuery                                    | Join cols |
-|-----------------------------------------|---------------|----------------|-----------------------------------------------|-----------|
-| `hits[*].doc.ops`                       | 1             | `[*][]`        | `hits[*].doc.ops[*][]`                        | 2         |
-| `hits[*].doc.ops[*]`                    | 1             | `[]`           | `hits[*].doc.ops[*][]`                        | 2         |
-| `hits[*].doc.ops[*][]`                  | 0             | *(none)*       | unchanged                                     | 2         |
-| `hits[*].doc.ops`  (ops is `[[[…]]]`)   | 2             | `[*][][*][]`   | `hits[*].doc.ops[*][][*][]`                   | 4         |
-| `hits[*].doc.ops`  (ops is `[[[…]]]`    | 2             | `[*][][]`      | `hits[*].doc.ops[*][][]`                      | 3         |
-|   — if inner elements are objects)      |               | *(wildcardFlatCols = 0 at level 2)* |                              |           |
-| `hits[*].doc`                           | 0             | *(none)*       | unchanged (not array-of-arrays)               | 0         |
+| User query                           | Nesting depth | Suffix chosen                       | tableQuery                      | Join cols |
+| ------------------------------------ | ------------- | ----------------------------------- | ------------------------------- | --------- |
+| `hits[*].doc.ops`                    | 1             | `[*][]`                             | `hits[*].doc.ops[*][]`          | 2         |
+| `hits[*].doc.ops[*]`                 | 1             | `[]`                                | `hits[*].doc.ops[*][]`          | 2         |
+| `hits[*].doc.ops[*][]`               | 0             | _(none)_                            | unchanged                       | 2         |
+| `hits[*].doc.ops` (ops is `[[[…]]]`) | 2             | `[*][][*][]`                        | `hits[*].doc.ops[*][][*][]`     | 4         |
+| `hits[*].doc.ops` (ops is `[[[…]]]`  | 2             | `[*][][]`                           | `hits[*].doc.ops[*][][]`        | 3         |
+| — if inner elements are objects)     |               | _(wildcardFlatCols = 0 at level 2)_ |                                 |           |
+| `hits[*].doc`                        | 0             | _(none)_                            | unchanged (not array-of-arrays) | 0         |
 
 ### `tableDisplayContent`
 

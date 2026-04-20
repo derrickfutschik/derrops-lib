@@ -19,11 +19,11 @@ The SLAOps edge consists of three runtime components: **slaops-cloud** (vendor S
 
 ## The three components
 
-| Component | Hosted by | Browser-reachable | Holds secrets | Inbound required |
-|---|---|---|---|---|
-| **slaops-cloud** | SLAOps (vendor SaaS) | Yes (API) | Vendor signing key only | Yes |
-| **Cloud Relay** | Customer (or SLAOps-managed) | No (by design) | Customer API credentials | Optional — see delivery modes |
-| **Aegis** | Customer | Yes (from browser) | Customer IdP config, signing key | Yes — browser must reach it |
+| Component        | Hosted by                    | Browser-reachable  | Holds secrets                    | Inbound required              |
+| ---------------- | ---------------------------- | ------------------ | -------------------------------- | ----------------------------- |
+| **slaops-cloud** | SLAOps (vendor SaaS)         | Yes (API)          | Vendor signing key only          | Yes                           |
+| **Cloud Relay**  | Customer (or SLAOps-managed) | No (by design)     | Customer API credentials         | Optional — see delivery modes |
+| **Aegis**        | Customer                     | Yes (from browser) | Customer IdP config, signing key | Yes — browser must reach it   |
 
 The critical asymmetry: **Aegis must accept inbound connections from the browser. The relay does not have to.**
 
@@ -57,18 +57,21 @@ flowchart LR
 ```
 
 ### `direct`
+
 slaops-cloud calls the relay's `POST /cloud-relay/proxy` synchronously and waits for the response.
 
 **Network requirement**: relay must accept inbound HTTPS from slaops-cloud.
 **Use when**: relay is publicly reachable (e.g. Lambda behind API Gateway, Docker on a public host).
 
 ### `relay-queue`
+
 slaops-cloud submits a job to the relay's `POST /cloud-relay/queue`. The relay's internal `QueueStore` (in-memory or SQS + DynamoDB) processes it asynchronously. slaops-cloud polls the relay for the result.
 
 **Network requirement**: relay must accept inbound HTTPS from slaops-cloud. Browser does not need to reach the relay.
 **Use when**: the relay is on a private network reachable from slaops-cloud (server-to-server), but not from the browser directly.
 
 ### `platform-queue`
+
 The relay polls `GET /cloud-relay/queue/next` on slaops-cloud, claims a job, executes it, and posts the result to `POST /cloud-relay/job/:id/result`. The relay makes **only outbound** calls.
 
 **Network requirement**: relay needs outbound HTTPS to slaops-cloud only. No inbound connections required at all.
@@ -103,6 +106,7 @@ The relay holds customer API credentials: Vault tokens, AWS Secret Manager ARNs,
 Aegis is an auth service. Its only purpose is to assert that a user is who they claim to be and to issue a scoped delegation JWT. It has no legitimate reason to access any of those credentials.
 
 If they were co-deployed:
+
 - A compromise of Aegis (browser-reachable, larger attack surface) would directly expose the relay's secret store access.
 - A bug in the secret resolution or template engine would be co-located with the token issuance code.
 - An operator granting access to Aegis config inadvertently grants access to secret store credentials.
@@ -123,6 +127,7 @@ Combined artifact →  proxy credentials + session token issuance at risk
 ### 4. Deployment cardinality differs
 
 A customer might deploy:
+
 - **One Aegis per environment** — shared across business units, regions, and relay instances.
 - **Multiple relays** — one per VPC, one per region, one per network segment, or one per team.
 
@@ -167,16 +172,16 @@ This model only holds if the two signing authorities are distinct. Co-deploying 
 
 ## Security properties summary
 
-| Property | Separate | Combined |
-|---|---|---|
-| Relay can operate in fully private networks (platform-queue) | ✅ | ❌ Aegis must be browser-reachable |
-| Aegis compromise cannot access secret store | ✅ | ❌ Same process / same host |
-| Relay compromise cannot forge delegation JWTs | ✅ | ❌ Same process / same host |
-| SSRF blast radius is contained to proxy credentials | ✅ | ❌ Also exposes token issuance |
-| Many relays : one Aegis topology is possible | ✅ | ❌ Forces 1:1 |
-| Relay can be deployed without Aegis | ✅ | ❌ Bundled always |
-| Independent update / patch cadence | ✅ | ❌ Shared artifact |
-| Least privilege: Aegis has no secret store access | ✅ | ❌ Shared deployment unit |
+| Property                                                     | Separate | Combined                           |
+| ------------------------------------------------------------ | -------- | ---------------------------------- |
+| Relay can operate in fully private networks (platform-queue) | ✅       | ❌ Aegis must be browser-reachable |
+| Aegis compromise cannot access secret store                  | ✅       | ❌ Same process / same host        |
+| Relay compromise cannot forge delegation JWTs                | ✅       | ❌ Same process / same host        |
+| SSRF blast radius is contained to proxy credentials          | ✅       | ❌ Also exposes token issuance     |
+| Many relays : one Aegis topology is possible                 | ✅       | ❌ Forces 1:1                      |
+| Relay can be deployed without Aegis                          | ✅       | ❌ Bundled always                  |
+| Independent update / patch cadence                           | ✅       | ❌ Shared artifact                 |
+| Least privilege: Aegis has no secret store access            | ✅       | ❌ Shared deployment unit          |
 
 ---
 

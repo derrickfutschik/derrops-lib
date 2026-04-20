@@ -24,13 +24,13 @@ This document defines how each section of a raw OpenAPI spec (YAML or JSON) is p
 
 A single OpenAPI document produces documents for all five indices. The table below shows which part of the spec feeds each index:
 
-| Spec section | Entity produced | Index |
-|---|---|---|
-| `info`, `tags`, `externalDocs` | One `OaSpecDocument` | `…--oaspec--spec` |
-| `servers[]` | One `OaServerDocument` per entry | `…--oaspec--server` |
-| `paths.{path}.{method}` | One `OaOperationDocument` per method | `…--oaspec--operation` |
-| `paths.{path}.{method}.parameters[]` + `components.parameters` | One `OaParamDocument` per unique parameter | `…--oaspec--param` |
-| `components.schemas` + inline request/response bodies | One `OaModelDocument` per schema | `…--oaspec--model` |
+| Spec section                                                   | Entity produced                            | Index                  |
+| -------------------------------------------------------------- | ------------------------------------------ | ---------------------- |
+| `info`, `tags`, `externalDocs`                                 | One `OaSpecDocument`                       | `…--oaspec--spec`      |
+| `servers[]`                                                    | One `OaServerDocument` per entry           | `…--oaspec--server`    |
+| `paths.{path}.{method}`                                        | One `OaOperationDocument` per method       | `…--oaspec--operation` |
+| `paths.{path}.{method}.parameters[]` + `components.parameters` | One `OaParamDocument` per unique parameter | `…--oaspec--param`     |
+| `components.schemas` + inline request/response bodies          | One `OaModelDocument` per schema           | `…--oaspec--model`     |
 
 All `$ref` pointers are fully resolved before extraction begins. See [$ref Resolution](#ref-resolution) below.
 
@@ -40,23 +40,23 @@ All `$ref` pointers are fully resolved before extraction begins. See [$ref Resol
 
 **Source:** top-level `info`, `tags[]`, `externalDocs`, `openapi` fields.
 
-| Index field | Source expression | Notes |
-|---|---|---|
-| `title` | `info.title` | Required by OAS; never absent |
-| `description` | `info.description` | `""` if absent |
-| `version` | `info.version` | Required by OAS |
-| `specVersion` | `openapi` | e.g. `"3.1.0"` |
-| `termsOfService` | `info.termsOfService` | `undefined` if absent |
-| `contactText` | `info.contact` | See [Contact serialisation](#contact-serialisation) |
-| `licenseText` | `info.license` | See [License serialisation](#license-serialisation) |
-| `externalDocsText` | `externalDocs` | See [ExternalDocs serialisation](#externaldocs-serialisation) |
-| `tagsText` | `tags[].name` | Space-separated; `""` if `tags` absent |
-| `operationCount` | counted during path walk | Total HTTP operations across all paths |
-| `serverCount` | `servers.length` | 0 if `servers` absent |
-| `parameterCount` | counted during parameter collection | Unique params after deduplication |
-| `modelCount` | counted during schema collection | Schemas in `components.schemas` + named inline bodies |
-| `s3Bucket`, `s3Key` | from pipeline request | Passed in by the `POST /openapi/index` caller |
-| `fileSize`, `fileFormat` | from pipeline request | Provided by the upload step |
+| Index field              | Source expression                   | Notes                                                         |
+| ------------------------ | ----------------------------------- | ------------------------------------------------------------- |
+| `title`                  | `info.title`                        | Required by OAS; never absent                                 |
+| `description`            | `info.description`                  | `""` if absent                                                |
+| `version`                | `info.version`                      | Required by OAS                                               |
+| `specVersion`            | `openapi`                           | e.g. `"3.1.0"`                                                |
+| `termsOfService`         | `info.termsOfService`               | `undefined` if absent                                         |
+| `contactText`            | `info.contact`                      | See [Contact serialisation](#contact-serialisation)           |
+| `licenseText`            | `info.license`                      | See [License serialisation](#license-serialisation)           |
+| `externalDocsText`       | `externalDocs`                      | See [ExternalDocs serialisation](#externaldocs-serialisation) |
+| `tagsText`               | `tags[].name`                       | Space-separated; `""` if `tags` absent                        |
+| `operationCount`         | counted during path walk            | Total HTTP operations across all paths                        |
+| `serverCount`            | `servers.length`                    | 0 if `servers` absent                                         |
+| `parameterCount`         | counted during parameter collection | Unique params after deduplication                             |
+| `modelCount`             | counted during schema collection    | Schemas in `components.schemas` + named inline bodies         |
+| `s3Bucket`, `s3Key`      | from pipeline request               | Passed in by the `POST /openapi/index` caller                 |
+| `fileSize`, `fileFormat` | from pipeline request               | Provided by the upload step                                   |
 
 ### Contact serialisation
 
@@ -103,19 +103,19 @@ Example: `"API Reference https://docs.stripe.com/api"`
 
 **Source:** `servers[]` at the spec root. Each entry produces one document.
 
-| Index field | Source / derivation |
-|---|---|
-| `rawUrl` | `server.url` verbatim |
-| `description` | `server.description` |
-| `serverIndex` | Position in `servers` array (0-based) |
-| `scheme` | Parsed from `rawUrl`: everything before `://` |
-| `hostTemplate` | Parsed from `rawUrl`: hostname including `{variable}` placeholders |
-| `hostShape` | `hostTemplate` with every `{variable}` replaced by `*` |
-| `dnsSuffix` | Public suffix + one registrable label extracted from `hostTemplate` |
-| `fixedLabelsText` | Space-joined fixed (non-variable) subdomain labels |
-| `varLabelsText` | Space-joined variable names (without braces) |
-| `basePath` | Path component of `rawUrl`, defaulting to `"/"` |
-| `variablesText` | `server.variables` serialised; see below |
+| Index field       | Source / derivation                                                 |
+| ----------------- | ------------------------------------------------------------------- |
+| `rawUrl`          | `server.url` verbatim                                               |
+| `description`     | `server.description`                                                |
+| `serverIndex`     | Position in `servers` array (0-based)                               |
+| `scheme`          | Parsed from `rawUrl`: everything before `://`                       |
+| `hostTemplate`    | Parsed from `rawUrl`: hostname including `{variable}` placeholders  |
+| `hostShape`       | `hostTemplate` with every `{variable}` replaced by `*`              |
+| `dnsSuffix`       | Public suffix + one registrable label extracted from `hostTemplate` |
+| `fixedLabelsText` | Space-joined fixed (non-variable) subdomain labels                  |
+| `varLabelsText`   | Space-joined variable names (without braces)                        |
+| `basePath`        | Path component of `rawUrl`, defaulting to `"/"`                     |
+| `variablesText`   | `server.variables` serialised; see below                            |
 
 ### Host shape derivation
 
@@ -141,7 +141,7 @@ Each entry in `server.variables` is serialised as `{name}:{default}`, joined wit
 ```yaml
 # Spec
 servers:
-  - url: "https://{env}.api.example.com"
+  - url: 'https://{env}.api.example.com'
     variables:
       env:
         default: prod
@@ -162,19 +162,19 @@ The `enum` values are not indexed — only the `default` is stored.
 
 Recognised methods: `get`, `post`, `put`, `delete`, `patch`, `head`, `options`, `trace`.
 
-| Index field | Source / derivation |
-|---|---|
-| `method` | HTTP method uppercased: `"GET"`, `"POST"`, etc. |
-| `path` | Path string as-is, e.g. `"/users/{userId}/orders"` |
-| `operationId` | `operation.operationId` |
-| `summary` | `operation.summary` |
-| `description` | `operation.description` |
-| `deprecated` | `operation.deprecated ?? false` |
-| `tagsText` | `operation.tags.join(" ")`, `""` if absent |
-| `pathKey` | Compacted path key; see [Path key compaction](#path-key-compaction) |
-| `parameterIdsText` | Space-joined IDs of `OaParamDocument`s referenced by this operation |
-| `requestModelId` | ID of the `OaModelDocument` for the request body schema (single model) |
-| `responseModelIdsText` | Space-joined IDs of `OaModelDocument`s for all response schemas |
+| Index field            | Source / derivation                                                    |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `method`               | HTTP method uppercased: `"GET"`, `"POST"`, etc.                        |
+| `path`                 | Path string as-is, e.g. `"/users/{userId}/orders"`                     |
+| `operationId`          | `operation.operationId`                                                |
+| `summary`              | `operation.summary`                                                    |
+| `description`          | `operation.description`                                                |
+| `deprecated`           | `operation.deprecated ?? false`                                        |
+| `tagsText`             | `operation.tags.join(" ")`, `""` if absent                             |
+| `pathKey`              | Compacted path key; see [Path key compaction](#path-key-compaction)    |
+| `parameterIdsText`     | Space-joined IDs of `OaParamDocument`s referenced by this operation    |
+| `requestModelId`       | ID of the `OaModelDocument` for the request body schema (single model) |
+| `responseModelIdsText` | Space-joined IDs of `OaModelDocument`s for all response schemas        |
 
 ### Path parameters from path items
 
@@ -190,25 +190,25 @@ A `pathItem` may define parameters that apply to all operations under that path.
 
 **Method initials:**
 
-| Method | Initial |
-|---|---|
-| `GET` | `G` |
-| `POST` | `P` |
-| `PUT` | `U` |
-| `DELETE` | `D` |
-| `PATCH` | `A` |
-| `HEAD` | `H` |
-| `OPTIONS` | `O` |
-| `TRACE` | `T` |
+| Method    | Initial |
+| --------- | ------- |
+| `GET`     | `G`     |
+| `POST`    | `P`     |
+| `PUT`     | `U`     |
+| `DELETE`  | `D`     |
+| `PATCH`   | `A`     |
+| `HEAD`    | `H`     |
+| `OPTIONS` | `O`     |
+| `TRACE`   | `T`     |
 
 **Path compaction rules:**
 
 Path parameters are replaced based on their schema type:
 
-| Schema type | Replacement |
-|---|---|
-| `integer` or `number` | `{i}` |
-| `string` (or untyped) | `{s}` |
+| Schema type           | Replacement |
+| --------------------- | ----------- |
+| `integer` or `number` | `{i}`       |
+| `string` (or untyped) | `{s}`       |
 
 Example:
 
@@ -229,17 +229,17 @@ The static path segments are preserved verbatim. Only parameter placeholders are
 
 Parameters are deduplicated across operations: a shared parameter referenced via `$ref` from multiple operations produces a single `OaParamDocument` with all referencing operation IDs listed in `operationIdsText`.
 
-| Index field | Source / derivation |
-|---|---|
-| `name` | `parameter.name` |
-| `location` | `parameter.in` renamed to `location` (`"path"`, `"query"`, `"header"`, `"cookie"`) |
-| `required` | `parameter.required ?? (location === "path" ? true : false)` |
-| `deprecated` | `parameter.deprecated ?? false` |
-| `description` | `parameter.description` |
-| `schemaType` | `parameter.schema.type` |
-| `schemaFormat` | `parameter.schema.format` |
-| `exampleText` | See [Example serialisation](#example-serialisation) |
-| `operationIdsText` | Space-joined IDs of all `OaOperationDocument`s that reference this parameter |
+| Index field        | Source / derivation                                                                |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `name`             | `parameter.name`                                                                   |
+| `location`         | `parameter.in` renamed to `location` (`"path"`, `"query"`, `"header"`, `"cookie"`) |
+| `required`         | `parameter.required ?? (location === "path" ? true : false)`                       |
+| `deprecated`       | `parameter.deprecated ?? false`                                                    |
+| `description`      | `parameter.description`                                                            |
+| `schemaType`       | `parameter.schema.type`                                                            |
+| `schemaFormat`     | `parameter.schema.format`                                                          |
+| `exampleText`      | See [Example serialisation](#example-serialisation)                                |
+| `operationIdsText` | Space-joined IDs of all `OaOperationDocument`s that reference this parameter       |
 
 ### Deduplication key
 
@@ -276,6 +276,7 @@ Request body schemas (`requestBody.content["application/json"].schema`) and resp
 ```
 
 Examples:
+
 - Request body for `createOrder` → `createOrder_request`
 - `200` response for `createOrder` → `createOrder_response_200`
 - `default` response → `createOrder_response_default`
@@ -284,14 +285,14 @@ Inline schemas that resolve to a `$ref` are not given their own document; the re
 
 ### Field extraction
 
-| Index field | Source / derivation |
-|---|---|
-| `name` | `components.schemas` key or derived name |
-| `description` | `schema.description` |
-| `schemaType` | `schema.type` (top-level type of the schema) |
-| `propertiesText` | Properties serialised to text; see below |
+| Index field        | Source / derivation                                      |
+| ------------------ | -------------------------------------------------------- |
+| `name`             | `components.schemas` key or derived name                 |
+| `description`      | `schema.description`                                     |
+| `schemaType`       | `schema.type` (top-level type of the schema)             |
+| `propertiesText`   | Properties serialised to text; see below                 |
 | `operationIdsText` | Space-joined IDs of operations that reference this model |
-| `usedInText` | `"request"`, `"response"`, or `"request response"` |
+| `usedInText`       | `"request"`, `"response"`, or `"request response"`       |
 
 ### Properties text serialisation
 
@@ -354,13 +355,13 @@ After resolution, the extraction steps operate on a `$ref`-free spec object. No 
 
 Extraction never throws on a missing optional field. The rules:
 
-| Situation | Behaviour |
-|---|---|
-| Text field absent | Store `""` (empty string), not `null` |
-| Boolean field absent | Apply the OAS default (`false` for `deprecated`, etc.) |
-| `servers` absent | Produce zero server documents; `serverCount: 0` on spec document |
-| `components.schemas` absent | Produce zero model documents |
-| `paths` absent | Produce zero operation and parameter documents |
+| Situation                              | Behaviour                                                          |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| Text field absent                      | Store `""` (empty string), not `null`                              |
+| Boolean field absent                   | Apply the OAS default (`false` for `deprecated`, etc.)             |
+| `servers` absent                       | Produce zero server documents; `serverCount: 0` on spec document   |
+| `components.schemas` absent            | Produce zero model documents                                       |
+| `paths` absent                         | Produce zero operation and parameter documents                     |
 | `info.contact` / `info.license` absent | Corresponding `*Text` field is `undefined` (omitted from document) |
 
 ---

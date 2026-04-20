@@ -1,13 +1,13 @@
+import { RequestPreviewFormats } from '@/components/api-tester/RequestPreviewFormats'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { RequestPreviewFormats } from '@/components/api-tester/RequestPreviewFormats'
-import { FileCode, Minus, Plus, Route } from 'lucide-react'
 import {
   selectCollapsedSections,
   toggleSection as toggleSectionAction,
 } from '@/store/apiTesterSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { FileCode, Minus, Plus, Route } from 'lucide-react'
 
 interface PreviewRequestProps {
   method: string
@@ -115,10 +115,7 @@ export function PreviewRequest({ method, buildRequestPreview }: PreviewRequestPr
                 </thead>
                 <tbody>
                   {Object.entries(preview.previewHeaders).map(([key, value], index) => (
-                    <tr
-                      key={index}
-                      className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}
-                    >
+                    <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
                       <td className="px-2 py-1 font-mono text-foreground">{key}</td>
                       <td className="px-2 py-1 font-mono text-muted-foreground break-all">
                         {value}

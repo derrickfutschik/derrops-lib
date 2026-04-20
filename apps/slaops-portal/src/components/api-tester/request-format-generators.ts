@@ -102,17 +102,18 @@ export function toAxios(req: RequestData): string {
     }
   }
 
-  const lines: string[] = [
-    `const axios = require('axios');`,
-    '',
-  ]
+  const lines: string[] = [`const axios = require('axios');`, '']
 
   if (method.toLowerCase() === 'get' && !hasBody) {
     // Simple GET
-    lines.push(`const response = await axios.${method.toLowerCase()}(${JSON.stringify(url)}${hasHeaders ? ', {' : ');\n'})`)
+    lines.push(
+      `const response = await axios.${method.toLowerCase()}(${JSON.stringify(url)}${hasHeaders ? ', {' : ');\n'})`,
+    )
     if (hasHeaders) {
       lines.push(`  headers: {`)
-      headerEntries.forEach(([k, v]) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)},`))
+      headerEntries.forEach(([k, v]) =>
+        lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)},`),
+      )
       lines.push(`  },`)
       lines.push(`});`)
     }
@@ -123,11 +124,18 @@ export function toAxios(req: RequestData): string {
     lines.push(`  url: ${JSON.stringify(url)},`)
     if (hasHeaders) {
       lines.push(`  headers: {`)
-      headerEntries.forEach(([k, v]) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)},`))
+      headerEntries.forEach(([k, v]) =>
+        lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)},`),
+      )
       lines.push(`  },`)
     }
     if (bodyExpr) {
-      lines.push(`  data: ${bodyExpr.split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n')},`)
+      lines.push(
+        `  data: ${bodyExpr
+          .split('\n')
+          .map((l, i) => (i === 0 ? l : '  ' + l))
+          .join('\n')},`,
+      )
     }
     lines.push(`});`)
   }

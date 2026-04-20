@@ -5,15 +5,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@slaops/cloud/*": [
-        "../slaops-cloud/src/*"
-      ],
-      "@slaops/portal/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"],
+      "@slaops/cloud/*": ["../slaops-cloud/src/*"],
+      "@slaops/portal/*": ["./src/*"]
     },
     "skipLibCheck": true,
     "strictNullChecks": false

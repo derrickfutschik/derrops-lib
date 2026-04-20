@@ -1,18 +1,19 @@
 # AegisInstanceApi
 
-All URIs are relative to *http://localhost*
+All URIs are relative to _http://localhost_
 
-|Method | HTTP request | Description|
-|------------- | ------------- | -------------|
-|[**aegisInstanceControllerCreate**](#aegisinstancecontrollercreate) | **POST** /cloud-relay/aegis-instance | Register a new Aegis instance|
-|[**aegisInstanceControllerFindAll**](#aegisinstancecontrollerfindall) | **GET** /cloud-relay/aegis-instance | List all Aegis instances for the tenant|
-|[**aegisInstanceControllerFindOne**](#aegisinstancecontrollerfindone) | **GET** /cloud-relay/aegis-instance/{id} | Get an Aegis instance by ID|
-|[**aegisInstanceControllerHealthCheck**](#aegisinstancecontrollerhealthcheck) | **POST** /cloud-relay/aegis-instance/{id}/health-check | Trigger a health check on the Aegis instance (validates JWKS endpoint)|
-|[**aegisInstanceControllerRemove**](#aegisinstancecontrollerremove) | **DELETE** /cloud-relay/aegis-instance/{id} | Delete an Aegis instance|
-|[**aegisInstanceControllerUpdate**](#aegisinstancecontrollerupdate) | **PATCH** /cloud-relay/aegis-instance/{id} | Update an Aegis instance|
-|[**aegisRegisterControllerRegister**](#aegisregistercontrollerregister) | **POST** /cloud-relay/aegis/register | Complete Aegis instance registration (called by Aegis)|
+| Method                                                                        | HTTP request                                           | Description                                                            |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| [**aegisInstanceControllerCreate**](#aegisinstancecontrollercreate)           | **POST** /cloud-relay/aegis-instance                   | Register a new Aegis instance                                          |
+| [**aegisInstanceControllerFindAll**](#aegisinstancecontrollerfindall)         | **GET** /cloud-relay/aegis-instance                    | List all Aegis instances for the tenant                                |
+| [**aegisInstanceControllerFindOne**](#aegisinstancecontrollerfindone)         | **GET** /cloud-relay/aegis-instance/{id}               | Get an Aegis instance by ID                                            |
+| [**aegisInstanceControllerHealthCheck**](#aegisinstancecontrollerhealthcheck) | **POST** /cloud-relay/aegis-instance/{id}/health-check | Trigger a health check on the Aegis instance (validates JWKS endpoint) |
+| [**aegisInstanceControllerRemove**](#aegisinstancecontrollerremove)           | **DELETE** /cloud-relay/aegis-instance/{id}            | Delete an Aegis instance                                               |
+| [**aegisInstanceControllerUpdate**](#aegisinstancecontrollerupdate)           | **PATCH** /cloud-relay/aegis-instance/{id}             | Update an Aegis instance                                               |
+| [**aegisRegisterControllerRegister**](#aegisregistercontrollerregister)       | **POST** /cloud-relay/aegis/register                   | Complete Aegis instance registration (called by Aegis)                 |
 
 # **aegisInstanceControllerCreate**
+
 > AegisCreateResponseDto aegisInstanceControllerCreate(createAegisInstanceDto)
 
 Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.
@@ -20,28 +21,21 @@ Returns a one-time `registrationToken`. Configure Aegis with this token so it ca
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration,
-    CreateAegisInstanceDto
-} from './api';
+import { AegisInstanceApi, Configuration, CreateAegisInstanceDto } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-let createAegisInstanceDto: CreateAegisInstanceDto; //
+let createAegisInstanceDto: CreateAegisInstanceDto //
 
-const { status, data } = await apiInstance.aegisInstanceControllerCreate(
-    createAegisInstanceDto
-);
+const { status, data } = await apiInstance.aegisInstanceControllerCreate(createAegisInstanceDto)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **createAegisInstanceDto** | **CreateAegisInstanceDto**|  | |
-
+| Name                       | Type                       | Description | Notes |
+| -------------------------- | -------------------------- | ----------- | ----- |
+| **createAegisInstanceDto** | **CreateAegisInstanceDto** |             |       |
 
 ### Return type
 
@@ -53,38 +47,35 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**201** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **aegisInstanceControllerFindAll**
-> Array<AegisInstance> aegisInstanceControllerFindAll()
 
+> Array<AegisInstance> aegisInstanceControllerFindAll()
 
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration
-} from './api';
+import { AegisInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-const { status, data } = await apiInstance.aegisInstanceControllerFindAll();
+const { status, data } = await apiInstance.aegisInstanceControllerFindAll()
 ```
 
 ### Parameters
-This endpoint does not have any parameters.
 
+This endpoint does not have any parameters.
 
 ### Return type
 
@@ -96,45 +87,39 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **aegisInstanceControllerFindOne**
-> AegisInstance aegisInstanceControllerFindOne()
 
+> AegisInstance aegisInstanceControllerFindOne()
 
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration
-} from './api';
+import { AegisInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-let id: string; //AegisInstance UUID (default to undefined)
+let id: string //AegisInstance UUID (default to undefined)
 
-const { status, data } = await apiInstance.aegisInstanceControllerFindOne(
-    id
-);
+const { status, data } = await apiInstance.aegisInstanceControllerFindOne(id)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | AegisInstance UUID | defaults to undefined|
-
+| Name   | Type         | Description        | Notes                 |
+| ------ | ------------ | ------------------ | --------------------- |
+| **id** | [**string**] | AegisInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -146,46 +131,40 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **aegisInstanceControllerHealthCheck**
-> AegisInstance aegisInstanceControllerHealthCheck()
 
+> AegisInstance aegisInstanceControllerHealthCheck()
 
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration
-} from './api';
+import { AegisInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-let id: string; //AegisInstance UUID (default to undefined)
+let id: string //AegisInstance UUID (default to undefined)
 
-const { status, data } = await apiInstance.aegisInstanceControllerHealthCheck(
-    id
-);
+const { status, data } = await apiInstance.aegisInstanceControllerHealthCheck(id)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | AegisInstance UUID | defaults to undefined|
-
+| Name   | Type         | Description        | Notes                 |
+| ------ | ------------ | ------------------ | --------------------- |
+| **id** | [**string**] | AegisInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -197,46 +176,40 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **aegisInstanceControllerRemove**
-> aegisInstanceControllerRemove()
 
+> aegisInstanceControllerRemove()
 
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration
-} from './api';
+import { AegisInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-let id: string; //AegisInstance UUID (default to undefined)
+let id: string //AegisInstance UUID (default to undefined)
 
-const { status, data } = await apiInstance.aegisInstanceControllerRemove(
-    id
-);
+const { status, data } = await apiInstance.aegisInstanceControllerRemove(id)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | AegisInstance UUID | defaults to undefined|
-
+| Name   | Type         | Description        | Notes                 |
+| ------ | ------------ | ------------------ | --------------------- |
+| **id** | [**string**] | AegisInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -248,50 +221,42 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**204** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **204**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **aegisInstanceControllerUpdate**
-> AegisInstance aegisInstanceControllerUpdate(updateAegisInstanceDto)
 
+> AegisInstance aegisInstanceControllerUpdate(updateAegisInstanceDto)
 
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration,
-    UpdateAegisInstanceDto
-} from './api';
+import { AegisInstanceApi, Configuration, UpdateAegisInstanceDto } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-let id: string; //AegisInstance UUID (default to undefined)
-let updateAegisInstanceDto: UpdateAegisInstanceDto; //
+let id: string //AegisInstance UUID (default to undefined)
+let updateAegisInstanceDto: UpdateAegisInstanceDto //
 
-const { status, data } = await apiInstance.aegisInstanceControllerUpdate(
-    id,
-    updateAegisInstanceDto
-);
+const { status, data } = await apiInstance.aegisInstanceControllerUpdate(id, updateAegisInstanceDto)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **updateAegisInstanceDto** | **UpdateAegisInstanceDto**|  | |
-| **id** | [**string**] | AegisInstance UUID | defaults to undefined|
-
+| Name                       | Type                       | Description        | Notes                 |
+| -------------------------- | -------------------------- | ------------------ | --------------------- |
+| **updateAegisInstanceDto** | **UpdateAegisInstanceDto** |                    |                       |
+| **id**                     | [**string**]               | AegisInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -303,19 +268,20 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **aegisRegisterControllerRegister**
+
 > AegisInstance aegisRegisterControllerRegister(aegisRegisterDto)
 
 Aegis posts its one-time registration token and JWKS URL. On success the instance transitions from `pending` to `active` and the token is invalidated.
@@ -323,28 +289,21 @@ Aegis posts its one-time registration token and JWKS URL. On success the instanc
 ### Example
 
 ```typescript
-import {
-    AegisInstanceApi,
-    Configuration,
-    AegisRegisterDto
-} from './api';
+import { AegisInstanceApi, Configuration, AegisRegisterDto } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new AegisInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new AegisInstanceApi(configuration)
 
-let aegisRegisterDto: AegisRegisterDto; //
+let aegisRegisterDto: AegisRegisterDto //
 
-const { status, data } = await apiInstance.aegisRegisterControllerRegister(
-    aegisRegisterDto
-);
+const { status, data } = await apiInstance.aegisRegisterControllerRegister(aegisRegisterDto)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **aegisRegisterDto** | **AegisRegisterDto**|  | |
-
+| Name                 | Type                 | Description | Notes |
+| -------------------- | -------------------- | ----------- | ----- |
+| **aegisRegisterDto** | **AegisRegisterDto** |             |       |
 
 ### Return type
 
@@ -356,15 +315,14 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**400** | Invalid or already-used registration token |  -  |
+
+| Status code | Description                                | Response headers |
+| ----------- | ------------------------------------------ | ---------------- |
+| **200**     |                                            | -                |
+| **400**     | Invalid or already-used registration token | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

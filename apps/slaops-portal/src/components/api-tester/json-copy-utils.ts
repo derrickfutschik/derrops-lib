@@ -1,4 +1,8 @@
-import { TRUNCATE_LENGTH, TRUNCATE_ARRAY_LENGTH, TRUNCATE_ARRAY_OBJECT_LENGTH } from './JsonResponseViewer'
+import {
+  TRUNCATE_ARRAY_LENGTH,
+  TRUNCATE_ARRAY_OBJECT_LENGTH,
+  TRUNCATE_LENGTH,
+} from './JsonResponseViewer'
 
 /** Write plain text to clipboard, with execCommand fallback for non-HTTPS contexts. */
 export function writeTextToClipboard(text: string): Promise<void> {
@@ -35,11 +39,11 @@ export function writeHtmlToClipboard(html: string, plainText: string): Promise<v
 
 // Colors matching JsonResponseViewer's Tailwind classes (converted to hex for inline styles)
 const COLORS = {
-  string: '#4ade80',   // text-green-400
-  key: '#c084fc',      // text-purple-400
-  number: '#fbbf24',   // text-amber-400
-  boolean: '#60a5fa',  // text-blue-400
-  null: '#f87171',     // text-red-400
+  string: '#4ade80', // text-green-400
+  key: '#c084fc', // text-purple-400
+  number: '#fbbf24', // text-amber-400
+  boolean: '#60a5fa', // text-blue-400
+  null: '#f87171', // text-red-400
   punctuation: '#e2e8f0',
   bg: '#0d1117',
   fg: '#e2e8f0',
@@ -68,7 +72,9 @@ function nodeToHtml(value: any, indent: number): string {
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]'
     const items = value
-      .map((item, i) => `${nextPad}${nodeToHtml(item, indent + 1)}${i < value.length - 1 ? ',' : ''}`)
+      .map(
+        (item, i) => `${nextPad}${nodeToHtml(item, indent + 1)}${i < value.length - 1 ? ',' : ''}`,
+      )
       .join('\n')
     return `[\n${items}\n${pad}]`
   }
@@ -99,10 +105,17 @@ export function jsonToStyledHtml(jsonStr: string): string {
 
 function truncateValue(value: any): any {
   if (typeof value === 'string') {
-    return value.length > TRUNCATE_LENGTH ? value.slice(0, TRUNCATE_LENGTH) + `… ${(value.length - TRUNCATE_LENGTH).toLocaleString()} more chars` : value
+    return value.length > TRUNCATE_LENGTH
+      ? value.slice(0, TRUNCATE_LENGTH) +
+          `… ${(value.length - TRUNCATE_LENGTH).toLocaleString()} more chars`
+      : value
   }
   if (Array.isArray(value)) {
-    const isObjArray = value.length > 0 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])
+    const isObjArray =
+      value.length > 0 &&
+      typeof value[0] === 'object' &&
+      value[0] !== null &&
+      !Array.isArray(value[0])
     const limit = isObjArray ? TRUNCATE_ARRAY_OBJECT_LENGTH : TRUNCATE_ARRAY_LENGTH
     const sliced = value.slice(0, limit).map(truncateValue)
     if (value.length > limit) {

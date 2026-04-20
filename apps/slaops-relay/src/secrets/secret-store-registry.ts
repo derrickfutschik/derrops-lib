@@ -96,11 +96,7 @@ export class SecretStoreRegistry {
    * The URI scheme selects the backend. A #field fragment selects a JSON
    * field from the secret value. Emits structured log events via the optional logger.
    */
-  async resolve(
-    secretUri: string,
-    jobId?: string,
-    logger?: SecretLogger,
-  ): Promise<SecretValue> {
+  async resolve(secretUri: string, jobId?: string, logger?: SecretLogger): Promise<SecretValue> {
     const { scheme, path, field } = parseSecretUri(secretUri)
     const store = this.getInstance(scheme)
 
@@ -113,9 +109,7 @@ export class SecretStoreRegistry {
     })
 
     try {
-      const result = field
-        ? await store.getSecretField(path, field)
-        : await store.getSecret(path)
+      const result = field ? await store.getSecretField(path, field) : await store.getSecret(path)
 
       if (result.fromCache) {
         logger?.debug({
@@ -168,7 +162,7 @@ export class SecretStoreRegistry {
 export const secretStoreRegistry = new SecretStoreRegistry()
 
 // Register built-in backends
-secretStoreRegistry.register('vault', envArg => new VaultSecretStore(envArg))
-secretStoreRegistry.register('aws-secretsmanager', envArg => new AwsSecretsManagerStore(envArg))
-secretStoreRegistry.register('azure-keyvault', envArg => new AzureKeyVaultStore(envArg))
-secretStoreRegistry.register('gcp-secretsmanager', envArg => new GcpSecretManagerStore(envArg))
+secretStoreRegistry.register('vault', (envArg) => new VaultSecretStore(envArg))
+secretStoreRegistry.register('aws-secretsmanager', (envArg) => new AwsSecretsManagerStore(envArg))
+secretStoreRegistry.register('azure-keyvault', (envArg) => new AzureKeyVaultStore(envArg))
+secretStoreRegistry.register('gcp-secretsmanager', (envArg) => new GcpSecretManagerStore(envArg))

@@ -80,13 +80,15 @@ export function WizardSqsSettings({
       <div>
         <p className="text-sm text-muted-foreground mb-3">Who manages the SQS queue?</p>
         <div className="grid grid-cols-2 gap-3">
-          {(['slaops', 'custom'] as const).map(mode => (
+          {(['slaops', 'custom'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
               onClick={() => onOwnershipChange(mode)}
               className={`rounded-lg border p-3 text-left transition-colors ${
-                ownership === mode ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/50'
+                ownership === mode
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border bg-card hover:border-primary/50'
               }`}
             >
               <div className="font-medium text-sm text-foreground mb-1">
@@ -107,7 +109,9 @@ export function WizardSqsSettings({
         <div className="space-y-3">
           <div className="rounded-lg bg-muted/50 border p-3 text-sm text-muted-foreground">
             <p className="mb-1 font-medium text-foreground">Queue will be created automatically</p>
-            <p className="text-xs font-mono">slaops--t-&#123;tenant-id&#125;--relay--cloud-relay--&#123;conn-id&#125;.fifo</p>
+            <p className="text-xs font-mono">
+              slaops--t-&#123;tenant-id&#125;--relay--cloud-relay--&#123;conn-id&#125;.fifo
+            </p>
           </div>
           <div className="flex items-start gap-2 rounded-md bg-warning/10 border border-warning/20 p-3">
             <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
@@ -138,17 +142,16 @@ export function WizardSqsSettings({
               id="queue-url"
               placeholder="https://sqs.ap-southeast-2.amazonaws.com/123456789012/my-relay.fifo"
               value={customQueueUrl}
-              onChange={e => onCustomQueueUrlChange(e.target.value)}
+              onChange={(e) => onCustomQueueUrlChange(e.target.value)}
               className={urlInvalid ? 'border-destructive focus-visible:ring-destructive' : ''}
             />
             {urlInvalid && (
               <p className="text-xs text-destructive">
-                Invalid URL — expected https://sqs.&#123;region&#125;.amazonaws.com/&#123;account-id&#125;/&#123;name.fifo&#125;
+                Invalid URL — expected
+                https://sqs.&#123;region&#125;.amazonaws.com/&#123;account-id&#125;/&#123;name.fifo&#125;
               </p>
             )}
-            {notFifo && (
-              <p className="text-xs text-destructive">Queue name must end in .fifo</p>
-            )}
+            {notFifo && <p className="text-xs text-destructive">Queue name must end in .fifo</p>}
             {nameNotLowercase && (
               <p className="text-xs text-destructive">Queue name must be all lowercase</p>
             )}

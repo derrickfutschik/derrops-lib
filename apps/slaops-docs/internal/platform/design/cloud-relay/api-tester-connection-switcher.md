@@ -23,9 +23,10 @@ tags:
 
 ## Overview
 
-The connection switcher is the UI control in the API Tester that lets a user choose *how* the current request is dispatched: through a registered relay connection, or directly from the browser. It is the entry point to the two-path send architecture described in [API Tester — Relay Execution](./api-tester-relay-execution).
+The connection switcher is the UI control in the API Tester that lets a user choose _how_ the current request is dispatched: through a registered relay connection, or directly from the browser. It is the entry point to the two-path send architecture described in [API Tester — Relay Execution](./api-tester-relay-execution).
 
 This document covers:
+
 - The `RelaySelector` component and `useRelaySelector` hook (current implementation)
 - The "Browser (direct)" option — explicit no-connection mode
 - Selection state machine: auto-select, persistence, deleted-connection recovery
@@ -36,14 +37,14 @@ This document covers:
 
 ## Components Involved
 
-| Component | Role |
-|---|---|
-| `RelaySelector.tsx` | Dropdown UI — renders connection list with "Browser (direct)" as the first option |
-| `useRelaySelector.ts` | Hook — owns connection ID state, localStorage persistence, auto-selection logic |
-| `useConnections.ts` (React Query) | Fetches the connections list from `GET /cloud-relay/connection` |
-| `useSendRequest.ts` | Consumes `relaySelector.connectionId` to branch between relay and browser send paths |
-| `useRelayJob.ts` | Manages relay job submission and long-poll loop (relay path only) |
-| `apiRequestSlice.ts` | Redux slice holding `isSendingRequest` and `requestResponse` |
+| Component                         | Role                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `RelaySelector.tsx`               | Dropdown UI — renders connection list with "Browser (direct)" as the first option    |
+| `useRelaySelector.ts`             | Hook — owns connection ID state, localStorage persistence, auto-selection logic      |
+| `useConnections.ts` (React Query) | Fetches the connections list from `GET /cloud-relay/connection`                      |
+| `useSendRequest.ts`               | Consumes `relaySelector.connectionId` to branch between relay and browser send paths |
+| `useRelayJob.ts`                  | Manages relay job submission and long-poll loop (relay path only)                    |
+| `apiRequestSlice.ts`              | Redux slice holding `isSendingRequest` and `requestResponse`                         |
 
 ---
 
@@ -55,7 +56,7 @@ This document covers:
 
 ```typescript
 interface RelaySelectorProps {
-  connectionId: string | null     // null = browser (direct) mode
+  connectionId: string | null // null = browser (direct) mode
   connections: CloudRelayConnection[]
   isLoading: boolean
   onSelect: (id: string | null) => void
@@ -80,6 +81,7 @@ Manage connections →
 ```
 
 The delivery-mode badge (`HTTP` or `SQS`) is derived from `connection.delivery_mode`:
+
 - `direct` or `relay-queue` → `HTTP`
 - `platform-queue` → `SQS`
 
@@ -89,7 +91,7 @@ The hook is responsible for selection state and persistence. It is not in Redux 
 
 ```typescript
 interface RelaySelection {
-  connectionId: string | null        // null = browser mode
+  connectionId: string | null // null = browser mode
   connection: CloudRelayConnection | null
   connections: CloudRelayConnection[]
   isLoading: boolean
@@ -121,14 +123,14 @@ interface RelaySelection {
 
 ### State transitions
 
-| Trigger | From | To | Side effect |
-|---|---|---|---|
-| Page load — no preference | — | null (browser) or first non-local | Persist if auto-selected |
-| Page load — valid preference | — | stored connectionId | — |
-| Page load — stale preference | — | null (browser) | Clear localStorage; show deleted toast |
-| User selects a connection | any | selected connectionId | Persist to localStorage |
-| User selects "Browser (direct)" | any | null | Persist null to localStorage |
-| User selects "Manage connections →" | any | unchanged | Navigate to `/connections` |
+| Trigger                             | From | To                                | Side effect                            |
+| ----------------------------------- | ---- | --------------------------------- | -------------------------------------- |
+| Page load — no preference           | —    | null (browser) or first non-local | Persist if auto-selected               |
+| Page load — valid preference        | —    | stored connectionId               | —                                      |
+| Page load — stale preference        | —    | null (browser)                    | Clear localStorage; show deleted toast |
+| User selects a connection           | any  | selected connectionId             | Persist to localStorage                |
+| User selects "Browser (direct)"     | any  | null                              | Persist null to localStorage           |
+| User selects "Manage connections →" | any  | unchanged                         | Navigate to `/connections`             |
 
 ### Deleted-connection recovery
 
@@ -136,7 +138,7 @@ When a stored connection ID no longer exists in the connections list:
 
 1. `useRelaySelector` sets `deletedWarning = true` and clears localStorage.
 2. `ApiTester` watches `relaySelector.deletedWarning` in a `useEffect` and fires a toast:
-   *"Your previously selected relay connection was deleted. Switched to Browser (direct)."*
+   _"Your previously selected relay connection was deleted. Switched to Browser (direct)."_
 3. `relaySelector.clearDeletedWarning()` is called after the toast so it fires only once.
 
 ---
@@ -146,11 +148,13 @@ When a stored connection ID no longer exists in the connections list:
 Selecting "Browser (direct)" sets `connectionId = null`. This is the explicit opt-out from relay routing — requests are made directly from the user's browser using the native `fetch()` API.
 
 **Use cases:**
+
 - APIs reachable from the public internet with permissive CORS headers.
 - Development environments accessible from the user's machine.
 - Testing without relay infrastructure configured.
 
 **Constraints when using browser mode:**
+
 - CORS restrictions enforced by the browser apply in full.
 - Requests carry the user's browser IP, not a fixed egress IP.
 - Private APIs behind a firewall or VPN are unreachable unless the user's machine is on the same network.
@@ -202,7 +206,7 @@ The two paths share the same Redux state (`isSendingRequest`, `requestResponse`)
 - `relayJob.submit()` has already been called; the job is queued on the platform.
 - `setConnectionId` updates the dropdown immediately and persists.
 - **The relay job is not cancelled.** The job was submitted to the old connection's relay — cancelling the client-side poll does not stop relay execution.
-- The long-poll continues. When the result arrives, `useEffect` dispatches `setRequestResponse`. The response banner shows *"Via [old connection name]"* — the connection that actually ran it.
+- The long-poll continues. When the result arrives, `useEffect` dispatches `setRequestResponse`. The response banner shows _"Via [old connection name]"_ — the connection that actually ran it.
 - The next Send uses the newly selected connection.
 
 This behaviour is intentional: the user is never left with a result that silently came from a connection different from the one currently displayed. The banner makes provenance explicit.
@@ -217,22 +221,22 @@ The following are not yet implemented. They represent the intended direction for
 
 Connection rows in the dropdown should show a status dot (`active` / `unreachable` / `pending`) so the user can tell at a glance whether a connection is healthy before selecting it.
 
-| Status | Visual | Behaviour |
-|---|---|---|
-| `active` | Green dot | Selectable normally |
-| `unreachable` | Red dot, greyed text | Selectable; warning tooltip: *"This connection was last seen as unreachable."* |
-| `pending` | Clock icon, greyed text | Selectable; warning tooltip: *"This connection has not completed setup."* |
+| Status        | Visual                  | Behaviour                                                                      |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| `active`      | Green dot               | Selectable normally                                                            |
+| `unreachable` | Red dot, greyed text    | Selectable; warning tooltip: _"This connection was last seen as unreachable."_ |
+| `pending`     | Clock icon, greyed text | Selectable; warning tooltip: _"This connection has not completed setup."_      |
 
 ### Guard rails on Send
 
 When the selected connection is `unreachable`: show an inline banner above the Send button:
-*"This connection appears unreachable. [Send anyway] [Cancel]"*
+_"This connection appears unreachable. [Send anyway] [Cancel]"_
 
 When the selected connection is `pending`: block Send with a tooltip:
-*"Complete connection setup before sending."*
+_"Complete connection setup before sending."_
 
 When the connection is deleted between page load and Send: the `POST /cloud-relay/job` returns 404; portal shows:
-*"Connection not found — it may have been deleted. [Select a connection]"*
+_"Connection not found — it may have been deleted. [Select a connection]"_
 
 ### Localhost detection banner
 
@@ -251,10 +255,10 @@ Dismissible per session.
 
 When a relay result is displayed, the status ribbon (HTTP status + portal-measured duration) should gain:
 
-| Field | Value |
-|---|---|
-| Via | Connection name (e.g. *Production Relay*) |
-| Mode | `SQS` or `HTTP` |
+| Field        | Value                                                                |
+| ------------ | -------------------------------------------------------------------- |
+| Via          | Connection name (e.g. _Production Relay_)                            |
+| Mode         | `SQS` or `HTTP`                                                      |
 | Relay timing | Time measured by the relay itself, shown alongside portal round-trip |
 
 `relayConnectionName` and `relayDeliveryMode` are already stored in `RequestResponse` in `apiRequestSlice`; the display fields just need to be wired into the response ribbon UI.
@@ -275,12 +279,12 @@ When a relay result is displayed, the status ribbon (HTTP status + portal-measur
 
 ## Failure Modes
 
-| Failure | Detection | Handling |
-|---|---|---|
-| Stored connection deleted between sessions | `connectionId` not in connections list on load | Clear localStorage; `connectionId = null`; show one-time toast |
-| Connections API unreachable on load | React Query error state; `isLoading = false`, `connections = []` | Selector shows only "Browser (direct)" and "Manage connections →" |
-| Connection deleted while API Tester is open | Next Send → `POST /cloud-relay/job` returns 404 | *(Planned)* Show inline error with link to select a different connection |
-| Connection becomes unreachable mid-session | Status badge stales in dropdown | *(Planned)* Status indicators + Send guard rail |
+| Failure                                     | Detection                                                        | Handling                                                                 |
+| ------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Stored connection deleted between sessions  | `connectionId` not in connections list on load                   | Clear localStorage; `connectionId = null`; show one-time toast           |
+| Connections API unreachable on load         | React Query error state; `isLoading = false`, `connections = []` | Selector shows only "Browser (direct)" and "Manage connections →"        |
+| Connection deleted while API Tester is open | Next Send → `POST /cloud-relay/job` returns 404                  | _(Planned)_ Show inline error with link to select a different connection |
+| Connection becomes unreachable mid-session  | Status badge stales in dropdown                                  | _(Planned)_ Status indicators + Send guard rail                          |
 
 ---
 

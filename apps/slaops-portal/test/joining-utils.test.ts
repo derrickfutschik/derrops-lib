@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest'
-import { detectJoiningContext, detectJoinColumnCandidates } from '../src/components/api-tester/joining-utils'
+import { describe, expect, it } from 'vitest'
+import {
+  detectJoinColumnCandidates,
+  detectJoiningContext,
+} from '../src/components/api-tester/joining-utils'
 
 // ---------------------------------------------------------------------------
 // Minimal test data modelled after the real jmespath-example.json structure.
@@ -7,10 +10,19 @@ import { detectJoiningContext, detectJoinColumnCandidates } from '../src/compone
 // hits[*].document.sampleOperations → array of arrays (one array per hit).
 // ---------------------------------------------------------------------------
 
-const contact0 = { 'x-twitter': 'Adyen', name: 'Adyen Developer Experience team', url: 'https://github.com/Adyen/adyen-openapi' }
+const contact0 = {
+  'x-twitter': 'Adyen',
+  name: 'Adyen Developer Experience team',
+  url: 'https://github.com/Adyen/adyen-openapi',
+}
 const contact1 = { 'x-twitter': 'Adyen' }
 const contact2 = { email: 'contact@airbyte.io' }
-const contact3 = { 'x-twitter': 'PermittedSoc', name: 'Mike Ralphson', email: 'mike.ralphson@gmail.com', url: 'https://github.com/mermade/aws2openapi' }
+const contact3 = {
+  'x-twitter': 'PermittedSoc',
+  name: 'Mike Ralphson',
+  email: 'mike.ralphson@gmail.com',
+  url: 'https://github.com/mermade/aws2openapi',
+}
 
 const sampleOps0 = [
   { summary: 'List companies', path: '/companies', method: 'GET', operationId: 'get-companies' },
@@ -28,10 +40,26 @@ const sampleOps2 = [
 const testData = {
   total: 4,
   hits: [
-    { id: 'hit-0', score: 0.9, document: { id: 'doc-0', title: 'API A', contact: contact0, sampleOperations: sampleOps0 } },
-    { id: 'hit-1', score: 0.8, document: { id: 'doc-1', title: 'API B', contact: contact1, sampleOperations: sampleOps1 } },
-    { id: 'hit-2', score: 0.7, document: { id: 'doc-2', title: 'API C', contact: contact2, sampleOperations: sampleOps2 } },
-    { id: 'hit-3', score: 0.6, document: { id: 'doc-3', title: 'API D', contact: contact3, sampleOperations: [] } },
+    {
+      id: 'hit-0',
+      score: 0.9,
+      document: { id: 'doc-0', title: 'API A', contact: contact0, sampleOperations: sampleOps0 },
+    },
+    {
+      id: 'hit-1',
+      score: 0.8,
+      document: { id: 'doc-1', title: 'API B', contact: contact1, sampleOperations: sampleOps1 },
+    },
+    {
+      id: 'hit-2',
+      score: 0.7,
+      document: { id: 'doc-2', title: 'API C', contact: contact2, sampleOperations: sampleOps2 },
+    },
+    {
+      id: 'hit-3',
+      score: 0.6,
+      document: { id: 'doc-3', title: 'API D', contact: contact3, sampleOperations: [] },
+    },
   ],
 }
 
@@ -88,18 +116,29 @@ describe('detectJoiningContext — hits[*].document.id', () => {
 
 describe('detectJoiningContext — hits[*].document.sampleOperations[*]', () => {
   it('produces a "hits" joining column', () => {
-    const ctx = detectJoiningContext(testData, 'hits[*].document.sampleOperations[*]', sampleOpsResult.length)
+    const ctx = detectJoiningContext(
+      testData,
+      'hits[*].document.sampleOperations[*]',
+      sampleOpsResult.length,
+    )
     expect(ctx).not.toBeNull()
     expect(ctx!.joiningColumns).toEqual(['hits'])
   })
 
   it('maps each operation to its hit index (skips hit-3 with empty ops)', () => {
-    const ctx = detectJoiningContext(testData, 'hits[*].document.sampleOperations[*]', sampleOpsResult.length)!
+    const ctx = detectJoiningContext(
+      testData,
+      'hits[*].document.sampleOperations[*]',
+      sampleOpsResult.length,
+    )!
     // hit-0 → 2 ops, hit-1 → 1 op, hit-2 → 3 ops, hit-3 → 0 ops
     expect(ctx.rowIndices).toEqual([
-      ['0'], ['0'],       // hit-0 ops 0,1
-      ['1'],              // hit-1 op 0
-      ['2'], ['2'], ['2'], // hit-2 ops 0,1,2
+      ['0'],
+      ['0'], // hit-0 ops 0,1
+      ['1'], // hit-1 op 0
+      ['2'],
+      ['2'],
+      ['2'], // hit-2 ops 0,1,2
     ])
   })
 })
@@ -112,17 +151,28 @@ describe('detectJoiningContext — hits[*].document.sampleOperations[*].path', (
   const pathResult = testData.hits.flatMap((h) => h.document.sampleOperations.map((op) => op.path))
 
   it('produces ["hits", "sampleOperations"] joining columns', () => {
-    const ctx = detectJoiningContext(testData, 'hits[*].document.sampleOperations[*].path', pathResult.length)
+    const ctx = detectJoiningContext(
+      testData,
+      'hits[*].document.sampleOperations[*].path',
+      pathResult.length,
+    )
     expect(ctx).not.toBeNull()
     expect(ctx!.joiningColumns).toEqual(['hits', 'sampleOperations'])
   })
 
   it('maps each path result to [hitIdx, opIdx]', () => {
-    const ctx = detectJoiningContext(testData, 'hits[*].document.sampleOperations[*].path', pathResult.length)!
+    const ctx = detectJoiningContext(
+      testData,
+      'hits[*].document.sampleOperations[*].path',
+      pathResult.length,
+    )!
     expect(ctx.rowIndices).toEqual([
-      ['0', '0'], ['0', '1'],
+      ['0', '0'],
+      ['0', '1'],
       ['1', '0'],
-      ['2', '0'], ['2', '1'], ['2', '2'],
+      ['2', '0'],
+      ['2', '1'],
+      ['2', '2'],
     ])
   })
 })

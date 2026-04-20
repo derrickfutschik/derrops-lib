@@ -1,21 +1,15 @@
+import type { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Select, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertCircle, ChevronDown, Eye, Search, Send } from 'lucide-react'
-import type { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
 import { ActionMode } from '../types'
 
 interface OpenAPIOperationPanelProps {
@@ -138,21 +132,30 @@ export function OpenAPIOperationPanel({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-popover z-50">
           <DropdownMenuItem
-            onClick={() => { onActionModeChange('analyze'); onRightPanelTabChange('match') }}
+            onClick={() => {
+              onActionModeChange('analyze')
+              onRightPanelTabChange('match')
+            }}
             className={actionMode === 'analyze' ? 'bg-accent' : ''}
           >
             <Search className="h-4 w-4 mr-2" />
             Match
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => { onActionModeChange('request'); onRightPanelTabChange('response') }}
+            onClick={() => {
+              onActionModeChange('request')
+              onRightPanelTabChange('response')
+            }}
             className={actionMode === 'request' ? 'bg-accent' : ''}
           >
             <Send className="h-4 w-4 mr-2" />
             Request
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => { onActionModeChange('preview'); onRightPanelTabChange('preview') }}
+            onClick={() => {
+              onActionModeChange('preview')
+              onRightPanelTabChange('preview')
+            }}
             className={actionMode === 'preview' ? 'bg-accent' : ''}
           >
             <Eye className="h-4 w-4 mr-2" />
@@ -168,9 +171,7 @@ export function OpenAPIOperationPanel({
       <TooltipTrigger asChild>
         <div>
           <Select value={openAPIOperation?.method || ''} disabled>
-            <SelectTrigger
-              className={`bg-background opacity-70 cursor-not-allowed ${className}`}
-            >
+            <SelectTrigger className={`bg-background opacity-70 cursor-not-allowed ${className}`}>
               <SelectValue placeholder="Method">
                 {openAPIOperation?.method ? (
                   <span className={methodColorClass(openAPIOperation.method)}>
@@ -223,18 +224,26 @@ export function OpenAPIOperationPanel({
         <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
           <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
-            <strong>Localhost target detected.</strong> Browser mode cannot reach local services on another machine. Start a local relay or{' '}
+            <strong>Localhost target detected.</strong> Browser mode cannot reach local services on
+            another machine. Start a local relay or{' '}
             <button
               className="underline underline-offset-2 hover:no-underline"
-              onClick={() => onSelectRelay(
-                relayConnections.find((c) => c.type === 'local-dev')?.id ?? null
-              )}
+              onClick={() =>
+                onSelectRelay(relayConnections.find((c) => c.type === 'local-dev')?.id ?? null)
+              }
             >
               switch to a local relay connection
             </button>
             {relayConnections.filter((c) => c.type === 'local-dev').length === 0 && (
-              <> — <a href="/connections" className="underline underline-offset-2 hover:no-underline">set one up</a></>
-            )}.
+              <>
+                {' '}
+                —{' '}
+                <a href="/connections" className="underline underline-offset-2 hover:no-underline">
+                  set one up
+                </a>
+              </>
+            )}
+            .
           </span>
         </div>
       )}

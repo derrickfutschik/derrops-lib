@@ -1,12 +1,12 @@
 /**
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/servers-tab.md
  */
-import { useQuery } from '@tanstack/react-query'
-import { cloudAxios } from '@/lib/cloud-api'
 import { API_BASE_URL, PAGE_SIZE } from '@/config'
+import { cloudAxios } from '@/lib/cloud-api'
+import { selectSelectedVersion, selectServersTabState } from '@/store/apiTabsSlice'
 import { useAppSelector } from '@/store/hooks'
-import { selectServersTabState, selectSelectedVersion } from '@/store/apiTabsSlice'
 import type { PagedResult, ServerHit } from '@/types/apiTabs'
+import { useQuery } from '@tanstack/react-query'
 
 export function useServersTab(apiId: string) {
   const { sort, page } = useAppSelector(selectServersTabState)

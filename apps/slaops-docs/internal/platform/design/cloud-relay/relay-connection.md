@@ -15,11 +15,11 @@ tags: [cloud-relay, authentication, security, architecture, implemented]
 
 This document describes how connections and trust are established between the three runtime components:
 
-| Component | Hosted by |
-|---|---|
-| **SLAOps Platform** (`slaops-cloud`) | SLAOps (vendor) |
-| **Cloud Relay** (`slaops-relay`) | Customer or SLAOps-managed |
-| **Aegis Broker** | Customer |
+| Component                            | Hosted by                  |
+| ------------------------------------ | -------------------------- |
+| **SLAOps Platform** (`slaops-cloud`) | SLAOps (vendor)            |
+| **Cloud Relay** (`slaops-relay`)     | Customer or SLAOps-managed |
+| **Aegis Broker**                     | Customer                   |
 
 A working deployment requires all three components to know where each other lives and to mutually trust each other's signatures. This document covers:
 
@@ -69,16 +69,16 @@ A working deployment requires all three components to know where each other live
 
 Each pair of components needs a distinct trust mechanism:
 
-| Direction | Mechanism | Stage 1 |
-|---|---|---|
-| SLAOps Platform → Relay | **Private JWT** — platform mints a short-lived, relay-scoped JWT signed with the vendor private key; relay validates against vendor JWKS | ✅ |
-| Relay → SLAOps Platform | Vendor JWKS (relay validates vendor job envelope signatures) | ✅ |
-| Browser → Aegis | Customer SSO IdP token | ✅ |
-| Aegis → Relay (scope binding) | Delegation JWT `scopes[].relayIds` — Aegis only issues JWTs scoped to relay IDs in its configured allowlist; relay rejects JWTs whose scopes do not include its own `RELAY_ID` | ✅ |
-| Aegis → SLAOps Platform | Aegis pushes session delegation JWT to platform | ✅ |
-| Relay → Aegis | JWKS endpoint (relay validates delegation JWT signature against Aegis JWKS) | ✅ |
-| SLAOps Platform → Aegis | No direct call in hot path (Aegis calls platform at session registration) | ✅ |
-| Platform → Relay (mutual TLS) | mTLS certificate | ❌ deferred |
+| Direction                     | Mechanism                                                                                                                                                                      | Stage 1     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| SLAOps Platform → Relay       | **Private JWT** — platform mints a short-lived, relay-scoped JWT signed with the vendor private key; relay validates against vendor JWKS                                       | ✅          |
+| Relay → SLAOps Platform       | Vendor JWKS (relay validates vendor job envelope signatures)                                                                                                                   | ✅          |
+| Browser → Aegis               | Customer SSO IdP token                                                                                                                                                         | ✅          |
+| Aegis → Relay (scope binding) | Delegation JWT `scopes[].relayIds` — Aegis only issues JWTs scoped to relay IDs in its configured allowlist; relay rejects JWTs whose scopes do not include its own `RELAY_ID` | ✅          |
+| Aegis → SLAOps Platform       | Aegis pushes session delegation JWT to platform                                                                                                                                | ✅          |
+| Relay → Aegis                 | JWKS endpoint (relay validates delegation JWT signature against Aegis JWKS)                                                                                                    | ✅          |
+| SLAOps Platform → Aegis       | No direct call in hot path (Aegis calls platform at session registration)                                                                                                      | ✅          |
+| Platform → Relay (mutual TLS) | mTLS certificate                                                                                                                                                               | ❌ deferred |
 
 The dual-authorization model is preserved: **neither the SLAOps platform nor Aegis alone can cause the relay to execute a job**. The relay requires a valid vendor-signed job envelope AND a valid customer-signed session delegation JWT whose scopes include the relay's own ID.
 
@@ -96,13 +96,13 @@ Authorization: Bearer <platform-jwt>
 
 ### JWT claims
 
-| Claim | Value | Purpose |
-|---|---|---|
-| `iss` | `https://api.slaops.com` | Identifies the SLAOps platform |
-| `aud` | `<relay-id>` (UUID) | Scopes the token to one specific relay — tokens for relay A are rejected by relay B |
-| `iat` | now | Issued-at timestamp |
-| `exp` | now + 5 min | Short TTL — automatic rotation, no long-lived secret |
-| `jti` | random UUID | Prevents token reuse within the TTL window |
+| Claim | Value                    | Purpose                                                                             |
+| ----- | ------------------------ | ----------------------------------------------------------------------------------- |
+| `iss` | `https://api.slaops.com` | Identifies the SLAOps platform                                                      |
+| `aud` | `<relay-id>` (UUID)      | Scopes the token to one specific relay — tokens for relay A are rejected by relay B |
+| `iat` | now                      | Issued-at timestamp                                                                 |
+| `exp` | now + 5 min              | Short TTL — automatic rotation, no long-lived secret                                |
+| `jti` | random UUID              | Prevents token reuse within the TTL window                                          |
 
 ### Relay validation steps
 
@@ -123,6 +123,7 @@ The vendor private key is the same key already used to sign vendor job envelopes
 Reads all connection state from RDS. Uses its existing vendor signing key (also used for job envelopes) to mint relay-scoped JWTs per request.
 
 Exposes:
+
 - Vendor JWKS endpoint (`GET /cloud-relay/.well-known/jwks.json`) — used by relays to validate both relay-scoped JWTs and vendor job envelope signatures.
 - Connection registration API — used by the portal to register relay and Aegis instances.
 
@@ -130,12 +131,12 @@ Exposes:
 
 Environment variables required at deployment:
 
-| Variable | Description |
-|---|---|
-| `RELAY_ID` | UUID assigned by the SLAOps platform at registration. Used to validate the `aud` claim on every inbound platform JWT. |
+| Variable                 | Description                                                                                                                                                                               |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RELAY_ID`               | UUID assigned by the SLAOps platform at registration. Used to validate the `aud` claim on every inbound platform JWT.                                                                     |
 | `SLAOPS_VENDOR_JWKS_URL` | URL of the platform's JWKS endpoint. Used to validate both relay-scoped auth JWTs and vendor job envelope signatures. Example: `https://api.slaops.com/cloud-relay/.well-known/jwks.json` |
-| `AEGIS_JWKS_URL` | URL of the linked Aegis instance's JWKS endpoint. Used to validate session delegation JWT signatures. Example: `https://aegis.customer.example.com/.well-known/jwks.json` |
-| `AEGIS_REQUIRED` | `true` / `false`. When `true`, any job without a valid session delegation JWT is rejected. Default: `false` in stage 1 (Aegis optional per relay). |
+| `AEGIS_JWKS_URL`         | URL of the linked Aegis instance's JWKS endpoint. Used to validate session delegation JWT signatures. Example: `https://aegis.customer.example.com/.well-known/jwks.json`                 |
+| `AEGIS_REQUIRED`         | `true` / `false`. When `true`, any job without a valid session delegation JWT is rejected. Default: `false` in stage 1 (Aegis optional per relay).                                        |
 
 No API keys. No secrets generated or distributed at registration time.
 
@@ -143,13 +144,13 @@ No API keys. No secrets generated or distributed at registration time.
 
 Environment variables required at deployment:
 
-| Variable | Description |
-|---|---|
-| `SLAOPS_PLATFORM_URL` | Base URL of the SLAOps platform. Used to push session delegation JWTs at session start. Example: `https://api.slaops.com` |
+| Variable                    | Description                                                                                                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SLAOPS_PLATFORM_URL`       | Base URL of the SLAOps platform. Used to push session delegation JWTs at session start. Example: `https://api.slaops.com`                                                              |
 | `SLAOPS_REGISTRATION_TOKEN` | Short-lived token used to complete the Aegis registration handshake with the platform (generated in the portal during registration). Cleared from Aegis after the handshake completes. |
-| `AEGIS_SIGNING_KEY_ID` | Key ID (`kid`) of the active signing key. Must match the entry Aegis publishes in its own JWKS. |
-| `AEGIS_SIGNING_KEY` | Private key (RSA or EC) used to sign session delegation JWTs. Customer-generated and customer-held. |
-| `CUSTOMER_IDP_JWKS_URL` | JWKS of the customer SSO IdP. Used to validate user tokens at session start. |
+| `AEGIS_SIGNING_KEY_ID`      | Key ID (`kid`) of the active signing key. Must match the entry Aegis publishes in its own JWKS.                                                                                        |
+| `AEGIS_SIGNING_KEY`         | Private key (RSA or EC) used to sign session delegation JWTs. Customer-generated and customer-held.                                                                                    |
+| `CUSTOMER_IDP_JWKS_URL`     | JWKS of the customer SSO IdP. Used to validate user tokens at session start.                                                                                                           |
 
 ---
 
@@ -256,12 +257,18 @@ When `sqs_queue_mode = 'platform'` during connection creation, the platform perf
    ```json
    {
      "Version": "2012-10-17",
-     "Statement": [{
-       "Effect": "Allow",
-       "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage",
-                  "sqs:GetQueueAttributes", "sqs:ChangeMessageVisibility"],
-       "Resource": "arn:aws:sqs:<region>:<account>:<queue-name>"
-     }]
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "sqs:ReceiveMessage",
+           "sqs:DeleteMessage",
+           "sqs:GetQueueAttributes",
+           "sqs:ChangeMessageVisibility"
+         ],
+         "Resource": "arn:aws:sqs:<region>:<account>:<queue-name>"
+       }
+     ]
    }
    ```
 
@@ -352,8 +359,8 @@ No state on Aegis. The allowlist is read from configuration at startup.
 
 ### Aegis configuration for relay allowlist
 
-| Variable | Description |
-|---|---|
+| Variable            | Description                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ALLOWED_RELAY_IDS` | Comma-separated list of relay UUIDs Aegis will issue delegation JWTs for. Example: `relay-uuid-a,relay-uuid-b`. Requires restart to update. |
 
 ### Operator setup flow
@@ -480,6 +487,7 @@ flowchart TD
 ```
 
 Key observations:
+
 - A single Aegis instance (`AegisX`) is linked to multiple relays (`RelayA`, `RelayB`). Both relays fetch their JWKS from the same Aegis endpoint.
 - A separate team or environment can deploy its own Aegis (`AegisY`) with its own relay (`RelayC`).
 - The SLAOps platform authenticates to every relay using short-lived relay-scoped JWTs — no static secrets distributed or stored.
@@ -490,24 +498,24 @@ Key observations:
 
 ### Relay Instances page
 
-| Action | Description |
-|---|---|
-| Create relay | Form: name, URL. Returns the relay UUID to set as `RELAY_ID`. No API key generated. |
-| Edit relay | Update name, URL, linked Aegis instance. |
-| Delete relay | Removes registration. The relay UUID is effectively invalidated — the platform will no longer mint JWTs with that `aud`. |
-| Test connection | Triggers a health check (platform mints a relay-scoped JWT, calls relay `/health`). Shows last-seen timestamp and round-trip latency. |
-| View linked Aegis | Shows the Aegis instance currently linked to this relay. |
-| Copy relay ID | The UUID shown as a copyable field for operator use. |
+| Action            | Description                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Create relay      | Form: name, URL. Returns the relay UUID to set as `RELAY_ID`. No API key generated.                                                   |
+| Edit relay        | Update name, URL, linked Aegis instance.                                                                                              |
+| Delete relay      | Removes registration. The relay UUID is effectively invalidated — the platform will no longer mint JWTs with that `aud`.              |
+| Test connection   | Triggers a health check (platform mints a relay-scoped JWT, calls relay `/health`). Shows last-seen timestamp and round-trip latency. |
+| View linked Aegis | Shows the Aegis instance currently linked to this relay.                                                                              |
+| Copy relay ID     | The UUID shown as a copyable field for operator use.                                                                                  |
 
 ### Aegis Instances page
 
-| Action | Description |
-|---|---|
-| Register Aegis | Form: name, URL, JWKS URL. Returns one-time registration token. |
-| Edit Aegis | Update name, URL, JWKS URL. |
-| Delete Aegis | Unlinks from all relays, removes registration. |
-| Test connection | Fetches JWKS URL and validates key format. Shows status. |
-| View linked relays | Shows which relay instances reference this Aegis. |
+| Action             | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| Register Aegis     | Form: name, URL, JWKS URL. Returns one-time registration token. |
+| Edit Aegis         | Update name, URL, JWKS URL.                                     |
+| Delete Aegis       | Unlinks from all relays, removes registration.                  |
+| Test connection    | Fetches JWKS URL and validates key format. Shows status.        |
+| View linked relays | Shows which relay instances reference this Aegis.               |
 
 ### Connection health dashboard
 
@@ -551,10 +559,11 @@ POST   /api/aegis/register   Complete Aegis registration handshake
 ```
 
 Request body:
+
 ```typescript
 {
-  registrationToken: string   // one-time token from portal
-  jwksUrl: string             // JWKS endpoint Aegis publishes
+  registrationToken: string // one-time token from portal
+  jwksUrl: string // JWKS endpoint Aegis publishes
 }
 ```
 
@@ -596,13 +605,13 @@ GET    /cloud-relay/.well-known/jwks.json   Vendor signing public keys (for rela
 
 ## Stage 1 constraints and known limitations
 
-| Limitation | Notes |
-|---|---|
-| No mTLS between platform and relay | Private JWT only. mTLS deferred — requires API Gateway MTLS endpoint configuration. |
-| No automatic relay health monitoring | Health checks are manual (portal-triggered). Background polling deferred. |
-| Aegis registration token is one-time only | If lost before Aegis completes the handshake, the admin must delete and re-register the Aegis instance. |
-| JWKS caching on the relay is implementation-specific | Relay should cache JWKS with a short TTL (5 min) and refresh on unknown `kid`. |
-| Aegis allowlist changes require restart | `ALLOWED_RELAY_IDS` is config-driven. Adding or removing a relay requires an Aegis restart. |
+| Limitation                                           | Notes                                                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| No mTLS between platform and relay                   | Private JWT only. mTLS deferred — requires API Gateway MTLS endpoint configuration.                     |
+| No automatic relay health monitoring                 | Health checks are manual (portal-triggered). Background polling deferred.                               |
+| Aegis registration token is one-time only            | If lost before Aegis completes the handshake, the admin must delete and re-register the Aegis instance. |
+| JWKS caching on the relay is implementation-specific | Relay should cache JWKS with a short TTL (5 min) and refresh on unknown `kid`.                          |
+| Aegis allowlist changes require restart              | `ALLOWED_RELAY_IDS` is config-driven. Adding or removing a relay requires an Aegis restart.             |
 
 ---
 
@@ -625,9 +634,9 @@ GET    /cloud-relay/.well-known/jwks.json   Vendor signing public keys (for rela
 
 ### Deferred (Stage 1)
 
-- [ ] Portal UI: relay instances page (create, edit, delete, health check) — *replaced by Stage 2 connection wizard*
-- [ ] Portal UI: Aegis instances page (register, edit, delete, health check) — *replaced by Stage 2 connection wizard*
-- [ ] Portal UI: connection health dashboard — *included in Stage 2 design*
+- [ ] Portal UI: relay instances page (create, edit, delete, health check) — _replaced by Stage 2 connection wizard_
+- [ ] Portal UI: Aegis instances page (register, edit, delete, health check) — _replaced by Stage 2 connection wizard_
+- [ ] Portal UI: connection health dashboard — _included in Stage 2 design_
 - [ ] mTLS between platform and relay (deferred — API Gateway MTLS endpoint)
 - [ ] Automatic background relay health monitoring (currently portal-triggered only)
 

@@ -1,12 +1,12 @@
 /**
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/versions-tab.md
  */
-import { useQuery } from '@tanstack/react-query'
-import { cloudAxios } from '@/lib/cloud-api'
 import { API_BASE_URL, PAGE_SIZE } from '@/config'
-import { useAppSelector } from '@/store/hooks'
+import { cloudAxios } from '@/lib/cloud-api'
 import { selectVersionsTabState } from '@/store/apiTabsSlice'
+import { useAppSelector } from '@/store/hooks'
 import type { PagedResult, VersionHit } from '@/types/apiTabs'
+import { useQuery } from '@tanstack/react-query'
 
 export function useVersionsTab(apiId: string) {
   const { sort, page } = useAppSelector(selectVersionsTabState)

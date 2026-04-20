@@ -1,7 +1,17 @@
 import { randomUUID } from 'crypto'
-import { SQSClient, SendMessageCommand, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import {
+  SQSClient,
+  SendMessageCommand,
+  ReceiveMessageCommand,
+  DeleteMessageCommand,
+} from '@aws-sdk/client-sqs'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb'
 import type { QueueJobClaim, QueueJobState, QueueStore } from './queue-store'
 import { QueueStoreError } from './queue-store'
 
@@ -53,37 +63,43 @@ export class SqsQueueStore implements QueueStore {
     const expiresAt = new Date(now.getTime() + ttlMs).toISOString()
     const ttlEpoch = Math.floor((now.getTime() + ttlMs) / 1000)
 
-    await this.dynamo.send(new PutCommand({
-      TableName: this.tableName,
-      Item: {
-        id,
-        status: 'pending',
-        tenantId,
-        userId,
-        request: JSON.stringify(request),
-        result: null,
-        createdAt: now.toISOString(),
-        completedAt: null,
-        expiresAt,
-        ttl: ttlEpoch, // DynamoDB TTL attribute (epoch seconds)
-      },
-    }))
+    await this.dynamo.send(
+      new PutCommand({
+        TableName: this.tableName,
+        Item: {
+          id,
+          status: 'pending',
+          tenantId,
+          userId,
+          request: JSON.stringify(request),
+          result: null,
+          createdAt: now.toISOString(),
+          completedAt: null,
+          expiresAt,
+          ttl: ttlEpoch, // DynamoDB TTL attribute (epoch seconds)
+        },
+      }),
+    )
 
-    await this.sqs.send(new SendMessageCommand({
-      QueueUrl: this.queueUrl,
-      MessageBody: id,
-      MessageGroupId: 'relay-jobs',
-      MessageDeduplicationId: id,
-    }))
+    await this.sqs.send(
+      new SendMessageCommand({
+        QueueUrl: this.queueUrl,
+        MessageBody: id,
+        MessageGroupId: 'relay-jobs',
+        MessageDeduplicationId: id,
+      }),
+    )
 
     return id
   }
 
   async getJob(id: string): Promise<QueueJobState | null> {
-    const { Item } = await this.dynamo.send(new GetCommand({
-      TableName: this.tableName,
-      Key: { id },
-    }))
+    const { Item } = await this.dynamo.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { id },
+      }),
+    )
 
     if (!Item) return null
 
@@ -93,7 +109,9 @@ export class SqsQueueStore implements QueueStore {
       tenantId: Item['tenantId'] as string,
       userId: Item['userId'] as string,
       request: JSON.parse(Item['request'] as string) as Record<string, unknown>,
-      result: Item['result'] ? JSON.parse(Item['result'] as string) as Record<string, unknown> : null,
+      result: Item['result']
+        ? (JSON.parse(Item['result'] as string) as Record<string, unknown>)
+        : null,
       createdAt: Item['createdAt'] as string,
       completedAt: (Item['completedAt'] as string | null) ?? null,
       expiresAt: Item['expiresAt'] as string,
@@ -101,12 +119,14 @@ export class SqsQueueStore implements QueueStore {
   }
 
   async pollNext(): Promise<QueueJobClaim | null> {
-    const { Messages } = await this.sqs.send(new ReceiveMessageCommand({
-      QueueUrl: this.queueUrl,
-      MaxNumberOfMessages: 1,
-      WaitTimeSeconds: 20, // long poll
-      VisibilityTimeout: 120,
-    }))
+    const { Messages } = await this.sqs.send(
+      new ReceiveMessageCommand({
+        QueueUrl: this.queueUrl,
+        MaxNumberOfMessages: 1,
+        WaitTimeSeconds: 20, // long poll
+        VisibilityTimeout: 120,
+      }),
+    )
 
     if (!Messages?.length) return null
 
@@ -117,55 +137,67 @@ export class SqsQueueStore implements QueueStore {
     const job = await this.getJob(jobId)
     if (!job) {
       // Job expired — delete message and signal nothing to process
-      await this.sqs.send(new DeleteMessageCommand({
-        QueueUrl: this.queueUrl,
-        ReceiptHandle: receiptHandle,
-      }))
+      await this.sqs.send(
+        new DeleteMessageCommand({
+          QueueUrl: this.queueUrl,
+          ReceiptHandle: receiptHandle,
+        }),
+      )
       return null
     }
 
     // Mark as processing in DynamoDB
-    await this.dynamo.send(new UpdateCommand({
-      TableName: this.tableName,
-      Key: { id: jobId },
-      UpdateExpression: 'SET #s = :processing',
-      ExpressionAttributeNames: { '#s': 'status' },
-      ExpressionAttributeValues: { ':processing': 'processing' },
-    }))
+    await this.dynamo.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id: jobId },
+        UpdateExpression: 'SET #s = :processing',
+        ExpressionAttributeNames: { '#s': 'status' },
+        ExpressionAttributeValues: { ':processing': 'processing' },
+      }),
+    )
 
     job.status = 'processing'
     return { job, ackHandle: receiptHandle }
   }
 
   async complete(id: string, ackHandle: string, result: Record<string, unknown>): Promise<void> {
-    await this.dynamo.send(new UpdateCommand({
-      TableName: this.tableName,
-      Key: { id },
-      UpdateExpression: 'SET #s = :completed, #r = :result, completedAt = :completedAt',
-      ExpressionAttributeNames: { '#s': 'status', '#r': 'result' },
-      ExpressionAttributeValues: {
-        ':completed': 'completed',
-        ':result': JSON.stringify(result),
-        ':completedAt': new Date().toISOString(),
-      },
-    }))
+    await this.dynamo.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id },
+        UpdateExpression: 'SET #s = :completed, #r = :result, completedAt = :completedAt',
+        ExpressionAttributeNames: { '#s': 'status', '#r': 'result' },
+        ExpressionAttributeValues: {
+          ':completed': 'completed',
+          ':result': JSON.stringify(result),
+          ':completedAt': new Date().toISOString(),
+        },
+      }),
+    )
 
-    await this.sqs.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }))
+    await this.sqs.send(
+      new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }),
+    )
   }
 
   async fail(id: string, ackHandle: string, error: Record<string, unknown>): Promise<void> {
-    await this.dynamo.send(new UpdateCommand({
-      TableName: this.tableName,
-      Key: { id },
-      UpdateExpression: 'SET #s = :failed, #r = :result, completedAt = :completedAt',
-      ExpressionAttributeNames: { '#s': 'status', '#r': 'result' },
-      ExpressionAttributeValues: {
-        ':failed': 'failed',
-        ':result': JSON.stringify(error),
-        ':completedAt': new Date().toISOString(),
-      },
-    }))
+    await this.dynamo.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id },
+        UpdateExpression: 'SET #s = :failed, #r = :result, completedAt = :completedAt',
+        ExpressionAttributeNames: { '#s': 'status', '#r': 'result' },
+        ExpressionAttributeValues: {
+          ':failed': 'failed',
+          ':result': JSON.stringify(error),
+          ':completedAt': new Date().toISOString(),
+        },
+      }),
+    )
 
-    await this.sqs.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }))
+    await this.sqs.send(
+      new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: ackHandle }),
+    )
   }
 }

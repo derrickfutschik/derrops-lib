@@ -9,7 +9,13 @@ interface SpecUploadStepProps {
   onViewApi: () => void
 }
 
-export function SpecUploadStep({ apiId, specUrl, specContent, onSkip, onViewApi }: SpecUploadStepProps) {
+export function SpecUploadStep({
+  apiId,
+  specUrl,
+  specContent,
+  onSkip,
+  onViewApi,
+}: SpecUploadStepProps) {
   return (
     <div className="space-y-6">
       <SpecUploadCard
@@ -19,7 +25,9 @@ export function SpecUploadStep({ apiId, specUrl, specContent, onSkip, onViewApi 
         initialContent={specContent ?? undefined}
       />
       <div className="flex gap-3">
-        <Button variant="ghost" onClick={onSkip}>Skip for now</Button>
+        <Button variant="ghost" onClick={onSkip}>
+          Skip for now
+        </Button>
         <Button onClick={onViewApi}>View API</Button>
       </div>
     </div>

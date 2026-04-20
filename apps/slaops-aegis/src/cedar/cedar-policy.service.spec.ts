@@ -8,17 +8,20 @@ const EXAMPLES_DIR = path.resolve(__dirname, '../..', 'policies/examples')
 
 const NOW = Math.floor(Date.now() / 1000)
 
-function makeToken(groups: string[], amr: string[] = ['mfa', 'software_totp']): CognitoTokenPayload {
+function makeToken(
+  groups: string[],
+  amr: string[] = ['mfa', 'software_totp'],
+): CognitoTokenPayload {
   return {
-    sub:               'test-user-sub',
+    sub: 'test-user-sub',
     'cognito:username': 'testuser',
-    email:             'test@acme.com',
-    email_verified:    true,
+    email: 'test@acme.com',
+    email_verified: true,
     'custom:tenantId': 'acme-corp',
-    'cognito:groups':  groups,
+    'cognito:groups': groups,
     amr,
-    iat:       NOW - 60,
-    exp:       NOW + 3540,
+    iat: NOW - 60,
+    exp: NOW + 3540,
     auth_time: NOW - 60,
     client_id: 'test-client',
   }
@@ -30,11 +33,11 @@ function makeEndpoint(
   override: Partial<RequestedEndpoint> = {},
 ): RequestedEndpoint {
   return {
-    host:        'payments.internal',
+    host: 'payments.internal',
     method,
-    path:        '/v1/orders/{id}',
+    path: '/v1/orders/{id}',
     operationId: 'getOrderById',
-    relayId:     'relay-01',
+    relayId: 'relay-01',
     environment,
     ...override,
   }

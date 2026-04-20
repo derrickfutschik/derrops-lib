@@ -31,9 +31,7 @@
           }
         },
         "summary": "Create a new service",
-        "tags": [
-          "Service"
-        ]
+        "tags": ["Service"]
       },
       "get": {
         "operationId": "ServiceController_findAll",
@@ -65,9 +63,7 @@
           }
         },
         "summary": "Get all services",
-        "tags": [
-          "Service"
-        ]
+        "tags": ["Service"]
       }
     },
     "/services/{id}": {
@@ -110,9 +106,7 @@
           }
         },
         "summary": "Get a service by ID",
-        "tags": [
-          "Service"
-        ]
+        "tags": ["Service"]
       },
       "patch": {
         "operationId": "ServiceController_update",
@@ -157,9 +151,7 @@
           }
         },
         "summary": "Update a service",
-        "tags": [
-          "Service"
-        ]
+        "tags": ["Service"]
       },
       "delete": {
         "operationId": "ServiceController_remove",
@@ -197,9 +189,7 @@
           }
         },
         "summary": "Delete a service",
-        "tags": [
-          "Service"
-        ]
+        "tags": ["Service"]
       }
     },
     "/apis/info": {
@@ -244,9 +234,7 @@
           }
         ],
         "summary": "Fetch the info block from a remote OpenAPI document",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       }
     },
     "/apis": {
@@ -274,9 +262,7 @@
           }
         ],
         "summary": "List the tenant's APIs",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       },
       "post": {
         "operationId": "ApiController_create",
@@ -309,9 +295,7 @@
           }
         ],
         "summary": "Create a new API",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       }
     },
     "/apis/{id}": {
@@ -346,9 +330,7 @@
           }
         ],
         "summary": "Get a single API",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       },
       "patch": {
         "operationId": "ApiController_update",
@@ -391,9 +373,7 @@
           }
         ],
         "summary": "Update an API (name, description, externalUrl, fetch strategy)",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       },
       "delete": {
         "operationId": "ApiController_remove",
@@ -419,9 +399,7 @@
           }
         ],
         "summary": "Delete an API",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       }
     },
     "/apis/adopt": {
@@ -457,9 +435,7 @@
           }
         ],
         "summary": "Adopt a platform-managed API from the global catalogue",
-        "tags": [
-          "API"
-        ]
+        "tags": ["API"]
       }
     },
     "/openapi/upload-url": {
@@ -487,9 +463,7 @@
           }
         ],
         "summary": "Get a pre-signed PUT URL for uploading a spec to the OASpec bucket",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/index": {
@@ -517,9 +491,7 @@
           }
         ],
         "summary": "Index a spec from S3 — runs the 6-step OASpec pipeline",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/catalogue": {
@@ -563,9 +535,7 @@
           }
         ],
         "summary": "Search the platform-managed API catalogue",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/api/{apiId}/versions": {
@@ -602,10 +572,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           },
@@ -629,9 +596,7 @@
           }
         ],
         "summary": "Paginated spec version history for an API",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/api/{apiId}/operations": {
@@ -668,10 +633,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           },
@@ -729,9 +691,7 @@
           }
         ],
         "summary": "Paginated operations for an API version",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/api/{apiId}/servers": {
@@ -768,10 +728,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           },
@@ -801,9 +758,7 @@
           }
         ],
         "summary": "Paginated servers for an API version",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/api/{apiId}/parameters": {
@@ -840,10 +795,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           },
@@ -898,9 +850,7 @@
           }
         ],
         "summary": "Paginated parameters for an API version",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi/api/{apiId}/models": {
@@ -937,10 +887,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           },
@@ -995,9 +942,7 @@
           }
         ],
         "summary": "Paginated models for an API version",
-        "tags": [
-          "OpenAPI Indexer"
-        ]
+        "tags": ["OpenAPI Indexer"]
       }
     },
     "/openapi-search": {
@@ -1045,15 +990,7 @@
             "description": "Filter by HTTP method",
             "schema": {
               "example": "POST",
-              "enum": [
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "PATCH",
-                "HEAD",
-                "OPTIONS"
-              ],
+              "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
               "type": "string"
             }
           },
@@ -1117,13 +1054,7 @@
             "description": "Sort field",
             "schema": {
               "default": "_score",
-              "enum": [
-                "title",
-                "provider",
-                "indexedAt",
-                "operationStats.total",
-                "_score"
-              ],
+              "enum": ["title", "provider", "indexedAt", "operationStats.total", "_score"],
               "type": "string"
             }
           },
@@ -1134,10 +1065,7 @@
             "description": "Sort order",
             "schema": {
               "default": "desc",
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           }
@@ -1155,9 +1083,7 @@
           }
         },
         "summary": "Search OpenAPI specifications",
-        "tags": [
-          "OpenAPI Search"
-        ]
+        "tags": ["OpenAPI Search"]
       }
     },
     "/openapi-search/provider": {
@@ -1181,9 +1107,7 @@
           }
         },
         "summary": "List all API providers",
-        "tags": [
-          "OpenAPI Search"
-        ]
+        "tags": ["OpenAPI Search"]
       }
     },
     "/openapi-search/stats": {
@@ -1204,9 +1128,7 @@
           }
         },
         "summary": "Get index statistics",
-        "tags": [
-          "OpenAPI Search"
-        ]
+        "tags": ["OpenAPI Search"]
       }
     },
     "/openapi-search/{id}": {
@@ -1234,9 +1156,7 @@
           }
         },
         "summary": "Get OpenAPI spec by ID",
-        "tags": [
-          "OpenAPI Search"
-        ]
+        "tags": ["OpenAPI Search"]
       }
     },
     "/config": {
@@ -1264,9 +1184,7 @@
           }
         },
         "summary": "Get the config",
-        "tags": [
-          "Config"
-        ]
+        "tags": ["Config"]
       }
     },
     "/cloud-relay/relay-instance": {
@@ -1289,9 +1207,7 @@
           }
         },
         "summary": "List all relay instances for the tenant",
-        "tags": [
-          "Relay Instance"
-        ]
+        "tags": ["Relay Instance"]
       },
       "post": {
         "operationId": "RelayInstanceController_create",
@@ -1319,9 +1235,7 @@
           }
         },
         "summary": "Register a new relay instance",
-        "tags": [
-          "Relay Instance"
-        ]
+        "tags": ["Relay Instance"]
       }
     },
     "/cloud-relay/relay-instance/{id}": {
@@ -1354,9 +1268,7 @@
           }
         },
         "summary": "Get a relay instance by ID",
-        "tags": [
-          "Relay Instance"
-        ]
+        "tags": ["Relay Instance"]
       },
       "patch": {
         "operationId": "RelayInstanceController_update",
@@ -1397,9 +1309,7 @@
           }
         },
         "summary": "Update a relay instance",
-        "tags": [
-          "Relay Instance"
-        ]
+        "tags": ["Relay Instance"]
       },
       "delete": {
         "operationId": "RelayInstanceController_remove",
@@ -1423,9 +1333,7 @@
           }
         },
         "summary": "Delete a relay instance",
-        "tags": [
-          "Relay Instance"
-        ]
+        "tags": ["Relay Instance"]
       }
     },
     "/cloud-relay/relay-instance/{id}/health-check": {
@@ -1458,9 +1366,7 @@
           }
         },
         "summary": "Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)",
-        "tags": [
-          "Relay Instance"
-        ]
+        "tags": ["Relay Instance"]
       }
     },
     "/cloud-relay/aegis-instance": {
@@ -1483,9 +1389,7 @@
           }
         },
         "summary": "List all Aegis instances for the tenant",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       },
       "post": {
         "description": "Returns a one-time `registrationToken`. Configure Aegis with this token so it can complete the registration handshake via POST /cloud-relay/aegis/register.",
@@ -1514,9 +1418,7 @@
           }
         },
         "summary": "Register a new Aegis instance",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       }
     },
     "/cloud-relay/aegis-instance/{id}": {
@@ -1549,9 +1451,7 @@
           }
         },
         "summary": "Get an Aegis instance by ID",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       },
       "patch": {
         "operationId": "AegisInstanceController_update",
@@ -1592,9 +1492,7 @@
           }
         },
         "summary": "Update an Aegis instance",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       },
       "delete": {
         "operationId": "AegisInstanceController_remove",
@@ -1618,9 +1516,7 @@
           }
         },
         "summary": "Delete an Aegis instance",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       }
     },
     "/cloud-relay/aegis-instance/{id}/health-check": {
@@ -1653,9 +1549,7 @@
           }
         },
         "summary": "Trigger a health check on the Aegis instance (validates JWKS endpoint)",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       }
     },
     "/cloud-relay/aegis/register": {
@@ -1689,9 +1583,7 @@
           }
         },
         "summary": "Complete Aegis instance registration (called by Aegis)",
-        "tags": [
-          "Aegis Instance"
-        ]
+        "tags": ["Aegis Instance"]
       }
     },
     "/cloud-relay/.well-known/jwks.json": {
@@ -1719,9 +1611,7 @@
           }
         },
         "summary": "Vendor JWKS endpoint (used by relays and Aegis to validate platform JWTs)",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/connection": {
@@ -1749,9 +1639,7 @@
           }
         ],
         "summary": "List relay connections for the authenticated user's tenant",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       },
       "post": {
         "description": "Creates a relay connection. For platform-queue and hybrid delivery modes, an SQS FIFO queue is provisioned automatically (sqs_queue_mode=platform) or the customer-provided queue URL is stored.\n\nThe response includes one-time credentials (IAM access key, Aegis registration token) that are never returned again.\n\ntenantId and userId are read from the verified Cognito id_token — no client-supplied headers are trusted.",
@@ -1785,9 +1673,7 @@
           }
         ],
         "summary": "Register a new relay connection",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/connection/{id}": {
@@ -1835,9 +1721,7 @@
           }
         ],
         "summary": "Update a relay connection (name, URL, linked Aegis)",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       },
       "delete": {
         "operationId": "CloudRelayController_deleteConnection",
@@ -1878,9 +1762,7 @@
           }
         ],
         "summary": "Delete a relay connection, its SQS queue, and IAM user (if any)",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/connection/{id}/health-check": {
@@ -1930,9 +1812,7 @@
           }
         ],
         "summary": "Test HTTP reachability for a direct or hybrid relay connection",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/connection/{id}/test-queue": {
@@ -1979,9 +1859,7 @@
           }
         ],
         "summary": "Test SQS queue connectivity for a platform-queue or hybrid relay connection",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/job": {
@@ -2023,9 +1901,7 @@
           }
         ],
         "summary": "Submit a proxy job",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/job/{id}": {
@@ -2064,9 +1940,7 @@
           }
         ],
         "summary": "Poll for the result of a proxy job",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/queue/next": {
@@ -2103,9 +1977,7 @@
           }
         },
         "summary": "Claim the next pending platform-queue job (called by the relay)",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     },
     "/cloud-relay/job/{id}/result": {
@@ -2161,9 +2033,7 @@
           }
         },
         "summary": "Deliver the result of a platform-queue job (called by the relay)",
-        "tags": [
-          "Cloud Relay"
-        ]
+        "tags": ["Cloud Relay"]
       }
     }
   },
@@ -2230,11 +2100,7 @@
             "example": 80
           }
         },
-        "required": [
-          "user_id",
-          "name",
-          "endpoint"
-        ]
+        "required": ["user_id", "name", "endpoint"]
       },
       "Service": {
         "type": "object",
@@ -2298,14 +2164,7 @@
             "example": "2024-01-15T10:30:00.000Z"
           }
         },
-        "required": [
-          "id",
-          "user_id",
-          "name",
-          "endpoint",
-          "created_at",
-          "updated_at"
-        ]
+        "required": ["id", "user_id", "name", "endpoint", "created_at", "updated_at"]
       },
       "UpdateServiceDto": {
         "type": "object",
@@ -2374,10 +2233,7 @@
             "description": "Raw YAML/JSON spec content fetched from the URL"
           }
         },
-        "required": [
-          "title",
-          "rawContent"
-        ]
+        "required": ["title", "rawContent"]
       },
       "OaSpecRef": {
         "type": "object",
@@ -2426,10 +2282,7 @@
         "properties": {
           "strategy": {
             "type": "string",
-            "enum": [
-              "manual",
-              "url_fetch"
-            ],
+            "enum": ["manual", "url_fetch"],
             "description": "manual    — spec is uploaded manually via the portal or pre-signed URL.\nurl_fetch — platform fetches the spec from fetch_url on a schedule.",
             "default": "manual"
           },
@@ -2449,11 +2302,7 @@
           },
           "lastStatus": {
             "type": "string",
-            "enum": [
-              "ok",
-              "error",
-              "no_change"
-            ],
+            "enum": ["ok", "error", "no_change"],
             "description": "Outcome of the last fetch attempt"
           },
           "lastError": {
@@ -2503,10 +2352,7 @@
           "managementMode": {
             "type": "string",
             "default": "private",
-            "enum": [
-              "private",
-              "platform"
-            ],
+            "enum": ["private", "platform"],
             "description": "private  — tenant owns and manages this spec.\nplatform — tenant has adopted a SLAOps-managed spec from the global catalogue."
           },
           "createdAt": {
@@ -2558,10 +2404,7 @@
           },
           "versionStrategy": {
             "type": "string",
-            "enum": [
-              "manual",
-              "url_fetch"
-            ],
+            "enum": ["manual", "url_fetch"],
             "default": "manual"
           },
           "fetchCron": {
@@ -2576,9 +2419,7 @@
             "description": "URL to fetch the spec from (url_fetch strategy only)"
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "UpdateApiDto": {
         "type": "object",
@@ -2597,10 +2438,7 @@
           },
           "versionStrategy": {
             "type": "string",
-            "enum": [
-              "manual",
-              "url_fetch"
-            ]
+            "enum": ["manual", "url_fetch"]
           },
           "fetchCron": {
             "type": "string",
@@ -2623,9 +2461,7 @@
             "example": "a1b2c3d4e5f67890a1b2c3d4e5f67890"
           }
         },
-        "required": [
-          "globalOpensearchId"
-        ]
+        "required": ["globalOpensearchId"]
       },
       "UploadUrlDto": {
         "type": "object",
@@ -2651,10 +2487,7 @@
             "description": "Highlighted matches"
           }
         },
-        "required": [
-          "document",
-          "score"
-        ]
+        "required": ["document", "score"]
       },
       "AggregationBucket": {
         "type": "object",
@@ -2668,10 +2501,7 @@
             "description": "Document count"
           }
         },
-        "required": [
-          "key",
-          "count"
-        ]
+        "required": ["key", "count"]
       },
       "SearchAggregations": {
         "type": "object",
@@ -2705,12 +2535,7 @@
             }
           }
         },
-        "required": [
-          "providers",
-          "tags",
-          "methods",
-          "pathPrefixes"
-        ]
+        "required": ["providers", "tags", "methods", "pathPrefixes"]
       },
       "OpenApiSearchResponseDto": {
         "type": "object",
@@ -2739,11 +2564,7 @@
             "description": "Query execution time in milliseconds"
           }
         },
-        "required": [
-          "total",
-          "hits",
-          "took"
-        ]
+        "required": ["total", "hits", "took"]
       },
       "ProviderListResponseDto": {
         "type": "object",
@@ -2757,10 +2578,7 @@
             "description": "Number of API specs"
           }
         },
-        "required": [
-          "provider",
-          "count"
-        ]
+        "required": ["provider", "count"]
       },
       "IndexStatsResponseDto": {
         "type": "object",
@@ -2786,12 +2604,7 @@
             "description": "Last indexed timestamp"
           }
         },
-        "required": [
-          "totalDocuments",
-          "totalOperations",
-          "uniqueProviders",
-          "uniqueTags"
-        ]
+        "required": ["totalDocuments", "totalOperations", "uniqueProviders", "uniqueTags"]
       },
       "RelayInstance": {
         "type": "object",
@@ -2858,10 +2671,7 @@
             "example": "https://relay.example.com"
           }
         },
-        "required": [
-          "name",
-          "url"
-        ]
+        "required": ["name", "url"]
       },
       "UpdateRelayInstanceDto": {
         "type": "object",
@@ -2960,11 +2770,7 @@
             "example": "https://aegis.example.com/.well-known/jwks.json"
           }
         },
-        "required": [
-          "name",
-          "url",
-          "jwksUrl"
-        ]
+        "required": ["name", "url", "jwksUrl"]
       },
       "AegisCreateResponseDto": {
         "type": "object",
@@ -3051,10 +2857,7 @@
             "example": "https://aegis.example.com/.well-known/jwks.json"
           }
         },
-        "required": [
-          "registrationToken",
-          "jwksUrl"
-        ]
+        "required": ["registrationToken", "jwksUrl"]
       },
       "CloudRelayConnection": {
         "type": "object",
@@ -3077,30 +2880,18 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "managed",
-              "self-hosted",
-              "local-dev"
-            ],
+            "enum": ["managed", "self-hosted", "local-dev"],
             "default": "managed",
             "description": "managed     — SLAOps-hosted Lambda relay.\nself-hosted — Customer-deployed relay on their own infrastructure.\nlocal-dev   — Developer local machine. delivery_mode is locked to platform-queue. An SQS FIFO queue is provisioned automatically."
           },
           "delivery_mode": {
             "type": "string",
-            "enum": [
-              "direct",
-              "relay-queue",
-              "platform-queue",
-              "hybrid"
-            ],
+            "enum": ["direct", "relay-queue", "platform-queue", "hybrid"],
             "description": "direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\nhybrid         — platform tries direct HTTP first; falls back to platform-queue on failure. Requires both url and sqs_queue_url."
           },
           "sqs_queue_mode": {
             "type": "string",
-            "enum": [
-              "platform",
-              "relay"
-            ],
+            "enum": ["platform", "relay"],
             "description": "platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. Use relay mode when the customer's network cannot reach SQS endpoints in the SLAOps account."
           },
           "sqs_queue_url": {
@@ -3163,11 +2954,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "managed",
-              "self-hosted",
-              "local-dev"
-            ],
+            "enum": ["managed", "self-hosted", "local-dev"],
             "default": "managed",
             "description": "managed     — SLAOps-hosted Lambda relay.\nself-hosted — Customer-deployed relay on their own infrastructure.\nlocal-dev   — Developer local machine. delivery_mode is locked to platform-queue and an SQS FIFO queue is provisioned automatically."
           },
@@ -3185,21 +2972,13 @@
           },
           "delivery_mode": {
             "type": "string",
-            "enum": [
-              "direct",
-              "relay-queue",
-              "platform-queue",
-              "hybrid"
-            ],
+            "enum": ["direct", "relay-queue", "platform-queue", "hybrid"],
             "default": "direct",
             "description": "direct          — slaops-cloud calls relay synchronously.\nrelay-queue     — slaops-cloud submits to relay queue, polls relay for result.\nplatform-queue  — relay polls slaops-cloud outbound. Use when relay cannot accept inbound connections.\nhybrid          — platform tries direct HTTP first, falls back to SQS on failure. Requires both url and sqs_queue_url.\nFor local-dev relays this is always platform-queue regardless of what is sent."
           },
           "sqs_queue_mode": {
             "type": "string",
-            "enum": [
-              "platform",
-              "relay"
-            ],
+            "enum": ["platform", "relay"],
             "default": "platform",
             "description": "platform — SLAOps provisions and owns the SQS FIFO queue. relay    — Customer provisions the queue and grants sqs:SendMessage to the SLAOps platform role; provide relay_sqs_queue_url. Required when delivery_mode is platform-queue or hybrid."
           },
@@ -3237,30 +3016,18 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "managed",
-              "self-hosted",
-              "local-dev"
-            ],
+            "enum": ["managed", "self-hosted", "local-dev"],
             "default": "managed",
             "description": "managed     — SLAOps-hosted Lambda relay.\nself-hosted — Customer-deployed relay on their own infrastructure.\nlocal-dev   — Developer local machine. delivery_mode is locked to platform-queue. An SQS FIFO queue is provisioned automatically."
           },
           "delivery_mode": {
             "type": "string",
-            "enum": [
-              "direct",
-              "relay-queue",
-              "platform-queue",
-              "hybrid"
-            ],
+            "enum": ["direct", "relay-queue", "platform-queue", "hybrid"],
             "description": "direct         — slaops-cloud calls relay synchronously. Relay must be reachable from slaops-cloud.\nrelay-queue    — slaops-cloud submits to relay queue, polls relay for result. Relay must be reachable from slaops-cloud.\nplatform-queue — relay polls slaops-cloud outbound and posts results back. Use when relay cannot accept inbound connections.\nhybrid         — platform tries direct HTTP first; falls back to platform-queue on failure. Requires both url and sqs_queue_url."
           },
           "sqs_queue_mode": {
             "type": "string",
-            "enum": [
-              "platform",
-              "relay"
-            ],
+            "enum": ["platform", "relay"],
             "description": "platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. Use relay mode when the customer's network cannot reach SQS endpoints in the SLAOps account."
           },
           "sqs_queue_url": {
@@ -3376,10 +3143,7 @@
             ]
           }
         },
-        "required": [
-          "connectionId",
-          "request"
-        ]
+        "required": ["connectionId", "request"]
       },
       "CloudRelayJob": {
         "type": "object",
@@ -3399,21 +3163,11 @@
           },
           "delivery_mode": {
             "type": "string",
-            "enum": [
-              "direct",
-              "relay-queue",
-              "platform-queue",
-              "hybrid"
-            ]
+            "enum": ["direct", "relay-queue", "platform-queue", "hybrid"]
           },
           "status": {
             "type": "string",
-            "enum": [
-              "pending",
-              "claimed",
-              "completed",
-              "failed"
-            ]
+            "enum": ["pending", "claimed", "completed", "failed"]
           },
           "request": {
             "type": "object",

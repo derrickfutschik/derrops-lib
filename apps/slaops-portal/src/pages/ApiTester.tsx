@@ -1,44 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import {
-  setCollapsedSections as setCollapsedSectionsAction,
-  setRightPanelTab as setRightPanelTabAction,
-} from '@/store/apiTesterSlice'
-import { selectIsSendingRequest, selectRequestResponse, setRequestResponse } from '@/store/apiRequestSlice'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { MaximizableCodeViewer } from '@/components/api-tester/MaximizableCodeViewer'
 import { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
-import {
-  BodyType,
-  FormDataEntry,
-  RawType,
-} from '@/components/api-tester/RequestBodyEditor'
-import { StandardOperationPanel } from './api-tester/standard/StandardOperationPanel'
-import { StandardParamsPanel } from './api-tester/standard/StandardParamsPanel'
-import { OpenAPIOperationPanel } from './api-tester/openapi/OpenAPIOperationPanel'
-import { OpenAPIParametersPanel } from './api-tester/openapi/OpenAPIParametersPanel'
-import { RequestResponseTab } from './api-tester/RequestResponseTab'
-import { extractValidationErrors, getResponseSchemaForStatus } from './api-tester/response-utils'
-import { useAnalyzeRequest } from './api-tester/useAnalyzeRequest'
-import { useOpenAPIFormSync } from './api-tester/useOpenAPIFormSync'
-import { useUrlHistory } from './api-tester/useUrlHistory'
+import { RelaySelector } from '@/components/api-tester/RelaySelector'
+import { BodyType, FormDataEntry, RawType } from '@/components/api-tester/RequestBodyEditor'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useServices } from '@/hooks/useServices'
 import { useSendRequest } from '@/hooks/useSendRequest'
-import { RelaySelector } from '@/components/api-tester/RelaySelector'
+import { useServices } from '@/hooks/useServices'
 import {
-  ArrowLeft,
-  FileCode,
-  GripHorizontal,
-  Send,
-} from 'lucide-react'
+  selectIsSendingRequest,
+  selectRequestResponse,
+  setRequestResponse,
+} from '@/store/apiRequestSlice'
+import {
+  setCollapsedSections as setCollapsedSectionsAction,
+  setRightPanelTab as setRightPanelTabAction,
+} from '@/store/apiTesterSlice'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { ArrowLeft, FileCode, GripHorizontal, Send } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { OpenAPIOperationPanel } from './api-tester/openapi/OpenAPIOperationPanel'
+import { OpenAPIParametersPanel } from './api-tester/openapi/OpenAPIParametersPanel'
+import { RequestResponseTab } from './api-tester/RequestResponseTab'
+import { extractValidationErrors, getResponseSchemaForStatus } from './api-tester/response-utils'
+import { StandardOperationPanel } from './api-tester/standard/StandardOperationPanel'
+import { StandardParamsPanel } from './api-tester/standard/StandardParamsPanel'
+import { useAnalyzeRequest } from './api-tester/useAnalyzeRequest'
+import { useOpenAPIFormSync } from './api-tester/useOpenAPIFormSync'
+import { useUrlHistory } from './api-tester/useUrlHistory'
 
 import { type KeyValuePair } from '@/hooks/useSendRequest'
 
@@ -62,7 +57,8 @@ const ApiTester = () => {
   const { data: services = [] } = useServices()
 
   const [actionMode, setActionMode] = useState<'analyze' | 'request' | 'preview'>('request')
-  const setRightPanelTab = (tab: 'match' | 'response' | 'preview') => dispatch(setRightPanelTabAction(tab))
+  const setRightPanelTab = (tab: 'match' | 'response' | 'preview') =>
+    dispatch(setRightPanelTabAction(tab))
 
   const { sendRequest, relaySelector, relayJobStatus } = useSendRequest()
 
@@ -90,7 +86,9 @@ const ApiTester = () => {
     } else {
       document.body.style.overflow = ''
     }
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [jsonExpandedToBottom])
 
   const handleBottomPanelDragStart = (e: React.MouseEvent) => {
@@ -167,10 +165,13 @@ const ApiTester = () => {
     const parameters = openAPIOperation.parameters || []
     for (const param of parameters.filter((p: any) => p.required)) {
       const location =
-        param.in === 'path' ? 'pathParams'
-        : param.in === 'query' ? 'queryParams'
-        : param.in === 'header' ? 'headerParams'
-        : 'bodyParams'
+        param.in === 'path'
+          ? 'pathParams'
+          : param.in === 'query'
+            ? 'queryParams'
+            : param.in === 'header'
+              ? 'headerParams'
+              : 'bodyParams'
       const value = openAPIFormValues[location]?.[param.name]
       if (value === undefined || value === null || value === '') {
         missingParams.push(`${param.name} (${param.in})`)
@@ -180,7 +181,7 @@ const ApiTester = () => {
     if (openAPIOperation.requestBody) {
       const content = openAPIOperation.requestBody.content
       if (content?.['application/json']?.schema) {
-        for (const propName of (content['application/json'].schema.required || [])) {
+        for (const propName of content['application/json'].schema.required || []) {
           const value = openAPIFormValues.bodyParams?.[propName]
           if (value === undefined || value === null || value === '') {
             missingParams.push(`${propName} (body)`)
@@ -306,7 +307,9 @@ const ApiTester = () => {
 
   useEffect(() => {
     if (relaySelector.deletedWarning) {
-      toast.warning('Your previously selected relay connection was deleted. Switched to Browser (direct).')
+      toast.warning(
+        'Your previously selected relay connection was deleted. Switched to Browser (direct).',
+      )
       relaySelector.clearDeletedWarning()
     }
   }, [relaySelector.deletedWarning])
@@ -346,7 +349,9 @@ const ApiTester = () => {
       const urlObj = new URL(url)
       const enabledParams = queryParams.filter((p) => p.enabled && p.key.trim())
       const newSearchParams = new URLSearchParams()
-      enabledParams.forEach((p) => { newSearchParams.append(p.key, p.value) })
+      enabledParams.forEach((p) => {
+        newSearchParams.append(p.key, p.value)
+      })
       const newSearch = newSearchParams.toString()
       const currentSearch = urlObj.search.replace(/^\?/, '')
       if (newSearch !== currentSearch) {
@@ -366,13 +371,27 @@ const ApiTester = () => {
       if (selectedOperationKey && !openAPIOperationKey) setOpenAPIOperationKey(selectedOperationKey)
       if (openAPIServiceId !== selectedServiceId) setSelectedServiceId(openAPIServiceId)
       if (openAPIOperationKey !== selectedOperationKey) setSelectedOperationKey(openAPIOperationKey)
-      dispatch(setCollapsedSectionsAction({ apiMatch: true, service: true, server: true, operation: true }))
+      dispatch(
+        setCollapsedSectionsAction({
+          apiMatch: true,
+          service: true,
+          server: true,
+          operation: true,
+        }),
+      )
     } else {
       if (openAPIServiceId && !selectedServiceId) setSelectedServiceId(openAPIServiceId)
       if (openAPIOperationKey && !selectedOperationKey) setSelectedOperationKey(openAPIOperationKey)
       if (selectedServiceId !== openAPIServiceId) setOpenAPIServiceId(selectedServiceId)
       if (selectedOperationKey !== openAPIOperationKey) setOpenAPIOperationKey(selectedOperationKey)
-      dispatch(setCollapsedSectionsAction({ apiMatch: false, service: false, server: false, operation: false }))
+      dispatch(
+        setCollapsedSectionsAction({
+          apiMatch: false,
+          service: false,
+          server: false,
+          operation: false,
+        }),
+      )
     }
   }, [builderMode, openAPIServiceId, openAPIOperationKey, selectedServiceId, selectedOperationKey])
 
@@ -407,8 +426,10 @@ const ApiTester = () => {
     setHeaders(updated)
   }
 
-  const addQueryParam = () => setQueryParams([...queryParams, { key: '', value: '', enabled: true }])
-  const removeQueryParam = (index: number) => setQueryParams(queryParams.filter((_, i) => i !== index))
+  const addQueryParam = () =>
+    setQueryParams([...queryParams, { key: '', value: '', enabled: true }])
+  const removeQueryParam = (index: number) =>
+    setQueryParams(queryParams.filter((_, i) => i !== index))
   const updateQueryParam = (index: number, field: keyof KeyValuePair, value: string | boolean) => {
     const updated = [...queryParams]
     updated[index] = { ...updated[index], [field]: value }
@@ -494,9 +515,11 @@ const ApiTester = () => {
     }
 
     const previewHeaders: Record<string, string> = {}
-    headers.filter((h) => h.enabled && h.key.trim()).forEach((h) => {
-      previewHeaders[h.key] = h.value
-    })
+    headers
+      .filter((h) => h.enabled && h.key.trim())
+      .forEach((h) => {
+        previewHeaders[h.key] = h.value
+      })
 
     let bodyContent = ''
     if (method !== 'GET' && method !== 'HEAD') {
@@ -504,9 +527,11 @@ const ApiTester = () => {
         bodyContent = body
         if (!previewHeaders['Content-Type']) {
           previewHeaders['Content-Type'] =
-            rawType === 'json' ? 'application/json'
-            : rawType === 'xml' ? 'application/xml'
-            : 'text/plain'
+            rawType === 'json'
+              ? 'application/json'
+              : rawType === 'xml'
+                ? 'application/xml'
+                : 'text/plain'
         }
       } else if (bodyType === 'form-data') {
         const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW'
@@ -515,18 +540,24 @@ const ApiTester = () => {
         }
         const parts = formData
           .filter((f) => f.enabled && f.key.trim())
-          .map((f) => `--${boundary}\r\nContent-Disposition: form-data; name="${f.key}"\r\n\r\n${f.value}\r\n`)
+          .map(
+            (f) =>
+              `--${boundary}\r\nContent-Disposition: form-data; name="${f.key}"\r\n\r\n${f.value}\r\n`,
+          )
         bodyContent = parts.join('') + `--${boundary}--`
       } else if (bodyType === 'x-www-form-urlencoded') {
         if (!previewHeaders['Content-Type']) {
           previewHeaders['Content-Type'] = 'application/x-www-form-urlencoded'
         }
         const formParams = new URLSearchParams()
-        formData.filter((f) => f.enabled && f.key.trim()).forEach((f) => formParams.append(f.key, f.value))
+        formData
+          .filter((f) => f.enabled && f.key.trim())
+          .forEach((f) => formParams.append(f.key, f.value))
         bodyContent = formParams.toString()
       } else if (bodyType === 'binary') {
         bodyContent = '[Binary content]'
-        if (!previewHeaders['Content-Type']) previewHeaders['Content-Type'] = 'application/octet-stream'
+        if (!previewHeaders['Content-Type'])
+          previewHeaders['Content-Type'] = 'application/octet-stream'
       }
     }
 
@@ -730,9 +761,7 @@ const ApiTester = () => {
                     {builderModeToggle}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {builderPanel}
-                </CardContent>
+                <CardContent className="space-y-6">{builderPanel}</CardContent>
               </Card>
             </TabsContent>
 
@@ -741,11 +770,19 @@ const ApiTester = () => {
             </TabsContent>
           </Tabs>
         ) : (
-          <div ref={panelsWrapperRef} className="relative" style={jsonExpandedToBottom ? { height: totalPanelsHeight, overflow: 'hidden' } : {}}>
+          <div
+            ref={panelsWrapperRef}
+            className="relative"
+            style={jsonExpandedToBottom ? { height: totalPanelsHeight, overflow: 'hidden' } : {}}
+          >
             <ResizablePanelGroup
               direction="horizontal"
               className="rounded-lg"
-              style={jsonExpandedToBottom ? { height: totalPanelsHeight - bottomPanelHeight } : { minHeight: '80vh' }}
+              style={
+                jsonExpandedToBottom
+                  ? { height: totalPanelsHeight - bottomPanelHeight }
+                  : { minHeight: '80vh' }
+              }
             >
               <ResizablePanel defaultSize={45} minSize={30}>
                 <Card className="border-0 bg-card/50 h-full rounded-none">
@@ -758,9 +795,7 @@ const ApiTester = () => {
                       {builderModeToggle}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-6 overflow-y-auto">
-                    {builderPanel}
-                  </CardContent>
+                  <CardContent className="space-y-6 overflow-y-auto">{builderPanel}</CardContent>
                 </Card>
               </ResizablePanel>
 
@@ -793,7 +828,12 @@ const ApiTester = () => {
                     onFormat={() => {
                       try {
                         const parsed = JSON.parse(requestResponse.body)
-                        dispatch(setRequestResponse({ ...requestResponse, body: JSON.stringify(parsed, null, 2) }))
+                        dispatch(
+                          setRequestResponse({
+                            ...requestResponse,
+                            body: JSON.stringify(parsed, null, 2),
+                          }),
+                        )
                         toast.success('Response formatted')
                       } catch {
                         toast.error('Invalid JSON - cannot format')

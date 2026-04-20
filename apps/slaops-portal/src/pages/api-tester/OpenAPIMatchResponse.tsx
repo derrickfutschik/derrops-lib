@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { ExpandableParameterRow } from '@/components/api-tester/ExpandableParameterRow'
+import { MobileExpandableParameter } from '@/components/api-tester/MobileExpandableParameter'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ExpandableParameterRow } from '@/components/api-tester/ExpandableParameterRow'
-import { MobileExpandableParameter } from '@/components/api-tester/MobileExpandableParameter'
 import { useIsMobile } from '@/hooks/use-mobile'
+import {
+  selectCollapsedSections,
+  toggleSection as toggleSectionAction,
+} from '@/store/apiTesterSlice'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   AlertCircle,
   ArrowDown,
@@ -19,11 +23,7 @@ import {
   Route,
   Server,
 } from 'lucide-react'
-import {
-  selectCollapsedSections,
-  toggleSection as toggleSectionAction,
-} from '@/store/apiTesterSlice'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { useState } from 'react'
 import type { MatchResult, ParameterInfo, SortColumn, SortDirection } from './types'
 
 interface OpenAPIMatchResponseProps {
@@ -154,7 +154,12 @@ function ParamTable({
             <tr className="border-b border-border">
               <SortableHeader column="name" label="Name" currentSort={sort} onSort={onSort} />
               <SortableHeader column="type" label="Type" currentSort={sort} onSort={onSort} />
-              <SortableHeader column="required" label="Required" currentSort={sort} onSort={onSort} />
+              <SortableHeader
+                column="required"
+                label="Required"
+                currentSort={sort}
+                onSort={onSort}
+              />
               <SortableHeader column="value" label="Value" currentSort={sort} onSort={onSort} />
               <SortableHeader column="isValid" label="Valid" currentSort={sort} onSort={onSort} />
             </tr>
@@ -236,10 +241,7 @@ export function OpenAPIMatchResponse({ matchResult }: OpenAPIMatchResponseProps)
   return (
     <div className="space-y-6">
       {/* Server */}
-      <Collapsible
-        open={!collapsedSections.server}
-        onOpenChange={() => toggleSection('server')}
-      >
+      <Collapsible open={!collapsedSections.server} onOpenChange={() => toggleSection('server')}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Server className="h-4 w-4" />
@@ -279,9 +281,15 @@ export function OpenAPIMatchResponse({ matchResult }: OpenAPIMatchResponseProps)
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Description</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                          Name
+                        </th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                          Value
+                        </th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                          Description
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -417,7 +425,12 @@ export function OpenAPIMatchResponse({ matchResult }: OpenAPIMatchResponseProps)
             </CollapsibleTrigger>
           </div>
           <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-            <ParamTable params={op.pathParameters} sort={pathSort} onSort={onSortPath} isMobile={isMobile} />
+            <ParamTable
+              params={op.pathParameters}
+              sort={pathSort}
+              onSort={onSortPath}
+              isMobile={isMobile}
+            />
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -451,7 +464,12 @@ export function OpenAPIMatchResponse({ matchResult }: OpenAPIMatchResponseProps)
             </CollapsibleTrigger>
           </div>
           <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-            <ParamTable params={op.queryParameters} sort={querySort} onSort={onSortQuery} isMobile={isMobile} />
+            <ParamTable
+              params={op.queryParameters}
+              sort={querySort}
+              onSort={onSortQuery}
+              isMobile={isMobile}
+            />
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -485,7 +503,12 @@ export function OpenAPIMatchResponse({ matchResult }: OpenAPIMatchResponseProps)
             </CollapsibleTrigger>
           </div>
           <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-            <ParamTable params={op.headerParameters} sort={headerSort} onSort={onSortHeader} isMobile={isMobile} />
+            <ParamTable
+              params={op.headerParameters}
+              sort={headerSort}
+              onSort={onSortHeader}
+              isMobile={isMobile}
+            />
           </CollapsibleContent>
         </Collapsible>
       )}

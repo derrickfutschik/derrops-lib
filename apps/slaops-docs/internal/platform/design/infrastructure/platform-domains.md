@@ -16,14 +16,14 @@ A **domain** is a named functional boundary that groups related AWS resources, s
 
 ## Domain registry
 
-| Domain | CDK tag value | Responsibility |
-|---|---|---|
-| `platform` | `slaops:domain: platform` | Core shared infrastructure |
-| `auth` | `slaops:domain: auth` | Authentication and authorization |
-| `oaspec` | `slaops:domain: oaspec` | OpenAPI specification management |
-| `relay` | `slaops:domain: relay` | Cloud Relay and local dev relay |
-| `logging` | `slaops:domain: logging` | HTTP log ingestion and enrichment |
-| `portal` | `slaops:domain: portal` | Web portal and dashboards |
+| Domain     | CDK tag value             | Responsibility                    |
+| ---------- | ------------------------- | --------------------------------- |
+| `platform` | `slaops:domain: platform` | Core shared infrastructure        |
+| `auth`     | `slaops:domain: auth`     | Authentication and authorization  |
+| `oaspec`   | `slaops:domain: oaspec`   | OpenAPI specification management  |
+| `relay`    | `slaops:domain: relay`    | Cloud Relay and local dev relay   |
+| `logging`  | `slaops:domain: logging`  | HTTP log ingestion and enrichment |
+| `portal`   | `slaops:domain: portal`   | Web portal and dashboards         |
 
 ---
 
@@ -34,6 +34,7 @@ A **domain** is a named functional boundary that groups related AWS resources, s
 Core shared infrastructure that underpins every other domain. No feature domain should take a hard dependency on another feature domain's internals; all cross-cutting concerns go here.
 
 **Includes**:
+
 - VPC, subnets, NAT gateways, route tables (`slaops--platform--vpc`)
 - Aurora Serverless v2 PostgreSQL cluster (`slaops--platform--app-database`)
 - OpenSearch Serverless collection (`slaops--platform--opensearch`)
@@ -53,6 +54,7 @@ Core shared infrastructure that underpins every other domain. No feature domain 
 Authentication and authorization. Manages all identity primitives used across the platform: user identity, machine identity (IAM roles for Lambda / relay / Aegis), and token issuance.
 
 **Includes**:
+
 - Cognito User Pool and User Pool Client (`slaops--auth--cognito`)
 - Cognito Identity Pool for relay identity
 - Pre-token-generation Lambda (custom claims injection)
@@ -70,6 +72,7 @@ Authentication and authorization. Manages all identity primitives used across th
 OpenAPI specification management. Covers the full lifecycle of an OASpec: ingest from external sources or tenant upload → validate → index into OpenSearch → serve via alias-based search.
 
 **Includes**:
+
 - SLAOps-managed source S3 bucket (APIs-guru and platform-curated specs) (`slaops--oaspec--source`)
 - Per-tenant OASpec storage buckets (`{region}--{env}--slaops--{tenantId}--oaspec--storage--specs`)
 - OpenAPI Indexer Lambda — event-driven S3 → OpenSearch pipeline (`slaops--oaspec--indexer`)
@@ -81,6 +84,7 @@ OpenAPI specification management. Covers the full lifecycle of an OASpec: ingest
 **CDK stacks**: `slaops--oaspec--source` (infra), indexer and buckets in `slaops-backend` Amplify stack
 
 **Design docs**:
+
 - [OpenAPI Directory Indexer](../openapi-indexer/openapi-directory-indexer)
 - [OpenAPI Index Access Pattern](../openapi-indexer/openapi-index-access-pattern)
 
@@ -93,6 +97,7 @@ OpenAPI specification management. Covers the full lifecycle of an OASpec: ingest
 Cloud Relay and the local development relay. This is the customer-deployed HTTP proxy component that intercepts API traffic, enriches it with SLAOps metadata, and forwards it to the platform ingestion endpoint.
 
 **Includes**:
+
 - Cloud Relay service (customer-side Docker/Lambda proxy)
 - Local development relay (reverse-proxy for local testing without cloud round-trip)
 - Aegis Token Broker (credential injection layer — prevents secrets reaching relay logs)
@@ -100,6 +105,7 @@ Cloud Relay and the local development relay. This is the customer-deployed HTTP 
 - Relay connection and trust model
 
 **Design docs**:
+
 - [Cloud Relay Component](../cloud-relay/component-cloud-relay)
 - [Network Topology](../cloud-relay/network-topology)
 - [Relay Connection](../cloud-relay/relay-connection)
@@ -116,6 +122,7 @@ Cloud Relay and the local development relay. This is the customer-deployed HTTP 
 HTTP request/response log ingestion, enrichment, and storage. Receives captured traffic from relay instances, enriches each log entry with matched OASpec metadata (operation, parameters, schema), and persists to the queryable store.
 
 **Includes**:
+
 - Log ingestion API endpoint (receives events from relay)
 - Request enrichment pipeline (OASpec lookup → annotation)
 - Per-tenant log S3 buckets (`{region}--{env}--slaops--{tenantId}--logging--storage--logs`)
@@ -133,6 +140,7 @@ HTTP request/response log ingestion, enrichment, and storage. Receives captured 
 Web portal for monitoring, management, and analysis. The customer-facing dashboard that surfaces SLA compliance, API performance metrics, cost analysis, and alert management.
 
 **Includes**:
+
 - React web application (`apps/slaops-portal`)
 - Dashboards: service health, SLA trend charts, API performance metrics
 - Cost analysis views

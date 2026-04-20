@@ -26,13 +26,13 @@ This section designs the five data-driven tabs on the API detail page. Each tab 
 
 ## Tabs Covered
 
-| Tab | Index | Design Doc |
-|---|---|---|
-| [Versions](./versions-tab) | `oaspec--spec` | Version history, latest/previous badges, stats per version |
-| [Operations](./operations-tab) | `oaspec--operation` | HTTP methods, paths, summaries, tags, deprecation |
-| [Servers](./servers-tab) | `oaspec--server` | URLs, schemes, host shapes, base paths |
-| [Parameters](./parameters-tab) | `oaspec--param` | Names, locations, types, required flags, descriptions |
-| [Models](./models-tab) | `oaspec--model` | Schema names, types, usage context, properties |
+| Tab                            | Index               | Design Doc                                                 |
+| ------------------------------ | ------------------- | ---------------------------------------------------------- |
+| [Versions](./versions-tab)     | `oaspec--spec`      | Version history, latest/previous badges, stats per version |
+| [Operations](./operations-tab) | `oaspec--operation` | HTTP methods, paths, summaries, tags, deprecation          |
+| [Servers](./servers-tab)       | `oaspec--server`    | URLs, schemes, host shapes, base paths                     |
+| [Parameters](./parameters-tab) | `oaspec--param`     | Names, locations, types, required flags, descriptions      |
+| [Models](./models-tab)         | `oaspec--model`     | Schema names, types, usage context, properties             |
 
 ## Shared Design Principles
 
@@ -71,10 +71,10 @@ Response envelope:
 
 ```typescript
 interface PagedResult<T> {
-  total: number      // OpenSearch hits.total.value
+  total: number // OpenSearch hits.total.value
   from: number
   size: number
-  version: string    // the actual version returned (echoed from the query)
+  version: string // the actual version returned (echoed from the query)
   hits: T[]
 }
 ```

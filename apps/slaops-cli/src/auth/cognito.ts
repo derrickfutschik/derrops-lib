@@ -12,16 +12,11 @@ import { execSync } from 'child_process'
  * SLAOPS_COGNITO_USER_POOL_ID — Cognito User Pool ID (used as Identity Pool provider key)
  * SLAOPS_IDENTITY_POOL_ID     — Cognito Identity Pool ID (for AWS credential exchange)
  */
-export const COGNITO_DOMAIN =
-  process.env.SLAOPS_COGNITO_DOMAIN ?? 'https://auth.slaops.com'
-export const CLIENT_ID =
-  process.env.SLAOPS_COGNITO_CLIENT_ID ?? ''
-export const COGNITO_REGION =
-  process.env.SLAOPS_COGNITO_REGION ?? 'ap-southeast-2'
-export const USER_POOL_ID =
-  process.env.SLAOPS_COGNITO_USER_POOL_ID ?? ''
-export const IDENTITY_POOL_ID =
-  process.env.SLAOPS_IDENTITY_POOL_ID ?? ''
+export const COGNITO_DOMAIN = process.env.SLAOPS_COGNITO_DOMAIN ?? 'https://auth.slaops.com'
+export const CLIENT_ID = process.env.SLAOPS_COGNITO_CLIENT_ID ?? ''
+export const COGNITO_REGION = process.env.SLAOPS_COGNITO_REGION ?? 'ap-southeast-2'
+export const USER_POOL_ID = process.env.SLAOPS_COGNITO_USER_POOL_ID ?? ''
+export const IDENTITY_POOL_ID = process.env.SLAOPS_IDENTITY_POOL_ID ?? ''
 
 const REDIRECT_PORT = 9876
 const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`
@@ -79,7 +74,7 @@ async function exchangeCode(code: string, verifier: string): Promise<CognitoToke
     throw new Error(`Cognito token exchange failed: ${text}`)
   }
 
-  const json = await res.json() as {
+  const json = (await res.json()) as {
     access_token: string
     refresh_token: string
     id_token: string
@@ -117,7 +112,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<CognitoT
     throw new Error(`Cognito token refresh failed: ${text}`)
   }
 
-  const json = await res.json() as {
+  const json = (await res.json()) as {
     access_token: string
     id_token: string
     expires_in: number
@@ -178,7 +173,7 @@ export async function getAwsCredentialsFromIdentityPool(
     const text = await idRes.text().catch(() => idRes.status.toString())
     throw new Error(`Identity Pool GetId failed: ${text}`)
   }
-  const { IdentityId } = await idRes.json() as { IdentityId: string }
+  const { IdentityId } = (await idRes.json()) as { IdentityId: string }
 
   // Step 2: exchange identity ID + id_token for temporary AWS credentials
   const credsRes = await fetch(endpoint, {
@@ -194,7 +189,7 @@ export async function getAwsCredentialsFromIdentityPool(
     const text = await credsRes.text().catch(() => credsRes.status.toString())
     throw new Error(`Identity Pool GetCredentialsForIdentity failed: ${text}`)
   }
-  const { Credentials } = await credsRes.json() as {
+  const { Credentials } = (await credsRes.json()) as {
     Credentials: {
       AccessKeyId: string
       SecretKey: string
@@ -220,7 +215,7 @@ export async function authenticateWithBrowser(): Promise<CognitoTokens> {
   if (!CLIENT_ID) {
     throw new Error(
       'SLAOPS_COGNITO_CLIENT_ID is not configured. ' +
-      'Set the environment variable or use a release build of slaops-cli.',
+        'Set the environment variable or use a release build of slaops-cli.',
     )
   }
 
@@ -271,9 +266,11 @@ export async function authenticateWithBrowser(): Promise<CognitoTokens> {
         return
       }
 
-      res.writeHead(200, { 'Content-Type': 'text/html' }).end(
-        '<h1>Authentication successful</h1><p>You can close this tab and return to the terminal.</p>',
-      )
+      res
+        .writeHead(200, { 'Content-Type': 'text/html' })
+        .end(
+          '<h1>Authentication successful</h1><p>You can close this tab and return to the terminal.</p>',
+        )
       server.close()
 
       try {
@@ -291,7 +288,9 @@ export async function authenticateWithBrowser(): Promise<CognitoTokens> {
 
     server.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
-        reject(new Error(`Port ${REDIRECT_PORT} is already in use. Close the other process and retry.`))
+        reject(
+          new Error(`Port ${REDIRECT_PORT} is already in use. Close the other process and retry.`),
+        )
       } else {
         reject(err)
       }

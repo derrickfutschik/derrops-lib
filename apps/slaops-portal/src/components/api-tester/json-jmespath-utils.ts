@@ -96,9 +96,13 @@ export function findJmespathJsonLocations(original: any, result: any, query: str
     if (isInResult(obj, result, true)) matchedPaths.add(currentPath)
     if (obj && typeof obj === 'object') {
       if (Array.isArray(obj)) {
-        obj.forEach((item, idx) => traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`))
+        obj.forEach((item, idx) =>
+          traverse(item, currentPath ? `${currentPath}[${idx}]` : `[${idx}]`),
+        )
       } else {
-        Object.keys(obj).forEach((key) => traverse(obj[key], currentPath ? `${currentPath}.${key}` : key))
+        Object.keys(obj).forEach((key) =>
+          traverse(obj[key], currentPath ? `${currentPath}.${key}` : key),
+        )
       }
     }
   }
@@ -173,7 +177,9 @@ export function buildFilteredJmespathExpression(
       if (/^\[\d+\]$/.test(clickedPath)) return `${currentQuery} | ${clickedPath}`
       const stripped = clickedPath.replace(/^\[\d+\]\.?/, '')
       const suffix = stripped
-        ? stripped.startsWith('[') ? `[]${stripped}` : `[].${stripped}`
+        ? stripped.startsWith('[')
+          ? `[]${stripped}`
+          : `[].${stripped}`
         : '[]'
       return `${currentQuery}${suffix}`
     }
@@ -245,7 +251,8 @@ export function computeJsonStats(content: string): JsonStats {
     }
     const countTotalKeys = (val: any): number => {
       if (typeof val !== 'object' || val === null) return 0
-      if (Array.isArray(val)) return val.reduce((sum: number, item) => sum + countTotalKeys(item), 0)
+      if (Array.isArray(val))
+        return val.reduce((sum: number, item) => sum + countTotalKeys(item), 0)
       const keys = Object.keys(val)
       return keys.length + keys.reduce((sum: number, key) => sum + countTotalKeys(val[key]), 0)
     }
@@ -255,7 +262,13 @@ export function computeJsonStats(content: string): JsonStats {
     }
     if (Array.isArray(parsed)) {
       const depth = parsed.length === 0 ? 1 : 1 + getMaxDepth(parsed[0])
-      return { type: 'array', count: parsed.length, totalKeys: countTotalKeys(parsed), depth, flattenedCount: countFlattened(parsed) }
+      return {
+        type: 'array',
+        count: parsed.length,
+        totalKeys: countTotalKeys(parsed),
+        depth,
+        flattenedCount: countFlattened(parsed),
+      }
     }
     if (typeof parsed === 'object' && parsed !== null) {
       return {

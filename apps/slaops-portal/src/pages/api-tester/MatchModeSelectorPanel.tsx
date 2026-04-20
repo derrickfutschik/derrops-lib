@@ -1,3 +1,4 @@
+import { Service } from '@/client/slaops-cloud/models/service'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -9,13 +10,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { HelpCircle, Lock, Minus, Plus } from 'lucide-react'
 import {
   selectCollapsedSections,
   toggleSection as toggleSectionAction,
 } from '@/store/apiTesterSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { Service } from '@/client/slaops-cloud/models/service'
+import { HelpCircle, Lock, Minus, Plus } from 'lucide-react'
 import type { OperationOption } from './types'
 
 interface MatchModeSelectorPanelProps {
@@ -44,14 +44,15 @@ export function MatchModeSelectorPanel({
   const toggleSection = (section: string) => dispatch(toggleSectionAction(section))
 
   return (
-    <Collapsible
-      open={!collapsedSections.apiMatch}
-      onOpenChange={() => toggleSection('apiMatch')}
-    >
+    <Collapsible open={!collapsedSections.apiMatch} onOpenChange={() => toggleSection('apiMatch')}>
       <div className="flex items-center justify-between py-2 border-b border-border">
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-            {collapsedSections.apiMatch ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+            {collapsedSections.apiMatch ? (
+              <Plus className="h-4 w-4" />
+            ) : (
+              <Minus className="h-4 w-4" />
+            )}
           </Button>
         </CollapsibleTrigger>
         <div className="flex-1 flex items-center gap-2 ml-2">

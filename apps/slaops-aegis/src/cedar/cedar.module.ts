@@ -3,6 +3,6 @@ import { CedarPolicyService } from './cedar-policy.service'
 
 @Module({
   providers: [CedarPolicyService],
-  exports:   [CedarPolicyService],
+  exports: [CedarPolicyService],
 })
 export class CedarModule {}

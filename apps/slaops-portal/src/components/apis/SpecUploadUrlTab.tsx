@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2 } from 'lucide-react'
-import { cloudAxios, cloudApiConfig } from '@/lib/cloud-api'
 import { useDebounce } from '@/hooks/useDebounce'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
+import { Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 type FetchStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -16,7 +16,12 @@ interface SpecUploadUrlTabProps {
   onSubmit: (content: string, filename: string) => Promise<void>
 }
 
-export function SpecUploadUrlTab({ isPending, initialUrl, initialContent, onSubmit }: SpecUploadUrlTabProps) {
+export function SpecUploadUrlTab({
+  isPending,
+  initialUrl,
+  initialContent,
+  onSubmit,
+}: SpecUploadUrlTabProps) {
   const [url, setUrl] = useState(initialUrl ?? '')
   const [specContent, setSpecContent] = useState(initialContent ?? '')
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>(initialContent ? 'success' : 'idle')
@@ -61,7 +66,9 @@ export function SpecUploadUrlTab({ isPending, initialUrl, initialContent, onSubm
     }
 
     run()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [debouncedUrl])
 
   return (
@@ -81,7 +88,9 @@ export function SpecUploadUrlTab({ isPending, initialUrl, initialContent, onSubm
           </p>
         )}
         {fetchStatus === 'error' && (
-          <p className="text-xs text-destructive">Could not fetch the spec. Check the URL and try again.</p>
+          <p className="text-xs text-destructive">
+            Could not fetch the spec. Check the URL and try again.
+          </p>
         )}
       </div>
 

@@ -1,4 +1,10 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Code, FileSpreadsheet, FileText } from 'lucide-react'
 import React from 'react'
 
@@ -11,10 +17,25 @@ export interface ViewModeTabsProps {
 }
 
 export function ViewModeTabs({ viewMode, onViewModeChange, viewValidity }: ViewModeTabsProps) {
-  const viewModeOptions: { value: ViewMode; label: string; icon: React.ReactNode; valid: boolean }[] = [
+  const viewModeOptions: {
+    value: ViewMode
+    label: string
+    icon: React.ReactNode
+    valid: boolean
+  }[] = [
     { value: 'json', label: 'JSON', icon: <Code className="h-3 w-3" />, valid: viewValidity.json },
-    { value: 'markdown', label: 'Markdown', icon: <FileText className="h-3 w-3" />, valid: viewValidity.markdown },
-    { value: 'table', label: 'Table', icon: <FileSpreadsheet className="h-3 w-3" />, valid: viewValidity.table },
+    {
+      value: 'markdown',
+      label: 'Markdown',
+      icon: <FileText className="h-3 w-3" />,
+      valid: viewValidity.markdown,
+    },
+    {
+      value: 'table',
+      label: 'Table',
+      icon: <FileSpreadsheet className="h-3 w-3" />,
+      valid: viewValidity.table,
+    },
   ]
 
   return (
@@ -23,14 +44,16 @@ export function ViewModeTabs({ viewMode, onViewModeChange, viewValidity }: ViewM
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {viewModeOptions.map(opt => (
+        {viewModeOptions.map((opt) => (
           <SelectItem key={opt.value} value={opt.value} className="text-xs">
             <div className="flex items-center gap-2">
-              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>{opt.icon}</span>
-              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>{opt.label}</span>
-              {opt.valid && (
-                <span className="h-1.5 w-1.5 rounded-full bg-primary ml-1" />
-              )}
+              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>
+                {opt.icon}
+              </span>
+              <span className={opt.valid ? 'text-foreground' : 'text-muted-foreground/50'}>
+                {opt.label}
+              </span>
+              {opt.valid && <span className="h-1.5 w-1.5 rounded-full bg-primary ml-1" />}
             </div>
           </SelectItem>
         ))}

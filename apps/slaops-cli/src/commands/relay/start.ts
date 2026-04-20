@@ -1,6 +1,10 @@
 import { Command, Flags } from '@oclif/core'
 import { CONFIG_FILE, getConfigProfile } from '../../config-file'
-import { CREDENTIALS_FILE, getCredentialsProfile, setCredentialsProfile } from '../../credentials-file'
+import {
+  CREDENTIALS_FILE,
+  getCredentialsProfile,
+  setCredentialsProfile,
+} from '../../credentials-file'
 import { refreshAccessToken, getAwsCredentialsFromIdentityPool } from '../../auth/cognito'
 
 export default class RelayStart extends Command {
@@ -29,20 +33,28 @@ export default class RelayStart extends Command {
     if (!config?.relay_id) {
       this.error(
         `No relay config found for profile [${profileName}] in ${CONFIG_FILE}.\n` +
-        `Run 'slaops relay init${profileName !== 'default' ? ` --profile ${profileName}` : ''}' first.`,
+          `Run 'slaops relay init${profileName !== 'default' ? ` --profile ${profileName}` : ''}' first.`,
       )
     }
 
     if (!creds?.refresh_token) {
       this.error(
         `No credentials found for profile [${profileName}] in ${CREDENTIALS_FILE}.\n` +
-        `Run 'slaops relay init${profileName !== 'default' ? ` --profile ${profileName}` : ''}' first.`,
+          `Run 'slaops relay init${profileName !== 'default' ? ` --profile ${profileName}` : ''}' first.`,
       )
     }
 
-    for (const key of ['relay_sqs_queue_url', 'relay_sqs_region', 'identity_pool_id', 'cognito_region', 'user_pool_id'] as const) {
+    for (const key of [
+      'relay_sqs_queue_url',
+      'relay_sqs_region',
+      'identity_pool_id',
+      'cognito_region',
+      'user_pool_id',
+    ] as const) {
       if (!config[key]) {
-        this.error(`Missing '${key}' in config profile [${profileName}].\nRun 'slaops relay init --force' to re-register.`)
+        this.error(
+          `Missing '${key}' in config profile [${profileName}].\nRun 'slaops relay init --force' to re-register.`,
+        )
       }
     }
 
@@ -67,7 +79,7 @@ export default class RelayStart extends Command {
       } catch (err) {
         this.error(
           `Token refresh failed: ${(err as Error).message}\n` +
-          `Your 30-day session has likely expired. Run 'slaops relay init --force' to re-authenticate.`,
+            `Your 30-day session has likely expired. Run 'slaops relay init --force' to re-authenticate.`,
         )
       }
     }
@@ -107,7 +119,8 @@ export default class RelayStart extends Command {
     process.env.RELAY_COGNITO_ID_TOKEN = idToken
     process.env.RELAY_COGNITO_REFRESH_TOKEN = creds.refresh_token
     process.env.RELAY_COGNITO_CLIENT_ID = process.env.SLAOPS_COGNITO_CLIENT_ID ?? ''
-    process.env.RELAY_COGNITO_DOMAIN = process.env.SLAOPS_COGNITO_DOMAIN ?? 'https://auth.slaops.com'
+    process.env.RELAY_COGNITO_DOMAIN =
+      process.env.SLAOPS_COGNITO_DOMAIN ?? 'https://auth.slaops.com'
     process.env.RELAY_SSRF_POLICY = 'dev-local'
     process.env.AEGIS_REQUIRED = 'false'
 

@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button'
-import { CopyButton } from './CopyButton'
+import type { CreateConnectionResponse } from '@/hooks/useConnectionsApi'
 import { AlertTriangle, CheckCircle, Copy } from 'lucide-react'
 import { useState } from 'react'
-import type { CreateConnectionResponse } from '@/hooks/useConnectionsApi'
+import { CopyButton } from './CopyButton'
 
 interface WizardSuccessProps {
   result: CreateConnectionResponse
@@ -14,7 +14,9 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
   const [revealed, setRevealed] = useState(false)
 
   const hasOneTimeCredentials =
-    result.iam_access_key_id_created || result.iam_secret_access_key || result.aegis_registration_token
+    result.iam_access_key_id_created ||
+    result.iam_secret_access_key ||
+    result.aegis_registration_token
 
   const sqsMode = result.sqs_queue_mode
   const hasSqs = !!result.sqs_queue_url
@@ -23,10 +25,14 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
     `RELAY_ID=${result.id}`,
     hasSqs ? `SQS_QUEUE_URL=${result.sqs_queue_url}` : null,
     hasSqs && result.sqs_region ? `SQS_REGION=${result.sqs_region}` : null,
-    result.iam_access_key_id_created ? `AWS_ACCESS_KEY_ID=${result.iam_access_key_id_created}` : null,
+    result.iam_access_key_id_created
+      ? `AWS_ACCESS_KEY_ID=${result.iam_access_key_id_created}`
+      : null,
     result.iam_secret_access_key ? `AWS_SECRET_ACCESS_KEY=${result.iam_secret_access_key}` : null,
     'SLAOPS_VENDOR_JWKS_URL=https://api.slaops.com/cloud-relay/.well-known/jwks.json',
-  ].filter(Boolean).join('\n')
+  ]
+    .filter(Boolean)
+    .join('\n')
 
   return (
     <div className="space-y-5">
@@ -46,7 +52,9 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
             This token is shown <strong>once only</strong> and cannot be retrieved again.
           </p>
           <div className="flex items-center gap-2 rounded bg-muted/50 border px-3 py-2">
-            <code className="text-xs font-mono flex-1 truncate">{result.aegis_registration_token}</code>
+            <code className="text-xs font-mono flex-1 truncate">
+              {result.aegis_registration_token}
+            </code>
             <CopyButton text={result.aegis_registration_token} />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -79,7 +87,13 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
                 <code className="text-xs font-mono flex-1">
                   {revealed ? result.iam_secret_access_key : '••••••••••••••••••••••••••••'}
                 </code>
-                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setRevealed(r => !r)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setRevealed((r) => !r)}
+                >
                   {revealed ? 'Hide' : 'Show'}
                 </Button>
                 <CopyButton text={result.iam_secret_access_key} />
@@ -91,7 +105,9 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
 
       {/* Connection ID */}
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Connection ID</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Connection ID
+        </p>
         <div className="flex items-center gap-2 rounded bg-muted/50 border px-3 py-2">
           <code className="text-xs font-mono flex-1">{result.id}</code>
           <CopyButton text={result.id} />
@@ -101,9 +117,16 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
       {/* Relay env vars */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Relay environment variables</p>
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1.5"
-            onClick={() => navigator.clipboard.writeText(envVars)}>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Relay environment variables
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1.5"
+            onClick={() => navigator.clipboard.writeText(envVars)}
+          >
             <Copy className="h-3.5 w-3.5" />
             Copy all
           </Button>
@@ -120,7 +143,7 @@ export function WizardSuccess({ result, onClose }: WizardSuccessProps) {
             type="checkbox"
             className="mt-0.5"
             checked={acknowledged}
-            onChange={e => setAcknowledged(e.target.checked)}
+            onChange={(e) => setAcknowledged(e.target.checked)}
           />
           <span className="text-sm text-muted-foreground">
             I have saved the credentials shown above. I understand they cannot be retrieved again.

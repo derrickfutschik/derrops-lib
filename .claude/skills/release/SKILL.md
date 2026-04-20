@@ -11,11 +11,13 @@ Use `/release [version]` when you are ready to cut a new release. If the version
 ### 1. Identify changes since last tag
 
 Run:
+
 ```bash
 git log $(git describe --tags --abbrev=0)..HEAD --oneline
 ```
 
 Group the output by conventional commit type:
+
 - `feat` → New Features
 - `fix` → Bug Fixes
 - `perf` → Performance
@@ -28,6 +30,7 @@ Present the grouped list to the user.
 ### 2. Confirm the version number
 
 If no version was provided, suggest one based on SemVer rules:
+
 - **patch** — bug fixes only, no API changes
 - **minor** — new features, backward compatible
 - **major** — breaking changes to the public API
@@ -42,7 +45,7 @@ Create `apps/slaops-docs/changelog/source/X.Y.Z.md` with this structure:
 ---
 mdx:
   format: md
-date: {YYYY-MM-DDTHH:MM}
+date: { YYYY-MM-DDTHH:MM }
 ---
 
 # X.Y.Z
@@ -85,6 +88,7 @@ Wait for confirmation before proceeding.
 ### 5. Tag and push
 
 On user confirmation:
+
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z

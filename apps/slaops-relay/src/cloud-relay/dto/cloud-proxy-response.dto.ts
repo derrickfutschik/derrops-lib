@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 export class MaskingInfoDto {
-  @ApiProperty({ type: [String], description: 'Full secret URIs whose values were found and masked in the response' })
+  @ApiProperty({
+    type: [String],
+    description: 'Full secret URIs whose values were found and masked in the response',
+  })
   declare maskedSecretUris: string[]
 
   @ApiProperty()
@@ -39,9 +42,22 @@ export class CloudProxyErrorDto {
   declare error: string
 
   @ApiProperty({
-    enum: ['TIMEOUT', 'NETWORK_ERROR', 'INVALID_URL', 'UNSUPPORTED_METHOD', 'POLICY_DENIED', 'TEMPLATE_ERROR'],
+    enum: [
+      'TIMEOUT',
+      'NETWORK_ERROR',
+      'INVALID_URL',
+      'UNSUPPORTED_METHOD',
+      'POLICY_DENIED',
+      'TEMPLATE_ERROR',
+    ],
   })
-  declare code: 'TIMEOUT' | 'NETWORK_ERROR' | 'INVALID_URL' | 'UNSUPPORTED_METHOD' | 'POLICY_DENIED' | 'TEMPLATE_ERROR'
+  declare code:
+    | 'TIMEOUT'
+    | 'NETWORK_ERROR'
+    | 'INVALID_URL'
+    | 'UNSUPPORTED_METHOD'
+    | 'POLICY_DENIED'
+    | 'TEMPLATE_ERROR'
 
   @ApiProperty()
   declare durationMs: number

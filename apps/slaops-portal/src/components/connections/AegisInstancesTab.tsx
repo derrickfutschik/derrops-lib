@@ -1,9 +1,6 @@
+import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Table,
   TableBody,
@@ -13,7 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { useDeleteAegis, useHealthCheckAegis } from '@/hooks/useConnectionsApi'
 import { formatDistanceToNow } from 'date-fns'
 import { Activity, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -29,7 +25,11 @@ interface AegisInstancesTabProps {
   isLoading: boolean
 }
 
-export function AegisInstancesTab({ aegisInstances, relayInstances, isLoading }: AegisInstancesTabProps) {
+export function AegisInstancesTab({
+  aegisInstances,
+  relayInstances,
+  isLoading,
+}: AegisInstancesTabProps) {
   const [registerOpen, setRegisterOpen] = useState(false)
   const [editAegis, setEditAegis] = useState<AegisInstance | null>(null)
   const [deleteAegis, setDeleteAegis] = useState<AegisInstance | null>(null)
@@ -42,7 +42,8 @@ export function AegisInstancesTab({ aegisInstances, relayInstances, isLoading }:
     setTestingId(aegis.id)
     try {
       const res = await healthCheck.mutateAsync(aegis.id)
-      const status = typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
+      const status =
+        typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
       setTestResults((prev) => ({
         ...prev,
         [aegis.id]: { ok: status === 'active', msg: status === 'active' ? 'JWKS valid' : status },
@@ -59,8 +60,7 @@ export function AegisInstancesTab({ aegisInstances, relayInstances, isLoading }:
   const getLinkedRelayCount = (aegisId: string) =>
     relayInstances.filter((r) => r.aegis_id === aegisId).length
 
-  const getLinkedRelays = (aegisId: string) =>
-    relayInstances.filter((r) => r.aegis_id === aegisId)
+  const getLinkedRelays = (aegisId: string) => relayInstances.filter((r) => r.aegis_id === aegisId)
 
   const getStatus = (aegis: AegisInstance): string =>
     typeof aegis.status === 'object' ? JSON.stringify(aegis.status) : String(aegis.status)
@@ -127,14 +127,18 @@ export function AegisInstancesTab({ aegisInstances, relayInstances, isLoading }:
                         <TooltipTrigger asChild>
                           <span className="cursor-help">{aegis.jwks_url}</span>
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-md break-all">{aegis.jwks_url}</TooltipContent>
+                        <TooltipContent className="max-w-md break-all">
+                          {aegis.jwks_url}
+                        </TooltipContent>
                       </Tooltip>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <StatusBadge status={status} />
                         {testResult && (
-                          <span className={`text-xs ${testResult.ok ? 'text-success' : 'text-destructive'}`}>
+                          <span
+                            className={`text-xs ${testResult.ok ? 'text-success' : 'text-destructive'}`}
+                          >
                             {testResult.ok ? '✓' : '✗'} {testResult.msg}
                           </span>
                         )}
@@ -149,7 +153,11 @@ export function AegisInstancesTab({ aegisInstances, relayInstances, isLoading }:
                       {linked.length > 0 ? (
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs text-primary">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto py-1 px-2 text-xs text-primary"
+                            >
                               {linked.length} relay{linked.length > 1 ? 's' : ''}
                             </Button>
                           </PopoverTrigger>

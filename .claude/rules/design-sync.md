@@ -20,31 +20,34 @@ Add a `@designDoc` tag in the file-level JSDoc block of any TypeScript file that
 
 **Which files get the tag:**
 
-| File type | Tag? |
-|---|---|
-| `.service.ts` | Yes — always |
-| `.controller.ts` | Yes — always |
-| Portal hooks `use*.ts` | Yes — when implementing a designed behaviour |
-| Portal components `.tsx` | Yes — when the component is the subject of a UI design doc |
-| Interface/type files | Yes — when directly described by a design doc (e.g. `oaspec-documents.ts`) |
-| `.module.ts`, DTOs, entities | No |
-| Generated files, tests | Never |
+| File type                    | Tag?                                                                       |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| `.service.ts`                | Yes — always                                                               |
+| `.controller.ts`             | Yes — always                                                               |
+| Portal hooks `use*.ts`       | Yes — when implementing a designed behaviour                               |
+| Portal components `.tsx`     | Yes — when the component is the subject of a UI design doc                 |
+| Interface/type files         | Yes — when directly described by a design doc (e.g. `oaspec-documents.ts`) |
+| `.module.ts`, DTOs, entities | No                                                                         |
+| Generated files, tests       | Never                                                                      |
 
 ## When to update a design doc
 
 When editing a file that has a `@designDoc` tag, check whether the change warrants updating the linked design doc(s).
 
 **Update the design doc when the change:**
+
 - Adds or removes a public method, endpoint, or exported interface
 - Changes the observable behaviour or contract of an existing feature
 - Changes a key implementation decision (algorithm, data format, error handling approach)
 
 **Do NOT update for:**
+
 - Internal refactors with no behaviour change
 - Bug fixes that restore originally designed behaviour
 - Test additions or import renames
 
 **How to update:**
+
 1. Edit the relevant section(s) of the design doc.
 2. Set `updated_at` to today's date in the frontmatter.
 3. If `status` is `accepted` and the feature is now fully shipped, set `status: implemented`, `implemented_at: YYYY-MM-DD`, and add the `implemented` tag.

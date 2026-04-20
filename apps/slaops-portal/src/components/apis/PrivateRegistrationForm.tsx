@@ -1,22 +1,22 @@
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
+import { VersionFetchStateStrategyEnum } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { VersionFetchStateStrategyEnum } from '@/client/slaops-cloud'
-import { useDebounce } from '@/hooks/useDebounce'
+import { Textarea } from '@/components/ui/textarea'
 import { useApiInfo } from '@/hooks/useApiInfo'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   selectInfoFetchResult,
   selectLastAutoPopulated,
   setLastAutoPopulated,
 } from '@/store/newApiWizardSlice'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2 } from 'lucide-react'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
 import { InfoFetchFeedback } from './InfoFetchFeedback'
 
 const schema = z.object({
@@ -130,11 +130,15 @@ export function PrivateRegistrationForm({
         >
           <div className="flex items-center space-x-2">
             <RadioGroupItem value={VersionFetchStateStrategyEnum.Manual} id="s-manual" />
-            <Label htmlFor="s-manual" className="cursor-pointer">Manual upload</Label>
+            <Label htmlFor="s-manual" className="cursor-pointer">
+              Manual upload
+            </Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value={VersionFetchStateStrategyEnum.UrlFetch} id="s-url-fetch" />
-            <Label htmlFor="s-url-fetch" className="cursor-pointer">Scheduled URL fetch</Label>
+            <Label htmlFor="s-url-fetch" className="cursor-pointer">
+              Scheduled URL fetch
+            </Label>
           </div>
         </RadioGroup>
       </div>
@@ -143,7 +147,12 @@ export function PrivateRegistrationForm({
         <>
           <div className="space-y-1.5">
             <Label htmlFor="fetchUrl">Fetch URL *</Label>
-            <Input id="fetchUrl" type="url" placeholder="https://..." {...form.register('fetchUrl')} />
+            <Input
+              id="fetchUrl"
+              type="url"
+              placeholder="https://..."
+              {...form.register('fetchUrl')}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="fetchCron">Fetch schedule (cron)</Label>
@@ -154,7 +163,9 @@ export function PrivateRegistrationForm({
       )}
 
       <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onBack}>Back</Button>
+        <Button type="button" variant="outline" onClick={onBack}>
+          Back
+        </Button>
         <Button type="submit" disabled={isPending}>
           {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Next

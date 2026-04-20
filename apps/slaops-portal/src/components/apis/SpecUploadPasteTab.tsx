@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface SpecUploadPasteTabProps {
   isPending: boolean
@@ -9,7 +9,11 @@ interface SpecUploadPasteTabProps {
   onSubmit: (content: string, filename: string) => Promise<void>
 }
 
-export function SpecUploadPasteTab({ isPending, initialContent, onSubmit }: SpecUploadPasteTabProps) {
+export function SpecUploadPasteTab({
+  isPending,
+  initialContent,
+  onSubmit,
+}: SpecUploadPasteTabProps) {
   const [pasteContent, setPasteContent] = useState(initialContent ?? '')
 
   return (

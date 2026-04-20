@@ -17,13 +17,13 @@ These guides take you from a fresh account to a fully running SLAOps setup as qu
 
 ## Guides in this section
 
-| Guide | What you will have at the end |
-|---|---|
-| [1. Sign up and log in](./portal-login) | An SLAOps account and access to the Portal |
-| [2. Local relay](./local-relay) | A relay running on your machine for testing `localhost` services |
-| [3. Cloud relay](./cloud-relay) | A relay deployed in your cloud environment or SLAOps-managed |
-| [4. Aegis](./aegis) | Customer-controlled credential injection and request authorisation |
-| [5. API Tester](./api-tester) | Sending requests through a relay and reading results |
+| Guide                                   | What you will have at the end                                      |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| [1. Sign up and log in](./portal-login) | An SLAOps account and access to the Portal                         |
+| [2. Local relay](./local-relay)         | A relay running on your machine for testing `localhost` services   |
+| [3. Cloud relay](./cloud-relay)         | A relay deployed in your cloud environment or SLAOps-managed       |
+| [4. Aegis](./aegis)                     | Customer-controlled credential injection and request authorisation |
+| [5. API Tester](./api-tester)           | Sending requests through a relay and reading results               |
 
 ---
 

@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -15,11 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { AlertCircle, ChevronDown, Eye, Search, Send } from 'lucide-react'
-import { HTTP_METHODS, ActionMode } from '../types'
-import { useAppSelector } from '@/store/hooks'
-import { selectFocusedQueryParam } from '@/store/apiTesterSlice'
 import { type KeyValuePair } from '@/hooks/useSendRequest'
+import { selectFocusedQueryParam } from '@/store/apiTesterSlice'
+import { useAppSelector } from '@/store/hooks'
+import { AlertCircle, ChevronDown, Eye, Search, Send } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { ActionMode, HTTP_METHODS } from '../types'
 
 interface StandardOperationPanelProps {
   method: string
@@ -112,21 +112,30 @@ const ActionButton = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="bg-popover z-50">
         <DropdownMenuItem
-          onClick={() => { onActionModeChange('analyze'); onRightPanelTabChange('match') }}
+          onClick={() => {
+            onActionModeChange('analyze')
+            onRightPanelTabChange('match')
+          }}
           className={actionMode === 'analyze' ? 'bg-accent' : ''}
         >
           <Search className="h-4 w-4 mr-2" />
           Match
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => { onActionModeChange('request'); onRightPanelTabChange('response') }}
+          onClick={() => {
+            onActionModeChange('request')
+            onRightPanelTabChange('response')
+          }}
           className={actionMode === 'request' ? 'bg-accent' : ''}
         >
           <Send className="h-4 w-4 mr-2" />
           Request
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => { onActionModeChange('preview'); onRightPanelTabChange('preview') }}
+          onClick={() => {
+            onActionModeChange('preview')
+            onRightPanelTabChange('preview')
+          }}
           className={actionMode === 'preview' ? 'bg-accent' : ''}
         >
           <Eye className="h-4 w-4 mr-2" />
@@ -166,7 +175,13 @@ function getParamHighlightRange(
   for (const segment of queryString.split('&')) {
     const eqIdx = segment.indexOf('=')
     const rawKey = eqIdx >= 0 ? segment.slice(0, eqIdx) : segment
-    const decodedKey = (() => { try { return decodeURIComponent(rawKey) } catch { return rawKey } })()
+    const decodedKey = (() => {
+      try {
+        return decodeURIComponent(rawKey)
+      } catch {
+        return rawKey
+      }
+    })()
 
     if (rawKey === param.key || decodedKey === param.key) {
       if (occurrenceSeen === nthOccurrence) {
@@ -265,15 +280,24 @@ const UrlInput = ({
             ref={inputRef}
             placeholder="Enter request URL (e.g., https://api.example.com/users)"
             value={url}
-            onChange={(e) => { onUrlChange(e.target.value); onUrlHistoryIndexChange(-1); syncScroll() }}
+            onChange={(e) => {
+              onUrlChange(e.target.value)
+              onUrlHistoryIndexChange(-1)
+              syncScroll()
+            }}
             onFocus={(e) => {
               if (!urlInputFocusedRef.current) {
                 e.target.select()
                 urlInputFocusedRef.current = true
               }
             }}
-            onBlur={() => { urlInputFocusedRef.current = false; onShowUrlHistoryChange(false) }}
-            onDoubleClick={() => { if (urlHistory.length > 0) onShowUrlHistoryChange(!showUrlHistory) }}
+            onBlur={() => {
+              urlInputFocusedRef.current = false
+              onShowUrlHistoryChange(false)
+            }}
+            onDoubleClick={() => {
+              if (urlHistory.length > 0) onShowUrlHistoryChange(!showUrlHistory)
+            }}
             onKeyDown={onUrlKeyDown}
             onScroll={syncScroll}
             onPaste={(e) => {
@@ -431,8 +455,15 @@ export function StandardOperationPanel({
               switch to a local relay connection
             </button>
             {!hasLocalDevConnection && (
-              <> — <a href="/connections" className="underline underline-offset-2 hover:no-underline">set one up</a></>
-            )}.
+              <>
+                {' '}
+                —{' '}
+                <a href="/connections" className="underline underline-offset-2 hover:no-underline">
+                  set one up
+                </a>
+              </>
+            )}
+            .
           </span>
         </div>
       )}
@@ -491,8 +522,15 @@ export function StandardOperationPanel({
               switch to a local relay connection
             </button>
             {!hasLocalDevConnection && (
-              <> — <a href="/connections" className="underline underline-offset-2 hover:no-underline">set one up</a></>
-            )}.
+              <>
+                {' '}
+                —{' '}
+                <a href="/connections" className="underline underline-offset-2 hover:no-underline">
+                  set one up
+                </a>
+              </>
+            )}
+            .
           </span>
         </div>
       )}

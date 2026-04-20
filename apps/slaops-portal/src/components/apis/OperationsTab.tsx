@@ -1,29 +1,36 @@
 /**
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/operations-tab.md
  */
-import { useState } from 'react'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PAGE_SIZE } from '@/config'
+import { useOperationsTab } from '@/hooks/useOperationsTab'
 import {
   selectOperationsTabState,
-  setOperationsQuery,
   setOperationsMethodFilter,
+  setOperationsQuery,
   setOperationsTagFilter,
-  setTabSort,
   setTabPage,
-  toggleTabColumn,
+  setTabSort,
   showAllTabColumns,
+  toggleTabColumn,
 } from '@/store/apiTabsSlice'
-import { useOperationsTab } from '@/hooks/useOperationsTab'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import type { OperationHit } from '@/types/apiTabs'
+import { useState } from 'react'
 import { MethodBadge } from './MethodBadge'
 import { OperationDetailPanel } from './OperationDetailPanel'
 import { SortableColHeader } from './SortableColHeader'
 import { TabTableFooter } from './TabTableFooter'
-import { PAGE_SIZE } from '@/config'
-import type { OperationHit } from '@/types/apiTabs'
 
 interface OperationsTabProps {
   apiId: string
@@ -40,7 +47,8 @@ const COLUMNS = [
 
 export function OperationsTab({ apiId }: OperationsTabProps) {
   const dispatch = useAppDispatch()
-  const { sort, hiddenColumns, page, query, methodFilter, tagFilter } = useAppSelector(selectOperationsTabState)
+  const { sort, hiddenColumns, page, query, methodFilter, tagFilter } =
+    useAppSelector(selectOperationsTabState)
   const { data, isLoading } = useOperationsTab(apiId)
   const [selected, setSelected] = useState<OperationHit | null>(null)
 
@@ -65,7 +73,9 @@ export function OperationsTab({ apiId }: OperationsTabProps) {
   }
 
   if (isLoading) {
-    return <div className="text-center py-12 text-muted-foreground text-sm">Loading operations…</div>
+    return (
+      <div className="text-center py-12 text-muted-foreground text-sm">Loading operations…</div>
+    )
   }
 
   if (!data || (data.hits.length === 0 && !hasFilter)) {
@@ -142,7 +152,9 @@ export function OperationsTab({ apiId }: OperationsTabProps) {
             >
               <TableCell className="font-mono text-xs text-muted-foreground">{from + i}</TableCell>
               {!hiddenColumns.includes('method') && (
-                <TableCell><MethodBadge method={op.method} /></TableCell>
+                <TableCell>
+                  <MethodBadge method={op.method} />
+                </TableCell>
               )}
               {!hiddenColumns.includes('path') && (
                 <TableCell className="font-mono text-xs">{op.path}</TableCell>
@@ -150,7 +162,10 @@ export function OperationsTab({ apiId }: OperationsTabProps) {
               {!hiddenColumns.includes('summary') && (
                 <TableCell className="text-sm">
                   {op.deprecated && (
-                    <Badge variant="outline" className="text-amber-600 border-amber-300 mr-1.5 text-xs">
+                    <Badge
+                      variant="outline"
+                      className="text-amber-600 border-amber-300 mr-1.5 text-xs"
+                    >
                       ⚠ deprecated
                     </Badge>
                   )}
@@ -193,16 +208,20 @@ export function OperationsTab({ apiId }: OperationsTabProps) {
       />
 
       <OperationDetailPanel
-        operation={selected ? {
-          method: selected.method,
-          path: selected.path,
-          summary: selected.summary,
-          operationId: selected.operationId,
-          tagsText: selected.tagsText,
-          description: selected.description,
-          pathKey: selected.pathKey,
-          deprecated: selected.deprecated,
-        } : null}
+        operation={
+          selected
+            ? {
+                method: selected.method,
+                path: selected.path,
+                summary: selected.summary,
+                operationId: selected.operationId,
+                tagsText: selected.tagsText,
+                description: selected.description,
+                pathKey: selected.pathKey,
+                deprecated: selected.deprecated,
+              }
+            : null
+        }
         onClose={() => setSelected(null)}
       />
     </>

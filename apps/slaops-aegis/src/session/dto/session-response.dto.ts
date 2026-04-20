@@ -24,9 +24,15 @@ export class SessionResponseDto {
   @ApiProperty({ description: 'ISO timestamp when the JWT expires' })
   expiresAt: string
 
-  @ApiProperty({ type: [PermittedEndpointDto], description: 'Endpoints Cedar permitted for this session' })
+  @ApiProperty({
+    type: [PermittedEndpointDto],
+    description: 'Endpoints Cedar permitted for this session',
+  })
   permittedEndpoints: PermittedEndpointDto[]
 
-  @ApiProperty({ type: [DeniedEndpointDto], description: 'Endpoints that were requested but denied by Cedar' })
+  @ApiProperty({
+    type: [DeniedEndpointDto],
+    description: 'Endpoints that were requested but denied by Cedar',
+  })
   deniedEndpoints: DeniedEndpointDto[]
 }

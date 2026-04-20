@@ -9,13 +9,16 @@ export class TemplateVariableDefinitionDto {
   declare type: 'secret' | 'env' | 'literal'
 
   @ApiPropertyOptional({
-    description: 'Full secret URI for type: secret (e.g. aws-secretsmanager://arn:... or vault://host/path)',
+    description:
+      'Full secret URI for type: secret (e.g. aws-secretsmanager://arn:... or vault://host/path)',
   })
   @IsString()
   @IsOptional()
   secretUri?: string
 
-  @ApiPropertyOptional({ description: 'JSON field selector for structured secrets (for type: secret)' })
+  @ApiPropertyOptional({
+    description: 'JSON field selector for structured secrets (for type: secret)',
+  })
   @IsString()
   @IsOptional()
   field?: string
@@ -32,7 +35,10 @@ export class TemplateVariableDefinitionDto {
 }
 
 export class TemplateContextDto {
-  @ApiPropertyOptional({ type: 'object', additionalProperties: { $ref: '#/components/schemas/TemplateVariableDefinitionDto' } })
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { $ref: '#/components/schemas/TemplateVariableDefinitionDto' },
+  })
   @ValidateNested({ each: true })
   @Type(() => TemplateVariableDefinitionDto)
   @IsOptional()
@@ -45,7 +51,10 @@ export class CloudProxyRequestDto {
   @Type(() => HarRequestDto)
   declare request: HarRequestDto
 
-  @ApiPropertyOptional({ description: 'Request timeout in milliseconds (1000–60000)', example: 30000 })
+  @ApiPropertyOptional({
+    description: 'Request timeout in milliseconds (1000–60000)',
+    example: 30000,
+  })
   @IsInt()
   @Min(1000)
   @Max(60_000)

@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Globe, AlertTriangle, Archive } from 'lucide-react'
+import { AlertTriangle, Archive, Globe } from 'lucide-react'
 
 export type ConnectivityMode = 'direct-http' | 'sqs' | 'sqs-http'
 
@@ -60,7 +60,7 @@ export function WizardConnectivity({ value, onChange }: WizardConnectivityProps)
       </p>
 
       <div className="space-y-3">
-        {OPTIONS.map(opt => (
+        {OPTIONS.map((opt) => (
           <button
             key={opt.id}
             type="button"
@@ -78,7 +78,10 @@ export function WizardConnectivity({ value, onChange }: WizardConnectivityProps)
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-foreground">{opt.label}</span>
                   {!opt.implemented && (
-                    <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-warning/10 text-warning border-warning/30"
+                    >
                       Not yet available
                     </Badge>
                   )}
@@ -94,8 +97,8 @@ export function WizardConnectivity({ value, onChange }: WizardConnectivityProps)
                   <div className="mt-2 flex items-start gap-2 rounded-md bg-warning/10 border border-warning/20 p-2">
                     <AlertTriangle className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />
                     <p className="text-xs text-warning">
-                      This option is not yet available. You can complete the wizard, but the connection
-                      cannot be activated until this delivery mode is implemented.
+                      This option is not yet available. You can complete the wizard, but the
+                      connection cannot be activated until this delivery mode is implemented.
                     </p>
                   </div>
                 )}

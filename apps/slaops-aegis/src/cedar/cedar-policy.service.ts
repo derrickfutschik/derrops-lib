@@ -7,13 +7,13 @@ import { buildEntities } from './cedar-entity.builder'
 import { buildContext } from './cedar-context.builder'
 
 const HTTP_METHOD_TO_ACTION: Record<string, string> = {
-  GET:     'httpGet',
-  HEAD:    'httpHead',
+  GET: 'httpGet',
+  HEAD: 'httpHead',
   OPTIONS: 'httpOptions',
-  POST:    'httpPost',
-  PUT:     'httpPut',
-  PATCH:   'httpPatch',
-  DELETE:  'httpDelete',
+  POST: 'httpPost',
+  PUT: 'httpPut',
+  PATCH: 'httpPatch',
+  DELETE: 'httpDelete',
 }
 
 export interface AuthorizationResult {
@@ -42,7 +42,9 @@ export class CedarPolicyService implements OnModuleInit {
     const schemaPath = path.join(dir, 'schema.json')
 
     if (!fs.existsSync(schemaPath)) {
-      this.logger.warn(`Cedar schema not found at ${schemaPath} — Cedar authorization disabled (default deny)`)
+      this.logger.warn(
+        `Cedar schema not found at ${schemaPath} — Cedar authorization disabled (default deny)`,
+      )
       return
     }
 
@@ -50,8 +52,8 @@ export class CedarPolicyService implements OnModuleInit {
 
     const cedarFiles = fs
       .readdirSync(dir)
-      .filter(f => f.endsWith('.cedar'))
-      .map(f => path.join(dir, f))
+      .filter((f) => f.endsWith('.cedar'))
+      .map((f) => path.join(dir, f))
 
     if (cedarFiles.length === 0) {
       this.logger.warn(`No .cedar policy files found in ${dir} — all requests will be denied`)
@@ -69,13 +71,18 @@ export class CedarPolicyService implements OnModuleInit {
 
     // Validate policies against schema
     const { validate } = await import('@cedar-policy/cedar-wasm/nodejs')
-    const result = validate({ schema: this.schema as never, policies: { staticPolicies: this.policyText } })
+    const result = validate({
+      schema: this.schema as never,
+      policies: { staticPolicies: this.policyText },
+    })
 
     if (result.type === 'failure') {
       for (const err of result.errors) {
         this.logger.error(`Cedar validation error: ${err.message}`)
       }
-      this.logger.error('Cedar policy validation failed — Cedar authorization disabled (default deny)')
+      this.logger.error(
+        'Cedar policy validation failed — Cedar authorization disabled (default deny)',
+      )
       return
     }
 
@@ -98,28 +105,32 @@ export class CedarPolicyService implements OnModuleInit {
 
     const action = HTTP_METHOD_TO_ACTION[endpoint.method.toUpperCase()]
     if (!action) {
-      return { allowed: false, determiningPolicies: [], reason: `unknown HTTP method: ${endpoint.method}` }
+      return {
+        allowed: false,
+        determiningPolicies: [],
+        reason: `unknown HTTP method: ${endpoint.method}`,
+      }
     }
 
     const entities = buildEntities(token, endpoint)
-    const context  = buildContext(token, endpoint, ipAddress)
+    const context = buildContext(token, endpoint, ipAddress)
     const operationId = endpoint.operationId ?? `${endpoint.method.toUpperCase()}:${endpoint.path}`
 
     const { isAuthorized } = await import('@cedar-policy/cedar-wasm/nodejs')
 
     const answer = isAuthorized({
-      principal:       { type: 'AegisNamespace::User', id: token.sub },
-      action:          { type: 'AegisNamespace::Action', id: action },
-      resource:        { type: 'AegisNamespace::ApiEndpoint', id: operationId },
+      principal: { type: 'AegisNamespace::User', id: token.sub },
+      action: { type: 'AegisNamespace::Action', id: action },
+      resource: { type: 'AegisNamespace::ApiEndpoint', id: operationId },
       context,
-      policies:        { staticPolicies: this.policyText },
+      policies: { staticPolicies: this.policyText },
       entities,
-      schema:          this.schema as never,
+      schema: this.schema as never,
       validateRequest: true,
     })
 
     if (answer.type === 'failure') {
-      const msg = answer.errors.map(e => e.message).join('; ')
+      const msg = answer.errors.map((e) => e.message).join('; ')
       this.logger.warn(`Cedar evaluation error for ${endpoint.method} ${endpoint.path}: ${msg}`)
       return { allowed: false, determiningPolicies: [], reason: msg }
     }

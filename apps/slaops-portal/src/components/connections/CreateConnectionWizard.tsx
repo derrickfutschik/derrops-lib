@@ -1,19 +1,14 @@
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { useAegisInstances, useCreateAegis, useCreateConnection } from '@/hooks/useConnectionsApi'
-import type { CreateConnectionResponse } from '@/hooks/useConnectionsApi'
-import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
+import type { CreateConnectionResponse } from '@/hooks/useConnectionsApi'
+import { useAegisInstances, useCreateAegis, useCreateConnection } from '@/hooks/useConnectionsApi'
+import { useState } from 'react'
 import { WizardAegis, type AegisMode, type NewAegisForm } from './WizardAegis'
 import { WizardConnectivity, type ConnectivityMode } from './WizardConnectivity'
 import { WizardHttpSettings } from './WizardHttpSettings'
 import { WizardRelayDetails, type RelayType } from './WizardRelayDetails'
-import { WizardSqsSettings, type SqsOwnership, isValidByoQueueUrl } from './WizardSqsSettings'
+import { isValidByoQueueUrl, WizardSqsSettings, type SqsOwnership } from './WizardSqsSettings'
 import { WizardSuccess } from './WizardSuccess'
 
 type Step = 'connectivity' | 'http' | 'sqs' | 'details' | 'aegis' | 'review' | 'success'
@@ -22,7 +17,10 @@ function stepsFor(connectivity: ConnectivityMode | null): Step[] {
   const base: Step[] = ['connectivity']
   if (connectivity === 'direct-http') base.push('http')
   if (connectivity === 'sqs') base.push('sqs')
-  if (connectivity === 'sqs-http') { base.push('http'); base.push('sqs') }
+  if (connectivity === 'sqs-http') {
+    base.push('http')
+    base.push('sqs')
+  }
   base.push('details', 'aegis', 'review', 'success')
   return base
 }
@@ -69,18 +67,24 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
   const canAdvance = (): boolean => {
     if (currentStep === 'connectivity') return connectivity !== null
     if (currentStep === 'http') return url.trim().length > 0
-    if (currentStep === 'sqs') return sqsOwnership === 'slaops' || isValidByoQueueUrl(customQueueUrl)
+    if (currentStep === 'sqs')
+      return sqsOwnership === 'slaops' || isValidByoQueueUrl(customQueueUrl)
     if (currentStep === 'details') return name.trim().length > 0 && !localWithHttp
     if (currentStep === 'aegis') {
       if (aegisMode === 'existing') return selectedAegisId !== null
-      if (aegisMode === 'new') return newAegisForm.name.trim().length > 0 && newAegisForm.url.trim().length > 0 && newAegisForm.jwksUrl.trim().length > 0
+      if (aegisMode === 'new')
+        return (
+          newAegisForm.name.trim().length > 0 &&
+          newAegisForm.url.trim().length > 0 &&
+          newAegisForm.jwksUrl.trim().length > 0
+        )
       return true
     }
     return true
   }
 
-  const handleNext = () => setStepIdx(i => Math.min(i + 1, steps.length - 1))
-  const handleBack = () => setStepIdx(i => Math.max(i - 1, 0))
+  const handleNext = () => setStepIdx((i) => Math.min(i + 1, steps.length - 1))
+  const handleBack = () => setStepIdx((i) => Math.max(i - 1, 0))
 
   const handleCreate = async () => {
     try {
@@ -98,17 +102,28 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
       }
 
       const deliveryMode =
-        connectivity === 'direct-http' ? 'direct' :
-        connectivity === 'sqs' ? 'platform-queue' : 'hybrid'
+        connectivity === 'direct-http'
+          ? 'direct'
+          : connectivity === 'sqs'
+            ? 'platform-queue'
+            : 'hybrid'
 
       const created = await createConnection.mutateAsync({
         name,
-        type: relayType === 'local-dev' ? 'local-dev' : relayType === 'managed' ? 'managed' : 'self-hosted',
+        type:
+          relayType === 'local-dev'
+            ? 'local-dev'
+            : relayType === 'managed'
+              ? 'managed'
+              : 'self-hosted',
         delivery_mode: deliveryMode,
         url: url || undefined,
-        sqs_queue_mode: deliveryMode !== 'direct'
-          ? (sqsOwnership === 'slaops' ? 'platform' : 'relay')
-          : undefined,
+        sqs_queue_mode:
+          deliveryMode !== 'direct'
+            ? sqsOwnership === 'slaops'
+              ? 'platform'
+              : 'relay'
+            : undefined,
         relay_sqs_queue_url: sqsOwnership === 'custom' ? customQueueUrl : undefined,
         aegis_id: aegisId,
       })
@@ -142,7 +157,7 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
     onOpenChange(open)
   }
 
-  const nonSuccessSteps = steps.filter(s => s !== 'success')
+  const nonSuccessSteps = steps.filter((s) => s !== 'success')
   const progressIdx = nonSuccessSteps.indexOf(currentStep)
   const isReview = currentStep === 'review'
   const isSuccess = currentStep === 'success'
@@ -171,9 +186,7 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
           {currentStep === 'connectivity' && (
             <WizardConnectivity value={connectivity} onChange={setConnectivity} />
           )}
-          {currentStep === 'http' && (
-            <WizardHttpSettings url={url} onChange={setUrl} />
-          )}
+          {currentStep === 'http' && <WizardHttpSettings url={url} onChange={setUrl} />}
           {currentStep === 'sqs' && (
             <WizardSqsSettings
               ownership={sqsOwnership}
@@ -206,17 +219,38 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
             <div className="space-y-3 text-sm">
               {[
                 ['Connection name', name],
-                ['Connectivity', connectivity === 'direct-http' ? 'Direct HTTP' : connectivity === 'sqs' ? 'SQS' : 'SQS + HTTP'],
+                [
+                  'Connectivity',
+                  connectivity === 'direct-http'
+                    ? 'Direct HTTP'
+                    : connectivity === 'sqs'
+                      ? 'SQS'
+                      : 'SQS + HTTP',
+                ],
                 url ? ['Relay URL', url] : null,
-                connectivity !== 'direct-http' ? ['SQS queue', sqsOwnership === 'slaops' ? 'SLAOps-managed' : customQueueUrl] : null,
+                connectivity !== 'direct-http'
+                  ? ['SQS queue', sqsOwnership === 'slaops' ? 'SLAOps-managed' : customQueueUrl]
+                  : null,
                 ['Relay type', relayType],
-                ['Aegis', aegisMode === 'skip' ? 'None' : aegisMode === 'new' ? `New: ${newAegisForm.name}` : aegisInstances.find(a => a.id === selectedAegisId)?.name ?? 'None'],
-              ].filter(Boolean).map(([label, value]) => (
-                <div key={label as string} className="flex justify-between gap-4 py-2 border-b last:border-0">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-right">{value}</span>
-                </div>
-              ))}
+                [
+                  'Aegis',
+                  aegisMode === 'skip'
+                    ? 'None'
+                    : aegisMode === 'new'
+                      ? `New: ${newAegisForm.name}`
+                      : (aegisInstances.find((a) => a.id === selectedAegisId)?.name ?? 'None'),
+                ],
+              ]
+                .filter(Boolean)
+                .map(([label, value]) => (
+                  <div
+                    key={label as string}
+                    className="flex justify-between gap-4 py-2 border-b last:border-0"
+                  >
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium text-right">{value}</span>
+                  </div>
+                ))}
             </div>
           )}
           {currentStep === 'success' && result && (
@@ -226,11 +260,7 @@ export function CreateConnectionWizard({ open, onOpenChange }: CreateConnectionW
 
         {!isSuccess && (
           <div className="flex justify-between pt-2 border-t">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={stepIdx === 0}
-            >
+            <Button variant="outline" onClick={handleBack} disabled={stepIdx === 0}>
               Back
             </Button>
             {isReview ? (

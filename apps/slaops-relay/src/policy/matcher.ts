@@ -21,7 +21,7 @@ function getPathValue(obj: Record<string, unknown>, path: string): unknown {
 
 /** Glob-style pattern match: `*` matches any sequence of characters, case-insensitive. */
 function matchPatterns(value: string, patterns: string[]): boolean {
-  return patterns.some(pattern => {
+  return patterns.some((pattern) => {
     const regex = new RegExp(
       '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$',
       'i',
@@ -33,10 +33,10 @@ function matchPatterns(value: string, patterns: string[]): boolean {
 /** Evaluate a condition against the request context. */
 export function matches(condition: Condition, ctx: RequestContext): boolean {
   if ('all' in condition) {
-    return (condition as { all: Condition[] }).all.every(c => matches(c, ctx))
+    return (condition as { all: Condition[] }).all.every((c) => matches(c, ctx))
   }
   if ('any' in condition) {
-    return (condition as { any: Condition[] }).any.some(c => matches(c, ctx))
+    return (condition as { any: Condition[] }).any.some((c) => matches(c, ctx))
   }
   if ('not' in condition) {
     return !matches((condition as { not: Condition }).not, ctx)

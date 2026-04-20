@@ -1,4 +1,4 @@
-import type { ApiEntity, CreateApiDto, UpdateApiDto, AdoptApiDto } from '@/client/slaops-cloud'
+import type { AdoptApiDto, ApiEntity, CreateApiDto, UpdateApiDto } from '@/client/slaops-cloud'
 import { APIApi } from '@/client/slaops-cloud'
 import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'

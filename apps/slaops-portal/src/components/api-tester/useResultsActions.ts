@@ -1,7 +1,12 @@
 import jmespath from 'jmespath'
 import { useRef } from 'react'
 import { toast } from 'sonner'
-import { applyTruncationToJson, jsonToStyledHtml, writeTextToClipboard, writeHtmlToClipboard } from './json-copy-utils'
+import {
+  applyTruncationToJson,
+  jsonToStyledHtml,
+  writeHtmlToClipboard,
+  writeTextToClipboard,
+} from './json-copy-utils'
 
 type ViewMode = 'json' | 'markdown' | 'table'
 
@@ -65,16 +70,25 @@ export function useResultsActions({
       } else if (Array.isArray(parsed) && parsed.length > 0) {
         if (parsed.every((item: any) => typeof item === 'string')) {
           mdContent = parsed.join('\n\n---\n\n')
-        } else if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+        } else if (
+          typeof parsed[0] === 'object' &&
+          parsed[0] !== null &&
+          !Array.isArray(parsed[0])
+        ) {
           const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
           const escapeCell = (val: any) => {
-            const str = val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
+            const str =
+              val === null || val === undefined
+                ? ''
+                : typeof val === 'object'
+                  ? JSON.stringify(val)
+                  : String(val)
             return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
           }
           const headerRow = `| ${columns.join(' | ')} |`
           const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`
-          const dataRows = parsed.map((item: any) =>
-            `| ${columns.map((col) => escapeCell(item[col])).join(' | ')} |`
+          const dataRows = parsed.map(
+            (item: any) => `| ${columns.map((col) => escapeCell(item[col])).join(' | ')} |`,
           )
           mdContent = [headerRow, separatorRow, ...dataRows].join('\n')
         } else {
@@ -82,7 +96,11 @@ export function useResultsActions({
             const str = val === null || val === undefined ? '' : String(val)
             return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
           }
-          mdContent = ['| value |', '| --- |', ...parsed.map((v: any) => `| ${escapeCell(v)} |`)].join('\n')
+          mdContent = [
+            '| value |',
+            '| --- |',
+            ...parsed.map((v: any) => `| ${escapeCell(v)} |`),
+          ].join('\n')
         }
       } else {
         return null
@@ -96,19 +114,22 @@ export function useResultsActions({
   // ── Table data getters ───────────────────────────────────────────────────────
 
   const getTableData = (): { columns: string[]; rows: string[][] } | null => {
-    const raw = sqlResultRef.current ?? (tableDataRef.current ?? null)
+    const raw = sqlResultRef.current ?? tableDataRef.current ?? null
     if (!raw || hiddenColumnIds.size === 0) return raw
-    const visibleIndices = raw.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumnIds.has(c)).map(({ i }) => i)
+    const visibleIndices = raw.columns
+      .map((c, i) => ({ c, i }))
+      .filter(({ c }) => !hiddenColumnIds.has(c))
+      .map(({ i }) => i)
     return {
-      columns: visibleIndices.map(i => raw.columns[i]),
-      rows: raw.rows.map(row => visibleIndices.map(i => row[i])),
+      columns: visibleIndices.map((i) => raw.columns[i]),
+      rows: raw.rows.map((row) => visibleIndices.map((i) => row[i])),
     }
   }
 
   const getTableTsv = (): string | null => {
     const data = getTableData()
     if (!data) return null
-    return [data.columns.join('\t'), ...data.rows.map(row => row.join('\t'))].join('\n')
+    return [data.columns.join('\t'), ...data.rows.map((row) => row.join('\t'))].join('\n')
   }
 
   const getTableCsv = (): string | null => {
@@ -118,7 +139,10 @@ export function useResultsActions({
       val.includes(',') || val.includes('"') || val.includes('\n')
         ? `"${val.replace(/"/g, '""')}"`
         : val
-    return [data.columns.map(escape).join(','), ...data.rows.map(row => row.map(escape).join(','))].join('\n')
+    return [
+      data.columns.map(escape).join(','),
+      ...data.rows.map((row) => row.map(escape).join(',')),
+    ].join('\n')
   }
 
   const getTableMarkdown = (): string | null => {
@@ -128,16 +152,18 @@ export function useResultsActions({
     return [
       `| ${data.columns.map(esc).join(' | ')} |`,
       `| ${data.columns.map(() => '---').join(' | ')} |`,
-      ...data.rows.map(row => `| ${row.map(esc).join(' | ')} |`),
+      ...data.rows.map((row) => `| ${row.map(esc).join(' | ')} |`),
     ].join('\n')
   }
 
   const getTableJsCode = (): string | null => {
     const data = getTableData()
     if (!data) return null
-    const objects = data.rows.map(row => {
+    const objects = data.rows.map((row) => {
       const obj: Record<string, string> = {}
-      data.columns.forEach((col, i) => { obj[col] = row[i] })
+      data.columns.forEach((col, i) => {
+        obj[col] = row[i]
+      })
       return obj
     })
     return JSON.stringify(objects, null, 2)
@@ -147,11 +173,13 @@ export function useResultsActions({
     const data = getTableData()
     if (!data) return null
     const escSql = (v: string) => v.replace(/'/g, "''")
-    const cols = data.columns.map(c => `"${c}"`).join(', ')
-    return data.rows.map(row => {
-      const vals = row.map(v => v === '' ? 'NULL' : `'${escSql(v)}'`).join(', ')
-      return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`
-    }).join('\n')
+    const cols = data.columns.map((c) => `"${c}"`).join(', ')
+    return data.rows
+      .map((row) => {
+        const vals = row.map((v) => (v === '' ? 'NULL' : `'${escSql(v)}'`)).join(', ')
+        return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`
+      })
+      .join('\n')
   }
 
   // ── Clipboard helpers ────────────────────────────────────────────────────────
@@ -183,11 +211,17 @@ export function useResultsActions({
   const handleCopy = (): void => {
     if (viewModeRef.current === 'table') {
       const tsv = getTableTsv()
-      if (!tsv) { toast.error('No table data to copy'); return }
+      if (!tsv) {
+        toast.error('No table data to copy')
+        return
+      }
       const data = getTableData()!
-      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      const headerCells = data.columns.map(c => `<th>${esc(c)}</th>`).join('')
-      const bodyRows = data.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')
+      const esc = (s: string) =>
+        s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const headerCells = data.columns.map((c) => `<th>${esc(c)}</th>`).join('')
+      const bodyRows = data.rows
+        .map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join('')}</tr>`)
+        .join('')
       const htmlTable = `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`
       writeHtmlToClipboard(htmlTable, tsv).then(
         () => toast.success('Copied table to clipboard'),
@@ -197,17 +231,21 @@ export function useResultsActions({
     }
     if (viewModeRef.current === 'markdown') {
       const md = getEffectiveMarkdownContent()
-      if (md) { copyText(md, 'Markdown'); return }
+      if (md) {
+        copyText(md, 'Markdown')
+        return
+      }
     }
     const jsonContent = truncateValues
       ? applyTruncationToJson(displayContentRef.current)
       : displayContentRef.current
     writeTextToClipboard(jsonContent).then(
-      () => toast.success(
-        jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
-          ? 'Copied filtered content to clipboard'
-          : 'Copied to clipboard',
-      ),
+      () =>
+        toast.success(
+          jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
+            ? 'Copied filtered content to clipboard'
+            : 'Copied to clipboard',
+        ),
       () => toast.error('Failed to copy — check browser clipboard permissions'),
     )
   }
@@ -239,8 +277,13 @@ export function useResultsActions({
       }
       let csvContent: string
       if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
-        const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item)))) as string[]
-        csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(','))].join('\n')
+        const keys = Array.from(
+          new Set(parsed.flatMap((item: any) => Object.keys(item))),
+        ) as string[]
+        csvContent = [
+          keys.map(escape).join(','),
+          ...parsed.map((row: any) => keys.map((k) => escape(row[k])).join(',')),
+        ].join('\n')
       } else {
         csvContent = ['value', ...parsed.map(escape)].join('\n')
       }
@@ -253,7 +296,10 @@ export function useResultsActions({
   const handleDownload = (): void => {
     if (viewModeRef.current === 'table') {
       const csv = getTableCsv()
-      if (!csv) { toast.error('No table data to download'); return }
+      if (!csv) {
+        toast.error('No table data to download')
+        return
+      }
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
       const a = document.createElement('a')
       a.href = url
@@ -277,7 +323,10 @@ export function useResultsActions({
       jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
         ? `response-filtered.${extension}`
         : `response.${extension}`
-    downloadText(effectiveContent, filename, mimeType,
+    downloadText(
+      effectiveContent,
+      filename,
+      mimeType,
       jmespathEnabled && jmespathMode === 'filter' && jmespathQuery.trim()
         ? 'filtered response'
         : 'response',
@@ -301,7 +350,10 @@ export function useResultsActions({
       let csvContent: string
       if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
         const keys = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
-        csvContent = [keys.map(escape).join(','), ...parsed.map((row: any) => keys.map((k: string) => escape(row[k])).join(','))].join('\n')
+        csvContent = [
+          keys.map(escape).join(','),
+          ...parsed.map((row: any) => keys.map((k: string) => escape(row[k])).join(',')),
+        ].join('\n')
       } else {
         csvContent = ['value', ...parsed.map(escape)].join('\n')
       }

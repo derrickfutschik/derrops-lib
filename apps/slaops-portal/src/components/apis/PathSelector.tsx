@@ -1,8 +1,8 @@
-import { Search, PlusCircle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { WizardCatalogueSearch } from './WizardCatalogueSearch'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CatalogueHit } from '@/types/indexer'
+import { PlusCircle, Search } from 'lucide-react'
+import { WizardCatalogueSearch } from './WizardCatalogueSearch'
 
 interface PathSelectorProps {
   onSelectCatalogueHit: (hit: CatalogueHit) => void

@@ -5,7 +5,7 @@ services:
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - 'OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m'
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=SaltKup12()
       - plugins.security.disabled=true
       - http.max_content_length=10MB
@@ -47,9 +47,9 @@ services:
     image: localstack/localstack:latest
     container_name: localstack
     ports:
-      - "0.0.0.0:4566:4566"            # main edge port for all services
+      - '0.0.0.0:4566:4566' # main edge port for all services
     environment:
-      - SERVICES=dynamodb,s3      # only run DynamoDB (add others comma-separated if needed)
+      - SERVICES=dynamodb,s3 # only run DynamoDB (add others comma-separated if needed)
       - DEFAULT_REGION=ap-southeast-2
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
@@ -97,7 +97,6 @@ services:
       - slaops-network
     user: root
 
-
 volumes:
   opensearch-data:
   opensearch-dashboards-data:
@@ -107,4 +106,3 @@ volumes:
 networks:
   slaops-network:
     driver: bridge
-

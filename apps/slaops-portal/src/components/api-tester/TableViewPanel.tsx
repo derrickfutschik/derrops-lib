@@ -1,10 +1,38 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import {
+  reconcileColumns,
+  selectActiveSortColumn,
+  selectHiddenColumnIds,
+  selectTableState,
+  setAdditionalJoinPaths as setAdditionalJoinPathsRedux,
+  setColumnSort,
+  setJoinColumn,
+  setJoiningEnabled as setJoiningEnabledRedux,
+  setSqlMode as setSqlModeRedux,
+  setSqlQuery as setSqlQueryRedux,
+  showAllColumns,
+  toggleColumnHidden,
+} from '@/store/responseViewerSlice'
 import alasql from 'alasql'
 import {
   ArrowDown,
@@ -15,23 +43,8 @@ import {
   Filter,
   Highlighter,
 } from 'lucide-react'
-import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { type JoiningContext, type JoinColumnCandidate } from './joining-utils'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import {
-  selectTableState,
-  selectActiveSortColumn,
-  selectHiddenColumnIds,
-  setSqlQuery as setSqlQueryRedux,
-  setSqlMode as setSqlModeRedux,
-  setJoinColumn,
-  setJoiningEnabled as setJoiningEnabledRedux,
-  setAdditionalJoinPaths as setAdditionalJoinPathsRedux,
-  reconcileColumns,
-  toggleColumnHidden,
-  showAllColumns,
-  setColumnSort,
-} from '@/store/responseViewerSlice'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type JoinColumnCandidate, type JoiningContext } from './joining-utils'
 
 const MAX_TABLE_DEPTH = 4
 const MAX_TABLE_COLUMNS = 100
@@ -40,11 +53,15 @@ function getJsonDepth(value: unknown, current = 0, cap = MAX_TABLE_DEPTH + 2): n
   if (current >= cap || typeof value !== 'object' || value === null) return current
   if (Array.isArray(value)) {
     if (value.length === 0) return current + 1
-    return Math.max(...value.slice(0, 10).map(v => getJsonDepth(v, current + 1, cap)))
+    return Math.max(...value.slice(0, 10).map((v) => getJsonDepth(v, current + 1, cap)))
   }
   const keys = Object.keys(value as object)
   if (keys.length === 0) return current + 1
-  return Math.max(...keys.slice(0, 10).map(k => getJsonDepth((value as Record<string, unknown>)[k], current + 1, cap)))
+  return Math.max(
+    ...keys
+      .slice(0, 10)
+      .map((k) => getJsonDepth((value as Record<string, unknown>)[k], current + 1, cap)),
+  )
 }
 
 interface TableViewPanelProps {
@@ -86,7 +103,8 @@ export function TableViewPanel({
   const joiningEnabled = tableState.joiningEnabled
   const setJoiningEnabled = (val: boolean) => dispatch(setJoiningEnabledRedux(val))
   const additionalJoinPaths = tableState.additionalJoinPaths
-  const setAdditionalJoinPaths = (paths: (string | null)[]) => dispatch(setAdditionalJoinPathsRedux(paths))
+  const setAdditionalJoinPaths = (paths: (string | null)[]) =>
+    dispatch(setAdditionalJoinPathsRedux(paths))
 
   const [sqlError, setSqlError] = useState<string | null>(null)
   const [sqlHistory, setSqlHistory] = useState<string[]>([])
@@ -102,7 +120,13 @@ export function TableViewPanel({
   const tableValidationError = useMemo((): string | null => {
     try {
       const parsed = JSON.parse(displayContent)
-      if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        typeof parsed[0] === 'object' &&
+        parsed[0] !== null &&
+        !Array.isArray(parsed[0])
+      ) {
         const depth = getJsonDepth(parsed)
         if (depth > MAX_TABLE_DEPTH) {
           return `Heavily nested JSON (depth ${depth}) cannot be rendered as a table. Use a JMESPath expression to flatten the data first.`
@@ -130,7 +154,7 @@ export function TableViewPanel({
     [joinColumn, additionalJoinPaths],
   )
 
-  const setSelectedJoinPaths = (updater: ((prev: (string | null)[]) => (string | null)[])) => {
+  const setSelectedJoinPaths = (updater: (prev: (string | null)[]) => (string | null)[]) => {
     const current = [joinColumn, ...additionalJoinPaths]
     const next = updater(current)
     if (next[0] !== joinColumn) {
@@ -145,8 +169,12 @@ export function TableViewPanel({
     if (tableValidationError) return null
 
     // Helper: build enhanced columns/rows when joining is active, applying any custom join path selection
-    const applyJoining = (baseColumns: string[], baseRows: string[][]): { columns: string[]; rows: string[][] } | null => {
-      if (!joiningEnabled || !joiningContext || joiningContext.joiningColumns.length === 0) return null
+    const applyJoining = (
+      baseColumns: string[],
+      baseRows: string[][],
+    ): { columns: string[]; rows: string[][] } | null => {
+      if (!joiningEnabled || !joiningContext || joiningContext.joiningColumns.length === 0)
+        return null
       // Build effective column names: custom selections get a SQL-safe "join_column" name
       // that doesn't conflict with any existing data column or previously assigned join column.
       const effectiveJoinCols: string[] = []
@@ -192,10 +220,16 @@ export function TableViewPanel({
         if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
           const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
           if (columns.length > MAX_TABLE_COLUMNS) return null
-          const rows = parsed.map((item: any) => columns.map((col) => {
-            const val = item[col]
-            return val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
-          }))
+          const rows = parsed.map((item: any) =>
+            columns.map((col) => {
+              const val = item[col]
+              return val === null || val === undefined
+                ? ''
+                : typeof val === 'object'
+                  ? JSON.stringify(val)
+                  : String(val)
+            }),
+          )
           return applyJoining(columns, rows) ?? { columns, rows }
         }
         // Array of primitives
@@ -206,7 +240,10 @@ export function TableViewPanel({
       // Not JSON — try CSV
     }
     // Try CSV parse (simple: split by newlines, split by comma)
-    const lines = displayContent.trim().split('\n').filter((l: string) => l.trim())
+    const lines = displayContent
+      .trim()
+      .split('\n')
+      .filter((l: string) => l.trim())
     if (lines.length >= 1) {
       const parseCsvLine = (line: string) => {
         const result: string[] = []
@@ -215,13 +252,17 @@ export function TableViewPanel({
         for (let i = 0; i < line.length; i++) {
           const ch = line[i]
           if (inQuotes) {
-            if (ch === '"' && line[i + 1] === '"') { current += '"'; i++ }
-            else if (ch === '"') inQuotes = false
+            if (ch === '"' && line[i + 1] === '"') {
+              current += '"'
+              i++
+            } else if (ch === '"') inQuotes = false
             else current += ch
           } else {
             if (ch === '"') inQuotes = true
-            else if (ch === ',') { result.push(current); current = '' }
-            else current += ch
+            else if (ch === ',') {
+              result.push(current)
+              current = ''
+            } else current += ch
           }
         }
         result.push(current)
@@ -236,13 +277,21 @@ export function TableViewPanel({
       }
       const colCount = headerRow.length
       if (colCount > MAX_TABLE_COLUMNS) return null
-      const columns = colCount === 1 ? ['value'] : Array.from({ length: colCount }, (_, i) => `col${i + 1}`)
+      const columns =
+        colCount === 1 ? ['value'] : Array.from({ length: colCount }, (_, i) => `col${i + 1}`)
       const rows = lines.map(parseCsvLine)
       return { columns, rows }
     }
     return null
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayContent, tableValidationError, joiningEnabled, joiningContext, selectedJoinPaths, joinColumnCandidates])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    displayContent,
+    tableValidationError,
+    joiningEnabled,
+    joiningContext,
+    selectedJoinPaths,
+    joinColumnCandidates,
+  ])
 
   // Keep parent refs in sync for copy/download
   tableDataRef.current = tableData
@@ -256,7 +305,9 @@ export function TableViewPanel({
     // Replace bare identifier `value` outside string literals with `[value]`
     const segments = sqlQuery.split(/('(?:''|[^'])*')/)
     return segments
-      .map((segment, index) => (index % 2 === 1 ? segment : segment.replace(/\bvalue\b/gi, '[value]')))
+      .map((segment, index) =>
+        index % 2 === 1 ? segment : segment.replace(/\bvalue\b/gi, '[value]'),
+      )
       .join('')
   }, [sqlQuery, tableData])
 
@@ -265,7 +316,7 @@ export function TableViewPanel({
     if (!sqlQuery.trim() || !tableData) return null
     try {
       const joiningColSet = new Set(joiningContext?.joiningColumns ?? [])
-      const data = tableData.rows.map(row => {
+      const data = tableData.rows.map((row) => {
         const obj: Record<string, string | number | boolean> = {}
         tableData.columns.forEach((col, i) => {
           const v = row[i]
@@ -296,10 +347,12 @@ export function TableViewPanel({
 
       if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
         const cols = Object.keys(result[0])
-        const rows = result.map((r: any) => cols.map(c => {
-          const v = r[c]
-          return v === null || v === undefined ? '' : String(v)
-        }))
+        const rows = result.map((r: any) =>
+          cols.map((c) => {
+            const v = r[c]
+            return v === null || v === undefined ? '' : String(v)
+          }),
+        )
         return { columns: cols, rows }
       }
 
@@ -308,7 +361,7 @@ export function TableViewPanel({
         const first = result[0]
         if (typeof first === 'object' && first !== null) {
           const cols = Object.keys(first)
-          const rows = result.map((r: any) => cols.map(c => String(r[c] ?? '')))
+          const rows = result.map((r: any) => cols.map((c) => String(r[c] ?? '')))
           return { columns: cols, rows }
         }
       }
@@ -355,9 +408,13 @@ export function TableViewPanel({
       if (selectMatch) {
         const selectCols = selectMatch[1].trim()
         if (selectCols !== '*') {
-          selectedColumns = selectCols
-            .split(',')
-            .map(c => c.trim().replace(/^\[|\]$/g, '').split(/\s+as\s+/i)[0].trim())
+          selectedColumns = selectCols.split(',').map((c) =>
+            c
+              .trim()
+              .replace(/^\[|\]$/g, '')
+              .split(/\s+as\s+/i)[0]
+              .trim(),
+          )
         }
       }
 
@@ -396,28 +453,39 @@ export function TableViewPanel({
   // Join columns are excluded from the comparison by matching on column name.
   const duplicateOriginalIndices = useMemo(() => {
     if (!highlightDuplicates || !tableData) return new Set<number>()
-    const baseColumns = (sqlMode === 'highlight' ? tableData : (sqlResult || tableData))?.columns ?? []
-    const baseRows = (sqlMode === 'highlight' ? tableData?.rows : (sqlResult ? sqlResult.rows : tableData?.rows)) ?? []
+    const baseColumns =
+      (sqlMode === 'highlight' ? tableData : sqlResult || tableData)?.columns ?? []
+    const baseRows =
+      (sqlMode === 'highlight' ? tableData?.rows : sqlResult ? sqlResult.rows : tableData?.rows) ??
+      []
     const joinColNames = new Set(
-      joiningEnabled && joiningContext ? tableData.columns.slice(0, joiningContext.joiningColumns.length) : []
+      joiningEnabled && joiningContext
+        ? tableData.columns.slice(0, joiningContext.joiningColumns.length)
+        : [],
     )
-    const dataIndices = baseColumns.map((col, i) => ({ col, i })).filter(({ col }) => !joinColNames.has(col)).map(({ i }) => i)
+    const dataIndices = baseColumns
+      .map((col, i) => ({ col, i }))
+      .filter(({ col }) => !joinColNames.has(col))
+      .map(({ i }) => i)
     const keyCount = new Map<string, number>()
     for (const row of baseRows) {
-      const key = JSON.stringify(dataIndices.map(i => row[i]))
+      const key = JSON.stringify(dataIndices.map((i) => row[i]))
       keyCount.set(key, (keyCount.get(key) ?? 0) + 1)
     }
     const dupes = new Set<number>()
     for (let i = 0; i < baseRows.length; i++) {
-      const key = JSON.stringify(dataIndices.map(ci => baseRows[i][ci]))
+      const key = JSON.stringify(dataIndices.map((ci) => baseRows[i][ci]))
       if ((keyCount.get(key) ?? 0) > 1) dupes.add(i)
     }
     return dupes
   }, [highlightDuplicates, tableData, sqlMode, sqlResult, joiningEnabled, joiningContext])
 
   const { sortedRows, sortedOriginalIndices } = useMemo(() => {
-    const baseColumns = (sqlMode === 'highlight' ? tableData : (sqlResult || tableData))?.columns ?? []
-    const baseRows = (sqlMode === 'highlight' ? tableData?.rows : (sqlResult ? sqlResult.rows : tableData?.rows)) ?? []
+    const baseColumns =
+      (sqlMode === 'highlight' ? tableData : sqlResult || tableData)?.columns ?? []
+    const baseRows =
+      (sqlMode === 'highlight' ? tableData?.rows : sqlResult ? sqlResult.rows : tableData?.rows) ??
+      []
     if (!baseRows.length || !activeSortColumn) {
       return { sortedRows: baseRows, sortedOriginalIndices: baseRows.map((_, i) => i) }
     }
@@ -436,12 +504,20 @@ export function TableViewPanel({
       const cmp = isNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal))
       return sortDir === 'asc' ? cmp : -cmp
     })
-    return { sortedRows: sorted.map(s => s.row), sortedOriginalIndices: sorted.map(s => s.origIdx) }
+    return {
+      sortedRows: sorted.map((s) => s.row),
+      sortedOriginalIndices: sorted.map((s) => s.origIdx),
+    }
   }, [tableData, sqlResult, sqlMode, activeSortColumn])
 
   const handleColumnSort = (colIndex: number, colName: string) => {
     if (activeSortColumn?.id === colName) {
-      dispatch(setColumnSort({ id: colName, direction: activeSortColumn.direction === 'asc' ? 'desc' : 'asc' }))
+      dispatch(
+        setColumnSort({
+          id: colName,
+          direction: activeSortColumn.direction === 'asc' ? 'desc' : 'asc',
+        }),
+      )
     } else {
       dispatch(setColumnSort({ id: colName, direction: 'asc' }))
     }
@@ -457,7 +533,7 @@ export function TableViewPanel({
     if (tableData?.columns) {
       dispatch(reconcileColumns(tableData.columns))
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableData?.columns.join('\0')])
 
   // When candidates change, preserve any selection that is still valid; fall back to default otherwise
@@ -468,50 +544,53 @@ export function TableViewPanel({
         return (joinColumnCandidates[j] ?? []).some((c) => c.path === path) ? path : null
       }),
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinColumnCandidates])
 
   const addToSqlHistory = useCallback((query: string) => {
     const trimmed = query.trim()
     if (!trimmed) return
-    setSqlHistory(prev => {
-      const filtered = prev.filter(h => h !== trimmed)
+    setSqlHistory((prev) => {
+      const filtered = prev.filter((h) => h !== trimmed)
       return [trimmed, ...filtered].slice(0, 20)
     })
   }, [])
 
-  const handleCellClick = useCallback((colName: string, value: string) => (e: React.MouseEvent) => {
-    if (e.metaKey || e.ctrlKey) {
-      e.preventDefault()
-      const escapedValue = value.replace(/'/g, "''")
-      const clause = `${colName} = '${escapedValue}'`
+  const handleCellClick = useCallback(
+    (colName: string, value: string) => (e: React.MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault()
+        const escapedValue = value.replace(/'/g, "''")
+        const clause = `${colName} = '${escapedValue}'`
 
-      if (sqlQuery.trim()) {
-        // Append AND clause to existing query, but skip if already present
-        const whereMatch = sqlQuery.match(/^(SELECT\s+.+?\s+FROM\s+\?\s+WHERE\s+)(.+)$/i)
-        if (whereMatch) {
-          // Check if this exact clause already exists in the WHERE conditions
-          const existingClauses = whereMatch[2].split(/\s+AND\s+/i).map(c => c.trim())
-          if (existingClauses.some(c => c.toLowerCase() === clause.toLowerCase())) {
-            return // Duplicate clause, skip
+        if (sqlQuery.trim()) {
+          // Append AND clause to existing query, but skip if already present
+          const whereMatch = sqlQuery.match(/^(SELECT\s+.+?\s+FROM\s+\?\s+WHERE\s+)(.+)$/i)
+          if (whereMatch) {
+            // Check if this exact clause already exists in the WHERE conditions
+            const existingClauses = whereMatch[2].split(/\s+AND\s+/i).map((c) => c.trim())
+            if (existingClauses.some((c) => c.toLowerCase() === clause.toLowerCase())) {
+              return // Duplicate clause, skip
+            }
+            const newQuery = `${whereMatch[1]}${whereMatch[2]} AND ${clause}`
+            setSqlQuery(newQuery)
+            addToSqlHistory(newQuery)
+          } else {
+            const query = `SELECT * FROM ? WHERE ${clause}`
+            setSqlQuery(query)
+            addToSqlHistory(query)
           }
-          const newQuery = `${whereMatch[1]}${whereMatch[2]} AND ${clause}`
-          setSqlQuery(newQuery)
-          addToSqlHistory(newQuery)
         } else {
           const query = `SELECT * FROM ? WHERE ${clause}`
           setSqlQuery(query)
           addToSqlHistory(query)
         }
-      } else {
-        const query = `SELECT * FROM ? WHERE ${clause}`
-        setSqlQuery(query)
-        addToSqlHistory(query)
+        setSqlError(null)
       }
-      setSqlError(null)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sqlQuery, addToSqlHistory])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [sqlQuery, addToSqlHistory],
+  )
 
   if (tableValidationError) {
     return (
@@ -528,28 +607,43 @@ export function TableViewPanel({
   if (tableData.columns.length > MAX_TABLE_COLUMNS) {
     return (
       <div className="flex items-center justify-center h-32 text-muted-foreground text-sm text-center px-8">
-        This dataset has {tableData.columns.length} columns — tables support a maximum of {MAX_TABLE_COLUMNS}. Try a JMESPath expression to select specific fields, e.g. [*].&#123;field1: field1, field2: field2&#125;
+        This dataset has {tableData.columns.length} columns — tables support a maximum of{' '}
+        {MAX_TABLE_COLUMNS}. Try a JMESPath expression to select specific fields, e.g.
+        [*].&#123;field1: field1, field2: field2&#125;
       </div>
     )
   }
 
   // Use SQL result columns if available (rows are already sorted via sortedRows); apply hidden columns filter
   // In highlight mode, always show all original columns
-  const rawDisplayData = { columns: (sqlMode === 'highlight' ? tableData : (sqlResult || tableData)).columns, rows: sortedRows }
-  const displayData = hiddenColumns.size === 0 ? rawDisplayData : (() => {
-    const visibleIndices = rawDisplayData.columns.map((c, i) => ({ c, i })).filter(({ c }) => !hiddenColumns.has(c)).map(({ i }) => i)
-    return {
-      columns: visibleIndices.map(i => rawDisplayData.columns[i]),
-      rows: rawDisplayData.rows.map(row => visibleIndices.map(i => row[i])),
-    }
-  })()
+  const rawDisplayData = {
+    columns: (sqlMode === 'highlight' ? tableData : sqlResult || tableData).columns,
+    rows: sortedRows,
+  }
+  const displayData =
+    hiddenColumns.size === 0
+      ? rawDisplayData
+      : (() => {
+          const visibleIndices = rawDisplayData.columns
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => !hiddenColumns.has(c))
+            .map(({ i }) => i)
+          return {
+            columns: visibleIndices.map((i) => rawDisplayData.columns[i]),
+            rows: rawDisplayData.rows.map((row) => visibleIndices.map((i) => row[i])),
+          }
+        })()
 
   const joiningColumnsRow = () => {
     if (!joiningContext) return null
     return (
       <div className="flex items-center gap-3 px-3 py-2 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2 shrink-0">
-          <Switch checked={joiningEnabled} onCheckedChange={setJoiningEnabled} className="scale-75" />
+          <Switch
+            checked={joiningEnabled}
+            onCheckedChange={setJoiningEnabled}
+            className="scale-75"
+          />
           <Label className="text-xs font-medium text-muted-foreground">Join</Label>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -560,7 +654,10 @@ export function TableViewPanel({
             if (candidates.length <= 1) {
               // No alternatives — show plain badge
               return (
-                <span key={j} className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs text-muted-foreground">
+                <span
+                  key={j}
+                  className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs text-muted-foreground"
+                >
                   {col}
                 </span>
               )
@@ -588,17 +685,26 @@ export function TableViewPanel({
                 </SelectTrigger>
                 <SelectContent>
                   {candidates.map((cand) => (
-                    <SelectItem key={cand.path} value={cand.path} textValue={cand.label} className="text-xs font-mono">
+                    <SelectItem
+                      key={cand.path}
+                      value={cand.path}
+                      textValue={cand.label}
+                      className="text-xs font-mono"
+                    >
                       <div className="flex flex-col">
                         <span>{cand.label}</span>
-                        {joinSelectOpen === j && !cand.isDefault && cand.values.length > 0 && (() => {
-                          const unique = [...new Set(cand.values)].filter(v => v !== '')
-                          return unique.length > 0 ? (
-                            <span className="text-muted-foreground text-[10px]">
-                              {unique.slice(0, 3).join(', ')}{unique.length > 3 ? '…' : ''}
-                            </span>
-                          ) : null
-                        })()}
+                        {joinSelectOpen === j &&
+                          !cand.isDefault &&
+                          cand.values.length > 0 &&
+                          (() => {
+                            const unique = [...new Set(cand.values)].filter((v) => v !== '')
+                            return unique.length > 0 ? (
+                              <span className="text-muted-foreground text-[10px]">
+                                {unique.slice(0, 3).join(', ')}
+                                {unique.length > 3 ? '…' : ''}
+                              </span>
+                            ) : null
+                          })()}
                       </div>
                     </SelectItem>
                   ))}
@@ -627,13 +733,24 @@ export function TableViewPanel({
               ref={sqlInputRef}
               placeholder="e.g. SELECT * FROM ? WHERE status = 'active' — ⌘+Click cells to build filters"
               value={sqlQuery}
-              onChange={(e) => { setSqlQuery(e.target.value); setSqlError(null); setSqlHistoryIndex(-1) }}
+              onChange={(e) => {
+                setSqlQuery(e.target.value)
+                setSqlError(null)
+                setSqlHistoryIndex(-1)
+              }}
               onFocus={() => {}}
-              onBlur={() => { setShowSqlHistory(false) }}
-              onDoubleClick={() => { if (sqlHistory.length > 0) setShowSqlHistory(true) }}
+              onBlur={() => {
+                setShowSqlHistory(false)
+              }}
+              onDoubleClick={() => {
+                if (sqlHistory.length > 0) setShowSqlHistory(true)
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
-                  if (showSqlHistory) { setShowSqlHistory(false); return }
+                  if (showSqlHistory) {
+                    setShowSqlHistory(false)
+                    return
+                  }
                   if (sqlHistoryIndex !== -1) {
                     setSqlHistoryIndex(-1)
                     setSqlQuery(savedSqlRef.current)
@@ -690,7 +807,11 @@ export function TableViewPanel({
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs shrink-0"
-              onClick={() => { setSqlQuery(''); setSqlError(null); setSqlHistoryIndex(-1) }}
+              onClick={() => {
+                setSqlQuery('')
+                setSqlError(null)
+                setSqlHistoryIndex(-1)
+              }}
             >
               Clear
             </Button>
@@ -731,7 +852,9 @@ export function TableViewPanel({
         {hiddenColumns.size > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 text-xs text-muted-foreground">
             <EyeOff className="h-3 w-3 shrink-0" />
-            <span>{hiddenColumns.size} column{hiddenColumns.size > 1 ? 's' : ''} hidden</span>
+            <span>
+              {hiddenColumns.size} column{hiddenColumns.size > 1 ? 's' : ''} hidden
+            </span>
             <button
               className="text-primary hover:underline ml-1"
               onClick={() => dispatch(showAllColumns())}
@@ -746,36 +869,43 @@ export function TableViewPanel({
         <Table disableContainerOverflow>
           <TableHeader className="bg-primary/10">
             <TableRow className="border-b-2 border-primary/30 hover:bg-primary/15">
-              <TableHead className="sticky top-0 z-20 bg-muted text-muted-foreground font-semibold w-[3ch]">#</TableHead>
+              <TableHead className="sticky top-0 z-20 bg-muted text-muted-foreground font-semibold w-[3ch]">
+                #
+              </TableHead>
               {displayData.columns.map((col, i) => {
-                const isSelectedCol = sqlMode === 'highlight' && sqlHighlightInfo.selectedColumns?.includes(col)
+                const isSelectedCol =
+                  sqlMode === 'highlight' && sqlHighlightInfo.selectedColumns?.includes(col)
                 return (
-                <TableHead
-                  key={i}
-                  className={`sticky top-0 z-20 bg-muted cursor-pointer select-none font-semibold hover:text-primary/80 transition-colors group/col ${isSelectedCol ? 'text-yellow-400' : 'text-primary'}`}
-                  onClick={() => handleColumnSort(i, col)}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col}
-                    {activeSortColumn?.id === col ? (
-                      activeSortColumn.direction === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                    ) : (
-                      <ArrowUpDown className="h-3 w-3 opacity-30" />
-                    )}
-                    <button
-                      className="opacity-0 group-hover/col:opacity-100 ml-0.5 text-muted-foreground hover:text-destructive transition-opacity"
-                      title="Hide column"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        dispatch(toggleColumnHidden(col))
-                        // Clear sort for this column when hiding
-                        dispatch(setColumnSort({ id: col, direction: null }))
-                      }}
-                    >
-                      <EyeOff className="h-3 w-3" />
-                    </button>
-                  </span>
-                </TableHead>
+                  <TableHead
+                    key={i}
+                    className={`sticky top-0 z-20 bg-muted cursor-pointer select-none font-semibold hover:text-primary/80 transition-colors group/col ${isSelectedCol ? 'text-yellow-400' : 'text-primary'}`}
+                    onClick={() => handleColumnSort(i, col)}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {col}
+                      {activeSortColumn?.id === col ? (
+                        activeSortColumn.direction === 'asc' ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                      )}
+                      <button
+                        className="opacity-0 group-hover/col:opacity-100 ml-0.5 text-muted-foreground hover:text-destructive transition-opacity"
+                        title="Hide column"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          dispatch(toggleColumnHidden(col))
+                          // Clear sort for this column when hiding
+                          dispatch(setColumnSort({ id: col, direction: null }))
+                        }}
+                      >
+                        <EyeOff className="h-3 w-3" />
+                      </button>
+                    </span>
+                  </TableHead>
                 )
               })}
             </TableRow>
@@ -785,49 +915,63 @@ export function TableViewPanel({
               const joinColNameSet = new Set(
                 joiningEnabled && joiningContext
                   ? tableData.columns.slice(0, joiningContext.joiningColumns.length)
-                  : []
+                  : [],
               )
               return displayData.rows.map((row, ri) => {
-              const originalIdx = sqlMode === 'highlight' ? sortedOriginalIndices[ri] : ri
-              const isHighlightMatch = sqlMode === 'highlight' && sqlQuery.trim() ? sqlHighlightInfo.matchedRowIndices.has(originalIdx) : false
-              const isHighlightActive = sqlMode === 'highlight' && sqlQuery.trim()
-              const isDuplicateRow = highlightDuplicates && duplicateOriginalIndices.has(sortedOriginalIndices[ri])
-              return (
-              <TableRow
-                key={ri}
-                className={
-                  isHighlightActive
-                    ? isHighlightMatch ? '' : 'opacity-30'
-                    : isDuplicateRow ? 'bg-amber-500/15'
-                    : ri % 2 === 0 ? 'bg-muted/20' : ''
-                }
-              >
-                <TableCell className="font-mono text-xs text-muted-foreground/50 py-2.5 w-[3ch]">{ri}</TableCell>
-                {row.map((cell, ci) => {
-                  // selectedColumns=null means SELECT * → highlight all cells; otherwise only the named columns
-                  const isCellHighlighted = isHighlightMatch && (
-                    !sqlHighlightInfo.selectedColumns || sqlHighlightInfo.selectedColumns.includes(displayData.columns[ci])
-                  )
-                  const isJoinCol = joinColNameSet.has(displayData.columns[ci])
-                  const cellBg = isCellHighlighted
-                    ? 'bg-primary/30 font-semibold'
-                    : isHighlightMatch ? 'opacity-30'
-                    : isDuplicateRow && !isJoinCol ? 'bg-amber-500/20'
-                    : ''
-                  return (
-                  <TableCell
-                    key={ci}
-                    className={`font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5 ${cellBg}`}
-                    onClick={handleCellClick(displayData.columns[ci], cell)}
-                    title="⌘+Click to add SQL filter"
+                const originalIdx = sqlMode === 'highlight' ? sortedOriginalIndices[ri] : ri
+                const isHighlightMatch =
+                  sqlMode === 'highlight' && sqlQuery.trim()
+                    ? sqlHighlightInfo.matchedRowIndices.has(originalIdx)
+                    : false
+                const isHighlightActive = sqlMode === 'highlight' && sqlQuery.trim()
+                const isDuplicateRow =
+                  highlightDuplicates && duplicateOriginalIndices.has(sortedOriginalIndices[ri])
+                return (
+                  <TableRow
+                    key={ri}
+                    className={
+                      isHighlightActive
+                        ? isHighlightMatch
+                          ? ''
+                          : 'opacity-30'
+                        : isDuplicateRow
+                          ? 'bg-amber-500/15'
+                          : ri % 2 === 0
+                            ? 'bg-muted/20'
+                            : ''
+                    }
                   >
-                    {cell}
-                  </TableCell>
-                  )
-                })}
-              </TableRow>
-              )
-            })
+                    <TableCell className="font-mono text-xs text-muted-foreground/50 py-2.5 w-[3ch]">
+                      {ri}
+                    </TableCell>
+                    {row.map((cell, ci) => {
+                      // selectedColumns=null means SELECT * → highlight all cells; otherwise only the named columns
+                      const isCellHighlighted =
+                        isHighlightMatch &&
+                        (!sqlHighlightInfo.selectedColumns ||
+                          sqlHighlightInfo.selectedColumns.includes(displayData.columns[ci]))
+                      const isJoinCol = joinColNameSet.has(displayData.columns[ci])
+                      const cellBg = isCellHighlighted
+                        ? 'bg-primary/30 font-semibold'
+                        : isHighlightMatch
+                          ? 'opacity-30'
+                          : isDuplicateRow && !isJoinCol
+                            ? 'bg-amber-500/20'
+                            : ''
+                      return (
+                        <TableCell
+                          key={ci}
+                          className={`font-mono text-xs cursor-pointer hover:bg-primary/5 transition-colors py-2.5 ${cellBg}`}
+                          onClick={handleCellClick(displayData.columns[ci], cell)}
+                          title="⌘+Click to add SQL filter"
+                        >
+                          {cell}
+                        </TableCell>
+                      )
+                    })}
+                  </TableRow>
+                )
+              })
             })()}
           </TableBody>
         </Table>
@@ -838,9 +982,22 @@ export function TableViewPanel({
           {(() => {
             const total = tableData.rows.length
             const selected = sqlQuery.trim()
-              ? sqlMode === 'filter' ? (sqlResult?.rows.length ?? total) : sqlHighlightInfo.matchedRowIndices.size
+              ? sqlMode === 'filter'
+                ? (sqlResult?.rows.length ?? total)
+                : sqlHighlightInfo.matchedRowIndices.size
               : null
-            return <><span>{selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows</span>{tableDuplicateCount > 0 && <span className="text-red-400">{tableDuplicateCount} duplicate{tableDuplicateCount !== 1 ? 's' : ''}</span>}</>
+            return (
+              <>
+                <span>
+                  {selected !== null ? `${selected}/${total}` : total.toLocaleString()} rows
+                </span>
+                {tableDuplicateCount > 0 && (
+                  <span className="text-red-400">
+                    {tableDuplicateCount} duplicate{tableDuplicateCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </>
+            )
           })()}
         </div>
       </div>

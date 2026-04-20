@@ -59,6 +59,7 @@ The current API Tester makes HTTP requests directly from the browser. This creat
 `apps/slaops-relay` is already a standalone, self-contained application managed as a **git subtree** (same workflow as `apps/slaops-portal/`). It may eventually be open-sourced so customers can review and deploy it themselves.
 
 Key design decisions:
+
 - The relay has **no database** and no connection registry. Connection management lives in `slaops-cloud`.
 - In **direct mode** the relay is fully stateless. In **relay-queue mode** the relay owns its job queue via a pluggable `QueueStore` interface — `InMemoryQueueStore` (default) or `SqsQueueStore` (AWS: SQS work channel + DynamoDB for job state). Additional backends can be registered without modifying relay code (same pattern as `SecretStore`). In **platform-queue mode** the relay is fully stateless again — slaops-cloud stores the job state; the relay only polls, executes, and delivers results.
 - The relay is authenticated via `RELAY_API_KEY` (inbound: validates calls from slaops-cloud) and `RELAY_PLATFORM_TOKEN` (outbound: sent as Bearer when polling slaops-cloud in platform-queue mode). Both values are generated when a connection is created in slaops-cloud and configured on the relay as env vars.
@@ -70,6 +71,7 @@ Key design decisions:
 - Customers control their own network egress
 
 Module layout:
+
 ```
 apps/slaops-cloud-relay/
 ├── app/         # NestJS core — cloud-agnostic (env-vars config, no @slaops/config)
@@ -303,8 +305,8 @@ export type CloudProxyError = {
     | 'NETWORK_ERROR'
     | 'INVALID_URL'
     | 'UNSUPPORTED_METHOD'
-    | 'POLICY_DENIED'     // request blocked by the security policy evaluator
-    | 'TEMPLATE_ERROR'    // template expression could not be resolved
+    | 'POLICY_DENIED' // request blocked by the security policy evaluator
+    | 'TEMPLATE_ERROR' // template expression could not be resolved
   durationMs: number
 }
 ```
@@ -339,17 +341,18 @@ The URI scheme identifies the backend — no global `RELAY_SECRET_BACKEND` setti
 
 JIT and variable expressions do not reference a secret store:
 
-| Expression | Resolved to |
-|---|---|
-| `{{jit:uuid}}` | A freshly generated UUID v4 |
-| `{{jit:uuid-short}}` | First 8 hex chars of a UUID |
-| `{{jit:timestamp}}` | Current UTC timestamp in ISO 8601 |
-| `{{jit:timestamp-unix}}` | Current Unix epoch in seconds |
-| `{{jit:timestamp-unix-ms}}` | Current Unix epoch in milliseconds |
-| `{{jit:random-hex:N}}` | `N` cryptographically random hex characters |
-| `{{var:NAME}}` | Named variable resolved from `templateContext.variables` |
+| Expression                  | Resolved to                                              |
+| --------------------------- | -------------------------------------------------------- |
+| `{{jit:uuid}}`              | A freshly generated UUID v4                              |
+| `{{jit:uuid-short}}`        | First 8 hex chars of a UUID                              |
+| `{{jit:timestamp}}`         | Current UTC timestamp in ISO 8601                        |
+| `{{jit:timestamp-unix}}`    | Current Unix epoch in seconds                            |
+| `{{jit:timestamp-unix-ms}}` | Current Unix epoch in milliseconds                       |
+| `{{jit:random-hex:N}}`      | `N` cryptographically random hex characters              |
+| `{{var:NAME}}`              | Named variable resolved from `templateContext.variables` |
 
 Expressions are resolved in the following fields:
+
 - `url`
 - `headers[].value`
 - `queryString[].value`
@@ -1062,8 +1065,8 @@ Additionally, do not forward `Host` (the target URL determines the host).
 | Lambda cold start                     | First request after idle                   | Normal — latency included in `durationMs`                                  | Accurate Lambda timing           |
 | Unknown secret ID in expression       | `{{secret:NO_SUCH_KEY}}` not in store      | Request rejected with `TEMPLATE_ERROR` before making any outbound call     | 422 Unprocessable Entity         |
 | Unknown `{{var:NAME}}` expression     | Name not in `templateContext.variables`    | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
-| Invalid expression syntax             | `{{bad}}` — no recognised type prefix     | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
-| Secret shorter than 8 chars          | Resolved secret value is very short        | Secret fetched and injected; masking skipped; warning logged               | Request proceeds, no masking     |
+| Invalid expression syntax             | `{{bad}}` — no recognised type prefix      | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
+| Secret shorter than 8 chars           | Resolved secret value is very short        | Secret fetched and injected; masking skipped; warning logged               | Request proceeds, no masking     |
 | Secret value in response body         | Response echoes back a secret value        | Value replaced with `[REDACTED:SECRET_ID]`; `masking` field populated      | Masked `CloudProxyResponse`      |
 | Secret value in response header       | Response header contains a secret value    | Header value replaced with `[REDACTED:SECRET_ID]`                          | Masked `CloudProxyResponse`      |
 
@@ -1292,7 +1295,7 @@ export type Condition =
   | Record<string, unknown>
 
 export type PolicyResult =
-  | { allowed: true;  ruleId: string; enforce: Enforcement }
+  | { allowed: true; ruleId: string; enforce: Enforcement }
   | { allowed: false; reason: string }
 
 export type RequestContext = Record<string, unknown>
@@ -1357,11 +1360,9 @@ export function matches(condition: Condition, ctx: RequestContext): boolean {
     if (key.endsWith('.in') && Array.isArray(expected))
       return (expected as unknown[]).includes(actual)
 
-    if (key.endsWith('.lte'))
-      return typeof actual === 'number' && actual <= Number(expected)
+    if (key.endsWith('.lte')) return typeof actual === 'number' && actual <= Number(expected)
 
-    if (key.endsWith('.gte'))
-      return typeof actual === 'number' && actual >= Number(expected)
+    if (key.endsWith('.gte')) return typeof actual === 'number' && actual >= Number(expected)
 
     if (key.endsWith('.matches') && Array.isArray(expected))
       return matchPatterns(String(actual ?? ''), expected as string[])
@@ -1377,7 +1378,7 @@ export function matches(condition: Condition, ctx: RequestContext): boolean {
 
 /** Glob-style pattern matching (* matches any sequence of characters, case-insensitive). */
 function matchPatterns(value: string, patterns: string[]): boolean {
-  return patterns.some(pattern => {
+  return patterns.some((pattern) => {
     const regex = new RegExp(
       '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$',
       'i',
@@ -1393,17 +1394,17 @@ function matchPatterns(value: string, patterns: string[]): boolean {
 
 ### Operator Reference
 
-| Operator | Example | Description |
-|---|---|---|
-| `all` | `{ "all": [...] }` | All sub-conditions must match |
-| `any` | `{ "any": [...] }` | At least one sub-condition must match |
-| `not` | `{ "not": { ... } }` | Negates a sub-condition |
-| Equality | `{ "request.method": "GET" }` | Exact equality |
-| `.in` | `{ "request.method.in": ["GET","HEAD"] }` | Value is in the given array |
-| `.lte` / `.gte` | `{ "request.bodyBytes.lte": 1048576 }` | Numeric comparison |
-| `.matches` | `{ "host.matches": ["*.stripe.com"] }` | Glob pattern match (case-insensitive, `*` = any) |
-| `{ "exists": true }` | `{ "tenant.id": { "exists": true } }` | Value is present and non-null |
-| Derived flags | `{ "host.isPrivateNetwork": true }` | Computed by `ProxyService` — not user-supplied |
+| Operator             | Example                                   | Description                                      |
+| -------------------- | ----------------------------------------- | ------------------------------------------------ |
+| `all`                | `{ "all": [...] }`                        | All sub-conditions must match                    |
+| `any`                | `{ "any": [...] }`                        | At least one sub-condition must match            |
+| `not`                | `{ "not": { ... } }`                      | Negates a sub-condition                          |
+| Equality             | `{ "request.method": "GET" }`             | Exact equality                                   |
+| `.in`                | `{ "request.method.in": ["GET","HEAD"] }` | Value is in the given array                      |
+| `.lte` / `.gte`      | `{ "request.bodyBytes.lte": 1048576 }`    | Numeric comparison                               |
+| `.matches`           | `{ "host.matches": ["*.stripe.com"] }`    | Glob pattern match (case-insensitive, `*` = any) |
+| `{ "exists": true }` | `{ "tenant.id": { "exists": true } }`     | Value is present and non-null                    |
+| Derived flags        | `{ "host.isPrivateNetwork": true }`       | Computed by `ProxyService` — not user-supplied   |
 
 ---
 
@@ -1532,13 +1533,13 @@ All values defined in `packages/slaops-config/src/config.ts` following the no-ma
 
 The self-hosted `apps/slaops-cloud-relay` application uses **only environment variables** for configuration (no `@slaops/config` module dependency):
 
-| Environment Variable    | Required | Description |
-|---|---|---|
-| `RELAY_SECRET_BACKEND` | Yes | Secret store backend: `aws-secrets-manager`, `env`, `azure-key-vault`, `gcp-secret-manager` |
-| `RELAY_LOG_LEVEL`      | No  | Log verbosity: `debug`, `info`, `warn`, `error`. Default: `info` |
-| `RELAY_MAX_BODY_BYTES` | No  | Max response body size before truncation. Default: `10485760` (10 MB) |
-| `RELAY_PROXY_TIMEOUT_MS` | No | Default proxy timeout if not supplied by the caller. Default: `30000` |
-| `RELAY_BLOCKED_CIDRS`  | No  | Comma-separated additional CIDR blocks to block (RFC 1918 ranges always blocked) |
+| Environment Variable     | Required | Description                                                                                 |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------- |
+| `RELAY_SECRET_BACKEND`   | Yes      | Secret store backend: `aws-secrets-manager`, `env`, `azure-key-vault`, `gcp-secret-manager` |
+| `RELAY_LOG_LEVEL`        | No       | Log verbosity: `debug`, `info`, `warn`, `error`. Default: `info`                            |
+| `RELAY_MAX_BODY_BYTES`   | No       | Max response body size before truncation. Default: `10485760` (10 MB)                       |
+| `RELAY_PROXY_TIMEOUT_MS` | No       | Default proxy timeout if not supplied by the caller. Default: `30000`                       |
+| `RELAY_BLOCKED_CIDRS`    | No       | Comma-separated additional CIDR blocks to block (RFC 1918 ranges always blocked)            |
 
 For the SLAOps-managed instance embedded in `apps/slaops-cloud`, configuration continues to use `@slaops/config` in the module wrapper.
 
@@ -1557,8 +1558,8 @@ For the SLAOps-managed instance embedded in `apps/slaops-cloud`, configuration c
 | Network error                     | Unreachable host                                                          | `{code:'NETWORK_ERROR'}`                    | High     |
 | SSRF blocked (private IP)         | HAR `url:'http://192.168.1.1/secret'`                                     | 403 `POLICY_DENIED`                         | High     |
 | SSRF blocked (metadata endpoint)  | HAR `url:'http://169.254.169.254/latest'`                                 | 403 `POLICY_DENIED`                         | High     |
-| Policy allow rule matches         | Host in tenant allowlist, method allowed                                   | Request proceeds with merged enforcement    | High     |
-| Policy deny-by-default            | Host not in any allow rule                                                 | 403 `POLICY_DENIED`                         | High     |
+| Policy allow rule matches         | Host in tenant allowlist, method allowed                                  | Request proceeds with merged enforcement    | High     |
+| Policy deny-by-default            | Host not in any allow rule                                                | 403 `POLICY_DENIED`                         | High     |
 | Policy stripRequestHeaders        | Allow rule has `stripRequestHeaders: ['cookie']`                          | `cookie` header not forwarded to target     | Medium   |
 | Policy allowResponseHeaders       | Allow rule has `allowResponseHeaders: ['content-type']`                   | Only `content-type` returned in response    | Medium   |
 | Policy maxResponseBodyBytes       | Allow rule sets `maxResponseBodyBytes: 65536` for a large response        | Body truncated at 65 536 bytes              | Medium   |
@@ -1578,7 +1579,7 @@ For the SLAOps-managed instance embedded in `apps/slaops-cloud`, configuration c
 | JIT random-hex expression         | `{{jit:random-hex:16}}` in body                                           | Resolved to 16 hex characters               | Medium   |
 | Var expression resolved           | `{{var:myVar}}` with `variables.myVar = {type:'literal', value:'hello'}`  | Resolved to `hello`                         | High     |
 | Unknown secret rejected           | `{{secret:MISSING_KEY}}` secret not in store                              | 422 `TEMPLATE_ERROR`, no outbound call      | High     |
-| Unknown var rejected              | `{{var:unknown}}` not in templateContext                                   | 422 `TEMPLATE_ERROR`                        | High     |
+| Unknown var rejected              | `{{var:unknown}}` not in templateContext                                  | 422 `TEMPLATE_ERROR`                        | High     |
 | Secret masked in response body    | Secret value appears verbatim in response body                            | Body has `[REDACTED:API_KEY]`; masking flag | High     |
 | Secret masked in response header  | Secret value appears in a response header                                 | Header replaced; masking flag set           | High     |
 | Short secret not masked           | Secret resolved to `abc` (< 8 chars)                                      | Not masked; warning logged                  | Medium   |
@@ -1659,13 +1660,13 @@ The authorizer function **code** lives in `apps/slaops-cloud/src/authorizer.ts` 
 
 Customers deploying their own Relay use only `apps/slaops-cloud-relay`. The `infra/` directory at the root of that package is **fully self-contained** — it has no dependency on `packages/slaops-infra` or any other private SLAOps package.
 
-| Concern                                | Package / Path                          | Mechanism                                              |
-| -------------------------------------- | --------------------------------------- | ------------------------------------------------------ |
-| API Gateway + Lambda authorizer        | `apps/slaops-cloud-relay/infra/aws/`    | AWS CDK stack (`RelayStack`) — standalone, no imports from slaops-infra |
-| Usage plans + API keys (AWS)           | `apps/slaops-cloud-relay/infra/aws/`    | CDK within `RelayStack`                                |
-| Azure API Management + Functions       | `apps/slaops-cloud-relay/infra/azure/`  | Bicep / ARM template                                   |
-| GCP Cloud Endpoints + Cloud Run        | `apps/slaops-cloud-relay/infra/gcp/`    | Deployment Manager / Terraform                         |
-| Docker (cloud-agnostic)                | `apps/slaops-cloud-relay/` (root)       | `Dockerfile` + `docker-compose.yml`                    |
+| Concern                          | Package / Path                         | Mechanism                                                               |
+| -------------------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
+| API Gateway + Lambda authorizer  | `apps/slaops-cloud-relay/infra/aws/`   | AWS CDK stack (`RelayStack`) — standalone, no imports from slaops-infra |
+| Usage plans + API keys (AWS)     | `apps/slaops-cloud-relay/infra/aws/`   | CDK within `RelayStack`                                                 |
+| Azure API Management + Functions | `apps/slaops-cloud-relay/infra/azure/` | Bicep / ARM template                                                    |
+| GCP Cloud Endpoints + Cloud Run  | `apps/slaops-cloud-relay/infra/gcp/`   | Deployment Manager / Terraform                                          |
+| Docker (cloud-agnostic)          | `apps/slaops-cloud-relay/` (root)      | `Dockerfile` + `docker-compose.yml`                                     |
 
 Customers configure via environment variables only — no `@slaops/config` or any SLAOps private package is required. A customer self-hosting on AWS runs:
 
@@ -1883,8 +1884,8 @@ export class RelayStack extends Stack {
     const authorizerFn = new NodejsFunction(this, 'RelayAuthorizer', {
       entry: path.join(__dirname, '../../app/src/authorizer.ts'),
       environment: {
-        RELAY_JWKS_URI: props.jwksUri,           // Customer's IdP JWKS endpoint
-        RELAY_JWT_AUDIENCE: props.jwtAudience,   // Expected audience claim
+        RELAY_JWKS_URI: props.jwksUri, // Customer's IdP JWKS endpoint
+        RELAY_JWT_AUDIENCE: props.jwtAudience, // Expected audience claim
       },
     })
 

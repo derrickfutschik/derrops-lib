@@ -10,7 +10,8 @@ export class HealthController {
   @UseGuards(PlatformJwtGuard)
   @ApiHeader({ name: 'authorization', required: true, description: 'Bearer <platform-jwt>' })
   @ApiOperation({
-    summary: 'Health check (called by slaops-cloud to confirm relay is reachable and trusts the platform)',
+    summary:
+      'Health check (called by slaops-cloud to confirm relay is reachable and trusts the platform)',
     description:
       'The platform mints a short-lived JWT scoped to this relay ID and calls this endpoint. ' +
       'A successful response confirms both network reachability and JWT trust.',

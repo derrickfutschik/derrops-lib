@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common'
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common'
 import { env } from '../env'
 import { JwksCacheService } from './jwks-cache.service'
 
@@ -25,7 +31,9 @@ export class PlatformJwtGuard implements CanActivate {
 
     if (!relayId || !jwksUrl) {
       // JWT auth not configured — allow in development
-      this.logger.warn('RELAY_ID or SLAOPS_VENDOR_JWKS_URL not set — skipping JWT validation (development mode)')
+      this.logger.warn(
+        'RELAY_ID or SLAOPS_VENDOR_JWKS_URL not set — skipping JWT validation (development mode)',
+      )
       return true
     }
 

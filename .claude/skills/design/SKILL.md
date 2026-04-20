@@ -11,6 +11,7 @@ Use `/design` when you are ready to write a formal design — any level of matur
 ### 1. Gather inputs
 
 Collect (from arguments or by asking):
+
 - **Title** — human-readable name
 - **Document type** — `component`, `behaviour`, or `interaction`
 - **Domain** — one of: `platform`, `auth`, `oaspec`, `relay`, `logging`, `portal`
@@ -25,13 +26,13 @@ If the user confirms absorption: note the idea's origin in the design's "Backgro
 
 ### 3. Determine the correct subdirectory
 
-| Subdirectory | Use when |
-|---|---|
-| `cloud-relay/` | Domain is `relay`, covers Cloud Relay or Aegis |
-| `openapi-indexer/` | Domain is `oaspec` |
-| `infrastructure/` | Domain is `platform`, covers AWS infra, IaC, multi-tenancy, or tagging |
-| `process/` | Tagged `process` — team process standards |
-| `design/` root | No existing subdirectory has 4+ related docs for this topic |
+| Subdirectory       | Use when                                                               |
+| ------------------ | ---------------------------------------------------------------------- |
+| `cloud-relay/`     | Domain is `relay`, covers Cloud Relay or Aegis                         |
+| `openapi-indexer/` | Domain is `oaspec`                                                     |
+| `infrastructure/`  | Domain is `platform`, covers AWS infra, IaC, multi-tenancy, or tagging |
+| `process/`         | Tagged `process` — team process standards                              |
+| `design/` root     | No existing subdirectory has 4+ related docs for this topic            |
 
 ### 4. Derive the filename
 
@@ -41,18 +42,18 @@ Lowercase-hyphenated title. E.g. "Aegis Token Refresh" → `aegis-token-refresh.
 
 ```yaml
 ---
-id: {filename-without-extension}
-title: {Human Readable Title}
-sidebar_label: {Short Sidebar Label — ≤30 characters}
-sidebar_position: {integer — check neighbouring files to avoid collisions}
-created_at: {YYYY-MM-DD}
-updated_at: {YYYY-MM-DD}
+id: { filename-without-extension }
+title: { Human Readable Title }
+sidebar_label: { Short Sidebar Label — ≤30 characters }
+sidebar_position: { integer — check neighbouring files to avoid collisions }
+created_at: { YYYY-MM-DD }
+updated_at: { YYYY-MM-DD }
 implemented_at: ~
-author: {GitHub handle or name}
+author: { GitHub handle or name }
 status: draft
 tags:
-  - {topic-tag from design/tags.yml}
-  - {domain-tag: platform|auth|oaspec|relay|logging|portal}
+  - { topic-tag from design/tags.yml }
+  - { domain-tag: platform|auth|oaspec|relay|logging|portal }
 ---
 ```
 
@@ -69,6 +70,7 @@ Use the template matching the document type:
 ### 7. Register in `design/index.md`
 
 Append a one-line entry under the relevant section. Format:
+
 ```
 - [Title](./subdirectory/filename) — one-sentence description.
 ```

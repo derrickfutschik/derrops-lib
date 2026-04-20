@@ -17,7 +17,10 @@ export class RequestedEndpointDto {
   @IsString()
   path: string
 
-  @ApiPropertyOptional({ description: 'OpenAPI operationId — used as the Cedar ApiEndpoint entity ID', example: 'getOrder' })
+  @ApiPropertyOptional({
+    description: 'OpenAPI operationId — used as the Cedar ApiEndpoint entity ID',
+    example: 'getOrder',
+  })
   @IsOptional()
   @IsString()
   operationId?: string
@@ -31,7 +34,10 @@ export class RequestedEndpointDto {
   @IsString()
   environment?: string
 
-  @ApiPropertyOptional({ description: 'OpenAPI tags for this operation — used in tag-based Cedar policies', type: [String] })
+  @ApiPropertyOptional({
+    description: 'OpenAPI tags for this operation — used in tag-based Cedar policies',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -52,13 +58,19 @@ export class RequestSessionDto {
   @IsString()
   userToken: string
 
-  @ApiProperty({ type: [RequestedEndpointDto], description: 'API endpoints the user is requesting access to' })
+  @ApiProperty({
+    type: [RequestedEndpointDto],
+    description: 'API endpoints the user is requesting access to',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RequestedEndpointDto)
   requestedEndpoints: RequestedEndpointDto[]
 
-  @ApiPropertyOptional({ description: 'Originating IP address — used in IP-based Cedar policies', example: '10.0.0.5' })
+  @ApiPropertyOptional({
+    description: 'Originating IP address — used in IP-based Cedar policies',
+    example: '10.0.0.5',
+  })
   @IsOptional()
   @IsString()
   ipAddress?: string

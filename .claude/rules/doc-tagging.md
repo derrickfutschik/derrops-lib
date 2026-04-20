@@ -32,6 +32,7 @@ Every design document must carry:
 If a document genuinely spans two domains, list both — avoid a third. Add the `implemented` tag once the feature is shipped.
 
 The `status` frontmatter field (not a tag) tracks design maturity:
+
 ```
 draft → proposed → accepted → implemented → superseded
 ```
@@ -48,5 +49,6 @@ Every public doc must carry:
 Doc tags and AWS resource tags (`slaops:domain`, `slaops:service`, etc.) are **different systems**. The domain names overlap by convention, but doc tags are plain lowercase strings in YAML frontmatter — never use the `slaops:key` colon-separated format in a doc file.
 
 See:
+
 - `apps/slaops-docs/internal/platform/design/tags.yml` — authoritative doc tag list
 - `apps/slaops-docs/internal/platform/design/infrastructure/tagging-conventions.md` — AWS resource tags (separate system)

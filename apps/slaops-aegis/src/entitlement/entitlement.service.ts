@@ -21,7 +21,7 @@ export interface EntitlementResponse {
 @Injectable()
 export class EntitlementService {
   getEntitlements(userId: string, tenantId: string): EntitlementResponse {
-    const relays: UserEntitlement[] = env.relay.allowedIds.map(relayId => ({
+    const relays: UserEntitlement[] = env.relay.allowedIds.map((relayId) => ({
       relayId,
       allowedMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
       pathPatterns: ['*'],

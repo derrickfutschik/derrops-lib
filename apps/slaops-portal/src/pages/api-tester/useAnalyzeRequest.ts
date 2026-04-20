@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react'
-import { toast } from 'sonner'
 import type { Service } from '@/client/slaops-cloud/models/service'
-import type { KeyValuePair } from '@/hooks/useSendRequest'
-import type { BodyType } from '@/components/api-tester/RequestBodyEditor'
 import type { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
-import type {
-  MatchResult,
-  OperationOption,
-  ParameterInfo,
-  ServerVariable,
-  ServerInfo,
-  BodyPropertyInfo,
-  BuilderMode,
-} from './types'
+import type { BodyType } from '@/components/api-tester/RequestBodyEditor'
+import type { KeyValuePair } from '@/hooks/useSendRequest'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import {
-  parseOpenApiSpec,
   extractOperationsFromSpec,
-  matchUrlToPath,
   extractPathValues,
+  matchUrlToPath,
+  parseOpenApiSpec,
   validateParamValue,
   validateRequest,
 } from './analyze-utils'
+import type {
+  BodyPropertyInfo,
+  BuilderMode,
+  MatchResult,
+  OperationOption,
+  ParameterInfo,
+  ServerInfo,
+  ServerVariable,
+} from './types'
 
 interface UseAnalyzeRequestParams {
   url: string
@@ -142,9 +142,7 @@ export function useAnalyzeRequest({
 
         const serverVariables: ServerVariable[] = []
         if (server.variables) {
-          for (const [varName, varDef] of Object.entries(
-            server.variables as Record<string, any>,
-          )) {
+          for (const [varName, varDef] of Object.entries(server.variables as Record<string, any>)) {
             serverVariables.push({
               name: varName,
               value: varDef.default || '',
@@ -175,8 +173,7 @@ export function useAnalyzeRequest({
           .filter((p: any) => p.in === 'path')
           .map((p: any) => {
             const value = pathValues[p.name] || null
-            const defaultValue =
-              p.schema?.default !== undefined ? String(p.schema.default) : null
+            const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null
             const isUsingDefault = value === null && defaultValue !== null
             const effectiveValue = value ?? defaultValue
             const validation = validateParamValue(
@@ -210,8 +207,7 @@ export function useAnalyzeRequest({
               (qp) => qp.enabled && qp.key.toLowerCase() === p.name.toLowerCase(),
             )
             const value = queryParam?.value || null
-            const defaultValue =
-              p.schema?.default !== undefined ? String(p.schema.default) : null
+            const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null
             const isUsingDefault = value === null && defaultValue !== null
             const effectiveValue = value ?? defaultValue
             const validation = validateParamValue(
@@ -237,9 +233,7 @@ export function useAnalyzeRequest({
         const unspecifiedQueryParams: ParameterInfo[] = queryParams
           .filter(
             (qp) =>
-              qp.enabled &&
-              qp.key.trim() &&
-              !specQueryParamNames.includes(qp.key.toLowerCase()),
+              qp.enabled && qp.key.trim() && !specQueryParamNames.includes(qp.key.toLowerCase()),
           )
           .map((qp) => ({
             name: qp.key,
@@ -262,8 +256,13 @@ export function useAnalyzeRequest({
           .map((p: any) => p.name.toLowerCase())
 
         const COMMON_HEADERS = [
-          'content-type', 'accept', 'authorization', 'user-agent',
-          'host', 'connection', 'cache-control',
+          'content-type',
+          'accept',
+          'authorization',
+          'user-agent',
+          'host',
+          'connection',
+          'cache-control',
         ]
 
         const headerParameters: ParameterInfo[] = parameters
@@ -273,8 +272,7 @@ export function useAnalyzeRequest({
               (h) => h.enabled && h.key.toLowerCase() === p.name.toLowerCase(),
             )
             const value = headerParam?.value || null
-            const defaultValue =
-              p.schema?.default !== undefined ? String(p.schema.default) : null
+            const defaultValue = p.schema?.default !== undefined ? String(p.schema.default) : null
             const isUsingDefault = value === null && defaultValue !== null
             const effectiveValue = value ?? defaultValue
             const validation = validateParamValue(
@@ -517,7 +515,10 @@ export function useAnalyzeRequest({
                 const pathMethods = pathItem as Record<string, any>
                 const lowerMethod = method.toLowerCase()
 
-                if (pathMethods[lowerMethod] && matchUrlToPath(requestUrl, serverUrl, pathTemplate)) {
+                if (
+                  pathMethods[lowerMethod] &&
+                  matchUrlToPath(requestUrl, serverUrl, pathTemplate)
+                ) {
                   matchedService = service
                   matchedServer = {
                     index: serverIndex,

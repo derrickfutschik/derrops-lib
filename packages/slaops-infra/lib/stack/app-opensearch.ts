@@ -116,9 +116,7 @@ export class OpenSearchStack extends Stack {
                 'aoss:UpdateCollectionItems',
                 'aoss:DescribeCollectionItems',
               ],
-              Principal: [
-                `arn:aws:iam::${this.account}:root`,
-              ],
+              Principal: [`arn:aws:iam::${this.account}:root`],
             },
             {
               ResourceType: 'index',
@@ -131,9 +129,7 @@ export class OpenSearchStack extends Stack {
                 'aoss:ReadDocument',
                 'aoss:WriteDocument',
               ],
-              Principal: [
-                `arn:aws:iam::${this.account}:root`,
-              ],
+              Principal: [`arn:aws:iam::${this.account}:root`],
             },
           ],
         }),

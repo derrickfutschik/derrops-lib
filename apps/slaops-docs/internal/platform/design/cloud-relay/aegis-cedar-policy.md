@@ -9,6 +9,7 @@ tags: [cloud-relay, aegis, authorization, cedar-policy, security, component-desi
 This document describes how [Cedar Policy](https://www.cedarpolicy.com) is used as the pluggable policy engine inside the Aegis Broker to determine what a given user is allowed to do through the SLAOps relay.
 
 Related documents:
+
 - [Aegis Token Broker Design](./aegis-token-broker-design) — session delegation model, JWT flow, and dual-authorization model
 - [Cloud Relay Security](./cloud-relay-security) — authentication methods between Relay and control plane
 - [Network Topology](./network-topology) — runtime component separation
@@ -21,13 +22,13 @@ Aegis's core design goal is that the **customer, not the SLAOps platform, is the
 
 Cedar fits this problem well for three reasons:
 
-| Property | Why it matters for Aegis |
-|---|---|
+| Property                   | Why it matters for Aegis                                                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Expressive but bounded** | Cedar can encode RBAC, ABAC, time bounds, and environment constraints without becoming Turing-complete. Policies are analyzable — you can formally prove what is and is not allowed. |
-| **Auditable** | Every policy is a human-readable Cedar document. Customers can version-control, review, and audit policies alongside their infrastructure code. |
-| **Separation of concerns** | Authorization logic lives in Cedar policy files, not in application code. Aegis evaluates them; it does not embed them. This matches the customer-owned-policy model. |
-| **Default deny** | Cedar denies everything unless a `permit` policy explicitly matches. No accidental access. |
-| **Schema-validated** | Cedar schemas define the entity types and allowed actions. Policies are validated against the schema before they are deployed, catching errors early. |
+| **Auditable**              | Every policy is a human-readable Cedar document. Customers can version-control, review, and audit policies alongside their infrastructure code.                                      |
+| **Separation of concerns** | Authorization logic lives in Cedar policy files, not in application code. Aegis evaluates them; it does not embed them. This matches the customer-owned-policy model.                |
+| **Default deny**           | Cedar denies everything unless a `permit` policy explicitly matches. No accidental access.                                                                                           |
+| **Schema-validated**       | Cedar schemas define the entity types and allowed actions. Policies are validated against the schema before they are deployed, catching errors early.                                |
 
 ---
 
@@ -39,12 +40,12 @@ Cedar authorization is structured around four elements: **Principal**, **Action*
 Is this Principal allowed to perform this Action on this Resource given this Context?
 ```
 
-| PARC element | Aegis mapping | Example |
-|---|---|---|
-| **Principal** | Authenticated Cognito user or group | `User::"sub:a1b2c3d4"`, `UserGroup::"platform-engineers"` |
-| **Action** | HTTP method of the relayed request | `Action::"httpGet"`, `Action::"httpPost"` |
-| **Resource** | The OpenAPI endpoint being targeted | `ApiEndpoint::"listOrders"`, `ApiHost::"payments.internal"` |
-| **Context** | Session-time data from the Cognito token and request | `{ mfaVerified: true, ipAddress: "10.0.0.5", ... }` |
+| PARC element  | Aegis mapping                                        | Example                                                     |
+| ------------- | ---------------------------------------------------- | ----------------------------------------------------------- |
+| **Principal** | Authenticated Cognito user or group                  | `User::"sub:a1b2c3d4"`, `UserGroup::"platform-engineers"`   |
+| **Action**    | HTTP method of the relayed request                   | `Action::"httpGet"`, `Action::"httpPost"`                   |
+| **Resource**  | The OpenAPI endpoint being targeted                  | `ApiEndpoint::"listOrders"`, `ApiHost::"payments.internal"` |
+| **Context**   | Session-time data from the Cognito token and request | `{ mfaVerified: true, ipAddress: "10.0.0.5", ... }`         |
 
 ---
 
@@ -190,25 +191,25 @@ Aegis receives the Cognito access token on the `/session-grant` request and tran
 
 ### Cognito claim → Cedar attribute mapping
 
-| Cognito token claim | Cedar target | Notes |
-|---|---|---|
-| `sub` | `User` entity ID + `User.sub` | Stable UUID, never changes |
-| `cognito:username` / `username` | `User.username` | Falls back to `sub` if absent |
-| `email` | `User.email` | — |
-| `email_verified` | `User.emailVerified` | — |
-| `custom:tenantId` | `User.tenantId` | Must be configured in Cognito user pool |
-| `cognito:groups` | `User` parents → `UserGroup` entities | One `UserGroup` entity per group |
-| `identities[0].providerName` | `User.idpProvider` | Only for federated users; set to `"COGNITO"` for direct auth |
-| `amr` contains `"external-provider"` | `User.isFederated = true` | — |
-| `amr` | `context.mfaVerified`, `context.authMethod` | `"mfa"` → verified; `"software_totp"` → `SOFTWARE_TOTP` |
-| `auth_time` | `context.authTime` | Epoch → ISO 8601 UTC |
-| `iat` | `context.tokenIat`, `context.tokenAgeSeconds` | — |
-| `exp` | `context.tokenExpiresInSeconds` | — |
-| `nbf` | `context.tokenNbf` | Falls back to `iat` if absent |
-| `client_id` / `aud` | `context.tokenAud` | Cognito access tokens use `client_id` |
-| `locale` | `User.locale` | Optional OIDC claim |
-| `phone_number_verified` | `User.phoneVerified` | Optional OIDC claim |
-| `updated_at` | `User.updatedAt` | Optional OIDC claim |
+| Cognito token claim                  | Cedar target                                  | Notes                                                        |
+| ------------------------------------ | --------------------------------------------- | ------------------------------------------------------------ |
+| `sub`                                | `User` entity ID + `User.sub`                 | Stable UUID, never changes                                   |
+| `cognito:username` / `username`      | `User.username`                               | Falls back to `sub` if absent                                |
+| `email`                              | `User.email`                                  | —                                                            |
+| `email_verified`                     | `User.emailVerified`                          | —                                                            |
+| `custom:tenantId`                    | `User.tenantId`                               | Must be configured in Cognito user pool                      |
+| `cognito:groups`                     | `User` parents → `UserGroup` entities         | One `UserGroup` entity per group                             |
+| `identities[0].providerName`         | `User.idpProvider`                            | Only for federated users; set to `"COGNITO"` for direct auth |
+| `amr` contains `"external-provider"` | `User.isFederated = true`                     | —                                                            |
+| `amr`                                | `context.mfaVerified`, `context.authMethod`   | `"mfa"` → verified; `"software_totp"` → `SOFTWARE_TOTP`      |
+| `auth_time`                          | `context.authTime`                            | Epoch → ISO 8601 UTC                                         |
+| `iat`                                | `context.tokenIat`, `context.tokenAgeSeconds` | —                                                            |
+| `exp`                                | `context.tokenExpiresInSeconds`               | —                                                            |
+| `nbf`                                | `context.tokenNbf`                            | Falls back to `iat` if absent                                |
+| `client_id` / `aud`                  | `context.tokenAud`                            | Cognito access tokens use `client_id`                        |
+| `locale`                             | `User.locale`                                 | Optional OIDC claim                                          |
+| `phone_number_verified`              | `User.phoneVerified`                          | Optional OIDC claim                                          |
+| `updated_at`                         | `User.updatedAt`                              | Optional OIDC claim                                          |
 
 ### Scenario A: Direct Cognito authentication (with MFA)
 
@@ -340,13 +341,13 @@ Cedar's parent/child entity traversal means a policy written for `UserGroup::"pl
         "shape": {
           "type": "Record",
           "attributes": {
-            "sub":           { "type": "String" },
-            "username":      { "type": "String" },
-            "email":         { "type": "String" },
+            "sub": { "type": "String" },
+            "username": { "type": "String" },
+            "email": { "type": "String" },
             "emailVerified": { "type": "Boolean" },
-            "tenantId":      { "type": "String" },
-            "isFederated":   { "type": "Boolean" },
-            "idpProvider":   { "type": "String" }
+            "tenantId": { "type": "String" },
+            "isFederated": { "type": "Boolean" },
+            "idpProvider": { "type": "String" }
           }
         }
       },
@@ -381,25 +382,84 @@ Cedar's parent/child entity traversal means a policy written for `UserGroup::"pl
         "shape": {
           "type": "Record",
           "attributes": {
-            "operationId":  { "type": "String" },
-            "method":       { "type": "String" },
-            "pathPattern":  { "type": "String" },
-            "tags":         { "type": "Set", "element": { "type": "String" } }
+            "operationId": { "type": "String" },
+            "method": { "type": "String" },
+            "pathPattern": { "type": "String" },
+            "tags": { "type": "Set", "element": { "type": "String" } }
           }
         }
       }
     },
     "actions": {
-      "callApi":      { "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "callApiRead":  { "memberOf": [{ "id": "callApi", "type": "Action" }],      "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "callApiWrite": { "memberOf": [{ "id": "callApi", "type": "Action" }],      "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpGet":      { "memberOf": [{ "id": "callApiRead",  "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpHead":     { "memberOf": [{ "id": "callApiRead",  "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpOptions":  { "memberOf": [{ "id": "callApiRead",  "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpPost":     { "memberOf": [{ "id": "callApiWrite", "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpPut":      { "memberOf": [{ "id": "callApiWrite", "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpPatch":    { "memberOf": [{ "id": "callApiWrite", "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } },
-      "httpDelete":   { "memberOf": [{ "id": "callApiWrite", "type": "Action" }], "appliesTo": { "principalTypes": ["User", "UserGroup"], "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"] } }
+      "callApi": {
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "callApiRead": {
+        "memberOf": [{ "id": "callApi", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "callApiWrite": {
+        "memberOf": [{ "id": "callApi", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpGet": {
+        "memberOf": [{ "id": "callApiRead", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpHead": {
+        "memberOf": [{ "id": "callApiRead", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpOptions": {
+        "memberOf": [{ "id": "callApiRead", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpPost": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpPut": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpPatch": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      },
+      "httpDelete": {
+        "memberOf": [{ "id": "callApiWrite", "type": "Action" }],
+        "appliesTo": {
+          "principalTypes": ["User", "UserGroup"],
+          "resourceTypes": ["ApiEndpoint", "ApiHost", "ApiEnvironment"]
+        }
+      }
     }
   }
 }
@@ -897,13 +957,13 @@ Cedar cannot evaluate the **values** that a caller supplies for parameters at ru
 
 For runtime parameter-value enforcement:
 
-| Requirement | Where to enforce |
-|---|---|
-| Path param value matches user's own ID | Relay — inspect the resolved URL on each request |
-| Query param value within an allowed set | Relay — validate query string on each request |
-| Request body field constraints | Relay — inspect body on each request |
-| Endpoint shape restrictions (param names present/absent) | Cedar — use `pathParams`, `queryParams`, `requiredParams` |
-| Endpoint identity restrictions (operationId, tags, method) | Cedar — use direct entity matching or `when` conditions |
+| Requirement                                                | Where to enforce                                          |
+| ---------------------------------------------------------- | --------------------------------------------------------- |
+| Path param value matches user's own ID                     | Relay — inspect the resolved URL on each request          |
+| Query param value within an allowed set                    | Relay — validate query string on each request             |
+| Request body field constraints                             | Relay — inspect body on each request                      |
+| Endpoint shape restrictions (param names present/absent)   | Cedar — use `pathParams`, `queryParams`, `requiredParams` |
+| Endpoint identity restrictions (operationId, tags, method) | Cedar — use direct entity matching or `when` conditions   |
 
 The session delegation JWT encodes which endpoints are permitted. The relay enforces the scope and, if the customer has configured relay-level parameter guards, validates runtime values against those rules on every execution.
 
@@ -1387,7 +1447,12 @@ Only endpoints for which Cedar returned `Allow` are included:
   "relayId": "relay-01",
   "environment": "prod",
   "permittedScopes": [
-    { "host": "payments.internal", "method": "GET", "path": "/v1/orders/{id}", "operationId": "getOrder" }
+    {
+      "host": "payments.internal",
+      "method": "GET",
+      "path": "/v1/orders/{id}",
+      "operationId": "getOrder"
+    }
   ]
 }
 ```
@@ -1421,6 +1486,7 @@ The `POST /v1/refunds` endpoint was denied (no matching permit) and is absent. T
 Customer Cedar policies are stored as plain `.cedar` files alongside the Aegis deployment. They are versioned in the customer's own repository and deployed via their CI/CD pipeline.
 
 The directory Aegis reads from is controlled by the `CEDAR_POLICIES_DIR` environment variable (default: `./policies` relative to the process working directory). Aegis loads:
+
 - `<CEDAR_POLICIES_DIR>/schema.json` — required; contains the AegisNamespace entity model
 - `<CEDAR_POLICIES_DIR>/*.cedar` — all `.cedar` files in the directory (non-recursive)
 
@@ -1445,12 +1511,12 @@ The schema defines a `AegisContext` common type that enumerates every context at
 
 ### Policy set lifecycle
 
-| Event | Action |
-|---|---|
-| Policy added | Deploy new `.cedar` file; restart Aegis to reload |
-| Policy updated | Replace `.cedar` file; restart Aegis to reload |
-| Policy removed | Delete `.cedar` file; restart Aegis to reload |
-| Schema change | Update `schema.json`; restart Aegis — all policies re-validated at startup |
+| Event          | Action                                                                     |
+| -------------- | -------------------------------------------------------------------------- |
+| Policy added   | Deploy new `.cedar` file; restart Aegis to reload                          |
+| Policy updated | Replace `.cedar` file; restart Aegis to reload                             |
+| Policy removed | Delete `.cedar` file; restart Aegis to reload                              |
+| Schema change  | Update `schema.json`; restart Aegis — all policies re-validated at startup |
 
 **Hot-reload**: Aegis loads policies once at startup. Policy changes require a restart. File watching may be added in a future stage.
 
@@ -1462,15 +1528,15 @@ Existing session delegation JWTs are not revoked when policies change — they r
 
 ## Security Properties
 
-| Property | Guarantee |
-|---|---|
-| **Default deny** | A user with no matching `permit` policy cannot access any endpoint. |
-| **Explicit deny wins** | A `forbid` policy always overrides any `permit` on the same resource, regardless of evaluation order. |
-| **Stable principal identity** | Principals are keyed by Cognito `sub` (UUID), not email or username, so renames and IdP migrations do not accidentally grant or revoke access. |
-| **Scope binding** | The Relay enforces the session delegation JWT scope on every execution. Cedar's decision at session grant time is the source of truth for that scope. |
-| **No vendor bypass** | The SLAOps control plane cannot expand or forge session delegation JWTs — it holds whatever Aegis issued, and the Relay validates the Aegis signature independently. |
-| **Auditability** | Every `permit` or `forbid` decision identifies the determining Cedar policy by ID. Aegis logs include policy IDs alongside session grant decisions, enabling forensic audit. |
-| **Schema safety** | Cedar validates policies against the schema before any traffic is served. Type errors in policies are caught at deploy time, not runtime. |
+| Property                      | Guarantee                                                                                                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Default deny**              | A user with no matching `permit` policy cannot access any endpoint.                                                                                                          |
+| **Explicit deny wins**        | A `forbid` policy always overrides any `permit` on the same resource, regardless of evaluation order.                                                                        |
+| **Stable principal identity** | Principals are keyed by Cognito `sub` (UUID), not email or username, so renames and IdP migrations do not accidentally grant or revoke access.                               |
+| **Scope binding**             | The Relay enforces the session delegation JWT scope on every execution. Cedar's decision at session grant time is the source of truth for that scope.                        |
+| **No vendor bypass**          | The SLAOps control plane cannot expand or forge session delegation JWTs — it holds whatever Aegis issued, and the Relay validates the Aegis signature independently.         |
+| **Auditability**              | Every `permit` or `forbid` decision identifies the determining Cedar policy by ID. Aegis logs include policy IDs alongside session grant decisions, enabling forensic audit. |
+| **Schema safety**             | Cedar validates policies against the schema before any traffic is served. Type errors in policies are caught at deploy time, not runtime.                                    |
 
 ---
 

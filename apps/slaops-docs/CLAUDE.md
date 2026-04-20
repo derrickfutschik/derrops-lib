@@ -30,6 +30,7 @@ apps/slaops-docs/
 ```
 
 **Key rules:**
+
 - Drafts / WIP always go in `internal/platform/drafts/` — never in the public tree.
 - Security is intentionally split: `public/security/` = customer-facing; `internal/security/` = full KB.
 - `/internal/*` is the single auth choke-point (Amplify Hosting) — no Docusaurus-level auth needed.
@@ -38,18 +39,18 @@ apps/slaops-docs/
 
 ## Plugin & Sidebar Mapping
 
-| Plugin id | Physical path | URL route | Access | Sidebar file |
-|---|---|---|---|---|
-| `docs` (preset) | `public/docs/` | `/docs` | Public | `sidebars.ts` |
-| `security-public` | `public/security/` | `/security` | Public | `sidebars-security-public.ts` |
-| `platform-design` | `internal/platform/design/` | `/internal/platform/design` | Private | `sidebars-platform-design.ts` |
-| `platform-drafts` | `internal/platform/drafts/` | `/internal/platform/drafts` | Private | `sidebars-platform-drafts.ts` |
-| `developer` | `internal/developer/code/` | `/internal/developer` | Private | `sidebars-developer.ts` |
-| `devops` | `internal/devops/` | `/internal/devops` | Private | `sidebars-devops.ts` |
-| `security-internal` | `internal/security/` | `/internal/security` | Private | `sidebars-security-internal.ts` |
-| `testing` | `internal/testing/` | `/internal/testing` | Private | `sidebars-testing.ts` |
-| changelog (custom) | `changelog/source/` | `/changelog` | Public | — |
-| blog | `blog/` | `/blog` | Public | — |
+| Plugin id           | Physical path               | URL route                   | Access  | Sidebar file                    |
+| ------------------- | --------------------------- | --------------------------- | ------- | ------------------------------- |
+| `docs` (preset)     | `public/docs/`              | `/docs`                     | Public  | `sidebars.ts`                   |
+| `security-public`   | `public/security/`          | `/security`                 | Public  | `sidebars-security-public.ts`   |
+| `platform-design`   | `internal/platform/design/` | `/internal/platform/design` | Private | `sidebars-platform-design.ts`   |
+| `platform-drafts`   | `internal/platform/drafts/` | `/internal/platform/drafts` | Private | `sidebars-platform-drafts.ts`   |
+| `developer`         | `internal/developer/code/`  | `/internal/developer`       | Private | `sidebars-developer.ts`         |
+| `devops`            | `internal/devops/`          | `/internal/devops`          | Private | `sidebars-devops.ts`            |
+| `security-internal` | `internal/security/`        | `/internal/security`        | Private | `sidebars-security-internal.ts` |
+| `testing`           | `internal/testing/`         | `/internal/testing`         | Private | `sidebars-testing.ts`           |
+| changelog (custom)  | `changelog/source/`         | `/changelog`                | Public  | —                               |
+| blog                | `blog/`                     | `/blog`                     | Public  | —                               |
 
 **Naming rule**: plugin `id` must match its sidebar key (e.g. `id: 'platform-design'` → sidebar key `'platform-design'`).
 

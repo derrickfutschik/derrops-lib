@@ -37,11 +37,11 @@ This document defines the PostgreSQL data model for the OASpec domain — the `a
 
 Three distinct domain objects are modelled here, all stored in the single `api` PostgreSQL table as embedded value types (no JOINs). Each has a clearly bounded responsibility:
 
-| Domain object | Responsibility | Owned by |
-|---|---|---|
-| `Api` | Identity — name, tenant, management mode | Always present |
-| `OaSpecRef` | Current spec state — latest version reference and cached aggregate stats | Populated after first index run |
-| `VersionFetchState` | Version delivery — strategy config and last fetch outcome | Only when `management_mode: 'private'` |
+| Domain object       | Responsibility                                                           | Owned by                               |
+| ------------------- | ------------------------------------------------------------------------ | -------------------------------------- |
+| `Api`               | Identity — name, tenant, management mode                                 | Always present                         |
+| `OaSpecRef`         | Current spec state — latest version reference and cached aggregate stats | Populated after first index run        |
+| `VersionFetchState` | Version delivery — strategy config and last fetch outcome                | Only when `management_mode: 'private'` |
 
 Treating them as separate domain objects keeps business logic for spec-tracking and fetch-scheduling out of the core API entity while avoiding the cost of additional tables or JOINs. See the [NestJS Domain Objects](#nestjs-domain-objects) section for the class structure.
 
@@ -77,41 +77,41 @@ One PostgreSQL table stores all three domain objects. Columns are annotated with
 
 **`Api` identity columns:**
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Unique identifier |
-| `tenant_id` | `varchar(10)` | NOT NULL | Owning tenant — format `t-<8 alphanum>`, e.g. `t-acme0001` |
-| `name` | `varchar(255)` | NOT NULL | Human-readable API name (e.g. "Stripe Payments API") |
-| `description` | `text` | nullable | Short description of what the API does |
-| `external_url` | `varchar(500)` | nullable | Official docs or homepage URL |
-| `spec_type` | `varchar(50)` | NOT NULL, default `'openapi'` | Spec format — `openapi` only for now; reserved for `graphql`, `grpc`, `soap` |
-| `management_mode` | `varchar(20)` | NOT NULL, default `'private'` | `'platform'` — platform manages versions; `'private'` — tenant manages |
-| `created_at` | `timestamp` | NOT NULL, default `now()` | Row creation time |
-| `updated_at` | `timestamp` | NOT NULL, auto-updated | Last modification time |
+| Column            | Type           | Constraints                     | Description                                                                  |
+| ----------------- | -------------- | ------------------------------- | ---------------------------------------------------------------------------- |
+| `id`              | `uuid`         | PK, default `gen_random_uuid()` | Unique identifier                                                            |
+| `tenant_id`       | `varchar(10)`  | NOT NULL                        | Owning tenant — format `t-<8 alphanum>`, e.g. `t-acme0001`                   |
+| `name`            | `varchar(255)` | NOT NULL                        | Human-readable API name (e.g. "Stripe Payments API")                         |
+| `description`     | `text`         | nullable                        | Short description of what the API does                                       |
+| `external_url`    | `varchar(500)` | nullable                        | Official docs or homepage URL                                                |
+| `spec_type`       | `varchar(50)`  | NOT NULL, default `'openapi'`   | Spec format — `openapi` only for now; reserved for `graphql`, `grpc`, `soap` |
+| `management_mode` | `varchar(20)`  | NOT NULL, default `'private'`   | `'platform'` — platform manages versions; `'private'` — tenant manages       |
+| `created_at`      | `timestamp`    | NOT NULL, default `now()`       | Row creation time                                                            |
+| `updated_at`      | `timestamp`    | NOT NULL, auto-updated          | Last modification time                                                       |
 
 **`OaSpecRef` embedded columns** (populated after first index run; null until then):
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `spec_global_opensearch_id` | `varchar(500)` | nullable | Platform mode: doc ID in `slaops--t-glbl0000--oaspec--spec` |
-| `spec_latest_version` | `varchar(100)` | nullable | Version string of the latest indexed spec (e.g. `"2.1.0"`) |
-| `spec_latest_opensearch_id` | `varchar(500)` | nullable | Doc ID in the tenant's or global spec index for the latest version |
-| `spec_operation_count` | `integer` | NOT NULL, default `0` | Total operations in the latest version |
-| `spec_server_count` | `integer` | NOT NULL, default `0` | Total servers in the latest version |
-| `spec_parameter_count` | `integer` | NOT NULL, default `0` | Total parameters in the latest version |
-| `spec_model_count` | `integer` | NOT NULL, default `0` | Total models/schemas in the latest version |
-| `spec_last_indexed_at` | `timestamp` | nullable | When the latest version was indexed |
+| Column                      | Type           | Constraints           | Description                                                        |
+| --------------------------- | -------------- | --------------------- | ------------------------------------------------------------------ |
+| `spec_global_opensearch_id` | `varchar(500)` | nullable              | Platform mode: doc ID in `slaops--t-glbl0000--oaspec--spec`        |
+| `spec_latest_version`       | `varchar(100)` | nullable              | Version string of the latest indexed spec (e.g. `"2.1.0"`)         |
+| `spec_latest_opensearch_id` | `varchar(500)` | nullable              | Doc ID in the tenant's or global spec index for the latest version |
+| `spec_operation_count`      | `integer`      | NOT NULL, default `0` | Total operations in the latest version                             |
+| `spec_server_count`         | `integer`      | NOT NULL, default `0` | Total servers in the latest version                                |
+| `spec_parameter_count`      | `integer`      | NOT NULL, default `0` | Total parameters in the latest version                             |
+| `spec_model_count`          | `integer`      | NOT NULL, default `0` | Total models/schemas in the latest version                         |
+| `spec_last_indexed_at`      | `timestamp`    | nullable              | When the latest version was indexed                                |
 
 **`VersionFetchState` embedded columns** (null when `management_mode: 'platform'`):
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `fetch_strategy` | `varchar(50)` | nullable | `'manual'` \| `'url_fetch'` \| … See [Version Strategies](./version-strategies) |
-| `fetch_url` | `varchar(500)` | nullable | URL to GET the spec from (`url_fetch` strategy) |
-| `fetch_cron` | `varchar(100)` | nullable | Cron schedule (UTC), e.g. `0 2 * * *` |
-| `fetch_last_at` | `timestamp` | nullable | When the last fetch was attempted |
-| `fetch_last_status` | `varchar(20)` | nullable | `'ok'` \| `'error'` |
-| `fetch_last_error` | `text` | nullable | Error message from the last failed fetch |
+| Column              | Type           | Constraints | Description                                                                     |
+| ------------------- | -------------- | ----------- | ------------------------------------------------------------------------------- |
+| `fetch_strategy`    | `varchar(50)`  | nullable    | `'manual'` \| `'url_fetch'` \| … See [Version Strategies](./version-strategies) |
+| `fetch_url`         | `varchar(500)` | nullable    | URL to GET the spec from (`url_fetch` strategy)                                 |
+| `fetch_cron`        | `varchar(100)` | nullable    | Cron schedule (UTC), e.g. `0 2 * * *`                                           |
+| `fetch_last_at`     | `timestamp`    | nullable    | When the last fetch was attempted                                               |
+| `fetch_last_status` | `varchar(20)`  | nullable    | `'ok'` \| `'error'`                                                             |
+| `fetch_last_error`  | `text`         | nullable    | Error message from the last failed fetch                                        |
 
 **Index:** `(tenant_id, name)` — used by the wizard's fuzzy-name lookup.
 
@@ -123,10 +123,10 @@ One PostgreSQL table stores all three domain objects. Columns are annotated with
 
 Every `api` row has a `management_mode` that controls who delivers spec versions, and (for private mode) a `version_strategy` that controls how.
 
-| `management_mode` | Spec source | `version_strategy` applies? |
-|---|---|---|
-| `platform` | Global index (`t-glbl0000`) — managed by SLAOps | No |
-| `private` | Tenant's private index — tenant is responsible | Yes |
+| `management_mode` | Spec source                                     | `version_strategy` applies? |
+| ----------------- | ----------------------------------------------- | --------------------------- |
+| `platform`        | Global index (`t-glbl0000`) — managed by SLAOps | No                          |
+| `private`         | Tenant's private index — tenant is responsible  | Yes                         |
 
 A tenant adopts a platform-managed API by selecting it from the catalogue in the wizard. This creates an `api` row with `management_mode: 'platform'` and `oaSpec.globalOpensearchId` (`spec_global_opensearch_id` in SQL) pointing at the global spec document. No private index is provisioned; aggregate stats are refreshed nightly from the global index.
 
@@ -163,13 +163,13 @@ function oaspecId(tenantId: string, ...fields: string[]): string {
 
 ### ID formulas per entity
 
-| Index | Fields hashed | Example |
-|---|---|---|
-| `oaspec--spec` | `info.title`, `info.version` | `t-acme0001-a3f9b21c04e87d56` |
-| `oaspec--server` | `info.title`, `info.version`, `server.url` | `t-acme0001-8d4e1a7b93c25f0e` |
-| `oaspec--operation` | `info.title`, `info.version`, `method`, `path` | `t-acme0001-1c7f4d8e2a905b3a` |
-| `oaspec--param` | `info.title`, `info.version`, `name`, `location` | `t-acme0001-6b2e9c4f17a083d5` |
-| `oaspec--model` | `info.title`, `info.version`, `modelName` | `t-acme0001-d09f3b85e6741c2a` |
+| Index               | Fields hashed                                    | Example                       |
+| ------------------- | ------------------------------------------------ | ----------------------------- |
+| `oaspec--spec`      | `info.title`, `info.version`                     | `t-acme0001-a3f9b21c04e87d56` |
+| `oaspec--server`    | `info.title`, `info.version`, `server.url`       | `t-acme0001-8d4e1a7b93c25f0e` |
+| `oaspec--operation` | `info.title`, `info.version`, `method`, `path`   | `t-acme0001-1c7f4d8e2a905b3a` |
+| `oaspec--param`     | `info.title`, `info.version`, `name`, `location` | `t-acme0001-6b2e9c4f17a083d5` |
+| `oaspec--model`     | `info.title`, `info.version`, `modelName`        | `t-acme0001-d09f3b85e6741c2a` |
 
 `info.title` and `info.version` anchor every entity to its spec version. `location` is included in param IDs because the same parameter name can legitimately appear in different locations (e.g. a `id` path parameter and a `id` query parameter are distinct).
 
@@ -205,9 +205,9 @@ The SLAOps-managed public catalogue uses the reserved global tenant `t-glbl0000`
 
 The full spec file (YAML or JSON) is stored permanently in the tenant's dedicated OASpec S3 bucket. See [OASpec Bucket](/docs/oaspec-bucket) for bucket naming conventions.
 
-| Tenancy | Bucket name pattern | Example |
-|---|---|---|
-| Tenant-private | `{region}--{env}--slaops--{tenantId}--oaspec--storage--specs` | `us-east-1--prod--slaops--t-acme0001--oaspec--storage--specs` |
+| Tenancy          | Bucket name pattern                                           | Example                                                       |
+| ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| Tenant-private   | `{region}--{env}--slaops--{tenantId}--oaspec--storage--specs` | `us-east-1--prod--slaops--t-acme0001--oaspec--storage--specs` |
 | Platform-managed | `{region}--{env}--slaops--t-glbl0000--oaspec--storage--specs` | `us-east-1--prod--slaops--t-glbl0000--oaspec--storage--specs` |
 
 **Object key convention:** `APIs/{provider}/{service}/{version}/openapi.yaml`
@@ -255,7 +255,7 @@ export class OaSpecRef {
 // Null/empty for platform-managed APIs.
 export class VersionFetchState {
   @Column({ name: 'fetch_strategy', type: 'varchar', length: 50, nullable: true })
-  strategy: string | null   // 'manual' | 'url_fetch' | ...
+  strategy: string | null // 'manual' | 'url_fetch' | ...
 
   @Column({ name: 'fetch_url', type: 'varchar', length: 500, nullable: true })
   url: string | null
@@ -267,7 +267,7 @@ export class VersionFetchState {
   lastAt: Date | null
 
   @Column({ name: 'fetch_last_status', type: 'varchar', length: 20, nullable: true })
-  lastStatus: string | null   // 'ok' | 'error'
+  lastStatus: string | null // 'ok' | 'error'
 
   @Column({ name: 'fetch_last_error', type: 'text', nullable: true })
   lastError: string | null
@@ -295,7 +295,7 @@ export class ApiEntity {
   specType: string
 
   @Column({ type: 'varchar', length: 20, default: 'private' })
-  managementMode: string   // 'platform' | 'private'
+  managementMode: string // 'platform' | 'private'
 
   // Embedded — columns live on this table, no JOIN needed
   @Column(() => OaSpecRef)
@@ -318,17 +318,17 @@ export class ApiEntity {
 
 The `api` module exposes standard CRUD backed by PostgreSQL:
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api` | List APIs for the current tenant |
-| `POST` | `/api` | Create a new private API |
-| `POST` | `/api/adopt` | Adopt a platform-managed API from the catalogue |
-| `GET` | `/api/:id` | Get an API with its latest spec stats |
-| `PATCH` | `/api/:id` | Update name/description/external_url/version_strategy |
-| `DELETE` | `/api/:id` | Delete API row (OpenSearch cleanup is async) |
-| `GET` | `/api/search?q=` | Fuzzy name search across tenant's own APIs |
-| `GET` | `/openapi/catalogue?q=` | Search the platform catalogue (global OpenSearch index — no SQL) |
-| `POST` | `/api/:id/fetch` | Manually trigger a url_fetch strategy re-fetch |
+| Method   | Path                    | Description                                                      |
+| -------- | ----------------------- | ---------------------------------------------------------------- |
+| `GET`    | `/api`                  | List APIs for the current tenant                                 |
+| `POST`   | `/api`                  | Create a new private API                                         |
+| `POST`   | `/api/adopt`            | Adopt a platform-managed API from the catalogue                  |
+| `GET`    | `/api/:id`              | Get an API with its latest spec stats                            |
+| `PATCH`  | `/api/:id`              | Update name/description/external_url/version_strategy            |
+| `DELETE` | `/api/:id`              | Delete API row (OpenSearch cleanup is async)                     |
+| `GET`    | `/api/search?q=`        | Fuzzy name search across tenant's own APIs                       |
+| `GET`    | `/openapi/catalogue?q=` | Search the platform catalogue (global OpenSearch index — no SQL) |
+| `POST`   | `/api/:id/fetch`        | Manually trigger a url_fetch strategy re-fetch                   |
 
 The indexing pipeline (which writes to OpenSearch and updates the `api` row) is triggered separately via `POST /openapi/index`. See [Indexing Pipeline](./indexing-pipeline).
 

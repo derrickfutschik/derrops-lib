@@ -11,7 +11,15 @@ interface TabTableFooterProps {
   onNext: () => void
 }
 
-export function TabTableFooter({ total, from, page, entity, hasFilter, onPrev, onNext }: TabTableFooterProps) {
+export function TabTableFooter({
+  total,
+  from,
+  page,
+  entity,
+  hasFilter,
+  onPrev,
+  onNext,
+}: TabTableFooterProps) {
   const size = PAGE_SIZE
   const to = Math.min(from + size, total)
   const totalPages = Math.max(1, Math.ceil(total / size))

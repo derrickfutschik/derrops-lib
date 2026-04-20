@@ -35,7 +35,10 @@ export interface RequestedEndpoint {
  * Builds the Cedar entity graph for a single authorization query.
  * Produces User, UserGroup, ApiEnvironment, ApiHost, and ApiEndpoint entities.
  */
-export function buildEntities(token: CognitoTokenPayload, endpoint: RequestedEndpoint): EntityJson[] {
+export function buildEntities(
+  token: CognitoTokenPayload,
+  endpoint: RequestedEndpoint,
+): EntityJson[] {
   const entities: EntityJson[] = []
 
   const groups: string[] = token['cognito:groups'] ?? []
@@ -54,11 +57,11 @@ export function buildEntities(token: CognitoTokenPayload, endpoint: RequestedEnd
 
   // User entity
   const userAttrs: Record<string, CedarValueJson> = {
-    sub:           token.sub,
+    sub: token.sub,
     username,
-    email:         token.email ?? '',
+    email: token.email ?? '',
     emailVerified: token.email_verified ?? false,
-    tenantId:      token['custom:tenantId'] ?? '',
+    tenantId: token['custom:tenantId'] ?? '',
     isFederated,
     idpProvider,
   }
@@ -76,7 +79,7 @@ export function buildEntities(token: CognitoTokenPayload, endpoint: RequestedEnd
   entities.push({
     uid: { type: 'AegisNamespace::User', id: token.sub },
     attrs: userAttrs,
-    parents: groups.map(g => ({ type: 'AegisNamespace::UserGroup', id: g })),
+    parents: groups.map((g) => ({ type: 'AegisNamespace::UserGroup', id: g })),
   })
 
   const environment = endpoint.environment ?? 'default'
@@ -84,25 +87,25 @@ export function buildEntities(token: CognitoTokenPayload, endpoint: RequestedEnd
 
   // ApiEnvironment entity
   entities.push({
-    uid:     { type: 'AegisNamespace::ApiEnvironment', id: environment },
-    attrs:   { name: environment },
+    uid: { type: 'AegisNamespace::ApiEnvironment', id: environment },
+    attrs: { name: environment },
     parents: [],
   })
 
   // ApiHost entity (child of ApiEnvironment)
   entities.push({
-    uid:     { type: 'AegisNamespace::ApiHost', id: endpoint.host },
-    attrs:   { hostname: endpoint.host, internal: false },
+    uid: { type: 'AegisNamespace::ApiHost', id: endpoint.host },
+    attrs: { hostname: endpoint.host, internal: false },
     parents: [{ type: 'AegisNamespace::ApiEnvironment', id: environment }],
   })
 
   // ApiEndpoint entity (child of ApiHost)
-  const tags: CedarValueJson[] = (endpoint.tags ?? []).map(t => t)
+  const tags: CedarValueJson[] = (endpoint.tags ?? []).map((t) => t)
   entities.push({
-    uid:     { type: 'AegisNamespace::ApiEndpoint', id: operationId },
-    attrs:   {
+    uid: { type: 'AegisNamespace::ApiEndpoint', id: operationId },
+    attrs: {
       operationId,
-      method:      endpoint.method.toUpperCase(),
+      method: endpoint.method.toUpperCase(),
       pathPattern: endpoint.path,
       tags,
     },
@@ -119,7 +122,9 @@ function resolveIdpProvider(token: CognitoTokenPayload, isFederated: boolean): s
   if (!identities) return 'EXTERNAL_IDP'
 
   const parsed: Array<{ providerName?: string }> =
-    typeof identities === 'string' ? (JSON.parse(identities) as Array<{ providerName?: string }>) : identities
+    typeof identities === 'string'
+      ? (JSON.parse(identities) as Array<{ providerName?: string }>)
+      : identities
 
   return parsed[0]?.providerName ?? 'EXTERNAL_IDP'
 }

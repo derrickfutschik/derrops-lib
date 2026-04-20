@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button'
 import { ApiTable } from '@/components/apis/ApiTable'
+import { Button } from '@/components/ui/button'
 import { useApis } from '@/hooks/useApisApi'
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -30,7 +30,9 @@ const Apis = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!isLoading && apis.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-muted-foreground mb-4">No APIs yet — add your first API to get started.</p>
+            <p className="text-muted-foreground mb-4">
+              No APIs yet — add your first API to get started.
+            </p>
             <Button onClick={() => navigate('/apis/new')}>New API</Button>
           </div>
         ) : (

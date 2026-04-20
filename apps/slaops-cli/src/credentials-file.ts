@@ -27,10 +27,15 @@ export interface RelayCredentials {
 
 export const CREDENTIALS_FILE = path.join(SLAOPS_DIR, 'credentials')
 
-export function getCredentialsProfile(profile = DEFAULT_PROFILE): Partial<RelayCredentials> | undefined {
+export function getCredentialsProfile(
+  profile = DEFAULT_PROFILE,
+): Partial<RelayCredentials> | undefined {
   return getSection(CREDENTIALS_FILE, profile) as Partial<RelayCredentials> | undefined
 }
 
-export function setCredentialsProfile(values: Partial<RelayCredentials>, profile = DEFAULT_PROFILE): void {
+export function setCredentialsProfile(
+  values: Partial<RelayCredentials>,
+  profile = DEFAULT_PROFILE,
+): void {
   setSection(CREDENTIALS_FILE, values as Record<string, string>, profile, 0o600)
 }

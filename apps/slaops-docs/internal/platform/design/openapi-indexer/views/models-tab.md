@@ -41,16 +41,16 @@ The Models tab lists all schema model documents indexed for the selected API ver
 
 **Query params**:
 
-| Param | Default | Notes |
-|---|---|---|
-| `version` | _(latest)_ | `latest` sentinel or a specific version string |
-| `from` | `0` | OpenSearch `from` |
-| `size` | `10` | OpenSearch `size`, max `100` |
-| `sort` | `name` | Sortable fields: `name`, `schemaType` |
-| `order` | `asc` | `asc` or `desc` |
-| `q` | _(empty)_ | Full-text search across `name`, `description`, `propertiesText` |
-| `usedIn` | _(all)_ | Filter by usage context: `request`, `response` |
-| `operationId` | _(all)_ | Filter to models used by a specific operation ID (used by the Operation Detail panel) |
+| Param         | Default    | Notes                                                                                 |
+| ------------- | ---------- | ------------------------------------------------------------------------------------- |
+| `version`     | _(latest)_ | `latest` sentinel or a specific version string                                        |
+| `from`        | `0`        | OpenSearch `from`                                                                     |
+| `size`        | `10`       | OpenSearch `size`, max `100`                                                          |
+| `sort`        | `name`     | Sortable fields: `name`, `schemaType`                                                 |
+| `order`       | `asc`      | `asc` or `desc`                                                                       |
+| `q`           | _(empty)_  | Full-text search across `name`, `description`, `propertiesText`                       |
+| `usedIn`      | _(all)_    | Filter by usage context: `request`, `response`                                        |
+| `operationId` | _(all)_    | Filter to models used by a specific operation ID (used by the Operation Detail panel) |
 
 **OpenSearch query** (against `slaops--{tenantId}--oaspec--model`):
 
@@ -58,10 +58,7 @@ The Models tab lists all schema model documents indexed for the selected API ver
 {
   "query": {
     "bool": {
-      "filter": [
-        { "term": { "apiId": "<apiId>" } },
-        { "term": { "latest": true } }
-      ],
+      "filter": [{ "term": { "apiId": "<apiId>" } }, { "term": { "latest": true } }],
       "must": [
         {
           "multi_match": {
@@ -116,18 +113,19 @@ interface ModelHit {
 
 ### Column layout
 
-| Column | Field | Sortable | Hideable | Notes |
-|---|---|---|---|---|
-| **Name** | `name` | Yes | No | Bold; always visible |
-| **Type** | `schemaType` | Yes | No | Monospace badge (e.g. `object`, `array`) |
-| **Used In** | `usedInText` | No | No | Space-separated `request` / `response` badges with `USED_IN_CLASSES` colours |
-| **Properties** | `propertiesText` | No | Yes | Property count as a number (e.g. "12 properties"); hover shows first 5 names |
-| **Operations** | `operationIdsText` | No | Yes | "N operations" count with tooltip list; hidden by default |
-| **Description** | `description` | No | Yes | Truncated to one line |
+| Column          | Field              | Sortable | Hideable | Notes                                                                        |
+| --------------- | ------------------ | -------- | -------- | ---------------------------------------------------------------------------- |
+| **Name**        | `name`             | Yes      | No       | Bold; always visible                                                         |
+| **Type**        | `schemaType`       | Yes      | No       | Monospace badge (e.g. `object`, `array`)                                     |
+| **Used In**     | `usedInText`       | No       | No       | Space-separated `request` / `response` badges with `USED_IN_CLASSES` colours |
+| **Properties**  | `propertiesText`   | No       | Yes      | Property count as a number (e.g. "12 properties"); hover shows first 5 names |
+| **Operations**  | `operationIdsText` | No       | Yes      | "N operations" count with tooltip list; hidden by default                    |
+| **Description** | `description`      | No       | Yes      | Truncated to one line                                                        |
 
 ### Row click — detail panel
 
 Clicking a row opens `ModelDetailPanel` as a side sheet. The panel renders from the `ModelHit` payload already in the table — no additional API call is required. It shows:
+
 - Full description
 - Schema type
 - Property list parsed from `propertiesText`
@@ -137,6 +135,7 @@ Clicking a row opens `ModelDetailPanel` as a side sheet. The panel renders from 
 ### IndexedDataTable conventions
 
 All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
+
 - Sorting sends `sort` + `order` to the server.
 - EyeOff hides a column client-side.
 - Status bar at the bottom: `{filtered}/{total} models` when a filter is active, otherwise `{total} models`.

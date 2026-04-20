@@ -1,5 +1,5 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 interface Model {
   name: string
@@ -16,7 +16,12 @@ interface ModelDetailPanelProps {
 
 export function ModelDetailPanel({ model, onClose }: ModelDetailPanelProps) {
   return (
-    <Sheet open={!!model} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Sheet
+      open={!!model}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <SheetContent className="w-[400px] sm:w-[540px]">
         {model && (
           <>
@@ -27,7 +32,9 @@ export function ModelDetailPanel({ model, onClose }: ModelDetailPanelProps) {
               {model.schemaType && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Type</p>
-                  <Badge variant="secondary" className="font-mono">{model.schemaType}</Badge>
+                  <Badge variant="secondary" className="font-mono">
+                    {model.schemaType}
+                  </Badge>
                 </div>
               )}
               {model.description && (

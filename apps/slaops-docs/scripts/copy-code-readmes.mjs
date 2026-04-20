@@ -49,25 +49,25 @@ function copyFile(srcRel, destRel) {
   if (destRel === 'apps/slaops-cloud.md') {
     content = content.replace(
       /\]\(\.\.\/\.\.\/packages\/slaops-backend\/README\.md\)/g,
-      '](/internal/developer/packages/slaops-backend)'
+      '](/internal/developer/packages/slaops-backend)',
     )
     content = content.replace(
       /\]\(\.\.\/\.\.\/packages\/slaops-infra\/README\.md\)/g,
-      '](/internal/developer/packages/slaops-infra)'
+      '](/internal/developer/packages/slaops-infra)',
     )
     content = content.replace(
       /\]\(\.\.\/slaops-docs\/notes\/proposals\/cloud-relay\/component-cloud-relay\.md\)/g,
-      '](/internal/platform/design/cloud-relay/component-cloud-relay)'
+      '](/internal/platform/design/cloud-relay/component-cloud-relay)',
     )
   }
   if (destRel === 'apps/slaops-aegis.md') {
     content = content.replace(
       /\]\(\/notes\/proposals\/cloud-relay\/component-cloud-relay\.md\)/g,
-      '](/internal/platform/design/cloud-relay/component-cloud-relay)'
+      '](/internal/platform/design/cloud-relay/component-cloud-relay)',
     )
     content = content.replace(
       /\]\(\.\.\/slaops-docs\/notes\/proposals\/cloud-relay\/aegis-token-broker-design\.md\)/g,
-      '](/internal/platform/design/cloud-relay/aegis-token-broker-design)'
+      '](/internal/platform/design/cloud-relay/aegis-token-broker-design)',
     )
   }
   fs.writeFileSync(dest, content)

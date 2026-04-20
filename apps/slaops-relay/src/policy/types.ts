@@ -51,7 +51,14 @@ export type RequestContext = {
   user: { id: string; authenticated: boolean; roles: string[] }
   tenant: { id: string; plan: string; allowlist: string[] }
   request: { method: string; headers: Record<string, string>; bodyBytes: number }
-  url: { raw: string; scheme: string; host: string; port: number; path: string; query: Record<string, string> }
+  url: {
+    raw: string
+    scheme: string
+    host: string
+    port: number
+    path: string
+    query: Record<string, string>
+  }
   host: HostContext
 }
 

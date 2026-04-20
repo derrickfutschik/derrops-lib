@@ -75,30 +75,31 @@ graph TB
 
 ### Tier 1 — SLAOps Managed Index (`slaops--t-glbl0000--oaspec--spec` and siblings)
 
-| Property | Value |
-|---|---|
-| Index name | `slaops--t-glbl0000--oaspec--{entity}` (one per entity type) |
-| Owner `tenantId` | `t-glbl0000` (the platform's global tenant) |
-| Write access | SLAOps internal pipeline only |
-| Read access | All authenticated tenants |
-| Primary source | APIs-guru/openapi-directory + curated additions |
-| Update cadence | Nightly sync + on-demand trigger |
+| Property         | Value                                                        |
+| ---------------- | ------------------------------------------------------------ |
+| Index name       | `slaops--t-glbl0000--oaspec--{entity}` (one per entity type) |
+| Owner `tenantId` | `t-glbl0000` (the platform's global tenant)                  |
+| Write access     | SLAOps internal pipeline only                                |
+| Read access      | All authenticated tenants                                    |
+| Primary source   | APIs-guru/openapi-directory + curated additions              |
+| Update cadence   | Nightly sync + on-demand trigger                             |
 
 The SLAOps platform is itself modelled as a tenant (`tenantId = "t-glbl0000"`). This means:
+
 - All existing multi-tenant access-control, indexing, and search machinery works unchanged
 - The managed index is just an ordinary tenant index that happens to be populated automatically and is read-only to other tenants
 - Future platform tenants (e.g., `stripe`, `github` as verified providers) follow the same pattern
 
 ### Tier 2 — Tenant Private Index (`slaops--{tenantId}--oaspec--{entity}`)
 
-| Property | Value |
-|---|---|
-| Index name | `slaops--{tenantId}--oaspec--{entity}` (one per entity type) |
-| Owner `tenantId` | The specific tenant |
-| Write access | That tenant only |
-| Read access | That tenant only |
-| Primary source | Tenant-uploaded OASpecs |
-| Provisioning | Created on first tenant upload (lazy) |
+| Property         | Value                                                        |
+| ---------------- | ------------------------------------------------------------ |
+| Index name       | `slaops--{tenantId}--oaspec--{entity}` (one per entity type) |
+| Owner `tenantId` | The specific tenant                                          |
+| Write access     | That tenant only                                             |
+| Read access      | That tenant only                                             |
+| Primary source   | Tenant-uploaded OASpecs                                      |
+| Provisioning     | Created on first tenant upload (lazy)                        |
 
 Tenant private indices are optional. A tenant with no private index falls back entirely to Tier 1.
 
@@ -117,6 +118,7 @@ slaops--{tenantId}--oaspec--{entity}
 Entity types: `spec`, `server`, `operation`, `param`, `model`
 
 Examples:
+
 - `slaops--t-glbl0000--oaspec--spec` — SLAOps managed public catalogue (spec index)
 - `slaops--t-acme0001--oaspec--spec` — ACME's private spec index
 - `slaops--t-acme0001--oaspec--operation` — ACME's operation index
@@ -133,13 +135,13 @@ slaops--{tenantId}--oaspec--{entity}--search
 
 The five aliases for tenant `t-acme0001`:
 
-| Alias | Initial backing indices | After first private upload |
-|---|---|---|
-| `slaops--t-acme0001--oaspec--spec--search` | `slaops--t-glbl0000--oaspec--spec` | + `slaops--t-acme0001--oaspec--spec` |
-| `slaops--t-acme0001--oaspec--server--search` | `slaops--t-glbl0000--oaspec--server` | + `slaops--t-acme0001--oaspec--server` |
+| Alias                                           | Initial backing indices                 | After first private upload                |
+| ----------------------------------------------- | --------------------------------------- | ----------------------------------------- |
+| `slaops--t-acme0001--oaspec--spec--search`      | `slaops--t-glbl0000--oaspec--spec`      | + `slaops--t-acme0001--oaspec--spec`      |
+| `slaops--t-acme0001--oaspec--server--search`    | `slaops--t-glbl0000--oaspec--server`    | + `slaops--t-acme0001--oaspec--server`    |
 | `slaops--t-acme0001--oaspec--operation--search` | `slaops--t-glbl0000--oaspec--operation` | + `slaops--t-acme0001--oaspec--operation` |
-| `slaops--t-acme0001--oaspec--param--search` | `slaops--t-glbl0000--oaspec--param` | + `slaops--t-acme0001--oaspec--param` |
-| `slaops--t-acme0001--oaspec--model--search` | `slaops--t-glbl0000--oaspec--model` | + `slaops--t-acme0001--oaspec--model` |
+| `slaops--t-acme0001--oaspec--param--search`     | `slaops--t-glbl0000--oaspec--param`     | + `slaops--t-acme0001--oaspec--param`     |
+| `slaops--t-acme0001--oaspec--model--search`     | `slaops--t-glbl0000--oaspec--model`     | + `slaops--t-acme0001--oaspec--model`     |
 
 All five aliases are created on tenant onboarding, initially pointing only at the global tier. When a tenant uploads their first private spec, all five aliases are updated in a single `POST /_aliases` bulk action to add the tenant's private indices.
 
@@ -210,11 +212,11 @@ There is no `visibility` field. Access control is enforced at the index level (I
 
 ### Sources
 
-| Source | Format | Priority |
-|---|---|---|
-| [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory) | Structured directory (YAML/JSON) | Primary |
-| Official provider portals (Stripe, Twilio, AWS, etc.) | Provider-published specs | Secondary |
-| Curated internal additions | Manual upload by SLAOps team | Supplementary |
+| Source                                                                        | Format                           | Priority      |
+| ----------------------------------------------------------------------------- | -------------------------------- | ------------- |
+| [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory) | Structured directory (YAML/JSON) | Primary       |
+| Official provider portals (Stripe, Twilio, AWS, etc.)                         | Provider-published specs         | Secondary     |
+| Curated internal additions                                                    | Manual upload by SLAOps team     | Supplementary |
 
 ### Ingestion Pipeline
 
@@ -282,6 +284,7 @@ X-Tenant-Id: {tenantId}
 ```
 
 The upload handler:
+
 1. Validates the spec (OpenAPI 3.x only; Swagger 2.0 converted upstream)
 2. Writes the spec to the tenant's dedicated OASpec S3 bucket (`{region}--{env}--slaops--{tenantId}--oaspec--storage--specs`) under `APIs/{provider}/{service}/{version}/openapi.yaml`
 3. S3 event triggers the shared Indexer Lambda
@@ -337,14 +340,15 @@ Removes from both S3 and OpenSearch. The S3 delete triggers an indexer event tha
 
 The table below uses `{entity}` as shorthand for any of the five entity types (`spec`, `server`, `operation`, `param`, `model`).
 
-| Actor | `slaops--t-glbl0000--oaspec--{entity}` | `slaops--{tenantId}--oaspec--{entity}` | `slaops--{tenantId}--oaspec--{entity}--search` (alias) |
-|---|---|---|---|
-| SLAOps ingestion pipeline | Read + Write | — | — |
-| Tenant (own) | Read-only | Read + Write | Read (resolves to both) |
-| Tenant (other) | Read-only | No access | No access |
-| SLAOps platform services (enrichment) | Read | Read | Read (global search) |
+| Actor                                 | `slaops--t-glbl0000--oaspec--{entity}` | `slaops--{tenantId}--oaspec--{entity}` | `slaops--{tenantId}--oaspec--{entity}--search` (alias) |
+| ------------------------------------- | -------------------------------------- | -------------------------------------- | ------------------------------------------------------ |
+| SLAOps ingestion pipeline             | Read + Write                           | —                                      | —                                                      |
+| Tenant (own)                          | Read-only                              | Read + Write                           | Read (resolves to both)                                |
+| Tenant (other)                        | Read-only                              | No access                              | No access                                              |
+| SLAOps platform services (enrichment) | Read                                   | Read                                   | Read (global search)                                   |
 
 OpenSearch index-level permissions are enforced via AWS IAM data access policies on the OpenSearch Serverless collection. Each tenant's Lambda execution role is granted:
+
 - Read access to all `slaops--t-glbl0000--oaspec--{entity}` indices
 - Read + Write access to all `slaops--{tenantId}--oaspec--{entity}` indices (own tenant only)
 - Read access to all `slaops--{tenantId}--oaspec--{entity}--search` aliases

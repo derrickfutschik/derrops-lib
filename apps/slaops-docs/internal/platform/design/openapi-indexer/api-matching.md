@@ -132,23 +132,23 @@ Each operation is stored with a `pathKey` — a compact string encoding of metho
 
 **Method initials:**
 
-| Method | Initial |
-|---|---|
-| GET | `G` |
-| POST | `P` |
-| PUT | `U` |
-| DELETE | `D` |
-| PATCH | `A` |
-| HEAD | `H` |
-| OPTIONS | `O` |
+| Method  | Initial |
+| ------- | ------- |
+| GET     | `G`     |
+| POST    | `P`     |
+| PUT     | `U`     |
+| DELETE  | `D`     |
+| PATCH   | `A`     |
+| HEAD    | `H`     |
+| OPTIONS | `O`     |
 
 **Path compaction rules:**
 
-| Segment | Compacted form |
-|---|---|
-| Literal segment | unchanged — `users`, `orders` |
-| `{param}` where schema type is integer-ish | `{i}` |
-| `{param}` where schema type is string | `{s}` |
+| Segment                                    | Compacted form                |
+| ------------------------------------------ | ----------------------------- |
+| Literal segment                            | unchanged — `users`, `orders` |
+| `{param}` where schema type is integer-ish | `{i}`                         |
+| `{param}` where schema type is string      | `{s}`                         |
 
 Examples:
 
@@ -175,14 +175,14 @@ The trie is invalidated when a new version is indexed for the spec (push notific
 
 The fields on `OaServerDocument` that drive matching (see [OpenSearch Indices — Server Index](./opensearch-indices#2-server-index-slaops--tenantid--oaspec--server) for the full schema):
 
-| Field | Type | Role |
-|---|---|---|
-| `hostShape` | `keyword` | Primary lookup key — host template with all vars replaced by `*` |
-| `basePath` | `keyword` | Path prefix for stage 2 disambiguation |
-| `dnsSuffix` | `keyword` | Public suffix + one label — used during shape generation |
-| `hostTemplate` | `text` | Raw hostname with `{variable}` placeholders — human display |
-| `fixedLabelsText` | `text` | Space-separated fixed subdomain labels |
-| `varLabelsText` | `text` | Space-separated variable names (e.g. `"region"`) |
+| Field             | Type      | Role                                                             |
+| ----------------- | --------- | ---------------------------------------------------------------- |
+| `hostShape`       | `keyword` | Primary lookup key — host template with all vars replaced by `*` |
+| `basePath`        | `keyword` | Path prefix for stage 2 disambiguation                           |
+| `dnsSuffix`       | `keyword` | Public suffix + one label — used during shape generation         |
+| `hostTemplate`    | `text`    | Raw hostname with `{variable}` placeholders — human display      |
+| `fixedLabelsText` | `text`    | Space-separated fixed subdomain labels                           |
+| `varLabelsText`   | `text`    | Space-separated variable names (e.g. `"region"`)                 |
 
 ---
 
@@ -190,22 +190,22 @@ The fields on `OaServerDocument` that drive matching (see [OpenSearch Indices �
 
 These test cases define the expected `hostShape` output for known real-world URL patterns. They are used to validate the host shape derivation algorithm.
 
-| Service | URL Pattern | Expected `hostShape` |
-|---|---|---|
-| AWS S3 (legacy path-style) | `https://s3.{region}.amazonaws.com` | `s3.*.amazonaws.com` |
-| AWS S3 (virtual-hosted style) | `https://{bucket}.s3.{region}.amazonaws.com` | `*.s3.*.amazonaws.com` |
-| AWS S3 (dual-stack) | `https://s3.dualstack.{region}.amazonaws.com` | `s3.dualstack.*.amazonaws.com` |
-| AWS API Gateway (REST) | `https://{restapi-id}.execute-api.{region}.amazonaws.com` | `*.execute-api.*.amazonaws.com` |
-| AWS STS (global legacy) | `https://sts.amazonaws.com` | `sts.amazonaws.com` (no wildcard — no variables) |
-| AWS STS (regional) | `https://sts.{region}.amazonaws.com` | `sts.*.amazonaws.com` |
-| AWS OpenSearch | `https://search-{domain}.{region}.es.amazonaws.com` | `*.*.es.amazonaws.com` |
-| AWS EventBridge Pipes | `https://pipes.{region}.amazonaws.com` | `pipes.*.amazonaws.com` |
-| AWS Bedrock Runtime | `https://bedrock-runtime.{region}.amazonaws.com` | `bedrock-runtime.*.amazonaws.com` |
-| AWS Bedrock Agents | `https://bedrock-agents-runtime.{region}.amazonaws.com` | `bedrock-agents-runtime.*.amazonaws.com` |
-| AWS CloudFront (global) | `https://cloudfront.amazonaws.com` | `cloudfront.amazonaws.com` (no variables) |
-| AWS ECR Docker Registry | `https://{aws_account}.dkr.ecr.{region}.amazonaws.com` | `*.dkr.ecr.*.amazonaws.com` |
-| AWS Lambda Invoke URL | `https://{api-id}.lambda-url.{region}.on.aws` | `*.lambda-url.*.on.aws` |
-| AWS CloudTrail | `https://cloudtrail.{region}.amazonaws.com` | `cloudtrail.*.amazonaws.com` |
+| Service                       | URL Pattern                                               | Expected `hostShape`                             |
+| ----------------------------- | --------------------------------------------------------- | ------------------------------------------------ |
+| AWS S3 (legacy path-style)    | `https://s3.{region}.amazonaws.com`                       | `s3.*.amazonaws.com`                             |
+| AWS S3 (virtual-hosted style) | `https://{bucket}.s3.{region}.amazonaws.com`              | `*.s3.*.amazonaws.com`                           |
+| AWS S3 (dual-stack)           | `https://s3.dualstack.{region}.amazonaws.com`             | `s3.dualstack.*.amazonaws.com`                   |
+| AWS API Gateway (REST)        | `https://{restapi-id}.execute-api.{region}.amazonaws.com` | `*.execute-api.*.amazonaws.com`                  |
+| AWS STS (global legacy)       | `https://sts.amazonaws.com`                               | `sts.amazonaws.com` (no wildcard — no variables) |
+| AWS STS (regional)            | `https://sts.{region}.amazonaws.com`                      | `sts.*.amazonaws.com`                            |
+| AWS OpenSearch                | `https://search-{domain}.{region}.es.amazonaws.com`       | `*.*.es.amazonaws.com`                           |
+| AWS EventBridge Pipes         | `https://pipes.{region}.amazonaws.com`                    | `pipes.*.amazonaws.com`                          |
+| AWS Bedrock Runtime           | `https://bedrock-runtime.{region}.amazonaws.com`          | `bedrock-runtime.*.amazonaws.com`                |
+| AWS Bedrock Agents            | `https://bedrock-agents-runtime.{region}.amazonaws.com`   | `bedrock-agents-runtime.*.amazonaws.com`         |
+| AWS CloudFront (global)       | `https://cloudfront.amazonaws.com`                        | `cloudfront.amazonaws.com` (no variables)        |
+| AWS ECR Docker Registry       | `https://{aws_account}.dkr.ecr.{region}.amazonaws.com`    | `*.dkr.ecr.*.amazonaws.com`                      |
+| AWS Lambda Invoke URL         | `https://{api-id}.lambda-url.{region}.on.aws`             | `*.lambda-url.*.on.aws`                          |
+| AWS CloudTrail                | `https://cloudtrail.{region}.amazonaws.com`               | `cloudtrail.*.amazonaws.com`                     |
 
 ### AWS OpenSearch exception
 
@@ -226,6 +226,7 @@ The capabilities below are planned but not yet designed in detail. They are reco
 A scheduled job will periodically attempt to locate or re-fetch an OpenAPI spec for a known API when no spec has been indexed recently or when the current spec has been flagged as stale. This differs from the existing `url_fetch` strategy (see [Version Strategies](./version-strategies#url_fetch)) in that it is triggered automatically by the platform rather than by explicit tenant configuration.
 
 **Triggers (planned):**
+
 - API has not had a new spec version indexed within a configurable threshold
 - Three or more consecutive `url_fetch` failures
 

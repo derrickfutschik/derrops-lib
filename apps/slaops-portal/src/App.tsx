@@ -10,17 +10,17 @@ import { Hub } from 'aws-amplify/utils'
 import React from 'react'
 import { Provider } from 'react-redux'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { store } from './store'
 import AddService from './pages/AddService'
+import ApiDetail from './pages/ApiDetail'
 import ApiTester from './pages/ApiTester'
 import Apis from './pages/Apis'
 import ApisNew from './pages/ApisNew'
-import ApiDetail from './pages/ApiDetail'
 import Connections from './pages/Connections'
 import Dashboard from './pages/Dashboard'
 import Landing from './pages/Landing'
 import NotFound from './pages/NotFound'
 import ServiceDetails from './pages/service-details'
+import { store } from './store'
 
 import outputs from '../amplify_outputs.json'
 
@@ -155,84 +155,84 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <Provider store={store}>
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/add-service"
-            element={
-              <ProtectedRoute>
-                <AddService />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/service/:id"
-            element={
-              <ProtectedRoute>
-                <ServiceDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/api-tester"
-            element={
-              <ProtectedRoute>
-                <ApiTester />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings/connections"
-            element={
-              <ProtectedRoute>
-                <Connections />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/apis"
-            element={
-              <ProtectedRoute>
-                <Apis />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/apis/new"
-            element={
-              <ProtectedRoute>
-                <ApisNew />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/apis/:id"
-            element={
-              <ProtectedRoute>
-                <ApiDetail />
-              </ProtectedRoute>
-            }
-          />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/add-service"
+              element={
+                <ProtectedRoute>
+                  <AddService />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/service/:id"
+              element={
+                <ProtectedRoute>
+                  <ServiceDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/api-tester"
+              element={
+                <ProtectedRoute>
+                  <ApiTester />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/connections"
+              element={
+                <ProtectedRoute>
+                  <Connections />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/apis"
+              element={
+                <ProtectedRoute>
+                  <Apis />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/apis/new"
+              element={
+                <ProtectedRoute>
+                  <ApisNew />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/apis/:id"
+              element={
+                <ProtectedRoute>
+                  <ApiDetail />
+                </ProtectedRoute>
+              }
+            />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   </Provider>
 )
 

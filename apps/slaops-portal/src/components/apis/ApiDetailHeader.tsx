@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom'
+import type { ApiEntity } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Pencil } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { ApiManagementModeBadge } from './ApiManagementModeBadge'
-import type { ApiEntity } from '@/client/slaops-cloud'
 
 interface ApiDetailHeaderProps {
   api: ApiEntity

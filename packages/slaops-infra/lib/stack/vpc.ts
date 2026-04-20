@@ -103,7 +103,7 @@ export class VpcStack extends Stack {
       maxAzs: 3,
       natGateways,
       enableDnsHostnames: true, // Required for RDS/OpenSearch/VPC endpoints
-      enableDnsSupport: true,   // Required for private DNS resolution
+      enableDnsSupport: true, // Required for private DNS resolution
       subnetConfiguration: [
         {
           cidrMask: 24,

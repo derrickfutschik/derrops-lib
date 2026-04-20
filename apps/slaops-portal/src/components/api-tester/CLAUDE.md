@@ -36,19 +36,19 @@ When adding new keyboard shortcuts to any component in this directory (e.g. `Max
 
 ### Current shortcuts
 
-| Key | Action | Section |
-|-----|--------|---------|
-| `⌘ K` | Toggle Highlight Mode | JSON Viewer |
-| `⌘ J` | Toggle Filter Mode | JSON Viewer |
-| `⌘ 8` | Wildcard array indices (`[0]` → `[*]`) | JSON Viewer |
-| `⌘ I` | Toggle value truncation (click individual value to expand) | JSON Viewer |
-| `⌘ U` | Filter duplicate values (arrays only) | JSON Viewer |
-| `⌘ A` | Select all content | JSON Viewer |
-| `⌘ Click` | Use value as JMESPath expression | JSON Viewer |
-| `↑ / ↓` | Browse query history | JMESPath Input |
-| `Enter` | Save query to history | JMESPath Input |
-| `Esc` | Close history / revert query | JMESPath Input |
-| `Double-click` | Show query history | JMESPath Input |
-| `↔` | Expand to bottom panel | Viewer Controls |
-| `⤢` | Maximize / fullscreen | Viewer Controls |
-| `⌘ H` | Show keyboard shortcuts popup | Viewer Controls |
+| Key            | Action                                                     | Section         |
+| -------------- | ---------------------------------------------------------- | --------------- |
+| `⌘ K`          | Toggle Highlight Mode                                      | JSON Viewer     |
+| `⌘ J`          | Toggle Filter Mode                                         | JSON Viewer     |
+| `⌘ 8`          | Wildcard array indices (`[0]` → `[*]`)                     | JSON Viewer     |
+| `⌘ I`          | Toggle value truncation (click individual value to expand) | JSON Viewer     |
+| `⌘ U`          | Filter duplicate values (arrays only)                      | JSON Viewer     |
+| `⌘ A`          | Select all content                                         | JSON Viewer     |
+| `⌘ Click`      | Use value as JMESPath expression                           | JSON Viewer     |
+| `↑ / ↓`        | Browse query history                                       | JMESPath Input  |
+| `Enter`        | Save query to history                                      | JMESPath Input  |
+| `Esc`          | Close history / revert query                               | JMESPath Input  |
+| `Double-click` | Show query history                                         | JMESPath Input  |
+| `↔`           | Expand to bottom panel                                     | Viewer Controls |
+| `⤢`            | Maximize / fullscreen                                      | Viewer Controls |
+| `⌘ H`          | Show keyboard shortcuts popup                              | Viewer Controls |

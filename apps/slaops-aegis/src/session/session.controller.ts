@@ -30,7 +30,8 @@ export class SessionController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Revoke a session delegation JWT by JTI',
-    description: 'Adds the JTI to the in-memory revocation set. Relay will reject jobs carrying this JWT on next validation.',
+    description:
+      'Adds the JTI to the in-memory revocation set. Relay will reject jobs carrying this JWT on next validation.',
   })
   @ApiParam({ name: 'jti', description: 'JTI (unique ID) of the session delegation JWT to revoke' })
   @ApiResponse({ status: 204 })

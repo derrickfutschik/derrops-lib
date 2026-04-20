@@ -1,18 +1,18 @@
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Loader2 } from 'lucide-react'
 import type { ApiEntity, UpdateApiDto } from '@/client/slaops-cloud'
 import { ApiEntityManagementModeEnum, VersionFetchStateStrategyEnum } from '@/client/slaops-cloud'
-import { useUpdateApi } from '@/hooks/useApisApi'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
+import { useUpdateApi } from '@/hooks/useApisApi'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2 } from 'lucide-react'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
 
 const schema = z.object({
   name: z.string().min(1).max(255),
@@ -35,7 +35,13 @@ export function EditApiDrawer({ api, open, onClose }: EditApiDrawerProps) {
   const { toast } = useToast()
   const updateMutation = useUpdateApi()
 
-  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
@@ -87,7 +93,12 @@ export function EditApiDrawer({ api, open, onClose }: EditApiDrawerProps) {
   }
 
   return (
-    <Sheet open={open} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Sheet
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Edit API</SheetTitle>
@@ -106,21 +117,40 @@ export function EditApiDrawer({ api, open, onClose }: EditApiDrawerProps) {
 
           <div className="space-y-1.5">
             <Label htmlFor="externalUrl">External URL</Label>
-            <Input id="externalUrl" type="url" placeholder="https://..." {...register('externalUrl')} />
-            {errors.externalUrl && <p className="text-xs text-destructive">{errors.externalUrl.message}</p>}
+            <Input
+              id="externalUrl"
+              type="url"
+              placeholder="https://..."
+              {...register('externalUrl')}
+            />
+            {errors.externalUrl && (
+              <p className="text-xs text-destructive">{errors.externalUrl.message}</p>
+            )}
           </div>
 
           {isPrivate && (
             <div className="space-y-2">
               <Label>Version strategy</Label>
-              <RadioGroup defaultValue={strategy} onValueChange={(v) => reset({ ...watch(), versionStrategy: v as 'manual' | 'url_fetch' })}>
+              <RadioGroup
+                defaultValue={strategy}
+                onValueChange={(v) =>
+                  reset({ ...watch(), versionStrategy: v as 'manual' | 'url_fetch' })
+                }
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value={VersionFetchStateStrategyEnum.Manual} id="edit-manual" />
-                  <Label htmlFor="edit-manual" className="cursor-pointer">Manual upload</Label>
+                  <Label htmlFor="edit-manual" className="cursor-pointer">
+                    Manual upload
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value={VersionFetchStateStrategyEnum.UrlFetch} id="edit-url-fetch" />
-                  <Label htmlFor="edit-url-fetch" className="cursor-pointer">Scheduled URL fetch</Label>
+                  <RadioGroupItem
+                    value={VersionFetchStateStrategyEnum.UrlFetch}
+                    id="edit-url-fetch"
+                  />
+                  <Label htmlFor="edit-url-fetch" className="cursor-pointer">
+                    Scheduled URL fetch
+                  </Label>
                 </div>
               </RadioGroup>
             </div>
@@ -130,8 +160,15 @@ export function EditApiDrawer({ api, open, onClose }: EditApiDrawerProps) {
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="fetchUrl">Fetch URL *</Label>
-                <Input id="fetchUrl" type="url" placeholder="https://..." {...register('fetchUrl')} />
-                {errors.fetchUrl && <p className="text-xs text-destructive">{errors.fetchUrl.message}</p>}
+                <Input
+                  id="fetchUrl"
+                  type="url"
+                  placeholder="https://..."
+                  {...register('fetchUrl')}
+                />
+                {errors.fetchUrl && (
+                  <p className="text-xs text-destructive">{errors.fetchUrl.message}</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="fetchCron">Fetch schedule (cron)</Label>
@@ -142,7 +179,9 @@ export function EditApiDrawer({ api, open, onClose }: EditApiDrawerProps) {
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={updateMutation.isPending}>
               {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save

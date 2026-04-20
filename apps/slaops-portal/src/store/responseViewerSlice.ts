@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
+import { ActionArea, ActionGroup, actionRegistry } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------
@@ -180,12 +180,14 @@ export const {
     group: ActionGroup.Json,
   },
   setJmespathQuery: {
-    description: 'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.',
+    description:
+      'Sets the JMESPath expression used to filter or highlight nodes in the JSON viewer.',
     area: ActionArea.Response,
     group: ActionGroup.Json,
   },
   setJmespathMode: {
-    description: "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight').",
+    description:
+      "Sets whether the JMESPath expression filters nodes out ('filter') or highlights matching nodes ('highlight').",
     area: ActionArea.Response,
     group: ActionGroup.Json,
   },
@@ -200,7 +202,8 @@ export const {
     group: ActionGroup.Json,
   },
   setJsonState: {
-    description: 'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.',
+    description:
+      'Bulk-updates multiple JSON viewer state properties at once. Used for backward-compatible initialization from props.',
     area: ActionArea.Response,
     group: ActionGroup.Json,
   },
@@ -210,27 +213,32 @@ export const {
     group: ActionGroup.Table,
   },
   setSqlMode: {
-    description: "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight').",
+    description:
+      "Sets whether the SQL expression filters rows out ('filter') or highlights matching rows ('highlight').",
     area: ActionArea.Response,
     group: ActionGroup.Table,
   },
   setJoinColumn: {
-    description: 'Sets the column key used as the join key when merging a secondary data source into the table.',
+    description:
+      'Sets the column key used as the join key when merging a secondary data source into the table.',
     area: ActionArea.Response,
     group: ActionGroup.Table,
   },
   setJoiningEnabled: {
-    description: 'Enables or disables the table join feature that merges a secondary data source alongside the primary response.',
+    description:
+      'Enables or disables the table join feature that merges a secondary data source alongside the primary response.',
     area: ActionArea.Response,
     group: ActionGroup.Table,
   },
   setAdditionalJoinPaths: {
-    description: 'Sets the list of additional JSON paths used to locate join data within the secondary source.',
+    description:
+      'Sets the list of additional JSON paths used to locate join data within the secondary source.',
     area: ActionArea.Response,
     group: ActionGroup.Table,
   },
   reconcileColumns: {
-    description: 'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.',
+    description:
+      'Merges a new column list with existing preferences: preserves hidden/sort state for existing columns, adds defaults for new ones, and drops removed columns.',
     area: ActionArea.Response,
     group: ActionGroup.TableColumns,
   },
@@ -245,7 +253,8 @@ export const {
     group: ActionGroup.TableColumns,
   },
   setColumnSort: {
-    description: 'Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting.',
+    description:
+      'Sets the sort direction for a specific column (single-column sort model). Clears all other column sorts. Pass direction: null to remove sorting.',
     area: ActionArea.Response,
     group: ActionGroup.TableColumns,
   },
@@ -258,7 +267,8 @@ export const responseViewerReducer = responseViewerSlice.reducer
 // ---------------------------------------------------------------------------
 
 export const selectSelectedView = (state: RootState) => state.responseViewer.selectedView
-export const selectHighlightDuplicates = (state: RootState) => state.responseViewer.highlightDuplicates
+export const selectHighlightDuplicates = (state: RootState) =>
+  state.responseViewer.highlightDuplicates
 export const selectJsonState = (state: RootState) => state.responseViewer.json
 export const selectTableState = (state: RootState) => state.responseViewer.table
 
@@ -270,7 +280,5 @@ export const selectActiveSortColumn = (state: RootState) => {
 
 /** Returns a Set of hidden column ids. */
 export const selectHiddenColumnIds = (state: RootState): Set<string> => {
-  return new Set(
-    state.responseViewer.table.columns.filter((c) => c.hidden).map((c) => c.id),
-  )
+  return new Set(state.responseViewer.table.columns.filter((c) => c.hidden).map((c) => c.id))
 }

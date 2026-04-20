@@ -113,7 +113,15 @@ const PropertyKeyWithTooltip: React.FC<{
   truncated?: boolean
   onJmespathSelect?: (path: string) => void
   jmesPath: string
-}> = ({ keyName, description, propType, validationError, truncated, onJmespathSelect, jmesPath }) => {
+}> = ({
+  keyName,
+  description,
+  propType,
+  validationError,
+  truncated,
+  onJmespathSelect,
+  jmesPath,
+}) => {
   const [open, setOpen] = useState(false)
   const isRed = !!(validationError || truncated)
 
@@ -184,7 +192,16 @@ const CollapsibleArray: React.FC<{
   indent: number
   onJmespathSelect?: (path: string) => void
   truncateValues?: boolean
-}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect, truncateValues }) => {
+}> = ({
+  value,
+  schema,
+  validationErrors,
+  path,
+  jmesPath,
+  indent,
+  onJmespathSelect,
+  truncateValues,
+}) => {
   const [collapsed, setCollapsed] = useState(false)
   const [arrayExpanded, setArrayExpanded] = useState(false)
   const indentStr = '  '.repeat(indent)
@@ -193,7 +210,10 @@ const CollapsibleArray: React.FC<{
   const itemSchema = schema?.items
 
   const isArrayOfObjects =
-    value.length > 0 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])
+    value.length > 0 &&
+    typeof value[0] === 'object' &&
+    value[0] !== null &&
+    !Array.isArray(value[0])
   const arrayLimit = isArrayOfObjects ? TRUNCATE_ARRAY_OBJECT_LENGTH : TRUNCATE_ARRAY_LENGTH
   const isTruncatableArray = !!(truncateValues && value.length > arrayLimit)
   const displayedItems = isTruncatableArray && !arrayExpanded ? value.slice(0, arrayLimit) : value
@@ -278,7 +298,16 @@ const CollapsibleObject: React.FC<{
   indent: number
   onJmespathSelect?: (path: string) => void
   truncateValues?: boolean
-}> = ({ value, schema, validationErrors, path, jmesPath, indent, onJmespathSelect, truncateValues }) => {
+}> = ({
+  value,
+  schema,
+  validationErrors,
+  path,
+  jmesPath,
+  indent,
+  onJmespathSelect,
+  truncateValues,
+}) => {
   const [collapsed, setCollapsed] = useState(false)
   const indentStr = '  '.repeat(indent)
   const nextIndent = indent + 1
@@ -365,7 +394,16 @@ const CollapsibleObject: React.FC<{
               plainKey
             )}
             {': '}
-            {renderJsonNode(val, propSchema, validationErrors, propPath, propJmesPath, nextIndent, onJmespathSelect, truncateValues)}
+            {renderJsonNode(
+              val,
+              propSchema,
+              validationErrors,
+              propPath,
+              propJmesPath,
+              nextIndent,
+              onJmespathSelect,
+              truncateValues,
+            )}
             {index < entries.length - 1 ? ',\n' : '\n'}
           </React.Fragment>
         )
@@ -395,19 +433,47 @@ const renderJsonNode = (
   }
 
   const clickProps = onJmespathSelect
-    ? { onClick: handlePrimitiveClick, className: 'cursor-pointer', title: 'Cmd/Ctrl+click to use as JMESPath' }
+    ? {
+        onClick: handlePrimitiveClick,
+        className: 'cursor-pointer',
+        title: 'Cmd/Ctrl+click to use as JMESPath',
+      }
     : {}
 
   if (value === null) {
-    return <span className={`text-red-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>null</span>
+    return (
+      <span
+        className={`text-red-400 ${clickProps.className ?? ''}`}
+        onClick={clickProps.onClick}
+        title={clickProps.title}
+      >
+        null
+      </span>
+    )
   }
 
   if (typeof value === 'boolean') {
-    return <span className={`text-blue-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>{value.toString()}</span>
+    return (
+      <span
+        className={`text-blue-400 ${clickProps.className ?? ''}`}
+        onClick={clickProps.onClick}
+        title={clickProps.title}
+      >
+        {value.toString()}
+      </span>
+    )
   }
 
   if (typeof value === 'number') {
-    return <span className={`text-amber-400 ${clickProps.className ?? ''}`} onClick={clickProps.onClick} title={clickProps.title}>{value}</span>
+    return (
+      <span
+        className={`text-amber-400 ${clickProps.className ?? ''}`}
+        onClick={clickProps.onClick}
+        title={clickProps.title}
+      >
+        {value}
+      </span>
+    )
   }
 
   if (typeof value === 'string') {
@@ -463,7 +529,20 @@ const JsonResponseViewerComponent: React.FC<JsonResponseViewerProps> = ({
 }) => {
   try {
     const parsed = JSON.parse(jsonString)
-    return <>{renderJsonNode(parsed, responseSchema, validationErrors, [], '', 0, onJmespathSelect, truncateValues)}</>
+    return (
+      <>
+        {renderJsonNode(
+          parsed,
+          responseSchema,
+          validationErrors,
+          [],
+          '',
+          0,
+          onJmespathSelect,
+          truncateValues,
+        )}
+      </>
+    )
   } catch {
     // If parsing fails, return the raw string
     return <>{jsonString}</>

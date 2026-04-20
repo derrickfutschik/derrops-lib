@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import type { VersionFetchState } from '@/client/slaops-cloud'
 import { VersionFetchStateLastStatusEnum } from '@/client/slaops-cloud'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDistanceToNow } from 'date-fns'
 
 interface ApiFetchStatusCardProps {
@@ -10,7 +10,11 @@ interface ApiFetchStatusCardProps {
 
 function StatusBadge({ status }: { status?: string }) {
   if (status === VersionFetchStateLastStatusEnum.Ok) {
-    return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0">ok</Badge>
+    return (
+      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0">
+        ok
+      </Badge>
+    )
   }
   if (status === VersionFetchStateLastStatusEnum.Error) {
     return <Badge variant="destructive">error</Badge>
@@ -44,12 +48,15 @@ export function ApiFetchStatusCard({ fetch: fetchState }: ApiFetchStatusCardProp
         <StatRow label="Fetch URL">{fetchState.url ?? '—'}</StatRow>
         <StatRow label="Schedule">{fetchState.cron ?? '—'}</StatRow>
         <StatRow label="Last fetched">{lastFetched}</StatRow>
-        <StatRow label="Last status"><StatusBadge status={fetchState.lastStatus} /></StatRow>
-        {fetchState.lastStatus === VersionFetchStateLastStatusEnum.Error && fetchState.lastError && (
-          <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive break-all">
-            {fetchState.lastError}
-          </div>
-        )}
+        <StatRow label="Last status">
+          <StatusBadge status={fetchState.lastStatus} />
+        </StatRow>
+        {fetchState.lastStatus === VersionFetchStateLastStatusEnum.Error &&
+          fetchState.lastError && (
+            <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive break-all">
+              {fetchState.lastError}
+            </div>
+          )}
       </CardContent>
     </Card>
   )

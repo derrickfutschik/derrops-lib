@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from 'react'
+import { CloudRelayJob } from '@/client/slaops-cloud'
 import { API_BASE_URL } from '@/config'
 import { cloudAxios } from '@/lib/cloud-api'
-import { CloudRelayJob } from '@/client/slaops-cloud'
+import { useCallback, useRef, useState } from 'react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,13 @@ interface RelayJobError {
   message: string
 }
 
-export type RelayJobStatus = 'idle' | 'submitting' | 'waiting' | 'completed' | 'failed' | 'timed_out'
+export type RelayJobStatus =
+  | 'idle'
+  | 'submitting'
+  | 'waiting'
+  | 'completed'
+  | 'failed'
+  | 'timed_out'
 
 export interface RelayJobState {
   jobId: string | null
@@ -88,7 +94,12 @@ export function useRelayJob() {
 
       // Direct mode: result returned synchronously
       if (submitResp.status === 'completed' && submitResp.result) {
-        setState((s) => ({ ...s, jobId: submitResp.id, status: 'completed', result: submitResp.result as RelayJobResult }))
+        setState((s) => ({
+          ...s,
+          jobId: submitResp.id,
+          status: 'completed',
+          result: submitResp.result as RelayJobResult,
+        }))
         return
       }
 
@@ -124,7 +135,11 @@ export function useRelayJob() {
           networkRetries = 0
 
           if (waitResp.status === 'completed') {
-            setState((s) => ({ ...s, status: 'completed', result: waitResp.result as RelayJobResult }))
+            setState((s) => ({
+              ...s,
+              status: 'completed',
+              result: waitResp.result as RelayJobResult,
+            }))
             return
           }
           if (waitResp.status === 'failed') {
@@ -146,7 +161,8 @@ export function useRelayJob() {
             setState((s) => ({
               ...s,
               status: 'failed',
-              error: err instanceof Error ? err.message : 'Network error — could not reach platform',
+              error:
+                err instanceof Error ? err.message : 'Network error — could not reach platform',
             }))
             return
           }

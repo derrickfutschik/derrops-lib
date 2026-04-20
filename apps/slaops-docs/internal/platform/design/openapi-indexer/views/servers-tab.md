@@ -41,13 +41,13 @@ The Servers tab lists all server entries indexed for the selected API version. S
 
 **Query params**:
 
-| Param | Default | Notes |
-|---|---|---|
-| `version` | _(latest)_ | `latest` sentinel or a specific version string |
-| `from` | `0` | OpenSearch `from` |
-| `size` | `10` | OpenSearch `size`, max `100` |
-| `sort` | `serverIndex` | Sortable fields: `serverIndex`, `scheme`, `hostShape`, `basePath`, `rawUrl` |
-| `order` | `asc` | `asc` or `desc` |
+| Param     | Default       | Notes                                                                       |
+| --------- | ------------- | --------------------------------------------------------------------------- |
+| `version` | _(latest)_    | `latest` sentinel or a specific version string                              |
+| `from`    | `0`           | OpenSearch `from`                                                           |
+| `size`    | `10`          | OpenSearch `size`, max `100`                                                |
+| `sort`    | `serverIndex` | Sortable fields: `serverIndex`, `scheme`, `hostShape`, `basePath`, `rawUrl` |
+| `order`   | `asc`         | `asc` or `desc`                                                             |
 
 No free-text search — the server list is typically small (1–5 entries) and pagination is provided for completeness.
 
@@ -57,10 +57,7 @@ No free-text search — the server list is typically small (1–5 entries) and p
 {
   "query": {
     "bool": {
-      "filter": [
-        { "term": { "apiId": "<apiId>" } },
-        { "term": { "latest": true } }
-      ]
+      "filter": [{ "term": { "apiId": "<apiId>" } }, { "term": { "latest": true } }]
     }
   },
   "sort": [{ "serverIndex": { "order": "asc" } }],
@@ -107,21 +104,22 @@ interface ServerHit {
 
 ### Column layout
 
-| Column | Field | Sortable | Hideable | Notes |
-|---|---|---|---|---|
-| **#** | `serverIndex` | Yes | No | The position of this server in the spec's `servers[]` array |
-| **URL** | `rawUrl` | Yes | No | Monospace; full raw URL from the spec |
-| **Scheme** | `scheme` | Yes | No | `https` / `http` / other; `SchemeBadge` coloured component |
-| **Host Shape** | `hostShape` | Yes | Yes | Normalised host pattern (e.g. `api.{tenant}.example.com`) |
-| **Host Template** | `hostTemplate` | Yes | Yes | Includes scheme and path (e.g. `https://api.{tenant}.example.com`) |
-| **Base Path** | `basePath` | Yes | Yes | Monospace; defaults to `/` when absent |
-| **DNS Suffix** | `dnsSuffix` | Yes | Yes | e.g. `.example.com` |
-| **Variables** | `variablesText` | No | Yes | Space-separated variable names, shown as small badges; hidden by default |
-| **Description** | `description` | No | Yes | Truncated; hidden by default |
+| Column            | Field           | Sortable | Hideable | Notes                                                                    |
+| ----------------- | --------------- | -------- | -------- | ------------------------------------------------------------------------ |
+| **#**             | `serverIndex`   | Yes      | No       | The position of this server in the spec's `servers[]` array              |
+| **URL**           | `rawUrl`        | Yes      | No       | Monospace; full raw URL from the spec                                    |
+| **Scheme**        | `scheme`        | Yes      | No       | `https` / `http` / other; `SchemeBadge` coloured component               |
+| **Host Shape**    | `hostShape`     | Yes      | Yes      | Normalised host pattern (e.g. `api.{tenant}.example.com`)                |
+| **Host Template** | `hostTemplate`  | Yes      | Yes      | Includes scheme and path (e.g. `https://api.{tenant}.example.com`)       |
+| **Base Path**     | `basePath`      | Yes      | Yes      | Monospace; defaults to `/` when absent                                   |
+| **DNS Suffix**    | `dnsSuffix`     | Yes      | Yes      | e.g. `.example.com`                                                      |
+| **Variables**     | `variablesText` | No       | Yes      | Space-separated variable names, shown as small badges; hidden by default |
+| **Description**   | `description`   | No       | Yes      | Truncated; hidden by default                                             |
 
 ### IndexedDataTable conventions
 
 All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
+
 - Sorting sends `sort` + `order` to the server via updated query params.
 - EyeOff hides a column client-side.
 - Status bar at the bottom: `{total} servers`.

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
+import { ActionArea, ActionGroup, actionRegistry } from './actionMeta'
 import type { RootState } from './index'
 
 // ---------------------------------------------------------------------------

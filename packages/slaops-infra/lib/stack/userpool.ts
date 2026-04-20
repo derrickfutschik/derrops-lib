@@ -58,11 +58,9 @@ export class AuthStack extends Stack {
       functionName: 'slaops--auth--cognito--pre-token-generation',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '..', 'functions', 'pre-token-generation'),
-      ),
+      code: lambda.Code.fromAsset(path.join(__dirname, '..', 'functions', 'pre-token-generation')),
       description:
-        'V2 Pre-Token Generation trigger. Reads tenantId from the user\'s Cognito Group and injects it into the access token and id_token. No external calls — groups arrive in the trigger event.',
+        "V2 Pre-Token Generation trigger. Reads tenantId from the user's Cognito Group and injects it into the access token and id_token. No external calls — groups arrive in the trigger event.",
     })
 
     // -------------------------------------------------------------------------
@@ -150,7 +148,8 @@ export class AuthStack extends Stack {
     // -------------------------------------------------------------------------
     this.sqsPublishRole = new iam.Role(this, 'SqsPublishRole', {
       roleName: 'slaops--platform--auth--sqs-publish-role',
-      description: 'Used by slaops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
+      description:
+        'Used by slaops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     })
 
@@ -214,13 +213,14 @@ export class AuthStack extends Stack {
       useDefaults: false,
       principalTags: {
         tenantId: 'tenantId', // Lambda-injected from Cognito Group name
-        userId: 'sub',        // Cognito User Pool subject — stable UUID per user
+        userId: 'sub', // Cognito User Pool subject — stable UUID per user
       },
     })
 
     const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
       roleName: 'slaops--platform--auth--identity-pool-auth-role',
-      description: 'Assumed by authenticated SLAOps CLI users — ABAC-scoped SQS relay consume access',
+      description:
+        'Assumed by authenticated SLAOps CLI users — ABAC-scoped SQS relay consume access',
       assumedBy: new iam.FederatedPrincipal(
         'cognito-identity.amazonaws.com',
         {
@@ -239,11 +239,7 @@ export class AuthStack extends Stack {
       new iam.PolicyStatement({
         sid: 'RelayQueueConsume',
         effect: iam.Effect.ALLOW,
-        actions: [
-          'sqs:ReceiveMessage',
-          'sqs:DeleteMessage',
-          'sqs:GetQueueAttributes',
-        ],
+        actions: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
         // ${aws:PrincipalTag/tenantId} and ${aws:PrincipalTag/userId} are
         // substituted at IAM evaluation time from the principal tags above.
         resources: [
@@ -294,7 +290,8 @@ export class AuthStack extends Stack {
 
     new CfnOutput(this, 'IdentityPoolId', {
       value: this.identityPool.ref,
-      description: 'Cognito Identity Pool ID — used by slaops-cli to exchange tokens for AWS credentials',
+      description:
+        'Cognito Identity Pool ID — used by slaops-cli to exchange tokens for AWS credentials',
       exportName: 'slaops--auth--cognito--identity-pool-id',
     })
 

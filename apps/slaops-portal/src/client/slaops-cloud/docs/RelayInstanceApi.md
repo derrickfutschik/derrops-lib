@@ -1,45 +1,38 @@
 # RelayInstanceApi
 
-All URIs are relative to *http://localhost*
+All URIs are relative to _http://localhost_
 
-|Method | HTTP request | Description|
-|------------- | ------------- | -------------|
-|[**relayInstanceControllerCreate**](#relayinstancecontrollercreate) | **POST** /cloud-relay/relay-instance | Register a new relay instance|
-|[**relayInstanceControllerFindAll**](#relayinstancecontrollerfindall) | **GET** /cloud-relay/relay-instance | List all relay instances for the tenant|
-|[**relayInstanceControllerFindOne**](#relayinstancecontrollerfindone) | **GET** /cloud-relay/relay-instance/{id} | Get a relay instance by ID|
-|[**relayInstanceControllerHealthCheck**](#relayinstancecontrollerhealthcheck) | **POST** /cloud-relay/relay-instance/{id}/health-check | Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)|
-|[**relayInstanceControllerRemove**](#relayinstancecontrollerremove) | **DELETE** /cloud-relay/relay-instance/{id} | Delete a relay instance|
-|[**relayInstanceControllerUpdate**](#relayinstancecontrollerupdate) | **PATCH** /cloud-relay/relay-instance/{id} | Update a relay instance|
+| Method                                                                        | HTTP request                                           | Description                                                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [**relayInstanceControllerCreate**](#relayinstancecontrollercreate)           | **POST** /cloud-relay/relay-instance                   | Register a new relay instance                                                               |
+| [**relayInstanceControllerFindAll**](#relayinstancecontrollerfindall)         | **GET** /cloud-relay/relay-instance                    | List all relay instances for the tenant                                                     |
+| [**relayInstanceControllerFindOne**](#relayinstancecontrollerfindone)         | **GET** /cloud-relay/relay-instance/{id}               | Get a relay instance by ID                                                                  |
+| [**relayInstanceControllerHealthCheck**](#relayinstancecontrollerhealthcheck) | **POST** /cloud-relay/relay-instance/{id}/health-check | Trigger a health check on the relay instance (mints a platform JWT and calls relay /health) |
+| [**relayInstanceControllerRemove**](#relayinstancecontrollerremove)           | **DELETE** /cloud-relay/relay-instance/{id}            | Delete a relay instance                                                                     |
+| [**relayInstanceControllerUpdate**](#relayinstancecontrollerupdate)           | **PATCH** /cloud-relay/relay-instance/{id}             | Update a relay instance                                                                     |
 
 # **relayInstanceControllerCreate**
-> RelayInstance relayInstanceControllerCreate(createRelayInstanceDto)
 
+> RelayInstance relayInstanceControllerCreate(createRelayInstanceDto)
 
 ### Example
 
 ```typescript
-import {
-    RelayInstanceApi,
-    Configuration,
-    CreateRelayInstanceDto
-} from './api';
+import { RelayInstanceApi, Configuration, CreateRelayInstanceDto } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new RelayInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new RelayInstanceApi(configuration)
 
-let createRelayInstanceDto: CreateRelayInstanceDto; //
+let createRelayInstanceDto: CreateRelayInstanceDto //
 
-const { status, data } = await apiInstance.relayInstanceControllerCreate(
-    createRelayInstanceDto
-);
+const { status, data } = await apiInstance.relayInstanceControllerCreate(createRelayInstanceDto)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **createRelayInstanceDto** | **CreateRelayInstanceDto**|  | |
-
+| Name                       | Type                       | Description | Notes |
+| -------------------------- | -------------------------- | ----------- | ----- |
+| **createRelayInstanceDto** | **CreateRelayInstanceDto** |             |       |
 
 ### Return type
 
@@ -51,38 +44,35 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**201** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **relayInstanceControllerFindAll**
-> Array<RelayInstance> relayInstanceControllerFindAll()
 
+> Array<RelayInstance> relayInstanceControllerFindAll()
 
 ### Example
 
 ```typescript
-import {
-    RelayInstanceApi,
-    Configuration
-} from './api';
+import { RelayInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new RelayInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new RelayInstanceApi(configuration)
 
-const { status, data } = await apiInstance.relayInstanceControllerFindAll();
+const { status, data } = await apiInstance.relayInstanceControllerFindAll()
 ```
 
 ### Parameters
-This endpoint does not have any parameters.
 
+This endpoint does not have any parameters.
 
 ### Return type
 
@@ -94,45 +84,39 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **relayInstanceControllerFindOne**
-> RelayInstance relayInstanceControllerFindOne()
 
+> RelayInstance relayInstanceControllerFindOne()
 
 ### Example
 
 ```typescript
-import {
-    RelayInstanceApi,
-    Configuration
-} from './api';
+import { RelayInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new RelayInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new RelayInstanceApi(configuration)
 
-let id: string; //RelayInstance UUID (default to undefined)
+let id: string //RelayInstance UUID (default to undefined)
 
-const { status, data } = await apiInstance.relayInstanceControllerFindOne(
-    id
-);
+const { status, data } = await apiInstance.relayInstanceControllerFindOne(id)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | RelayInstance UUID | defaults to undefined|
-
+| Name   | Type         | Description        | Notes                 |
+| ------ | ------------ | ------------------ | --------------------- |
+| **id** | [**string**] | RelayInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -144,46 +128,40 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **relayInstanceControllerHealthCheck**
-> RelayInstance relayInstanceControllerHealthCheck()
 
+> RelayInstance relayInstanceControllerHealthCheck()
 
 ### Example
 
 ```typescript
-import {
-    RelayInstanceApi,
-    Configuration
-} from './api';
+import { RelayInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new RelayInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new RelayInstanceApi(configuration)
 
-let id: string; //RelayInstance UUID (default to undefined)
+let id: string //RelayInstance UUID (default to undefined)
 
-const { status, data } = await apiInstance.relayInstanceControllerHealthCheck(
-    id
-);
+const { status, data } = await apiInstance.relayInstanceControllerHealthCheck(id)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | RelayInstance UUID | defaults to undefined|
-
+| Name   | Type         | Description        | Notes                 |
+| ------ | ------------ | ------------------ | --------------------- |
+| **id** | [**string**] | RelayInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -195,46 +173,40 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **relayInstanceControllerRemove**
-> relayInstanceControllerRemove()
 
+> relayInstanceControllerRemove()
 
 ### Example
 
 ```typescript
-import {
-    RelayInstanceApi,
-    Configuration
-} from './api';
+import { RelayInstanceApi, Configuration } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new RelayInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new RelayInstanceApi(configuration)
 
-let id: string; //RelayInstance UUID (default to undefined)
+let id: string //RelayInstance UUID (default to undefined)
 
-const { status, data } = await apiInstance.relayInstanceControllerRemove(
-    id
-);
+const { status, data } = await apiInstance.relayInstanceControllerRemove(id)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | RelayInstance UUID | defaults to undefined|
-
+| Name   | Type         | Description        | Notes                 |
+| ------ | ------------ | ------------------ | --------------------- |
+| **id** | [**string**] | RelayInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -246,50 +218,42 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**204** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **204**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **relayInstanceControllerUpdate**
-> RelayInstance relayInstanceControllerUpdate(updateRelayInstanceDto)
 
+> RelayInstance relayInstanceControllerUpdate(updateRelayInstanceDto)
 
 ### Example
 
 ```typescript
-import {
-    RelayInstanceApi,
-    Configuration,
-    UpdateRelayInstanceDto
-} from './api';
+import { RelayInstanceApi, Configuration, UpdateRelayInstanceDto } from './api'
 
-const configuration = new Configuration();
-const apiInstance = new RelayInstanceApi(configuration);
+const configuration = new Configuration()
+const apiInstance = new RelayInstanceApi(configuration)
 
-let id: string; //RelayInstance UUID (default to undefined)
-let updateRelayInstanceDto: UpdateRelayInstanceDto; //
+let id: string //RelayInstance UUID (default to undefined)
+let updateRelayInstanceDto: UpdateRelayInstanceDto //
 
-const { status, data } = await apiInstance.relayInstanceControllerUpdate(
-    id,
-    updateRelayInstanceDto
-);
+const { status, data } = await apiInstance.relayInstanceControllerUpdate(id, updateRelayInstanceDto)
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **updateRelayInstanceDto** | **UpdateRelayInstanceDto**|  | |
-| **id** | [**string**] | RelayInstance UUID | defaults to undefined|
-
+| Name                       | Type                       | Description        | Notes                 |
+| -------------------------- | -------------------------- | ------------------ | --------------------- |
+| **updateRelayInstanceDto** | **UpdateRelayInstanceDto** |                    |                       |
+| **id**                     | [**string**]               | RelayInstance UUID | defaults to undefined |
 
 ### Return type
 
@@ -301,15 +265,14 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-|**404** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+| **404**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

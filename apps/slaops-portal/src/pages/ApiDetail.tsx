@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Skeleton } from '@/components/ui/skeleton'
 import { ApiDetailHeader } from '@/components/apis/ApiDetailHeader'
-import { OverviewTab } from '@/components/apis/OverviewTab'
-import { VersionsTab } from '@/components/apis/VersionsTab'
-import { OperationsTab } from '@/components/apis/OperationsTab'
-import { ServersTab } from '@/components/apis/ServersTab'
-import { ParametersTab } from '@/components/apis/ParametersTab'
-import { ModelsTab } from '@/components/apis/ModelsTab'
 import { EditApiDrawer } from '@/components/apis/EditApiDrawer'
+import { ModelsTab } from '@/components/apis/ModelsTab'
+import { OperationsTab } from '@/components/apis/OperationsTab'
+import { OverviewTab } from '@/components/apis/OverviewTab'
+import { ParametersTab } from '@/components/apis/ParametersTab'
+import { ServersTab } from '@/components/apis/ServersTab'
+import { VersionsTab } from '@/components/apis/VersionsTab'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApi } from '@/hooks/useApisApi'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { selectDetailTab, setDetailTab } from '@/store/apisSlice'
 import { resetAllTabs } from '@/store/apiTabsSlice'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 
 const ApiDetail = () => {
   const { id } = useParams<{ id: string }>()
@@ -52,7 +52,10 @@ const ApiDetail = () => {
       <ApiDetailHeader api={api} onEdit={() => setEditOpen(true)} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={(v) => dispatch(setDetailTab(v as typeof activeTab))}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => dispatch(setDetailTab(v as typeof activeTab))}
+        >
           <TabsList className="bg-secondary/50 mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="versions">Versions</TabsTrigger>
@@ -62,12 +65,24 @@ const ApiDetail = () => {
             <TabsTrigger value="models">Models</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview"><OverviewTab api={api} /></TabsContent>
-          <TabsContent value="versions"><VersionsTab apiId={id ?? ''} /></TabsContent>
-          <TabsContent value="operations"><OperationsTab apiId={id ?? ''} /></TabsContent>
-          <TabsContent value="servers"><ServersTab apiId={id ?? ''} /></TabsContent>
-          <TabsContent value="parameters"><ParametersTab apiId={id ?? ''} /></TabsContent>
-          <TabsContent value="models"><ModelsTab apiId={id ?? ''} /></TabsContent>
+          <TabsContent value="overview">
+            <OverviewTab api={api} />
+          </TabsContent>
+          <TabsContent value="versions">
+            <VersionsTab apiId={id ?? ''} />
+          </TabsContent>
+          <TabsContent value="operations">
+            <OperationsTab apiId={id ?? ''} />
+          </TabsContent>
+          <TabsContent value="servers">
+            <ServersTab apiId={id ?? ''} />
+          </TabsContent>
+          <TabsContent value="parameters">
+            <ParametersTab apiId={id ?? ''} />
+          </TabsContent>
+          <TabsContent value="models">
+            <ModelsTab apiId={id ?? ''} />
+          </TabsContent>
         </Tabs>
       </main>
 

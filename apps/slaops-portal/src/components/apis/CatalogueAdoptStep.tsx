@@ -1,8 +1,8 @@
-import { Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CatalogueHit } from '@/types/indexer'
+import { Loader2 } from 'lucide-react'
 
 interface CatalogueAdoptStepProps {
   hit: CatalogueHit
@@ -28,7 +28,9 @@ export function CatalogueAdoptStep({ hit, isPending, onAdopt, onBack }: Catalogu
               <Badge variant="secondary">{hit.serverCount} servers</Badge>
             )}
             {hit.version && (
-              <Badge variant="outline" className="font-mono">{hit.version}</Badge>
+              <Badge variant="outline" className="font-mono">
+                {hit.version}
+              </Badge>
             )}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -37,7 +39,9 @@ export function CatalogueAdoptStep({ hit, isPending, onAdopt, onBack }: Catalogu
         </CardContent>
       </Card>
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack}>Back</Button>
+        <Button variant="outline" onClick={onBack}>
+          Back
+        </Button>
         <Button onClick={onAdopt} disabled={isPending}>
           {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Adopt API

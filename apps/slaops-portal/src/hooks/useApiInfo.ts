@@ -1,12 +1,12 @@
-import { useCallback } from 'react'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
 import { useAppDispatch } from '@/store/hooks'
-import { cloudAxios, cloudApiConfig } from '@/lib/cloud-api'
 import {
+  setInfoFetchResult,
   setInfoFetchStatus,
   setInfoFetchUrl,
-  setInfoFetchResult,
   type OpenApiInfoResult,
 } from '@/store/newApiWizardSlice'
+import { useCallback } from 'react'
 
 export function useApiInfo() {
   const dispatch = useAppDispatch()

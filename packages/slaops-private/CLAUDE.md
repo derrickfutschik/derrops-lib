@@ -21,7 +21,7 @@ import {
   findSpecs,
 } from '@slaops/private/src/test-utils/openapi-loader'
 
-const spec        = await loadOpenApiSpec('github.com', 'api.github.com', '1.1.4')
+const spec = await loadOpenApiSpec('github.com', 'api.github.com', '1.1.4')
 const githubSpecs = await findSpecs('github')
 ```
 

@@ -1,14 +1,14 @@
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Keyboard, Minimize2, Play } from 'lucide-react'
+import React, { useEffect, useRef } from 'react'
 import { JMESPathInputRow } from './JMESPathInputRow'
+import type { JoinColumnCandidate, JoiningContext } from './joining-utils'
 import { JsonViewPanel } from './JsonViewPanel'
 import { MarkdownViewPanel } from './MarkdownViewPanel'
-import { TableViewPanel } from './TableViewPanel'
 import { StatusRibbon } from './StatusRibbon'
+import { TableViewPanel } from './TableViewPanel'
 import { ViewModeTabs } from './ViewModeTabs'
-import { Keyboard, Minimize2, Play } from 'lucide-react'
-import React, { useRef, useEffect } from 'react'
-import type { JoiningContext, JoinColumnCandidate } from './joining-utils'
 
 type ViewMode = 'json' | 'markdown' | 'table'
 
@@ -123,7 +123,12 @@ export function MaximizedViewDialog({
   }, [open])
 
   return (
-    <Dialog open={open} onOpenChange={() => { /* only close via X button */ }}>
+    <Dialog
+      open={open}
+      onOpenChange={() => {
+        /* only close via X button */
+      }}
+    >
       <DialogContent
         className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] rounded-none border-none flex flex-col p-0 [&>button:last-child]:hidden"
         onEscapeKeyDown={(e) => e.preventDefault()}
@@ -203,7 +208,6 @@ export function MaximizedViewDialog({
             typingStartRef={typingStartRef}
             undoDebounceRef={undoDebounceRef}
             jsonContent={jsonContent}
-            
           />
         )}
         <div

@@ -1,6 +1,6 @@
-import yaml from 'js-yaml'
 import type { Service } from '@/client/slaops-cloud/models/service'
 import type { KeyValuePair } from '@/hooks/useSendRequest'
+import yaml from 'js-yaml'
 import type { OperationOption } from './types'
 import { HTTP_METHODS } from './types'
 
@@ -199,8 +199,13 @@ export function validateParamValue(
 }
 
 const COMMON_HEADERS = [
-  'content-type', 'accept', 'authorization', 'user-agent',
-  'host', 'connection', 'cache-control',
+  'content-type',
+  'accept',
+  'authorization',
+  'user-agent',
+  'host',
+  'connection',
+  'cache-control',
 ]
 
 export function validateRequest(

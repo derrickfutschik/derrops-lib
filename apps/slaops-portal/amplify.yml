@@ -10,8 +10,8 @@ applications:
   - appRoot: apps/slaops-portal
     env:
       variables:
-        NODE_OPTIONS: "--max-old-space-size=12000"
-        VITE_API_BASE_URL: "https://devserver.dersza.com"
+        NODE_OPTIONS: '--max-old-space-size=12000'
+        VITE_API_BASE_URL: 'https://devserver.dersza.com'
     frontend:
       buildPath: /
       phases:

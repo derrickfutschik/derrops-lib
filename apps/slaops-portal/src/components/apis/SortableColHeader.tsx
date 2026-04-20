@@ -1,6 +1,6 @@
-import { ArrowUp, ArrowDown, ArrowUpDown, EyeOff } from 'lucide-react'
 import { TableHead } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { ArrowDown, ArrowUp, ArrowUpDown, EyeOff } from 'lucide-react'
 
 interface SortableColHeaderProps {
   label: string
@@ -25,11 +25,7 @@ export function SortableColHeader({
 }: SortableColHeaderProps) {
   const isActive = activeField === field
 
-  const SortIcon = isActive
-    ? activeDirection === 'asc'
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown
+  const SortIcon = isActive ? (activeDirection === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
 
   return (
     <TableHead className={cn('group', className)}>

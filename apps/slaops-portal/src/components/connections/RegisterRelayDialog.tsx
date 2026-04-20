@@ -1,18 +1,13 @@
+import type { RelayInstance } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { API_BASE_URL } from '@/config'
 import { useCreateRelay } from '@/hooks/useConnectionsApi'
-import type { RelayInstance } from '@/client/slaops-cloud'
 import { useState } from 'react'
 import { CopyButton } from './CopyButton'
-import { API_BASE_URL } from '@/config'
 
 interface RegisterRelayDialogProps {
   open: boolean
@@ -32,7 +27,7 @@ export function RegisterRelayDialog({ open, onOpenChange }: RegisterRelayDialogP
   }
 
   const handleSubmitLocal = async () => {
-    const res = await createRelay.mutateAsync({ name: name || "My local relay", url: '' })
+    const res = await createRelay.mutateAsync({ name: name || 'My local relay', url: '' })
     setResult(res)
   }
 
@@ -68,14 +63,20 @@ export function RegisterRelayDialog({ open, onOpenChange }: RegisterRelayDialogP
                   <span>slaops relay start</span>
                 </div>
               </div>
-              <CopyButton text={`slaops relay init\nslaops relay start`} className="w-full border border-border" />
+              <CopyButton
+                text={`slaops relay init\nslaops relay start`}
+                className="w-full border border-border"
+              />
               <p className="text-xs text-muted-foreground">
-                Already initialized? Just run <code className="text-primary">slaops relay start</code>.
+                Already initialized? Just run{' '}
+                <code className="text-primary">slaops relay start</code>.
               </p>
               <p className="text-xs text-muted-foreground">
                 The relay will appear as Active once it connects.
               </p>
-              <Button onClick={handleClose} className="w-full">Done</Button>
+              <Button onClick={handleClose} className="w-full">
+                Done
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -91,10 +92,15 @@ export function RegisterRelayDialog({ open, onOpenChange }: RegisterRelayDialogP
                   </div>
                 </div>
                 <div className="bg-secondary/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-                  <p>Set this as <code className="text-primary">RELAY_ID</code> on your relay deployment.</p>
+                  <p>
+                    Set this as <code className="text-primary">RELAY_ID</code> on your relay
+                    deployment.
+                  </p>
                   <p>Also set:</p>
                   <div className="flex items-center gap-2">
-                    <code className="text-foreground break-all">SLAOPS_VENDOR_JWKS_URL = {jwksUrl}</code>
+                    <code className="text-foreground break-all">
+                      SLAOPS_VENDOR_JWKS_URL = {jwksUrl}
+                    </code>
                     <CopyButton text={jwksUrl} />
                   </div>
                 </div>
@@ -102,14 +108,20 @@ export function RegisterRelayDialog({ open, onOpenChange }: RegisterRelayDialogP
                   Then click "Test Connection" to confirm the relay is reachable.
                 </p>
               </div>
-              <Button onClick={handleClose} className="w-full">Done</Button>
+              <Button onClick={handleClose} className="w-full">
+                Done
+              </Button>
             </div>
           )
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="w-full bg-secondary/50">
-              <TabsTrigger value="standard" className="flex-1">Self-hosted / Managed</TabsTrigger>
-              <TabsTrigger value="local" className="flex-1">Local (dev)</TabsTrigger>
+              <TabsTrigger value="standard" className="flex-1">
+                Self-hosted / Managed
+              </TabsTrigger>
+              <TabsTrigger value="local" className="flex-1">
+                Local (dev)
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="standard" className="space-y-4 mt-4">
               <div className="space-y-2">

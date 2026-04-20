@@ -1,3 +1,4 @@
+import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -8,7 +9,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { useDeleteRelay, useHealthCheckRelay } from '@/hooks/useConnectionsApi'
 import { formatDistanceToNow } from 'date-fns'
 import { Activity, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -37,7 +37,8 @@ export function RelayInstancesTab({ relays, aegisInstances, isLoading }: RelayIn
     setTestingId(relay.id)
     try {
       const res = await healthCheck.mutateAsync(relay.id)
-      const status = typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
+      const status =
+        typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
       setTestResults((prev) => ({
         ...prev,
         [relay.id]: { ok: status === 'active', msg: status === 'active' ? 'Reachable' : status },
@@ -118,7 +119,9 @@ export function RelayInstancesTab({ relays, aegisInstances, isLoading }: RelayIn
                       <div className="flex items-center gap-2">
                         <StatusBadge status={status} />
                         {testResult && (
-                          <span className={`text-xs ${testResult.ok ? 'text-success' : 'text-destructive'}`}>
+                          <span
+                            className={`text-xs ${testResult.ok ? 'text-success' : 'text-destructive'}`}
+                          >
                             {testResult.ok ? '✓' : '✗'} {testResult.msg}
                           </span>
                         )}

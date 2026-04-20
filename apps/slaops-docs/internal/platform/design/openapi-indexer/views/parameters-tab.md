@@ -41,16 +41,16 @@ The Parameters tab lists all parameter documents indexed for the selected API ve
 
 **Query params**:
 
-| Param | Default | Notes |
-|---|---|---|
-| `version` | _(latest)_ | `latest` sentinel or a specific version string |
-| `from` | `0` | OpenSearch `from` |
-| `size` | `10` | OpenSearch `size`, max `100` |
-| `sort` | `name` | Sortable fields: `name`, `location`, `schemaType`, `required`, `deprecated` |
-| `order` | `asc` | `asc` or `desc` |
-| `q` | _(empty)_ | Full-text search across `name`, `description` |
-| `location` | _(all)_ | Filter by parameter location: `path`, `query`, `header`, `cookie` |
-| `operationId` | _(all)_ | Filter to parameters used by a specific operation ID (used by the Operation Detail panel) |
+| Param         | Default    | Notes                                                                                     |
+| ------------- | ---------- | ----------------------------------------------------------------------------------------- |
+| `version`     | _(latest)_ | `latest` sentinel or a specific version string                                            |
+| `from`        | `0`        | OpenSearch `from`                                                                         |
+| `size`        | `10`       | OpenSearch `size`, max `100`                                                              |
+| `sort`        | `name`     | Sortable fields: `name`, `location`, `schemaType`, `required`, `deprecated`               |
+| `order`       | `asc`      | `asc` or `desc`                                                                           |
+| `q`           | _(empty)_  | Full-text search across `name`, `description`                                             |
+| `location`    | _(all)_    | Filter by parameter location: `path`, `query`, `header`, `cookie`                         |
+| `operationId` | _(all)_    | Filter to parameters used by a specific operation ID (used by the Operation Detail panel) |
 
 **OpenSearch query** (against `slaops--{tenantId}--oaspec--param`):
 
@@ -58,10 +58,7 @@ The Parameters tab lists all parameter documents indexed for the selected API ve
 {
   "query": {
     "bool": {
-      "filter": [
-        { "term": { "apiId": "<apiId>" } },
-        { "term": { "latest": true } }
-      ],
+      "filter": [{ "term": { "apiId": "<apiId>" } }, { "term": { "latest": true } }],
       "must": [
         {
           "multi_match": {
@@ -119,20 +116,21 @@ interface ParameterHit {
 
 ### Column layout
 
-| Column | Field | Sortable | Hideable | Notes |
-|---|---|---|---|---|
-| **Name** | `name` | Yes | No | Monospace; always visible |
-| **Location** | `location` | Yes | No | `LocationBadge` — `path` (blue), `query` (grey), `header` (purple), `cookie` (orange) |
-| **Type** | `schemaType` + `schemaFormat` | Yes | No | `schemaType schemaFormat` monospace, e.g. `string date-time` |
-| **Required** | `required` | Yes | Yes | `✓` when true |
-| **Deprecated** | `deprecated` | Yes | Yes | Amber `⚠` icon; hidden by default (inline in Name when deprecated) |
-| **Description** | `description` | No | Yes | Truncated to one line; deprecated `⚠` prepended when `deprecated: true` |
-| **Example** | `exampleText` | No | Yes | Hidden by default |
-| **Used by** | `operationIdsText` | No | Yes | Comma count of operation IDs (e.g. "3 operations"); hover shows list |
+| Column          | Field                         | Sortable | Hideable | Notes                                                                                 |
+| --------------- | ----------------------------- | -------- | -------- | ------------------------------------------------------------------------------------- |
+| **Name**        | `name`                        | Yes      | No       | Monospace; always visible                                                             |
+| **Location**    | `location`                    | Yes      | No       | `LocationBadge` — `path` (blue), `query` (grey), `header` (purple), `cookie` (orange) |
+| **Type**        | `schemaType` + `schemaFormat` | Yes      | No       | `schemaType schemaFormat` monospace, e.g. `string date-time`                          |
+| **Required**    | `required`                    | Yes      | Yes      | `✓` when true                                                                         |
+| **Deprecated**  | `deprecated`                  | Yes      | Yes      | Amber `⚠` icon; hidden by default (inline in Name when deprecated)                   |
+| **Description** | `description`                 | No       | Yes      | Truncated to one line; deprecated `⚠` prepended when `deprecated: true`              |
+| **Example**     | `exampleText`                 | No       | Yes      | Hidden by default                                                                     |
+| **Used by**     | `operationIdsText`            | No       | Yes      | Comma count of operation IDs (e.g. "3 operations"); hover shows list                  |
 
 ### IndexedDataTable conventions
 
 All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
+
 - Sorting sends `sort` + `order` to the server.
 - EyeOff hides a column client-side.
 - Status bar at the bottom: `{filtered}/{total} parameters` when a search or location filter is active, otherwise `{total} parameters`.

@@ -22,7 +22,11 @@ export function WizardHttpSettings({ url, onChange }: WizardHttpSettingsProps) {
       // Use a direct fetch for raw reachability — the relay URL isn't registered yet
       const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(10_000) })
       const ms = Date.now() - start
-      setTestResult(res.ok ? { ok: true, msg: `Reachable — ${ms} ms` } : { ok: false, msg: `HTTP ${res.status}` })
+      setTestResult(
+        res.ok
+          ? { ok: true, msg: `Reachable — ${ms} ms` }
+          : { ok: false, msg: `HTTP ${res.status}` },
+      )
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Connection failed'
       setTestResult({ ok: false, msg })
@@ -43,7 +47,7 @@ export function WizardHttpSettings({ url, onChange }: WizardHttpSettingsProps) {
           id="relay-url"
           placeholder="https://relay.example.com"
           value={url}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
         />
         <p className="text-xs text-muted-foreground">
           Must be HTTPS. The platform will call <code className="text-xs">/health</code> and{' '}
@@ -63,11 +67,10 @@ export function WizardHttpSettings({ url, onChange }: WizardHttpSettingsProps) {
           Test reachability
         </Button>
         {testResult && (
-          <span className={`flex items-center gap-1.5 text-sm ${testResult.ok ? 'text-success' : 'text-destructive'}`}>
-            {testResult.ok
-              ? <CheckCircle className="h-4 w-4" />
-              : <XCircle className="h-4 w-4" />
-            }
+          <span
+            className={`flex items-center gap-1.5 text-sm ${testResult.ok ? 'text-success' : 'text-destructive'}`}
+          >
+            {testResult.ok ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
             {testResult.msg}
           </span>
         )}

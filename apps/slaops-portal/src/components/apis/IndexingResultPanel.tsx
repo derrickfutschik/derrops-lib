@@ -41,7 +41,9 @@ export function IndexingResultPanel({ result }: IndexingResultPanelProps) {
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-2">
         <p className="text-sm font-medium text-destructive">Indexing failed</p>
         {specState?.errors.map((e, i) => (
-          <p key={i} className="text-xs text-muted-foreground font-mono">{e.message}</p>
+          <p key={i} className="text-xs text-muted-foreground font-mono">
+            {e.message}
+          </p>
         ))}
       </div>
     )

@@ -14,11 +14,11 @@ SLAOps monitors and tests HTTP APIs across your applications. This guide takes y
 
 SLAOps uses a plane-based architecture. Understanding the three main components will help you know what to install and why.
 
-| Component | What it does | Where it runs |
-|---|---|---|
-| **SLAOps Portal** | Dashboard, API tester, alerting, cost analysis | SLAOps cloud |
-| **Relay** | Executes HTTP requests and forwards results back | Your infrastructure or local machine |
-| **Aegis** | Policy engine that authorises what the relay can execute | Your infrastructure (optional for local dev) |
+| Component         | What it does                                             | Where it runs                                |
+| ----------------- | -------------------------------------------------------- | -------------------------------------------- |
+| **SLAOps Portal** | Dashboard, API tester, alerting, cost analysis           | SLAOps cloud                                 |
+| **Relay**         | Executes HTTP requests and forwards results back         | Your infrastructure or local machine         |
+| **Aegis**         | Policy engine that authorises what the relay can execute | Your infrastructure (optional for local dev) |
 
 When you run an API test in the Portal, SLAOps sends the job to your relay. The relay makes the real HTTP request to your target service and returns the result. This design means:
 
@@ -170,12 +170,12 @@ To configure Aegis, see the [Aegis quickstart](/docs/quickstart/aegis).
 
 ## What's next
 
-| Goal | Where to go |
-|---|---|
-| Monitor API SLAs and set alerts | Portal → Monitoring |
-| Index your OpenAPI specifications | [OASpec Bucket](/docs/oaspec-bucket) |
-| Understand costs per API operation | Portal → Cost Analysis |
-| Deploy to production with Aegis | [Aegis quickstart](/docs/quickstart/aegis) |
-| Bring your own encryption key | [BYOK](/docs/byok) |
-| Review platform architecture | [Enterprise Plane Architecture](/docs/archiecture-planes) |
-| Look up a term | [Glossary](/docs/glossary) |
+| Goal                               | Where to go                                               |
+| ---------------------------------- | --------------------------------------------------------- |
+| Monitor API SLAs and set alerts    | Portal → Monitoring                                       |
+| Index your OpenAPI specifications  | [OASpec Bucket](/docs/oaspec-bucket)                      |
+| Understand costs per API operation | Portal → Cost Analysis                                    |
+| Deploy to production with Aegis    | [Aegis quickstart](/docs/quickstart/aegis)                |
+| Bring your own encryption key      | [BYOK](/docs/byok)                                        |
+| Review platform architecture       | [Enterprise Plane Architecture](/docs/archiecture-planes) |
+| Look up a term                     | [Glossary](/docs/glossary)                                |

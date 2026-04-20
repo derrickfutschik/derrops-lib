@@ -45,11 +45,11 @@ The tester has three main areas:
 
 Use the relay selector at the top of the page to choose which relay executes the request. Relays you have connected appear in the dropdown.
 
-| Relay type | Badge | Use when |
-|---|---|---|
-| Local dev relay | **Local** | Target is `localhost` or a service on your machine |
-| Self-hosted relay | *(none)* | Target is in your cloud or private network |
-| Managed relay | **Managed** | Target is publicly accessible and you want zero-ops setup |
+| Relay type        | Badge       | Use when                                                  |
+| ----------------- | ----------- | --------------------------------------------------------- |
+| Local dev relay   | **Local**   | Target is `localhost` or a service on your machine        |
+| Self-hosted relay | _(none)_    | Target is in your cloud or private network                |
+| Managed relay     | **Managed** | Target is publicly accessible and you want zero-ops setup |
 
 :::tip Local targets
 If you enter a `localhost` or `127.0.0.1` URL without a local relay selected, the Portal will prompt you to start one: run `slaops relay start` in your terminal.
@@ -83,13 +83,13 @@ Add query string parameters in the **Query params** tab. Parameters are URL-enco
 
 Select the **Body** tab to add a request body. Choose a content type from the dropdown:
 
-| Content type | When to use |
-|---|---|
-| `application/json` | JSON APIs |
-| `application/x-www-form-urlencoded` | HTML form submissions |
-| `multipart/form-data` | File uploads |
-| `text/plain` | Plain text body |
-| Raw | Any custom content type |
+| Content type                        | When to use             |
+| ----------------------------------- | ----------------------- |
+| `application/json`                  | JSON APIs               |
+| `application/x-www-form-urlencoded` | HTML form submissions   |
+| `multipart/form-data`               | File uploads            |
+| `text/plain`                        | Plain text body         |
+| Raw                                 | Any custom content type |
 
 The body editor provides syntax highlighting for JSON and XML.
 
@@ -117,25 +117,25 @@ Authorization: Bearer {{secret:stripe/api-key.secretKey}}
 
 Secret backends supported:
 
-| Expression | Secret resolved from |
-|---|---|
-| `{{secret:MY_KEY}}` | Relay environment variable or default secret store |
-| `{{secret:env:MY_KEY}}` | Relay environment variable explicitly |
-| `{{secret:aws-secrets-manager:path/to/secret}}` | AWS Secrets Manager |
-| `{{secret:vault:secret/data/my-secret}}` | HashiCorp Vault |
+| Expression                                      | Secret resolved from                               |
+| ----------------------------------------------- | -------------------------------------------------- |
+| `{{secret:MY_KEY}}`                             | Relay environment variable or default secret store |
+| `{{secret:env:MY_KEY}}`                         | Relay environment variable explicitly              |
+| `{{secret:aws-secrets-manager:path/to/secret}}` | AWS Secrets Manager                                |
+| `{{secret:vault:secret/data/my-secret}}`        | HashiCorp Vault                                    |
 
 ### Just-in-time generated values
 
 Generate dynamic values on each execution:
 
-| Expression | Resolved to |
-|---|---|
-| `{{jit:uuid}}` | Fresh UUID v4 (e.g. `f47ac10b-58cc-4372-a567-0e02b2c3d479`) |
-| `{{jit:uuid-short}}` | First 8 hex chars (e.g. `f47ac10b`) |
-| `{{jit:timestamp}}` | Current UTC timestamp (e.g. `2026-03-22T10:00:00.000Z`) |
-| `{{jit:timestamp-unix}}` | Unix epoch in seconds |
-| `{{jit:timestamp-unix-ms}}` | Unix epoch in milliseconds |
-| `{{jit:random-hex:N}}` | `N` random hex characters |
+| Expression                  | Resolved to                                                 |
+| --------------------------- | ----------------------------------------------------------- |
+| `{{jit:uuid}}`              | Fresh UUID v4 (e.g. `f47ac10b-58cc-4372-a567-0e02b2c3d479`) |
+| `{{jit:uuid-short}}`        | First 8 hex chars (e.g. `f47ac10b`)                         |
+| `{{jit:timestamp}}`         | Current UTC timestamp (e.g. `2026-03-22T10:00:00.000Z`)     |
+| `{{jit:timestamp-unix}}`    | Unix epoch in seconds                                       |
+| `{{jit:timestamp-unix-ms}}` | Unix epoch in milliseconds                                  |
+| `{{jit:random-hex:N}}`      | `N` random hex characters                                   |
 
 Example — add a unique correlation ID to every request:
 
@@ -154,6 +154,7 @@ Define reusable named variables in the **Variables** panel and reference them th
 Variables can be sourced from secrets, relay environment variables, or static literals. This is useful for parameterising shared request templates across environments.
 
 Template expressions are resolved in:
+
 - URL
 - Header values
 - Query parameter values
@@ -174,13 +175,13 @@ While the request is in flight you will see a loading state in the response pane
 
 The response panel shows:
 
-| Field | Description |
-|---|---|
-| **Status** | HTTP status code and reason phrase (e.g. `200 OK`, `404 Not Found`) |
-| **Time** | Round-trip duration measured by the relay in milliseconds |
-| **Size** | Response body size |
-| **Headers** | Response headers, formatted as a key/value table |
-| **Body** | Response body with syntax highlighting (JSON, XML, HTML) |
+| Field       | Description                                                         |
+| ----------- | ------------------------------------------------------------------- |
+| **Status**  | HTTP status code and reason phrase (e.g. `200 OK`, `404 Not Found`) |
+| **Time**    | Round-trip duration measured by the relay in milliseconds           |
+| **Size**    | Response body size                                                  |
+| **Headers** | Response headers, formatted as a key/value table                    |
+| **Body**    | Response body with syntax highlighting (JSON, XML, HTML)            |
 
 ### Redacted secrets
 

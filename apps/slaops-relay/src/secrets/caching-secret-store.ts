@@ -67,7 +67,7 @@ export class CachingSecretStore implements SecretStore {
 
   async prefetch(secretIds: string[]): Promise<void> {
     await Promise.all(
-      secretIds.map(id =>
+      secretIds.map((id) =>
         this.getSecret(id).catch(() => {
           /* ignore prefetch failures */
         }),

@@ -1,5 +1,5 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { MethodBadge } from './MethodBadge'
 
 interface Operation {
@@ -20,7 +20,12 @@ interface OperationDetailPanelProps {
 
 export function OperationDetailPanel({ operation, onClose }: OperationDetailPanelProps) {
   return (
-    <Sheet open={!!operation} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Sheet
+      open={!!operation}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <SheetContent className="w-[400px] sm:w-[540px]">
         {operation && (
           <>
@@ -32,7 +37,9 @@ export function OperationDetailPanel({ operation, onClose }: OperationDetailPane
             </SheetHeader>
             <div className="mt-6 space-y-4">
               {operation.deprecated && (
-                <Badge variant="outline" className="text-amber-600 border-amber-300">⚠ deprecated</Badge>
+                <Badge variant="outline" className="text-amber-600 border-amber-300">
+                  ⚠ deprecated
+                </Badge>
               )}
               {operation.operationId && (
                 <div>
@@ -62,9 +69,14 @@ export function OperationDetailPanel({ operation, onClose }: OperationDetailPane
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Tags</p>
                   <div className="flex flex-wrap gap-1">
-                    {operation.tagsText.split(' ').filter(Boolean).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                    ))}
+                    {operation.tagsText
+                      .split(' ')
+                      .filter(Boolean)
+                      .map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
                   </div>
                 </div>
               )}

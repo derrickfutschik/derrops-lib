@@ -1,9 +1,9 @@
-import { useCallback, useEffect } from 'react'
-import { toast } from 'sonner'
-import { useAppDispatch } from '@/store/hooks'
-import { setIsSendingRequest, setRequestResponse } from '@/store/apiRequestSlice'
 import type { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
 import type { BodyType, FormDataEntry, RawType } from '@/components/api-tester/RequestBodyEditor'
+import { setIsSendingRequest, setRequestResponse } from '@/store/apiRequestSlice'
+import { useAppDispatch } from '@/store/hooks'
+import { useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
 import { useRelayJob } from './useRelayJob'
 import { useRelaySelector } from './useRelaySelector'
 
@@ -53,7 +53,9 @@ function buildEffectiveUrl(params: SendRequestParams): string {
     Object.entries(openAPIFormValues.queryParams).forEach(([key, value]) => {
       if (value === undefined || value === null || value === '') return
       if (Array.isArray(value)) {
-        value.forEach((v) => queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`))
+        value.forEach((v) =>
+          queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`),
+        )
       } else {
         queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
       }
@@ -67,7 +69,11 @@ function buildEffectiveUrl(params: SendRequestParams): string {
 
 function buildHeadersObject(headers: KeyValuePair[]): Record<string, string> {
   const obj: Record<string, string> = {}
-  headers.filter((h) => h.enabled && h.key.trim()).forEach((h) => { obj[h.key] = h.value })
+  headers
+    .filter((h) => h.enabled && h.key.trim())
+    .forEach((h) => {
+      obj[h.key] = h.value
+    })
   return obj
 }
 
@@ -105,26 +111,30 @@ export function useSendRequest() {
   useEffect(() => {
     if (relayJob.status === 'completed' && relayJob.result) {
       const r = relayJob.result
-      dispatch(setRequestResponse({
-        status: r.status,
-        statusText: r.statusText,
-        headers: r.headers,
-        body: r.body,
-        duration: r.durationMs,
-        relayConnectionName: relayJob.connectionName ?? undefined,
-        relayDeliveryMode: relayJob.deliveryMode ?? undefined,
-      }))
+      dispatch(
+        setRequestResponse({
+          status: r.status,
+          statusText: r.statusText,
+          headers: r.headers,
+          body: r.body,
+          duration: r.durationMs,
+          relayConnectionName: relayJob.connectionName ?? undefined,
+          relayDeliveryMode: relayJob.deliveryMode ?? undefined,
+        }),
+      )
       dispatch(setIsSendingRequest(false))
     } else if (relayJob.status === 'failed' || relayJob.status === 'timed_out') {
-      dispatch(setRequestResponse({
-        status: 0,
-        statusText: relayJob.status === 'timed_out' ? 'Relay Timeout' : 'Relay Error',
-        headers: {},
-        body: relayJob.error ?? 'An error occurred',
-        duration: 0,
-        relayConnectionName: relayJob.connectionName ?? undefined,
-        relayDeliveryMode: relayJob.deliveryMode ?? undefined,
-      }))
+      dispatch(
+        setRequestResponse({
+          status: 0,
+          statusText: relayJob.status === 'timed_out' ? 'Relay Timeout' : 'Relay Error',
+          headers: {},
+          body: relayJob.error ?? 'An error occurred',
+          duration: 0,
+          relayConnectionName: relayJob.connectionName ?? undefined,
+          relayDeliveryMode: relayJob.deliveryMode ?? undefined,
+        }),
+      )
       dispatch(setIsSendingRequest(false))
     }
   }, [
@@ -153,7 +163,9 @@ export function useSendRequest() {
         const queryParamsObj: Record<string, string> = {}
         params.queryParams
           .filter((p) => p.enabled && p.key.trim())
-          .forEach((p) => { queryParamsObj[p.key] = p.value })
+          .forEach((p) => {
+            queryParamsObj[p.key] = p.value
+          })
 
         let bodyStr: string | null = null
         let contentType: string | null = null
@@ -172,7 +184,9 @@ export function useSendRequest() {
             const entries: Record<string, string> = {}
             params.formData
               .filter((f) => f.enabled && f.key.trim())
-              .forEach((f) => { entries[f.key] = f.value })
+              .forEach((f) => {
+                entries[f.key] = f.value
+              })
             bodyStr = JSON.stringify(entries)
             contentType = 'multipart/form-data'
           }
@@ -226,16 +240,20 @@ export function useSendRequest() {
         const duration = Math.round(performance.now() - startTime)
 
         const responseHeaders: Record<string, string> = {}
-        response.headers.forEach((value, key) => { responseHeaders[key] = value })
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value
+        })
         const responseBody = await response.text()
 
-        dispatch(setRequestResponse({
-          status: response.status,
-          statusText: response.statusText,
-          headers: responseHeaders,
-          body: responseBody,
-          duration,
-        }))
+        dispatch(
+          setRequestResponse({
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders,
+            body: responseBody,
+            duration,
+          }),
+        )
 
         params.onRequestSent?.(requestUrl)
 
@@ -244,13 +262,15 @@ export function useSendRequest() {
         }
       } catch (error: unknown) {
         const duration = Math.round(performance.now() - startTime)
-        dispatch(setRequestResponse({
-          status: 0,
-          statusText: 'Network Error',
-          headers: {},
-          body: error instanceof Error ? error.message : 'Failed to send request',
-          duration,
-        }))
+        dispatch(
+          setRequestResponse({
+            status: 0,
+            statusText: 'Network Error',
+            headers: {},
+            body: error instanceof Error ? error.message : 'Failed to send request',
+            duration,
+          }),
+        )
         toast.error('Failed to send request')
       } finally {
         dispatch(setIsSendingRequest(false))

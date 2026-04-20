@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, Upload } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 
 interface SpecUploadFileTabProps {
   isPending: boolean
@@ -38,7 +38,10 @@ export function SpecUploadFileTab({ isPending, onSubmit }: SpecUploadFileTabProp
         className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
           isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
         }`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
@@ -61,13 +64,12 @@ export function SpecUploadFileTab({ isPending, onSubmit }: SpecUploadFileTabProp
         type="file"
         accept=".yaml,.yml,.json"
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) handleFile(f)
+        }}
       />
-      <Button
-        className="w-full mt-3"
-        onClick={handleSubmit}
-        disabled={!selectedFile || isPending}
-      >
+      <Button className="w-full mt-3" onClick={handleSubmit} disabled={!selectedFile || isPending}>
         {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
         Upload and Index
       </Button>

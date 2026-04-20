@@ -1,45 +1,50 @@
 import { Button } from '@/components/ui/button'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import {
+  selectHiddenColumnIds,
+  selectHighlightDuplicates,
+  selectJsonState,
+  selectSelectedView,
+  selectTableState,
+  setHighlightDuplicates as setHighlightDuplicatesRedux,
+  setJmespathEnabled,
+  setJmespathMode,
+  setJmespathQuery as setJmespathQueryRedux,
+  setJsonState,
+  setSelectedView,
+  setTruncateValues as setTruncateValuesRedux,
+  setUniqueFilter as setUniqueFilterRedux,
+} from '@/store/responseViewerSlice'
+import { ArrowLeftRight, Keyboard, Maximize2 } from 'lucide-react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HotkeyInfoDialog } from './HotkeyInfoDialog'
-import { JsonViewPanel } from './JsonViewPanel'
 import { JMESPathInputRow, type JMESPathState } from './JMESPathInputRow'
+import { JsonResponseViewer } from './JsonResponseViewer'
+import { JsonViewPanel } from './JsonViewPanel'
 import { MarkdownViewPanel } from './MarkdownViewPanel'
 import { MaximizedViewDialog } from './MaximizedViewDialog'
 import { ResultsActionButtons } from './ResultsActionButtons'
 import { StatusRibbon } from './StatusRibbon'
 import { TableViewPanel } from './TableViewPanel'
 import { ViewModeTabs } from './ViewModeTabs'
-import { ArrowLeftRight, Keyboard, Maximize2 } from 'lucide-react'
-import { useResultsActions } from './useResultsActions'
-import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { JsonResponseViewer } from './JsonResponseViewer'
-import { detectJoiningContext, detectJoinColumnCandidates, type JoiningContext, type JoinColumnCandidate } from './joining-utils'
 import {
-  evaluateJmespathQuery,
+  detectJoinColumnCandidates,
+  detectJoiningContext,
+  type JoinColumnCandidate,
+  type JoiningContext,
+} from './joining-utils'
+import { highlightJson } from './json-highlight-renderer'
+import {
   buildFilteredJmespathExpression,
-  deduplicateJsonArray,
-  countDuplicates,
-  computeJsonStats,
   computeFilterPercent,
+  computeJsonStats,
+  countDuplicates,
+  deduplicateJsonArray,
   EMPTY_JMESPATH_RESULT,
+  evaluateJmespathQuery,
   type JmespathQueryResult,
 } from './json-jmespath-utils'
-import { highlightJson } from './json-highlight-renderer'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import {
-  selectSelectedView,
-  selectHighlightDuplicates,
-  selectJsonState,
-  selectTableState,
-  selectHiddenColumnIds,
-  setSelectedView,
-  setHighlightDuplicates as setHighlightDuplicatesRedux,
-  setJmespathEnabled,
-  setJmespathQuery as setJmespathQueryRedux,
-  setJmespathMode,
-  setTruncateValues as setTruncateValuesRedux,
-  setUniqueFilter as setUniqueFilterRedux,
-  setJsonState,
-} from '@/store/responseViewerSlice'
+import { useResultsActions } from './useResultsActions'
 
 export type { JMESPathState }
 
@@ -159,13 +164,15 @@ export function MaximizableCodeViewer({
     if (propsInitializedRef.current) return
     propsInitializedRef.current = true
     if (jmespathState) {
-      dispatch(setJsonState({
-        jmespathEnabled: jmespathState.enabled,
-        jmespathQuery: jmespathState.query,
-        jmespathMode: jmespathState.mode,
-      }))
+      dispatch(
+        setJsonState({
+          jmespathEnabled: jmespathState.enabled,
+          jmespathQuery: jmespathState.query,
+          jmespathMode: jmespathState.mode,
+        }),
+      )
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Notify parent when Redux JMESPath state changes (backward compat)
@@ -173,7 +180,11 @@ export function MaximizableCodeViewer({
   onJMESPathStateChangeRef.current = onJMESPathStateChange
   useEffect(() => {
     if (!onJMESPathStateChangeRef.current) return
-    onJMESPathStateChangeRef.current({ enabled: jmespathEnabled, query: jmespathQuery, mode: jmespathMode })
+    onJMESPathStateChangeRef.current({
+      enabled: jmespathEnabled,
+      query: jmespathQuery,
+      mode: jmespathMode,
+    })
   }, [jmespathEnabled, jmespathQuery, jmespathMode])
 
   // Debounced query: lags behind jmespathQuery so expensive computations
@@ -196,14 +207,20 @@ export function MaximizableCodeViewer({
     dispatch(setJmespathEnabled(enabled))
   }
 
-  const setJmespathQuery = useCallback((query: string) => {
-    dispatch(setJmespathQueryRedux(query))
-  }, [dispatch])
+  const setJmespathQuery = useCallback(
+    (query: string) => {
+      dispatch(setJmespathQueryRedux(query))
+    },
+    [dispatch],
+  )
 
   // Sets query only (used for Cmd+Click from JSON viewer — does not change enabled state)
-  const selectJmespathQuery = useCallback((query: string) => {
-    dispatch(setJmespathQueryRedux(query))
-  }, [dispatch])
+  const selectJmespathQuery = useCallback(
+    (query: string) => {
+      dispatch(setJmespathQueryRedux(query))
+    },
+    [dispatch],
+  )
 
   const setJmespathModeLocal = (mode: 'filter' | 'highlight') => {
     dispatch(setJmespathMode(mode))
@@ -411,22 +428,37 @@ export function MaximizableCodeViewer({
 
   // LRU cache for JMESPath query results (keyed by content + query + mode).
   // Prevents re-evaluating expensive queries when the user undoes/redoes.
-  const jmespathCacheRef = useRef<{ content: string; query: string; mode: string; result: JmespathQueryResult }[]>([])
+  const jmespathCacheRef = useRef<
+    { content: string; query: string; mode: string; result: JmespathQueryResult }[]
+  >([])
   const JMESPATH_CACHE_SIZE = 10
 
-  const getCachedJmespathResult = (contentStr: string, query: string, mode: string): JmespathQueryResult | undefined => {
-    const entry = jmespathCacheRef.current.find(e => e.content === contentStr && e.query === query && e.mode === mode)
+  const getCachedJmespathResult = (
+    contentStr: string,
+    query: string,
+    mode: string,
+  ): JmespathQueryResult | undefined => {
+    const entry = jmespathCacheRef.current.find(
+      (e) => e.content === contentStr && e.query === query && e.mode === mode,
+    )
     if (entry) {
-      jmespathCacheRef.current = [entry, ...jmespathCacheRef.current.filter(e => e !== entry)]
+      jmespathCacheRef.current = [entry, ...jmespathCacheRef.current.filter((e) => e !== entry)]
       return entry.result
     }
     return undefined
   }
 
-  const setCachedJmespathResult = (contentStr: string, query: string, mode: string, result: JmespathQueryResult) => {
+  const setCachedJmespathResult = (
+    contentStr: string,
+    query: string,
+    mode: string,
+    result: JmespathQueryResult,
+  ) => {
     jmespathCacheRef.current = [
       { content: contentStr, query, mode, result },
-      ...jmespathCacheRef.current.filter(e => !(e.content === contentStr && e.query === query && e.mode === mode)),
+      ...jmespathCacheRef.current.filter(
+        (e) => !(e.content === contentStr && e.query === query && e.mode === mode),
+      ),
     ].slice(0, JMESPATH_CACHE_SIZE)
   }
 
@@ -438,8 +470,8 @@ export function MaximizableCodeViewer({
     const result = evaluateJmespathQuery(getParsedContent(content), debouncedQuery, jmespathMode)
     setCachedJmespathResult(content, debouncedQuery, jmespathMode, result)
     return result
-  // getParsedContent/getCached/setCached only access refs — safe to omit.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // getParsedContent/getCached/setCached only access refs — safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, debouncedQuery, jmespathEnabled, jmespathMode, isJson])
 
   // Stable refs so callbacks passed to child components or useMemo don't need
@@ -451,21 +483,29 @@ export function MaximizableCodeViewer({
 
   // When in filter mode, clicking a node appends to the existing expression.
   // Uses refs for query/setter so this callback only changes when filteredContent changes.
-  const handleFilteredJmespathSelect = useCallback((clickedPath: string) => {
-    const newQuery = buildFilteredJmespathExpression(jmespathQueryRef.current, filteredContent, clickedPath)
-    setJmespathQueryRef.current(newQuery)
-  // jmespathQueryRef and setJmespathQueryRef are stable refs, safe to omit.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredContent])
-
+  const handleFilteredJmespathSelect = useCallback(
+    (clickedPath: string) => {
+      const newQuery = buildFilteredJmespathExpression(
+        jmespathQueryRef.current,
+        filteredContent,
+        clickedPath,
+      )
+      setJmespathQueryRef.current(newQuery)
+      // jmespathQueryRef and setJmespathQueryRef are stable refs, safe to omit.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [filteredContent],
+  )
 
   // Compute pre-unique content (JMESPath filtered or original)
   const preUniqueContent =
-    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null ? filteredContent : content
+    jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
+      ? filteredContent
+      : content
 
   // Deduplicated content (null when unique filter is off or content is not an array)
   const uniqueFilteredContent = useMemo(
-    () => uniqueFilter ? deduplicateJsonArray(preUniqueContent) : null,
+    () => (uniqueFilter ? deduplicateJsonArray(preUniqueContent) : null),
     [uniqueFilter, preUniqueContent],
   )
 
@@ -521,7 +561,13 @@ export function MaximizableCodeViewer({
 
     // JMESPath highlight mode — matchedPaths already computed in the useMemo above.
     // Pass a stable-ref callback so this memo doesn't depend on setJmespathQuery identity.
-    if (jmespathEnabled && jmespathMode === 'highlight' && debouncedQuery.trim() && isJson && !jmespathError) {
+    if (
+      jmespathEnabled &&
+      jmespathMode === 'highlight' &&
+      debouncedQuery.trim() &&
+      isJson &&
+      !jmespathError
+    ) {
       try {
         const parsed = getParsedContent(content)
         return highlightJson(parsed, matchedPaths, (path) => setJmespathQueryRef.current(path))
@@ -548,15 +594,25 @@ export function MaximizableCodeViewer({
     }
 
     return content
-  // getParsedContent is stable (useCallback []). setJmespathQueryRef is a stable
-  // ref object. Both are safe to omit from deps.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // getParsedContent is stable (useCallback []). setJmespathQueryRef is a stable
+    // ref object. Both are safe to omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    jmespathEnabled, jmespathMode, effectiveFilteredContent,
-    uniqueFilter, uniqueFilteredContent,
-    matchedPaths, debouncedQuery, isJson, jmespathError,
-    content, responseSchema, validationErrors, truncateValues,
-    handleFilteredJmespathSelect, selectJmespathQuery,
+    jmespathEnabled,
+    jmespathMode,
+    effectiveFilteredContent,
+    uniqueFilter,
+    uniqueFilteredContent,
+    matchedPaths,
+    debouncedQuery,
+    isJson,
+    jmespathError,
+    content,
+    responseSchema,
+    validationErrors,
+    truncateValues,
+    handleFilteredJmespathSelect,
+    selectJmespathQuery,
   ])
 
   // Calculate line count
@@ -572,15 +628,26 @@ export function MaximizableCodeViewer({
   // Lightweight validity checks for each view mode
   const viewValidity = useMemo(() => {
     const trimmed = displayContent.trim()
-    const jsonValid = isJson || (() => { try { JSON.parse(trimmed); return true } catch { return false } })()
+    const jsonValid =
+      isJson ||
+      (() => {
+        try {
+          JSON.parse(trimmed)
+          return true
+        } catch {
+          return false
+        }
+      })()
     const tableValid = (() => {
       if (jsonValid) {
         try {
           const parsed = JSON.parse(trimmed)
           return Array.isArray(parsed) && parsed.length > 0
-        } catch { return false }
+        } catch {
+          return false
+        }
       }
-      const lines = trimmed.split('\n').filter(l => l.trim())
+      const lines = trimmed.split('\n').filter((l) => l.trim())
       return lines.length >= 2 && lines[0].includes(',')
     })()
     const markdownValid = trimmed.length > 0
@@ -601,7 +668,8 @@ export function MaximizableCodeViewer({
   //
   // This is purely a display transform — the user's input is never mutated.
   const tableQuery = useMemo((): string => {
-    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter') return debouncedQuery
+    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter')
+      return debouncedQuery
     const q = debouncedQuery.trim()
     if (!q) return debouncedQuery
     try {
@@ -619,15 +687,21 @@ export function MaximizableCodeViewer({
         if (flattened.length === 0) break
 
         const base = q + suffix
-        const flatCols        = detectJoiningContext(originalParsed, base + '[]',    flattened.length)?.joiningColumns.length ?? 0
-        const wildcardFlatCols = detectJoiningContext(originalParsed, base + '[*][]', flattened.length)?.joiningColumns.length ?? 0
+        const flatCols =
+          detectJoiningContext(originalParsed, base + '[]', flattened.length)?.joiningColumns
+            .length ?? 0
+        const wildcardFlatCols =
+          detectJoiningContext(originalParsed, base + '[*][]', flattened.length)?.joiningColumns
+            .length ?? 0
 
-        suffix   += wildcardFlatCols >= flatCols ? '[*][]' : '[]'
-        current   = flattened
+        suffix += wildcardFlatCols >= flatCols ? '[*][]' : '[]'
+        current = flattened
       }
 
       return suffix ? q + suffix : debouncedQuery
-    } catch { return debouncedQuery }
+    } catch {
+      return debouncedQuery
+    }
   }, [viewMode, isJson, jmespathEnabled, jmespathMode, debouncedQuery, displayContent, content])
 
   // Content passed to TableViewPanel — iteratively flattened to match tableQuery depth.
@@ -639,7 +713,9 @@ export function MaximizableCodeViewer({
         current = (current as unknown[][]).flat()
       }
       return JSON.stringify(current, null, 2)
-    } catch { /* leave as-is */ }
+    } catch {
+      /* leave as-is */
+    }
     return displayContent
   }, [viewMode, tableQuery, debouncedQuery, displayContent])
 
@@ -653,12 +729,21 @@ export function MaximizableCodeViewer({
       const tableDisplayParsed = JSON.parse(tableDisplayContent)
       if (!Array.isArray(tableDisplayParsed) || !tableDisplayParsed.length) return null
       return detectJoiningContext(originalParsed, tableQuery, tableDisplayParsed.length)
-    } catch { return null }
+    } catch {
+      return null
+    }
   }, [content, tableDisplayContent, viewMode, isJson, jmespathEnabled, jmespathMode, tableQuery])
 
   // Candidate join columns for all joining segments (unique-valued scalar attributes)
   const joinColumnCandidates = useMemo((): JoinColumnCandidate[][] => {
-    if (viewMode !== 'table' || !isJson || !jmespathEnabled || jmespathMode !== 'filter' || !tableQuery.trim()) return []
+    if (
+      viewMode !== 'table' ||
+      !isJson ||
+      !jmespathEnabled ||
+      jmespathMode !== 'filter' ||
+      !tableQuery.trim()
+    )
+      return []
     if (!joiningContext) return []
     try {
       const originalParsed = JSON.parse(content)
@@ -669,14 +754,15 @@ export function MaximizableCodeViewer({
   }, [viewMode, isJson, jmespathEnabled, jmespathMode, tableQuery, content, joiningContext])
 
   const jsonStats = useMemo(
-    () => isJson ? computeJsonStats(displayContent) : null,
+    () => (isJson ? computeJsonStats(displayContent) : null),
     [displayContent, isJson],
   )
 
   const filterPercent = useMemo(
-    () => jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
-      ? computeFilterPercent(content, filteredContent)
-      : null,
+    () =>
+      jmespathEnabled && jmespathMode === 'filter' && filteredContent !== null
+        ? computeFilterPercent(content, filteredContent)
+        : null,
     [jmespathEnabled, jmespathMode, filteredContent, content],
   )
 
@@ -764,27 +850,29 @@ export function MaximizableCodeViewer({
             </Button>
           </div>
         </div>
-        {isJson && <JMESPathInputRow
-          jmespathEnabled={jmespathEnabled}
-          jmespathQuery={jmespathQuery}
-          jmespathMode={jmespathMode}
-          jmespathError={jmespathError}
-          jmespathNullResult={jmespathNullResult}
-          onQueryChange={handleQueryChange}
-          onQueryProgrammatic={applyQueryProgrammatic}
-          onEnabledChange={setJmespathEnabledLocal}
-          onModeChange={setJmespathModeLocal}
-          onToggleHighlight={toggleHighlightMode}
-          onToggleFilter={toggleFilterMode}
-          onApplyWildcard={applyWildcard}
-          onToggleTruncateValues={toggleTruncateValues}
-          onToggleUniqueFilter={toggleUniqueFilter}
-          undoStackRef={undoStackRef}
-          redoStackRef={redoStackRef}
-          typingStartRef={typingStartRef}
-          undoDebounceRef={undoDebounceRef}
-          jsonContent={content}
-        />}
+        {isJson && (
+          <JMESPathInputRow
+            jmespathEnabled={jmespathEnabled}
+            jmespathQuery={jmespathQuery}
+            jmespathMode={jmespathMode}
+            jmespathError={jmespathError}
+            jmespathNullResult={jmespathNullResult}
+            onQueryChange={handleQueryChange}
+            onQueryProgrammatic={applyQueryProgrammatic}
+            onEnabledChange={setJmespathEnabledLocal}
+            onModeChange={setJmespathModeLocal}
+            onToggleHighlight={toggleHighlightMode}
+            onToggleFilter={toggleFilterMode}
+            onApplyWildcard={applyWildcard}
+            onToggleTruncateValues={toggleTruncateValues}
+            onToggleUniqueFilter={toggleUniqueFilter}
+            undoStackRef={undoStackRef}
+            redoStackRef={redoStackRef}
+            typingStartRef={typingStartRef}
+            undoDebounceRef={undoDebounceRef}
+            jsonContent={content}
+          />
+        )}
         <div
           className="p-0 overflow-auto flex-1 outline-none"
           style={{ maxHeight }}

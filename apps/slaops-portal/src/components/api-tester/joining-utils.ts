@@ -64,7 +64,10 @@ function parseArraySegments(query: string): PathSegment[] | null {
   let currentProps: string[] = []
 
   while (i < str.length) {
-    if (str[i] === '.') { i++; continue }
+    if (str[i] === '.') {
+      i++
+      continue
+    }
 
     // Property name
     const propMatch = str.slice(i).match(/^([a-zA-Z_$][a-zA-Z0-9_$]*)/)
@@ -80,9 +83,8 @@ function parseArraySegments(query: string): PathSegment[] | null {
       if (close === -1) return null
       const inner = str.slice(i + 1, close)
       if (inner === '*' || inner === '') {
-        const label = currentProps.length > 0
-          ? currentProps[currentProps.length - 1]
-          : `#${segments.length}`
+        const label =
+          currentProps.length > 0 ? currentProps[currentProps.length - 1] : `#${segments.length}`
         segments.push({ properties: currentProps, label, trailingProperties: [] })
         currentProps = []
         i = close + 1
@@ -265,9 +267,15 @@ function computeSegmentCandidates(
     let valid = true
     for (let k = 0; k <= j; k++) {
       const arr = navigateProperties(node, segments[k].properties)
-      if (!Array.isArray(arr)) { valid = false; break }
+      if (!Array.isArray(arr)) {
+        valid = false
+        break
+      }
       const idx = parseInt(rowIndices[k], 10)
-      if (isNaN(idx) || idx < 0 || idx >= arr.length) { valid = false; break }
+      if (isNaN(idx) || idx < 0 || idx >= arr.length) {
+        valid = false
+        break
+      }
       node = arr[idx]
     }
     elementForRow[i] = valid ? node : undefined
@@ -341,7 +349,10 @@ function computeSegmentCandidates(
       let unique = true
       for (const elemMap of groupMaps.values()) {
         const vals = [...elemMap.values()]
-        if (new Set(vals).size !== vals.length) { unique = false; break }
+        if (new Set(vals).size !== vals.length) {
+          unique = false
+          break
+        }
       }
       if (!unique) continue
 

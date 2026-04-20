@@ -21,20 +21,20 @@ For the naming and segregation principles that inform these tags, see the [Derro
 
 Every SLAOps resource — shared platform infrastructure and per-tenant resources alike — must carry these tags:
 
-| Tag key | Value format | Example | Purpose |
-|---|---|---|---|
-| `slaops:org` | Literal `slaops` | `slaops` | Top-level ownership boundary; enables org-wide queries in Security Hub, Cost Explorer |
-| `slaops:env` | `prod` \| `dev` \| `staging` | `prod` | Deployment stage; used in billing dashboards and runbook targeting |
-| `slaops:domain` | Kebab-case bounded domain | `platform`, `oaspec`, `logging` | Business capability boundary; aligns with the `{domain}` segment in naming conventions |
-| `slaops:service` | Kebab-case service name | `api`, `indexer`, `sync-lambda` | Deployable unit identity; enables per-service cost and security grouping |
-| `slaops:managed-by` | Literal `cdk` | `cdk` | Signals the resource is IaC-managed; manual changes are a drift signal |
+| Tag key             | Value format                 | Example                         | Purpose                                                                                |
+| ------------------- | ---------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
+| `slaops:org`        | Literal `slaops`             | `slaops`                        | Top-level ownership boundary; enables org-wide queries in Security Hub, Cost Explorer  |
+| `slaops:env`        | `prod` \| `dev` \| `staging` | `prod`                          | Deployment stage; used in billing dashboards and runbook targeting                     |
+| `slaops:domain`     | Kebab-case bounded domain    | `platform`, `oaspec`, `logging` | Business capability boundary; aligns with the `{domain}` segment in naming conventions |
+| `slaops:service`    | Kebab-case service name      | `api`, `indexer`, `sync-lambda` | Deployable unit identity; enables per-service cost and security grouping               |
+| `slaops:managed-by` | Literal `cdk`                | `cdk`                           | Signals the resource is IaC-managed; manual changes are a drift signal                 |
 
 ## Tenant Tag (per-tenant resources only)
 
 Resources that belong to a specific tenant carry one additional tag:
 
-| Tag key | Value format | Example | Purpose |
-|---|---|---|---|
+| Tag key            | Value format     | Example    | Purpose                                                                       |
+| ------------------ | ---------------- | ---------- | ----------------------------------------------------------------------------- |
 | `slaops:tenant-id` | Opaque tenant ID | `t-a3f8b2` | Tenant attribution for cost allocation, IAM condition keys, and audit queries |
 
 Shared platform resources (VPC, Aurora cluster, API Gateway, OpenSearch collection) do **not** carry `slaops:tenant-id` — they belong to no single tenant.
@@ -45,11 +45,11 @@ Shared platform resources (VPC, Aurora cluster, API Gateway, OpenSearch collecti
 
 ## Optional Tags
 
-| Tag key | Value format | When to add |
-|---|---|---|
-| `slaops:component` | Kebab-case component label | When a service has multiple independently-operable sub-components (e.g., `opensearch-index`, `s3-prefix`) |
-| `slaops:cost-centre` | Cost centre code | When finance requires per-tenant or per-domain billing attribution |
-| `slaops:data-classification` | `public` \| `internal` \| `confidential` | On storage resources (S3, RDS, DynamoDB, OpenSearch) that hold customer data |
+| Tag key                      | Value format                             | When to add                                                                                               |
+| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `slaops:component`           | Kebab-case component label               | When a service has multiple independently-operable sub-components (e.g., `opensearch-index`, `s3-prefix`) |
+| `slaops:cost-centre`         | Cost centre code                         | When finance requires per-tenant or per-domain billing attribution                                        |
+| `slaops:data-classification` | `public` \| `internal` \| `confidential` | On storage resources (S3, RDS, DynamoDB, OpenSearch) that hold customer data                              |
 
 ---
 
@@ -174,6 +174,7 @@ Apply `Tags.of()` at the highest scope that makes sense. Stack-level tags cover 
 ### Tag propagation caveat
 
 Some AWS resources do not inherit tags from their parent CloudFormation stack:
+
 - **OpenSearch Serverless collections** — tags must be set directly on the `CfnCollection` resource
 - **S3 object prefixes** — S3 objects inherit bucket tags only if configured explicitly; set object-level tags via the upload handler if per-object attribution is required
 - **IAM resources** — inherit stack tags normally
@@ -194,15 +195,11 @@ A CDK Aspect (`RequiredTagsAspect`) in `packages/slaops-infra/lib/aspects/` vali
 
 ```typescript
 // bin/cdk.ts — applied to the entire CDK app
-Aspects.of(app).add(new RequiredTagsAspect({
-  required: [
-    'slaops:org',
-    'slaops:env',
-    'slaops:domain',
-    'slaops:service',
-    'slaops:managed-by',
-  ],
-}))
+Aspects.of(app).add(
+  new RequiredTagsAspect({
+    required: ['slaops:org', 'slaops:env', 'slaops:domain', 'slaops:service', 'slaops:managed-by'],
+  }),
+)
 ```
 
 ---
@@ -241,16 +238,16 @@ Security Hub and GuardDuty findings are filtered and grouped by `slaops:service`
 
 ## Summary Reference
 
-| Tag | Required on shared resources | Required on tenant resources | Example value |
-|---|---|---|---|
-| `slaops:org` | ✅ | ✅ | `slaops` |
-| `slaops:env` | ✅ | ✅ | `prod` |
-| `slaops:domain` | ✅ | ✅ | `oaspec` |
-| `slaops:service` | ✅ | ✅ | `indexer` |
-| `slaops:managed-by` | ✅ | ✅ | `cdk` |
-| `slaops:tenant-id` | ❌ | ✅ | `t-a3f8b2` |
-| `slaops:component` | Optional | Optional | `opensearch-index` |
-| `slaops:data-classification` | Optional | Optional | `confidential` |
+| Tag                          | Required on shared resources | Required on tenant resources | Example value      |
+| ---------------------------- | ---------------------------- | ---------------------------- | ------------------ |
+| `slaops:org`                 | ✅                           | ✅                           | `slaops`           |
+| `slaops:env`                 | ✅                           | ✅                           | `prod`             |
+| `slaops:domain`              | ✅                           | ✅                           | `oaspec`           |
+| `slaops:service`             | ✅                           | ✅                           | `indexer`          |
+| `slaops:managed-by`          | ✅                           | ✅                           | `cdk`              |
+| `slaops:tenant-id`           | ❌                           | ✅                           | `t-a3f8b2`         |
+| `slaops:component`           | Optional                     | Optional                     | `opensearch-index` |
+| `slaops:data-classification` | Optional                     | Optional                     | `confidential`     |
 
 ---
 

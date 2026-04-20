@@ -25,26 +25,26 @@ This document covers the five search use-cases across the OASpec domain — how 
 
 Three named search modes are used throughout this document. See [OpenAPI Index Access Pattern](./openapi-index-access-pattern#search-modes) for the full definition.
 
-| Mode | Target | When to use |
-|---|---|---|
-| **Global Search** | `slaops--{tenantId}--oaspec--{entity}--search` (alias) | Tenant + platform data — discovery, enrichment |
-| **Tenant Search** | `slaops--{tenantId}--oaspec--{entity}` (direct) | Tenant-only data — version management, listing own APIs |
-| **Managed Search** | `slaops--t-glbl0000--oaspec--{entity}` (direct) | Platform catalogue only — wizard browse, stats sync |
+| Mode               | Target                                                 | When to use                                             |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------------------- |
+| **Global Search**  | `slaops--{tenantId}--oaspec--{entity}--search` (alias) | Tenant + platform data — discovery, enrichment          |
+| **Tenant Search**  | `slaops--{tenantId}--oaspec--{entity}` (direct)        | Tenant-only data — version management, listing own APIs |
+| **Managed Search** | `slaops--t-glbl0000--oaspec--{entity}` (direct)        | Platform catalogue only — wizard browse, stats sync     |
 
 ---
 
 ## Use-Cases Overview
 
-| Use-Case | Mode | Primary Purpose |
-|---|---|---|
-| API Search | Global Search | Find the right API for a task; browse the catalogue |
-| Server Search | Global Search | Match an incoming request host to a known API server |
-| Operation Search | Global Search | Find the right operation; semantic cross-API discovery |
-| Parameter Search | Global Search | Discover parameters by name/type across all APIs |
-| Model Search | Global Search | Look up schemas; understand request/response shapes |
-| Catalogue Browse | Managed Search | Wizard step: list/search the platform catalogue |
-| Version Management | Tenant Search | List/delete versions of a tenant's own API |
-| Enrichment Lookup | Global Search + DynamoDB | Real-time request→spec matching during log ingestion |
+| Use-Case           | Mode                     | Primary Purpose                                        |
+| ------------------ | ------------------------ | ------------------------------------------------------ |
+| API Search         | Global Search            | Find the right API for a task; browse the catalogue    |
+| Server Search      | Global Search            | Match an incoming request host to a known API server   |
+| Operation Search   | Global Search            | Find the right operation; semantic cross-API discovery |
+| Parameter Search   | Global Search            | Discover parameters by name/type across all APIs       |
+| Model Search       | Global Search            | Look up schemas; understand request/response shapes    |
+| Catalogue Browse   | Managed Search           | Wizard step: list/search the platform catalogue        |
+| Version Management | Tenant Search            | List/delete versions of a tenant's own API             |
+| Enrichment Lookup  | Global Search + DynamoDB | Real-time request→spec matching during log ingestion   |
 
 Most portal searches include `{ term: { latest: true } }` unless the user is explicitly browsing version history.
 
@@ -61,16 +61,19 @@ GET /openapi/search/apis?q=payment+processing&tags=billing&size=20
 ```
 
 **OpenSearch query:**
+
 ```json
 {
   "query": {
     "bool": {
       "must": [
-        { "multi_match": {
+        {
+          "multi_match": {
             "query": "payment processing",
             "fields": ["title^3", "description^2", "tagsText^2"],
             "fuzziness": "AUTO"
-        }}
+          }
+        }
       ],
       "filter": [
         { "term": { "tenantId": "<tenantId>" } },
@@ -135,10 +138,9 @@ Matching APIs:
       "filter": [
         { "term": { "tenantId": "<tenantId>" } },
         { "term": { "latest": true } },
-        { "terms": { "hostShape": [
-          "cloudtrail.*.amazonaws.com",
-          "*.ap-southeast-9.amazonaws.com"
-        ]}}
+        {
+          "terms": { "hostShape": ["cloudtrail.*.amazonaws.com", "*.ap-southeast-9.amazonaws.com"] }
+        }
       ]
     }
   },
@@ -161,17 +163,20 @@ GET /openapi/search/operations?q=create+customer+account&method=POST&tag=custome
 ```
 
 **OpenSearch query (semantic):**
+
 ```json
 {
   "query": {
     "bool": {
       "must": [
-        { "multi_match": {
+        {
+          "multi_match": {
             "query": "create customer account",
             "fields": ["summary^3", "description^2", "tagsText^2", "operationId"],
             "fuzziness": "AUTO",
             "type": "best_fields"
-        }}
+          }
+        }
       ],
       "filter": [
         { "term": { "tenantId": "<tenantId>" } },
@@ -192,6 +197,7 @@ GET /openapi/search/operations?q=create+customer+account&method=POST&tag=custome
 During log enrichment, the goal is a precise method+path match against a known API's operations — not a fuzzy text search. This uses the compacted `pathKey` format.
 
 **Compaction rules:**
+
 - HTTP method: first character, uppercase (`G`, `P`, `D`, `A` for PATCH, `H`, `O`)
 - Path segments:
   - Literal segments: kept as-is
@@ -199,6 +205,7 @@ During log enrichment, the goal is a precise method+path match against a known A
   - `{param}` where the schema type is string → `{s}`
 
 Examples:
+
 ```
 GET /users/{userId}/orders     → G:users/{i}/orders
 POST /accounts/{id}/withdraw   → P:accounts/{s}/withdraw
@@ -206,6 +213,7 @@ DELETE /items/{itemId}         → D:items/{i}
 ```
 
 **Matching a request:**
+
 1. Construct the path key for the incoming request by replacing path segments with typed wildcards.
 2. Query the DynamoDB cache for `{tenantId}:{hostShape}/{basePath}/{pathKey}`.
 3. On cache miss, query `slaops--{tenantId}--oaspec--operation` with `term: { pathKey }` + `term: { method }` + server filter.
@@ -213,13 +221,13 @@ DELETE /items/{itemId}         → D:items/{i}
 
 **DynamoDB cache schema:**
 
-| Attribute | Description |
-|---|---|
-| `PK` | `{tenantId}:{hostShape}` |
-| `SK` | `{basePath}` |
-| `specId` | OpenSearch spec document ID |
-| `serverIndex` | Index in the spec's server array |
-| `ttl` | Unix timestamp (5 min TTL, `config['dynamodb.oaspec-cache.ttl-seconds']`) |
+| Attribute     | Description                                                               |
+| ------------- | ------------------------------------------------------------------------- |
+| `PK`          | `{tenantId}:{hostShape}`                                                  |
+| `SK`          | `{basePath}`                                                              |
+| `specId`      | OpenSearch spec document ID                                               |
+| `serverIndex` | Index in the spec's server array                                          |
+| `ttl`         | Unix timestamp (5 min TTL, `config['dynamodb.oaspec-cache.ttl-seconds']`) |
 
 The DynamoDB cache only stores the `host_shape → spec_id + server_index` mapping — not the operation itself. Once the spec is resolved, the operation is matched in-memory against the pre-fetched operation list. This avoids one additional cache entry per operation while still keeping the lookup sub-millisecond for repeat requests.
 
@@ -236,16 +244,19 @@ GET /openapi/search/params?q=api_key&location=header&type=string
 ```
 
 **OpenSearch query:**
+
 ```json
 {
   "query": {
     "bool": {
       "must": [
-        { "multi_match": {
+        {
+          "multi_match": {
             "query": "api_key",
             "fields": ["name^3", "description"],
             "fuzziness": "AUTO"
-        }}
+          }
+        }
       ],
       "filter": [
         { "term": { "tenantId": "<tenantId>" } },
@@ -271,21 +282,21 @@ GET /openapi/search/models?q=PaymentMethod&apiId=<uuid>
 ```
 
 **OpenSearch query:**
+
 ```json
 {
   "query": {
     "bool": {
       "must": [
-        { "multi_match": {
+        {
+          "multi_match": {
             "query": "PaymentMethod",
             "fields": ["name^3", "description", "propertiesText"],
             "fuzziness": "AUTO"
-        }}
+          }
+        }
       ],
-      "filter": [
-        { "term": { "tenantId": "<tenantId>" } },
-        { "term": { "latest": true } }
-      ]
+      "filter": [{ "term": { "tenantId": "<tenantId>" } }, { "term": { "latest": true } }]
     }
   }
 }
@@ -326,15 +337,15 @@ The hot path is the sequence executed for every incoming HTTP request during rea
 
 ## REST API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/openapi/search/apis` | Search specs by title/description/tags |
-| `GET` | `/openapi/search/operations` | Semantic search across all operations |
-| `GET` | `/openapi/search/servers` | Find servers by host pattern |
-| `GET` | `/openapi/search/params` | Search parameters by name/type |
-| `GET` | `/openapi/search/models` | Search models/schemas by name |
-| `GET` | `/openapi/search/operations/:specId` | All operations for a specific spec version |
-| `GET` | `/openapi/search/models/:specId` | All models for a specific spec version |
+| Method | Path                                 | Description                                |
+| ------ | ------------------------------------ | ------------------------------------------ |
+| `GET`  | `/openapi/search/apis`               | Search specs by title/description/tags     |
+| `GET`  | `/openapi/search/operations`         | Semantic search across all operations      |
+| `GET`  | `/openapi/search/servers`            | Find servers by host pattern               |
+| `GET`  | `/openapi/search/params`             | Search parameters by name/type             |
+| `GET`  | `/openapi/search/models`             | Search models/schemas by name              |
+| `GET`  | `/openapi/search/operations/:specId` | All operations for a specific spec version |
+| `GET`  | `/openapi/search/models/:specId`     | All models for a specific spec version     |
 
 ---
 

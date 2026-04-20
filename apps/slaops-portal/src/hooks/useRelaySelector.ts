@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type CloudRelayConnection } from '@/client/slaops-cloud'
 import { useConnections } from '@/hooks/useConnectionsApi'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -57,15 +57,12 @@ export function useRelaySelector() {
     }
   }, [connections, isLoading, connectionId])
 
-  const setConnectionId = useCallback(
-    (id: string | null) => {
-      setConnectionIdState(id)
-      // Always persist explicitly — null stored as "null" so the effect can
-      // distinguish "user chose browser mode" from "no preference yet".
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(id))
-    },
-    [],
-  )
+  const setConnectionId = useCallback((id: string | null) => {
+    setConnectionIdState(id)
+    // Always persist explicitly — null stored as "null" so the effect can
+    // distinguish "user chose browser mode" from "no preference yet".
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(id))
+  }, [])
 
   const connection: CloudRelayConnection | null = useMemo(
     () => connections.find((c) => c.id === connectionId) ?? null,

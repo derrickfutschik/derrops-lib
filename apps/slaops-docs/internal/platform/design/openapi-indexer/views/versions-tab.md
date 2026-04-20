@@ -41,12 +41,12 @@ The Versions tab is the version history browser for an API. It shows every OASpe
 
 **Query params**:
 
-| Param | Default | Notes |
-|---|---|---|
-| `from` | `0` | OpenSearch `from` |
-| `size` | `10` | OpenSearch `size`, max `100` |
-| `sort` | `indexedAt` | Field to sort by |
-| `order` | `desc` | `asc` or `desc` |
+| Param   | Default     | Notes                        |
+| ------- | ----------- | ---------------------------- |
+| `from`  | `0`         | OpenSearch `from`            |
+| `size`  | `10`        | OpenSearch `size`, max `100` |
+| `sort`  | `indexedAt` | Field to sort by             |
+| `order` | `desc`      | `asc` or `desc`              |
 
 No `version` param — this endpoint always returns all versions, newest first.
 
@@ -75,8 +75,8 @@ interface VersionHit {
   id: string
   version: string
   latest: boolean
-  specVersion: string          // OpenAPI spec version (e.g. "3.0.1")
-  indexedAt: string            // ISO timestamp
+  specVersion: string // OpenAPI spec version (e.g. "3.0.1")
+  indexedAt: string // ISO timestamp
   operationCount: number
   serverCount: number
   parameterCount: number
@@ -94,17 +94,17 @@ Fields map directly to `OaSpecDocument` — no aggregation needed.
 
 ### Column layout
 
-| Column | Field | Sortable | Hideable | Notes |
-|---|---|---|---|---|
-| **Version** | `version` | Yes | No | Monospace; "Latest" badge when `latest: true` |
-| **Spec** | `specVersion` | No | Yes | e.g. `OAS 3.0.1` |
-| **Operations** | `operationCount` | Yes | No | Number |
-| **Servers** | `serverCount` | Yes | Yes | Number |
-| **Parameters** | `parameterCount` | Yes | Yes | Number |
-| **Models** | `modelCount` | Yes | Yes | Number |
-| **Size** | `fileSize` | Yes | Yes | Human-readable (e.g. `14 KB`) |
-| **Format** | `fileFormat` | No | Yes | `yaml` / `json` badge |
-| **Indexed At** | `indexedAt` | Yes | No | Relative timestamp (e.g. "3 days ago") with tooltip showing ISO |
+| Column         | Field            | Sortable | Hideable | Notes                                                           |
+| -------------- | ---------------- | -------- | -------- | --------------------------------------------------------------- |
+| **Version**    | `version`        | Yes      | No       | Monospace; "Latest" badge when `latest: true`                   |
+| **Spec**       | `specVersion`    | No       | Yes      | e.g. `OAS 3.0.1`                                                |
+| **Operations** | `operationCount` | Yes      | No       | Number                                                          |
+| **Servers**    | `serverCount`    | Yes      | Yes      | Number                                                          |
+| **Parameters** | `parameterCount` | Yes      | Yes      | Number                                                          |
+| **Models**     | `modelCount`     | Yes      | Yes      | Number                                                          |
+| **Size**       | `fileSize`       | Yes      | Yes      | Human-readable (e.g. `14 KB`)                                   |
+| **Format**     | `fileFormat`     | No       | Yes      | `yaml` / `json` badge                                           |
+| **Indexed At** | `indexedAt`      | Yes      | No       | Relative timestamp (e.g. "3 days ago") with tooltip showing ISO |
 
 ### Version badge
 
@@ -116,10 +116,10 @@ Clicking any row sets the **selected version** in Redux (`apisSlice.selectedVers
 
 ### Actions column
 
-| Action | Condition | Behaviour |
-|---|---|---|
-| Re-index | Always | Triggers `POST /openapi/index` for this version's `s3Bucket` + `s3Key` |
-| Diff | Future | Disabled for now; opens a diff view comparing this version against the previous |
+| Action   | Condition | Behaviour                                                                       |
+| -------- | --------- | ------------------------------------------------------------------------------- |
+| Re-index | Always    | Triggers `POST /openapi/index` for this version's `s3Bucket` + `s3Key`          |
+| Diff     | Future    | Disabled for now; opens a diff view comparing this version against the previous |
 
 ### Pagination
 
@@ -141,7 +141,7 @@ Slice: `versionsTabSlice` in `src/store/`.
 
 ## Key Decisions
 
-**No version selector on this tab.** The Versions tab *is* the version selector — clicking a row selects the version for the other tabs. The other tabs show a read-only version badge in their toolbar.
+**No version selector on this tab.** The Versions tab _is_ the version selector — clicking a row selects the version for the other tabs. The other tabs show a read-only version badge in their toolbar.
 
 **Re-index on any version, not just latest.** Any retained version can be re-indexed to refresh its data if the indexing pipeline changes.
 

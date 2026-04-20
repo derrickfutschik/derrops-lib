@@ -1,6 +1,6 @@
-import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { useAppSelector } from '@/store/hooks'
-import { selectInfoFetchStatus, selectInfoFetchResult } from '@/store/newApiWizardSlice'
+import { selectInfoFetchResult, selectInfoFetchStatus } from '@/store/newApiWizardSlice'
+import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
 
 export function InfoFetchFeedback() {
   const status = useAppSelector(selectInfoFetchStatus)

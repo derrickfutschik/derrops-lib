@@ -4,13 +4,14 @@ Apply these rules when creating, editing, or deciding where to place documentati
 
 ## Three-tier doc hierarchy
 
-| Tier | Location | Purpose |
-|---|---|---|
-| **Ideas** | `internal/platform/drafts/` | Raw, unstructured ideas, research notes, hypotheses |
-| **Designs (in progress)** | `internal/platform/design/` | Formal design docs being actively written — `status: draft` |
+| Tier                      | Location                    | Purpose                                                                        |
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| **Ideas**                 | `internal/platform/drafts/` | Raw, unstructured ideas, research notes, hypotheses                            |
+| **Designs (in progress)** | `internal/platform/design/` | Formal design docs being actively written — `status: draft`                    |
 | **Designs (progressing)** | `internal/platform/design/` | Reviewed designs — `status: proposed \| accepted \| implemented \| superseded` |
 
 Rules:
+
 - `drafts/` is an **ideas inbox**. A file there means "raw idea, not yet designed."
 - `design/` holds all formal design work regardless of maturity. Never park a design-in-progress in `drafts/` — use `status: draft` in `design/` instead.
 - Use the `/idea` skill to create idea docs and the `/design` skill to create design docs.
@@ -21,13 +22,13 @@ Rules:
 draft → proposed → accepted → implemented → superseded
 ```
 
-| Status | Meaning | Action required |
-|---|---|---|
-| `draft` | Being actively written, not ready for review | — |
-| `proposed` | Ready for design review | — |
-| `accepted` | Approved, implementation in progress | — |
-| `implemented` | Feature shipped to production | Set `implemented_at: YYYY-MM-DD`; add `implemented` tag |
-| `superseded` | Replaced by a newer design | Link to the successor doc in the body |
+| Status        | Meaning                                      | Action required                                         |
+| ------------- | -------------------------------------------- | ------------------------------------------------------- |
+| `draft`       | Being actively written, not ready for review | —                                                       |
+| `proposed`    | Ready for design review                      | —                                                       |
+| `accepted`    | Approved, implementation in progress         | —                                                       |
+| `implemented` | Feature shipped to production                | Set `implemented_at: YYYY-MM-DD`; add `implemented` tag |
+| `superseded`  | Replaced by a newer design                   | Link to the successor doc in the body                   |
 
 Update `updated_at` on every meaningful edit to a design doc.
 

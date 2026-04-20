@@ -26,10 +26,10 @@ This document covers how the platform manages OpenAPI spec versions for a tenant
 
 Every `api` row carries a `management_mode` that determines who is responsible for delivering spec versions.
 
-| Mode | Who manages versions | Spec data lives in |
-|---|---|---|
-| `platform` | SLAOps platform pipeline | Global index (`slaops--t-glbl0000--oaspec--*`) |
-| `private` | The tenant | Tenant private index (`slaops--{tenantId}--oaspec--*`) |
+| Mode       | Who manages versions     | Spec data lives in                                     |
+| ---------- | ------------------------ | ------------------------------------------------------ |
+| `platform` | SLAOps platform pipeline | Global index (`slaops--t-glbl0000--oaspec--*`)         |
+| `private`  | The tenant               | Tenant private index (`slaops--{tenantId}--oaspec--*`) |
 
 In both modes the tenant has a row in the `api` table — representing their interest in that API — and the search alias transparently resolves spec data from whichever index holds it. No global rows are written to RDS.
 
@@ -103,10 +103,10 @@ The platform periodically fetches the spec from a configured URL and re-indexes 
 
 **Configuration:**
 
-| Field | Description | Example |
-|---|---|---|
-| `version_fetch_url` | URL to GET the spec from | `https://api.stripe.com/openapi.yaml` |
-| `version_fetch_cron` | Cron schedule (UTC) | `0 2 * * *` (daily at 02:00 UTC) |
+| Field                | Description              | Example                               |
+| -------------------- | ------------------------ | ------------------------------------- |
+| `version_fetch_url`  | URL to GET the spec from | `https://api.stripe.com/openapi.yaml` |
+| `version_fetch_cron` | Cron schedule (UTC)      | `0 2 * * *` (daily at 02:00 UTC)      |
 
 **Fetch behaviour:**
 
@@ -133,11 +133,11 @@ Version comparison uses `info.version` string equality. If the remote spec updat
 
 The `version_strategy` field is extensible. Planned future strategies:
 
-| Strategy | Description |
-|---|---|
-| `github_sync` | Poll a GitHub repository path for spec file changes; trigger on new commits |
-| `registry_sync` | Watch a spec registry (e.g. Bump.sh, Stoplight) for published versions |
-| `webhook` | Receive a webhook from CI/CD — spec is pushed to the platform on each release |
+| Strategy        | Description                                                                   |
+| --------------- | ----------------------------------------------------------------------------- |
+| `github_sync`   | Poll a GitHub repository path for spec file changes; trigger on new commits   |
+| `registry_sync` | Watch a spec registry (e.g. Bump.sh, Stoplight) for published versions        |
+| `webhook`       | Receive a webhook from CI/CD — spec is pushed to the platform on each release |
 
 Adding a new strategy requires: a new `version_strategy` value, any additional config columns on `api`, a scheduler entry, and a fetch/parse handler in the indexer service.
 
@@ -145,9 +145,9 @@ Adding a new strategy requires: a new `version_strategy` value, any additional c
 
 ## Switching Modes
 
-| Transition | What happens |
-|---|---|
-| `platform` → `private` | Tenant takes ownership. The existing global spec documents remain in the global index (unchanged). A private index is provisioned lazily on first upload. The `global_opensearch_id` reference is cleared. |
+| Transition             | What happens                                                                                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform` → `private` | Tenant takes ownership. The existing global spec documents remain in the global index (unchanged). A private index is provisioned lazily on first upload. The `global_opensearch_id` reference is cleared.     |
 | `private` → `platform` | Only allowed if the API exists in the platform catalogue. The tenant's private index documents for this API are deleted (or retained, configurable). `global_opensearch_id` is set to the matching global doc. |
 
 ---

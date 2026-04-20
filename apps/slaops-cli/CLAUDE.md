@@ -32,15 +32,16 @@ Authenticates via Cognito browser PKCE, registers a `local-dev` relay with `slao
 
 **Flags**:
 
-| Flag | Default | Description |
-|---|---|---|
-| `--platform-url` | prompted | slaops-cloud base URL |
-| `--profile` / `-p` | `default` | Profile name in `~/.slaops/config` and `~/.slaops/credentials` |
-| `--force` / `-f` | `false` | Re-authenticate and overwrite existing credentials |
-| `--queue-mode` | `platform` | `platform` — SLAOps provisions the SQS queue; `relay` — customer provisions it |
-| `--relay-queue-url` | — | Required when `--queue-mode=relay`; must be an SQS FIFO URL ending in `.fifo` |
+| Flag                | Default    | Description                                                                    |
+| ------------------- | ---------- | ------------------------------------------------------------------------------ |
+| `--platform-url`    | prompted   | slaops-cloud base URL                                                          |
+| `--profile` / `-p`  | `default`  | Profile name in `~/.slaops/config` and `~/.slaops/credentials`                 |
+| `--force` / `-f`    | `false`    | Re-authenticate and overwrite existing credentials                             |
+| `--queue-mode`      | `platform` | `platform` — SLAOps provisions the SQS queue; `relay` — customer provisions it |
+| `--relay-queue-url` | —          | Required when `--queue-mode=relay`; must be an SQS FIFO URL ending in `.fifo`  |
 
 **What it does**:
+
 1. Starts a local HTTP server on port 9876 to catch the OAuth callback.
 2. Opens the Cognito hosted UI for PKCE auth.
 3. Exchanges the auth code for Cognito tokens (`access_token`, `id_token`, `refresh_token`).
@@ -56,11 +57,12 @@ Exchanges stored Cognito tokens for temporary AWS credentials, then delegates to
 
 **Flags**:
 
-| Flag | Default | Description |
-|---|---|---|
+| Flag        | Default   | Description                                                            |
+| ----------- | --------- | ---------------------------------------------------------------------- |
 | `--profile` | `default` | Must match a profile in `~/.slaops/config` and `~/.slaops/credentials` |
 
 **What it does**:
+
 1. Reads `~/.slaops/config` and `~/.slaops/credentials` for the given profile.
 2. If the Cognito access token is expired (within 60s buffer), calls `refreshAccessToken()` and writes the refreshed tokens back to `~/.slaops/credentials`.
 3. Calls `getAwsCredentialsFromIdentityPool()` — two raw JSON calls to `cognito-identity.<region>.amazonaws.com` (GetId, GetCredentialsForIdentity). No AWS SDK is used.
@@ -69,29 +71,29 @@ Exchanges stored Cognito tokens for temporary AWS credentials, then delegates to
 
 **Env vars injected into the relay process**:
 
-| Variable | Source |
-|---|---|
-| `RELAY_ID` | `config.relay_id` |
-| `RELAY_PLATFORM_URL` | `config.platform_url` |
-| `RELAY_PLATFORM_TOKEN` | Cognito `access_token` |
-| `RELAY_PLATFORM_SQS_QUEUE_URL` | `config.relay_sqs_queue_url` |
-| `RELAY_PLATFORM_SQS_REGION` | `config.relay_sqs_region` |
-| `RELAY_PLATFORM_SQS_ACCESS_KEY_ID` | Identity Pool temp creds |
-| `RELAY_PLATFORM_SQS_SECRET_ACCESS_KEY` | Identity Pool temp creds |
-| `RELAY_PLATFORM_SQS_SESSION_TOKEN` | Identity Pool temp creds |
-| `RELAY_PLATFORM_SQS_CREDS_EXPIRY` | Identity Pool temp creds expiry |
-| `RELAY_COGNITO_*` | Cognito config + tokens (for relay-side refresh) |
-| `RELAY_SSRF_POLICY` | Hardcoded `dev-local` |
-| `AEGIS_REQUIRED` | Hardcoded `false` |
+| Variable                               | Source                                           |
+| -------------------------------------- | ------------------------------------------------ |
+| `RELAY_ID`                             | `config.relay_id`                                |
+| `RELAY_PLATFORM_URL`                   | `config.platform_url`                            |
+| `RELAY_PLATFORM_TOKEN`                 | Cognito `access_token`                           |
+| `RELAY_PLATFORM_SQS_QUEUE_URL`         | `config.relay_sqs_queue_url`                     |
+| `RELAY_PLATFORM_SQS_REGION`            | `config.relay_sqs_region`                        |
+| `RELAY_PLATFORM_SQS_ACCESS_KEY_ID`     | Identity Pool temp creds                         |
+| `RELAY_PLATFORM_SQS_SECRET_ACCESS_KEY` | Identity Pool temp creds                         |
+| `RELAY_PLATFORM_SQS_SESSION_TOKEN`     | Identity Pool temp creds                         |
+| `RELAY_PLATFORM_SQS_CREDS_EXPIRY`      | Identity Pool temp creds expiry                  |
+| `RELAY_COGNITO_*`                      | Cognito config + tokens (for relay-side refresh) |
+| `RELAY_SSRF_POLICY`                    | Hardcoded `dev-local`                            |
+| `AEGIS_REQUIRED`                       | Hardcoded `false`                                |
 
 ---
 
 ## Configuration files
 
-| File | Mode | Contents |
-|---|---|---|
-| `~/.slaops/config` | 0644 | `platform_url`, `relay_id`, `relay_sqs_queue_url`, `relay_sqs_region`, `relay_sqs_queue_mode`, `identity_pool_id`, `cognito_region`, `user_pool_id` |
-| `~/.slaops/credentials` | 0600 | `access_token`, `id_token`, `refresh_token`, `expires_at` |
+| File                    | Mode | Contents                                                                                                                                            |
+| ----------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.slaops/config`      | 0644 | `platform_url`, `relay_id`, `relay_sqs_queue_url`, `relay_sqs_region`, `relay_sqs_queue_mode`, `identity_pool_id`, `cognito_region`, `user_pool_id` |
+| `~/.slaops/credentials` | 0600 | `access_token`, `id_token`, `refresh_token`, `expires_at`                                                                                           |
 
 Both files use a TOML-compatible `[profile]` section format, mirroring AWS CLI conventions. The parser/writer is implemented in `profile-store.ts` with no external dependencies.
 
@@ -101,21 +103,21 @@ Both files use a TOML-compatible `[profile]` section format, mirroring AWS CLI c
 
 Three exports used by the commands:
 
-| Export | Purpose |
-|---|---|
-| `authenticateWithBrowser()` | Full PKCE flow — starts local server on port 9876, opens browser, returns `CognitoTokens` |
-| `refreshAccessToken(refreshToken)` | Calls `POST /oauth2/token` with `grant_type=refresh_token`; returns new access + id tokens |
+| Export                                             | Purpose                                                                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `authenticateWithBrowser()`                        | Full PKCE flow — starts local server on port 9876, opens browser, returns `CognitoTokens`                  |
+| `refreshAccessToken(refreshToken)`                 | Calls `POST /oauth2/token` with `grant_type=refresh_token`; returns new access + id tokens                 |
 | `getAwsCredentialsFromIdentityPool(idToken, opts)` | Raw fetch calls to Cognito Identity (GetId → GetCredentialsForIdentity); returns `AwsTemporaryCredentials` |
 
 Cognito config defaults (overridable via env):
 
-| Env var | Default |
-|---|---|
-| `SLAOPS_COGNITO_DOMAIN` | `https://auth.slaops.com` |
-| `SLAOPS_COGNITO_CLIENT_ID` | _(must be set in release builds)_ |
-| `SLAOPS_COGNITO_REGION` | `ap-southeast-2` |
+| Env var                       | Default                           |
+| ----------------------------- | --------------------------------- |
+| `SLAOPS_COGNITO_DOMAIN`       | `https://auth.slaops.com`         |
+| `SLAOPS_COGNITO_CLIENT_ID`    | _(must be set in release builds)_ |
+| `SLAOPS_COGNITO_REGION`       | `ap-southeast-2`                  |
 | `SLAOPS_COGNITO_USER_POOL_ID` | _(must be set in release builds)_ |
-| `SLAOPS_IDENTITY_POOL_ID` | _(must be set in release builds)_ |
+| `SLAOPS_IDENTITY_POOL_ID`     | _(must be set in release builds)_ |
 
 ---
 

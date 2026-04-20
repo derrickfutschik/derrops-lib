@@ -6,11 +6,11 @@ AWS CDK infrastructure stacks for the SLAOps platform. Contains long-lived resou
 
 ## Stacks
 
-| Stack | Key resources |
-|---|---|
-| `AuthStack` | Cognito User Pool, User Pool Client, TOTP MFA, advanced security |
-| `DatabaseStack` | VPC (multi-AZ, 3-tier subnets), Aurora Serverless v2 PostgreSQL 15.5, Secrets Manager, Bastion Host |
-| `ApiStack` | API Gateway (REST, regional), Lambda proxy integration, rate limiting (50 rps / 100 burst), CloudWatch logging |
+| Stack           | Key resources                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `AuthStack`     | Cognito User Pool, User Pool Client, TOTP MFA, advanced security                                               |
+| `DatabaseStack` | VPC (multi-AZ, 3-tier subnets), Aurora Serverless v2 PostgreSQL 15.5, Secrets Manager, Bastion Host            |
+| `ApiStack`      | API Gateway (REST, regional), Lambda proxy integration, rate limiting (50 rps / 100 burst), CloudWatch logging |
 
 For each stack there is a corresponding `.md` file in `lib/stack/` with a description and Mermaid infrastructure diagram. See [`lib/stack/CLAUDE.md`](lib/stack/CLAUDE.md) for authoring rules.
 
@@ -18,33 +18,33 @@ For each stack there is a corresponding `.md` file in `lib/stack/` with a descri
 
 **AuthStack**
 
-| Export | Value |
-|---|---|
-| `SlaOpsUserPoolId` | Cognito User Pool ID |
-| `SlaOpsUserPoolArn` | User Pool ARN |
-| `SlaOpsUserPoolClientId` | Client ID for web apps |
-| `SlaOpsUserPoolProviderName` | Provider name |
-| `SlaOpsUserPoolProviderUrl` | Provider URL |
+| Export                       | Value                  |
+| ---------------------------- | ---------------------- |
+| `SlaOpsUserPoolId`           | Cognito User Pool ID   |
+| `SlaOpsUserPoolArn`          | User Pool ARN          |
+| `SlaOpsUserPoolClientId`     | Client ID for web apps |
+| `SlaOpsUserPoolProviderName` | Provider name          |
+| `SlaOpsUserPoolProviderUrl`  | Provider URL           |
 
 **DatabaseStack**
 
-| Export | Value |
-|---|---|
-| `SlaOpsDbClusterEndpoint` | Writer endpoint |
-| `SlaOpsDbClusterReadEndpoint` | Reader endpoint |
-| `SlaOpsDbName` | Database name (`slaops`) |
-| `SlaOpsDbSecretArn` | Credentials ARN (Secrets Manager) |
-| `SlaOpsDbPort` | Port (`5432`) |
-| `SlaOpsBastionHostId` | Bastion EC2 instance ID |
-| `SlaOpsVpcId` | VPC ID |
+| Export                        | Value                             |
+| ----------------------------- | --------------------------------- |
+| `SlaOpsDbClusterEndpoint`     | Writer endpoint                   |
+| `SlaOpsDbClusterReadEndpoint` | Reader endpoint                   |
+| `SlaOpsDbName`                | Database name (`slaops`)          |
+| `SlaOpsDbSecretArn`           | Credentials ARN (Secrets Manager) |
+| `SlaOpsDbPort`                | Port (`5432`)                     |
+| `SlaOpsBastionHostId`         | Bastion EC2 instance ID           |
+| `SlaOpsVpcId`                 | VPC ID                            |
 
 **ApiStack**
 
-| Export | Value |
-|---|---|
-| `SlaOpsApiUrl` | API Gateway base URL |
-| `SlaOpsApiId` | API Gateway ID |
-| `SlaOpsApiArn` | API Gateway ARN |
+| Export              | Value                             |
+| ------------------- | --------------------------------- |
+| `SlaOpsApiUrl`      | API Gateway base URL              |
+| `SlaOpsApiId`       | API Gateway ID                    |
+| `SlaOpsApiArn`      | API Gateway ARN                   |
 | `SlaOpsApiEndpoint` | API endpoint with stage (`/prod`) |
 
 ## Consuming outputs from another stack
@@ -53,7 +53,7 @@ For each stack there is a corresponding `.md` file in `lib/stack/` with a descri
 import * as cdk from 'aws-cdk-lib'
 
 const dbEndpoint = cdk.Fn.importValue('SlaOpsDbClusterEndpoint')
-const secretArn  = cdk.Fn.importValue('SlaOpsDbSecretArn')
+const secretArn = cdk.Fn.importValue('SlaOpsDbSecretArn')
 ```
 
 ## Commands

@@ -20,6 +20,7 @@ tags:
 Design for the `/apis/new` wizard in the portal — covering wizard state management, the two paths (catalogue adopt vs. private registration), and the URL-driven auto-populate behaviour for the private registration path.
 
 Related docs:
+
 - [UI Design](./ui-design) — broader API tab and upload wizard design
 - [API & OASpec Data Model](./api-oaspec-data-model) — `api` table, version strategy columns
 - [Version Strategies](./version-strategies) — management modes and `url_fetch` strategy
@@ -34,6 +35,7 @@ The New API Wizard is the entry point for adding an API to a tenant's catalogue.
 2. **Private registration** — register a self-managed API with a name, description, optional external URL, and version strategy.
 
 The wizard is a multi-step flow (`/apis/new`) with a step indicator. State for the entire wizard lives in a Redux slice so that:
+
 - Step transitions do not require prop-drilling.
 - The back button can restore prior field values without re-fetching.
 - The info auto-populate response is available after the step changes.
@@ -48,8 +50,8 @@ All mutable wizard state lives in `src/store/oapiSpecWizardSlice.ts`. Local UI s
 
 ```typescript
 interface OapiSpecWizardState {
-  step: number                          // current step (1 | 2 | 3)
-  path: 'catalogue' | 'private' | null  // chosen path
+  step: number // current step (1 | 2 | 3)
+  path: 'catalogue' | 'private' | null // chosen path
   selectedCatalogueHit: CatalogueHit | null
 
   // private registration fields
@@ -62,7 +64,7 @@ interface OapiSpecWizardState {
 
   // info auto-populate
   infoFetchStatus: 'idle' | 'loading' | 'success' | 'error'
-  infoFetchResult: OpenApiInfoResult | null  // populated on success
+  infoFetchResult: OpenApiInfoResult | null // populated on success
 
   // post-creation
   createdApiId: string | null
@@ -77,17 +79,17 @@ interface OpenApiInfoResult {
 
 ### Slice actions
 
-| Action | Payload | Effect |
-|---|---|---|
-| `setStep` | `number` | Advances or retreats the step |
-| `setPath` | `'catalogue' \| 'private'` | Records chosen path |
-| `setSelectedCatalogueHit` | `CatalogueHit \| null` | Stores selected catalogue entry |
-| `setPrivateField` | `{ field, value }` | Updates any private registration field |
-| `setInfoFetchStatus` | `'idle' \| 'loading' \| 'success' \| 'error'` | Tracks info fetch lifecycle |
-| `setInfoFetchResult` | `OpenApiInfoResult \| null` | Stores fetched info block |
-| `applyInfoResult` | — | Copies `infoFetchResult.title` → `name`, `infoFetchResult.description` → `description` |
-| `setCreatedApiId` | `string` | Records the API id after creation |
-| `resetWizard` | — | Returns to initial state (used on navigate away) |
+| Action                    | Payload                                       | Effect                                                                                 |
+| ------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `setStep`                 | `number`                                      | Advances or retreats the step                                                          |
+| `setPath`                 | `'catalogue' \| 'private'`                    | Records chosen path                                                                    |
+| `setSelectedCatalogueHit` | `CatalogueHit \| null`                        | Stores selected catalogue entry                                                        |
+| `setPrivateField`         | `{ field, value }`                            | Updates any private registration field                                                 |
+| `setInfoFetchStatus`      | `'idle' \| 'loading' \| 'success' \| 'error'` | Tracks info fetch lifecycle                                                            |
+| `setInfoFetchResult`      | `OpenApiInfoResult \| null`                   | Stores fetched info block                                                              |
+| `applyInfoResult`         | —                                             | Copies `infoFetchResult.title` → `name`, `infoFetchResult.description` → `description` |
+| `setCreatedApiId`         | `string`                                      | Records the API id after creation                                                      |
+| `resetWizard`             | —                                             | Returns to initial state (used on navigate away)                                       |
 
 All actions are registered via `actionRegistry.registerAll()` with `area: ActionArea.UI` and `group: ActionGroup.Navigation`.
 
@@ -122,8 +124,9 @@ The `StepIndicator` total is 2 for the catalogue path and 3 for the private path
 In step 2B (private registration form), the **External URL** field moves to the **top** of the form — above Name and Description. This allows the auto-populate flow to feel natural: the user pastes a URL first and the fields below fill in.
 
 Final form field order:
+
 1. External URL _(with auto-populate trigger below it)_
-2. Name *(required)*
+2. Name _(required)_
 3. Description
 4. Version strategy
 5. Fetch URL + Fetch schedule _(conditional on url_fetch)_
@@ -131,6 +134,7 @@ Final form field order:
 ### Auto-populate trigger
 
 When the user types or pastes a value into the External URL field, the component:
+
 1. Validates the value as a URL (using the same Zod `z.string().url()` check as the form schema).
 2. If valid and different from the last fetched URL, dispatches `setInfoFetchStatus('loading')` and calls the `useApiInfo` hook.
 3. If invalid, dispatches `setInfoFetchStatus('idle')` and clears `infoFetchResult`.
@@ -146,11 +150,13 @@ GET /apis/info?openapi_doc_url={encoded-url}
 ```
 
 The backend:
+
 1. Downloads the YAML or JSON at `openapi_doc_url`.
 2. Parses it and extracts the `info` object.
 3. Returns the info block as JSON.
 
 **Response (success — 200):**
+
 ```json
 {
   "title": "Open-Meteo APIs",
@@ -169,6 +175,7 @@ All three fields are optional in the OpenAPI spec — the response omits any fie
 | 502 | Backend could not reach the URL (network error, DNS failure, timeout) |
 
 The `useApiInfo` hook dispatches status actions based on the result:
+
 - On success → `setInfoFetchStatus('success')`, `setInfoFetchResult(data)`
 - On 4xx/5xx → `setInfoFetchStatus('error')`, `setInfoFetchResult(null)`
 
@@ -176,14 +183,15 @@ The `useApiInfo` hook dispatches status actions based on the result:
 
 Immediately below the External URL field, the wizard shows contextual feedback:
 
-| State | UI |
-|---|---|
-| `idle` | Nothing shown |
-| `loading` | Spinner with label "Fetching spec info…" |
-| `success` | Green check + "Found: **\{title\}** v\{version\}" + **"Use these details"** button |
-| `error` | Warning icon + "Couldn't read spec from this URL" (non-blocking; user can still fill fields manually) |
+| State     | UI                                                                                                    |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| `idle`    | Nothing shown                                                                                         |
+| `loading` | Spinner with label "Fetching spec info…"                                                              |
+| `success` | Green check + "Found: **\{title\}** v\{version\}" + **"Use these details"** button                    |
+| `error`   | Warning icon + "Couldn't read spec from this URL" (non-blocking; user can still fill fields manually) |
 
 Clicking **"Use these details"** dispatches `applyInfoResult`, which:
+
 - Copies `infoFetchResult.title` into the `name` field (only if `name` is currently empty or matches the previous auto-populated value — does not overwrite user edits).
 - Copies `infoFetchResult.description` into the `description` field under the same guard.
 - Does not overwrite `version` — `info.version` is available in `infoFetchResult` for the backend to use when creating the API record, but the form has no version field.
@@ -200,19 +208,22 @@ Lives in `src/hooks/useApiInfo.ts`. Owns the async fetch logic; components do no
 export function useApiInfo() {
   const dispatch = useAppDispatch()
 
-  const fetchInfo = useCallback(async (url: string) => {
-    dispatch(setInfoFetchStatus('loading'))
-    dispatch(setInfoFetchResult(null))
-    try {
-      const { data } = await cloudAxios.get<OpenApiInfoResult>('/apis/info', {
-        params: { openapi_doc_url: url },
-      })
-      dispatch(setInfoFetchResult(data))
-      dispatch(setInfoFetchStatus('success'))
-    } catch {
-      dispatch(setInfoFetchStatus('error'))
-    }
-  }, [dispatch])
+  const fetchInfo = useCallback(
+    async (url: string) => {
+      dispatch(setInfoFetchStatus('loading'))
+      dispatch(setInfoFetchResult(null))
+      try {
+        const { data } = await cloudAxios.get<OpenApiInfoResult>('/apis/info', {
+          params: { openapi_doc_url: url },
+        })
+        dispatch(setInfoFetchResult(data))
+        dispatch(setInfoFetchStatus('success'))
+      } catch {
+        dispatch(setInfoFetchStatus('error'))
+      }
+    },
+    [dispatch],
+  )
 
   return { fetchInfo }
 }
@@ -234,6 +245,7 @@ This is a new endpoint on `slaops-cloud`. It must be added to the NestJS control
 **Query parameter:** `openapi_doc_url` (string, required, must be a valid absolute URL).
 
 **Behaviour:**
+
 1. Validate `openapi_doc_url` — return 400 if missing or not a URL.
 2. `GET openapi_doc_url` with a 10-second timeout and a neutral `User-Agent`.
 3. Parse response body as YAML first, then JSON if YAML fails — return 422 if neither parse succeeds.
@@ -278,6 +290,7 @@ React Hook Form is retained for validation within `PrivateRegistrationForm` — 
 ### Redux slice over local component state
 
 The wizard state was originally `useState` in `ApisNew`. Moving to a slice enables:
+
 - Back-navigation that restores all field values without remounting.
 - `useApiInfo` hook dispatching fetch results without prop-threading through form state.
 - The `applyInfoResult` action being testable in isolation.

@@ -19,12 +19,13 @@ Groups beginning with `slaops-internal-` are reserved for platform use and skipp
 
 When a `local-dev` relay connection is registered, the queue can be owned in two ways:
 
-| Mode | Who creates the queue | Who can consume | Use case |
-|---|---|---|---|
-| `platform` (default) | SLAOps (`RelayQueueService`) | Relay via Identity Pool → STS | Standard developer workflow |
-| `relay` | Customer (manually) | Relay via customer IAM credentials | Enterprise networks that cannot reach SQS endpoints in the SLAOps account |
+| Mode                 | Who creates the queue        | Who can consume                    | Use case                                                                  |
+| -------------------- | ---------------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| `platform` (default) | SLAOps (`RelayQueueService`) | Relay via Identity Pool → STS      | Standard developer workflow                                               |
+| `relay`              | Customer (manually)          | Relay via customer IAM credentials | Enterprise networks that cannot reach SQS endpoints in the SLAOps account |
 
 For `relay` mode, the customer must:
+
 1. Create an SQS FIFO queue in their own AWS account
 2. Add a queue resource policy granting `SlaOpsSqsPublishRole` (`SlaOpsSqsPublishRoleArn` export) the `sqs:SendMessage` permission
 3. Provide the queue URL at relay registration (`relay init --queue-mode relay --relay-queue-url <url>`)
@@ -68,13 +69,13 @@ sequenceDiagram
 
 ## Credential Lifecycle
 
-| Credential | TTL | Stored at rest | Refreshed by |
-|---|---|---|---|
-| Cognito access_token | 1 hour | `~/.slaops/credentials` (0600) | `relay start` on launch |
-| Cognito id_token | 1 hour | `~/.slaops/credentials` (0600) | relay process (in memory) |
-| Cognito refresh_token | **30 days** | `~/.slaops/credentials` (0600) | Developer re-runs `slaops relay init` |
-| AWS temp credentials | 1 hour | **In-memory only** | relay process, automatically |
-| Relay config (URLs, IDs, mode) | Permanent | `~/.slaops/config` (0644) | `relay init` re-registration |
+| Credential                     | TTL         | Stored at rest                 | Refreshed by                          |
+| ------------------------------ | ----------- | ------------------------------ | ------------------------------------- |
+| Cognito access_token           | 1 hour      | `~/.slaops/credentials` (0600) | `relay start` on launch               |
+| Cognito id_token               | 1 hour      | `~/.slaops/credentials` (0600) | relay process (in memory)             |
+| Cognito refresh_token          | **30 days** | `~/.slaops/credentials` (0600) | Developer re-runs `slaops relay init` |
+| AWS temp credentials           | 1 hour      | **In-memory only**             | relay process, automatically          |
+| Relay config (URLs, IDs, mode) | Permanent   | `~/.slaops/config` (0644)      | `relay init` re-registration          |
 
 ## SQS Queue Naming and ABAC Isolation
 
@@ -90,23 +91,23 @@ The IAM policy on the authenticated Identity Pool role uses ABAC principal tag v
 arn:aws:sqs:*:*:slaops-${aws:PrincipalTag/tenantId}-local-${aws:PrincipalTag/userId}-*.fifo
 ```
 
-| Principal tag | id_token claim | Source |
-|---|---|---|
-| `tenantId` | `tenantId` | Lambda-injected from Cognito Group name |
-| `userId` | `sub` | Cognito User Pool subject (stable UUID) |
+| Principal tag | id_token claim | Source                                  |
+| ------------- | -------------- | --------------------------------------- |
+| `tenantId`    | `tenantId`     | Lambda-injected from Cognito Group name |
+| `userId`      | `sub`          | Cognito User Pool subject (stable UUID) |
 
 ## CloudFormation Exports
 
-| Export | Description |
-|---|---|
-| `SlaOpsUserPoolId` | Cognito User Pool ID |
-| `SlaOpsUserPoolArn` | User Pool ARN |
-| `SlaOpsUserPoolClientId` | PKCE client ID for slaops-cli |
-| `SlaOpsUserPoolProviderName` | Cognito provider name |
-| `SlaOpsUserPoolProviderUrl` | Cognito provider URL (Identity Pool login key) |
-| `SlaOpsIdentityPoolId` | Identity Pool ID — for credential exchange in CLI |
-| `SlaOpsIdentityPoolAuthRoleArn` | IAM role ARN for authenticated identities (relay SQS consume) |
-| `SlaOpsSqsPublishRoleArn` | IAM role ARN slaops-cloud uses to publish to relay queues. Enterprise customers with relay-owned queues must grant this role `sqs:SendMessage` on their queue. |
+| Export                          | Description                                                                                                                                                    |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SlaOpsUserPoolId`              | Cognito User Pool ID                                                                                                                                           |
+| `SlaOpsUserPoolArn`             | User Pool ARN                                                                                                                                                  |
+| `SlaOpsUserPoolClientId`        | PKCE client ID for slaops-cli                                                                                                                                  |
+| `SlaOpsUserPoolProviderName`    | Cognito provider name                                                                                                                                          |
+| `SlaOpsUserPoolProviderUrl`     | Cognito provider URL (Identity Pool login key)                                                                                                                 |
+| `SlaOpsIdentityPoolId`          | Identity Pool ID — for credential exchange in CLI                                                                                                              |
+| `SlaOpsIdentityPoolAuthRoleArn` | IAM role ARN for authenticated identities (relay SQS consume)                                                                                                  |
+| `SlaOpsSqsPublishRoleArn`       | IAM role ARN slaops-cloud uses to publish to relay queues. Enterprise customers with relay-owned queues must grant this role `sqs:SendMessage` on their queue. |
 
 ## Infrastructure Diagram
 

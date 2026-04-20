@@ -88,9 +88,18 @@ function highlightJsonWithErrors(content: string, error: JsonError | null): stri
         regex: /:\s*("(?:[^"\\]|\\.)*")/g,
         replacement: ': <span style="color: hsl(var(--chart-2))">$1</span>',
       },
-      { regex: /:\s*(-?\d+\.?\d*)/g, replacement: ': <span style="color: hsl(var(--chart-3))">$1</span>' },
-      { regex: /:\s*(true|false)/g, replacement: ': <span style="color: hsl(var(--chart-3))">$1</span>' },
-      { regex: /:\s*(null)/g, replacement: ': <span style="color: hsl(var(--muted-foreground) / 0.5)">$1</span>' },
+      {
+        regex: /:\s*(-?\d+\.?\d*)/g,
+        replacement: ': <span style="color: hsl(var(--chart-3))">$1</span>',
+      },
+      {
+        regex: /:\s*(true|false)/g,
+        replacement: ': <span style="color: hsl(var(--chart-3))">$1</span>',
+      },
+      {
+        regex: /:\s*(null)/g,
+        replacement: ': <span style="color: hsl(var(--muted-foreground) / 0.5)">$1</span>',
+      },
     ]
 
     patterns.forEach(({ regex, replacement }) => {

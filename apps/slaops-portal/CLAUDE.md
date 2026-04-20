@@ -92,12 +92,12 @@ src/store/
 
 **Components must not contain business logic inline.** Any logic that goes beyond rendering should live in a dedicated hook or Redux slice:
 
-| Logic type | Where it lives |
-| --- | --- |
-| Async operations (API calls, fetch, polling) | A custom hook in `src/hooks/` that dispatches to Redux |
-| Multi-step side effects (relay job → response mapping) | A hook; the hook dispatches actions, the component reads selectors |
-| Shared mutable state (loading flags, response data) | A Redux slice — components read via `useAppSelector`, write via `dispatch` |
-| Pure UI state (controlled input value, hover, open/closed) | `useState` local to the component |
+| Logic type                                                 | Where it lives                                                             |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Async operations (API calls, fetch, polling)               | A custom hook in `src/hooks/` that dispatches to Redux                     |
+| Multi-step side effects (relay job → response mapping)     | A hook; the hook dispatches actions, the component reads selectors         |
+| Shared mutable state (loading flags, response data)        | A Redux slice — components read via `useAppSelector`, write via `dispatch` |
+| Pure UI state (controlled input value, hover, open/closed) | `useState` local to the component                                          |
 
 **The test:** if you need to inline an `async` function, a multi-branch `if/else`, or more than ~3 lines of data transformation inside a component body or event handler, extract it.
 
@@ -126,12 +126,15 @@ const handleSend = () => sendRequest({ url, method, headers, body })
 // src/hooks/useSendRequest.ts
 export function useSendRequest() {
   const dispatch = useAppDispatch()
-  const sendRequest = useCallback(async (params) => {
-    dispatch(setIsSendingRequest(true))
-    // ... fetch logic ...
-    dispatch(setRequestResponse(result))
-    dispatch(setIsSendingRequest(false))
-  }, [dispatch])
+  const sendRequest = useCallback(
+    async (params) => {
+      dispatch(setIsSendingRequest(true))
+      // ... fetch logic ...
+      dispatch(setRequestResponse(result))
+      dispatch(setIsSendingRequest(false))
+    },
+    [dispatch],
+  )
   return { sendRequest }
 }
 
@@ -358,6 +361,7 @@ Hook and component files that implement a formal design document carry a `@desig
 ### Building new components
 
 When building a component:
+
 1. **Plan the component tree first** — before writing any JSX, list the sub-components and their responsibilities.
 2. **If you anticipate the component will exceed ~100 lines, name and sketch all sub-components first.** Do not start writing a large component and plan to split it later — decompose before you write.
 3. Create each sub-component in its own file.
@@ -506,23 +510,28 @@ All data tables in the **API detail view tabs** (Versions, Operations, Servers, 
 ### Required behaviours
 
 **Sortable columns**
+
 - Every sortable column header is clickable. Click once → sort asc; click again → sort desc.
 - The active sort column shows `ArrowUp` (asc) or `ArrowDown` (desc) from `lucide-react`. Inactive sortable columns show `ArrowUpDown` at reduced opacity.
 - Sort is **server-side**: clicking dispatches a new OpenSearch query with updated `sort` + `order` params. There is no client-side sort.
 
 **Hideable columns**
+
 - Hideable columns show an `EyeOff` icon button on header hover. Clicking hides the column **client-side**.
 - When one or more columns are hidden, a banner appears above the table: `N column(s) hidden — Show all`. "Show all" restores all columns.
 - Column visibility lives in Redux — it survives tab switches.
 
 **Status bar**
+
 - A fixed bar at the bottom of the table shows the row count: `{from+1}–{from+size} of {total} {entity}` when paginated, or `{total} {entity}` for small result sets.
 - When a search or filter is active, show `{returned}/{total} {entity}`.
 
 **Row index column**
+
 - Include a leading `#` column (monospace, muted) showing the 0-based row index. Not sortable, not hideable.
 
 **Pagination controls**
+
 - `< Prev | Page N of M | Next >` bar directly beneath the status bar.
 - OpenSearch defaults: `size=10`, `from=0`. Maximum `size=100`.
 
@@ -533,8 +542,8 @@ Each tab has its own Redux slice. The state shape follows this pattern:
 ```typescript
 interface SomeTabState {
   sort: { field: string; direction: 'asc' | 'desc' }
-  hiddenColumns: string[]     // column field names
-  page: number                // 0-based
+  hiddenColumns: string[] // column field names
+  page: number // 0-based
 }
 ```
 

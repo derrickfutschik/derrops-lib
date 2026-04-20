@@ -1,15 +1,20 @@
 import { Command, Flags } from '@oclif/core'
 import * as readline from 'readline'
-import { authenticateWithBrowser, COGNITO_REGION, IDENTITY_POOL_ID, USER_POOL_ID } from '../../auth/cognito'
+import {
+  authenticateWithBrowser,
+  COGNITO_REGION,
+  IDENTITY_POOL_ID,
+  USER_POOL_ID,
+} from '../../auth/cognito'
 import { CONFIG_FILE, getConfigProfile, setConfigProfile } from '../../config-file'
 import { CREDENTIALS_FILE, setCredentialsProfile } from '../../credentials-file'
 
 const DEFAULT_PLATFORM_URL = 'https://api.slaops.com'
 
 interface RelayRegistrationResponse {
-  id: string               // relay UUID (connection.id)
-  sqs_queue_url: string    // FIFO queue URL (platform-provisioned or customer-provided)
-  sqs_region: string       // AWS region of the queue
+  id: string // relay UUID (connection.id)
+  sqs_queue_url: string // FIFO queue URL (platform-provisioned or customer-provided)
+  sqs_region: string // AWS region of the queue
   sqs_queue_mode: 'platform' | 'relay'
 }
 
@@ -46,8 +51,8 @@ async function registerRelay(
 
 function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-  return new Promise(resolve => {
-    rl.question(question, answer => {
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
       rl.close()
       resolve(answer.trim())
     })
@@ -71,7 +76,8 @@ export default class RelayInit extends Command {
     }),
     profile: Flags.string({
       char: 'p',
-      description: 'Profile name in ~/.slaops/config and ~/.slaops/credentials (default: "default")',
+      description:
+        'Profile name in ~/.slaops/config and ~/.slaops/credentials (default: "default")',
       default: 'default',
     }),
     force: Flags.boolean({
@@ -99,7 +105,9 @@ export default class RelayInit extends Command {
     const existing = getConfigProfile(profile)
 
     if (existing?.relay_id && !flags.force) {
-      this.log(`Profile [${profile}] is already initialised (relay_id: ${existing.relay_id}, platform: ${existing.platform_url}).`)
+      this.log(
+        `Profile [${profile}] is already initialised (relay_id: ${existing.relay_id}, platform: ${existing.platform_url}).`,
+      )
       this.log(`  Use --force to re-authenticate, or run:`)
       this.log(`  slaops relay start${profile !== 'default' ? ` --profile ${profile}` : ''}`)
       return
@@ -175,7 +183,9 @@ export default class RelayInit extends Command {
 
     this.log(`  ✓ Config saved to ${CONFIG_FILE}`)
     this.log(`  ✓ Credentials saved to ${CREDENTIALS_FILE}`)
-    this.log(`\n  Run 'slaops relay start${profile !== 'default' ? ` --profile ${profile}` : ''}' to connect.`)
+    this.log(
+      `\n  Run 'slaops relay start${profile !== 'default' ? ` --profile ${profile}` : ''}' to connect.`,
+    )
     this.log(`  Your session is valid for 30 days. Re-run this command when it expires.\n`)
   }
 }

@@ -2,14 +2,20 @@ import { Service } from '@/client/slaops-cloud/models/service'
 import { Activity, AlertCircle, Clock, TrendingUp } from 'lucide-react'
 import ServiceMetricCard from './ServiceMetricCard'
 
-const AVAILABILITY_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
+const AVAILABILITY_STATUS: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
   excellent: { label: 'Excellent', variant: 'default' },
   good: { label: 'Good', variant: 'secondary' },
   poor: { label: 'Poor', variant: 'destructive' },
   unknown: { label: 'Unknown', variant: 'secondary' },
 }
 
-const RESPONSE_TIME_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
+const RESPONSE_TIME_STATUS: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
   fast: { label: 'Fast', variant: 'default' },
   normal: { label: 'Normal', variant: 'secondary' },
   slow: { label: 'Slow', variant: 'destructive' },

@@ -1,3 +1,4 @@
+import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,13 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
-import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useHealthCheckRelay, useUpdateRelay } from '@/hooks/useConnectionsApi'
 import { Activity, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -28,7 +23,12 @@ interface EditRelayDrawerProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function EditRelayDrawer({ relay, aegisInstances, open, onOpenChange }: EditRelayDrawerProps) {
+export function EditRelayDrawer({
+  relay,
+  aegisInstances,
+  open,
+  onOpenChange,
+}: EditRelayDrawerProps) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [aegisId, setAegisId] = useState<string>('none')
@@ -65,7 +65,8 @@ export function EditRelayDrawer({ relay, aegisInstances, open, onOpenChange }: E
     setHealthResult(null)
     try {
       const res = await healthCheck.mutateAsync(relay.id)
-      const status = typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
+      const status =
+        typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
       setHealthResult({
         ok: status === 'active',
         message: status === 'active' ? 'Reachable' : `Status: ${status}`,
@@ -88,13 +89,21 @@ export function EditRelayDrawer({ relay, aegisInstances, open, onOpenChange }: E
           <div className="space-y-5 mt-6">
             <div className="space-y-2">
               <Label className="text-foreground">Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-secondary/30 border-border" />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-secondary/30 border-border"
+              />
             </div>
 
             {!isLocalDev && (
               <div className="space-y-2">
                 <Label className="text-foreground">URL</Label>
-                <Input value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary/30 border-border" />
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="bg-secondary/30 border-border"
+                />
               </div>
             )}
 
@@ -107,13 +116,17 @@ export function EditRelayDrawer({ relay, aegisInstances, open, onOpenChange }: E
                 <SelectContent className="bg-card border-border">
                   <SelectItem value="none">None</SelectItem>
                   {aegisInstances.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {linkedAegis && aegisId !== 'none' && (
                 <p className="text-xs text-warning">
-                  After linking, set <code className="text-primary">AEGIS_JWKS_URL = {linkedAegis.jwks_url}</code> on the relay and redeploy.
+                  After linking, set{' '}
+                  <code className="text-primary">AEGIS_JWKS_URL = {linkedAegis.jwks_url}</code> on
+                  the relay and redeploy.
                 </p>
               )}
             </div>
@@ -130,7 +143,13 @@ export function EditRelayDrawer({ relay, aegisInstances, open, onOpenChange }: E
 
             <div className="flex items-center gap-3">
               <Label className="text-muted-foreground text-xs">Status</Label>
-              <StatusBadge status={typeof relay.status === 'object' ? JSON.stringify(relay.status) : String(relay.status)} />
+              <StatusBadge
+                status={
+                  typeof relay.status === 'object'
+                    ? JSON.stringify(relay.status)
+                    : String(relay.status)
+                }
+              />
             </div>
 
             {isLocalDev && (
@@ -165,15 +184,12 @@ export function EditRelayDrawer({ relay, aegisInstances, open, onOpenChange }: E
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Local relays are not directly reachable. Status reflects the last time the relay polled for a job.
+                Local relays are not directly reachable. Status reflects the last time the relay
+                polled for a job.
               </p>
             )}
 
-            <Button
-              onClick={handleSave}
-              disabled={updateRelay.isPending}
-              className="w-full"
-            >
+            <Button onClick={handleSave} disabled={updateRelay.isPending} className="w-full">
               {updateRelay.isPending ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>

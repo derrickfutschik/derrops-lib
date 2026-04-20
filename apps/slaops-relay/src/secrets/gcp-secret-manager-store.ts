@@ -33,7 +33,12 @@ export class GcpSecretManagerStore implements SecretStore {
    */
   private validatePath(secretId: string): void {
     const parts = secretId.split('/')
-    if (parts.length !== 6 || parts[0] !== 'projects' || parts[2] !== 'secrets' || parts[4] !== 'versions') {
+    if (
+      parts.length !== 6 ||
+      parts[0] !== 'projects' ||
+      parts[2] !== 'secrets' ||
+      parts[4] !== 'versions'
+    ) {
       throw new SecretStoreError(
         `Invalid GCP secret path '${secretId}' — expected: projects/<id>/secrets/<name>/versions/<version>`,
         'INVALID_FORMAT',

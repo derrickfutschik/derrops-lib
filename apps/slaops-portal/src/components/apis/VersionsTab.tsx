@@ -2,20 +2,27 @@
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/versions-tab.md
  */
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PAGE_SIZE } from '@/config'
+import { useVersionsTab } from '@/hooks/useVersionsTab'
 import {
   selectVersionsTabState,
   setSelectedVersion,
-  setTabSort,
   setTabPage,
-  toggleTabColumn,
+  setTabSort,
   showAllTabColumns,
+  toggleTabColumn,
 } from '@/store/apiTabsSlice'
-import { useVersionsTab } from '@/hooks/useVersionsTab'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { SortableColHeader } from './SortableColHeader'
 import { TabTableFooter } from './TabTableFooter'
-import { PAGE_SIZE } from '@/config'
 
 interface VersionsTabProps {
   apiId: string
@@ -140,7 +147,9 @@ export function VersionsTab({ apiId }: VersionsTabProps) {
                 <TableCell className="text-xs">{v.modelCount}</TableCell>
               )}
               {!hiddenColumns.includes('fileSize') && (
-                <TableCell className="text-xs text-muted-foreground">{formatBytes(v.fileSize)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {formatBytes(v.fileSize)}
+                </TableCell>
               )}
               {!hiddenColumns.includes('fileFormat') && (
                 <TableCell>
@@ -150,7 +159,9 @@ export function VersionsTab({ apiId }: VersionsTabProps) {
                 </TableCell>
               )}
               {!hiddenColumns.includes('indexedAt') && (
-                <TableCell className="text-xs text-muted-foreground">{formatDate(v.indexedAt)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {formatDate(v.indexedAt)}
+                </TableCell>
               )}
             </TableRow>
           ))}

@@ -10,7 +10,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AlignLeft, BookOpen, Copy, Download, Fingerprint, WrapText } from 'lucide-react'
-import React from 'react'
 import { toast } from 'sonner'
 
 type ViewMode = 'json' | 'markdown' | 'table'
@@ -127,7 +126,13 @@ export function ResultsActionButtons({
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <Button
-              variant={uniqueFilter && duplicateCount > 0 ? 'destructive' : (uniqueFilter || highlightDuplicates) ? 'default' : 'outline'}
+              variant={
+                uniqueFilter && duplicateCount > 0
+                  ? 'destructive'
+                  : uniqueFilter || highlightDuplicates
+                    ? 'default'
+                    : 'outline'
+              }
               size="sm"
               className={`${showText ? 'h-7 gap-1.5 text-xs' : 'h-7 w-7 p-0'}${highlightDuplicates && !uniqueFilter ? ' border-amber-500 text-amber-500' : ''}`}
               onClick={onToggleUniqueFilter}
@@ -169,16 +174,50 @@ export function ResultsActionButtons({
           {viewMode === 'json' && (
             <>
               <ContextMenuItem onClick={onCopy}>Copy JSON</ContextMenuItem>
-              <ContextMenuItem onClick={onCopyJsonAsHtml}>Copy as HTML (with colors)</ContextMenuItem>
+              <ContextMenuItem onClick={onCopyJsonAsHtml}>
+                Copy as HTML (with colors)
+              </ContextMenuItem>
             </>
           )}
           {viewMode === 'table' && (
             <>
               <ContextMenuItem onClick={onCopy}>Copy as Table (Excel/Email)</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const md = onGetTableMarkdown(); if (md) onCopyText(md, 'Markdown'); else toast.error('No table data to copy') }}>Copy as Markdown</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const csv = onGetTableCsv(); if (csv) onCopyText(csv, 'CSV'); else toast.error('No table data to copy') }}>Copy as CSV</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const js = onGetTableJsCode(); if (js) onCopyText(js, 'Code'); else toast.error('No table data to copy') }}>Copy as Code</ContextMenuItem>
-              <ContextMenuItem onClick={() => { const sql = onGetTableSql(); if (sql) onCopyText(sql, 'SQL'); else toast.error('No table data to copy') }}>Copy as SQL</ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => {
+                  const md = onGetTableMarkdown()
+                  if (md) onCopyText(md, 'Markdown')
+                  else toast.error('No table data to copy')
+                }}
+              >
+                Copy as Markdown
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => {
+                  const csv = onGetTableCsv()
+                  if (csv) onCopyText(csv, 'CSV')
+                  else toast.error('No table data to copy')
+                }}
+              >
+                Copy as CSV
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => {
+                  const js = onGetTableJsCode()
+                  if (js) onCopyText(js, 'Code')
+                  else toast.error('No table data to copy')
+                }}
+              >
+                Copy as Code
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => {
+                  const sql = onGetTableSql()
+                  if (sql) onCopyText(sql, 'SQL')
+                  else toast.error('No table data to copy')
+                }}
+              >
+                Copy as SQL
+              </ContextMenuItem>
             </>
           )}
           {viewMode === 'markdown' && (
@@ -204,25 +243,42 @@ export function ResultsActionButtons({
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={onDownload}>
-            {viewMode === 'table' ? 'Download as CSV' : viewMode === 'markdown' ? 'Download as Markdown' : 'Download as JSON'}
+            {viewMode === 'table'
+              ? 'Download as CSV'
+              : viewMode === 'markdown'
+                ? 'Download as Markdown'
+                : 'Download as JSON'}
           </ContextMenuItem>
           {viewMode === 'table' && (
             <>
-              <ContextMenuItem onClick={() => { const md = onGetTableMarkdown(); if (md) onDownloadText(md, 'response.md', 'text/markdown', 'Markdown') }}>
+              <ContextMenuItem
+                onClick={() => {
+                  const md = onGetTableMarkdown()
+                  if (md) onDownloadText(md, 'response.md', 'text/markdown', 'Markdown')
+                }}
+              >
                 Download as Markdown
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const js = onGetTableJsCode(); if (js) onDownloadText(js, 'response.json', 'application/json', 'JSON') }}>
+              <ContextMenuItem
+                onClick={() => {
+                  const js = onGetTableJsCode()
+                  if (js) onDownloadText(js, 'response.json', 'application/json', 'JSON')
+                }}
+              >
                 Download as JSON
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => { const sql = onGetTableSql(); if (sql) onDownloadText(sql, 'response.sql', 'text/plain', 'SQL') }}>
+              <ContextMenuItem
+                onClick={() => {
+                  const sql = onGetTableSql()
+                  if (sql) onDownloadText(sql, 'response.sql', 'text/plain', 'SQL')
+                }}
+              >
                 Download as SQL
               </ContextMenuItem>
             </>
           )}
           {viewMode !== 'table' && isJson && (
-            <ContextMenuItem onClick={onDownloadCsv}>
-              Download as CSV
-            </ContextMenuItem>
+            <ContextMenuItem onClick={onDownloadCsv}>Download as CSV</ContextMenuItem>
           )}
         </ContextMenuContent>
       </ContextMenu>

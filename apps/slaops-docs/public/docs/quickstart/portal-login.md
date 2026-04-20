@@ -41,14 +41,14 @@ You will land on the Portal home page.
 
 The Portal is organised into several sections accessible from the left sidebar:
 
-| Section | Purpose |
-|---|---|
-| **API Tester** | Send HTTP requests through a relay and inspect results |
-| **Monitoring** | View live and historical SLA metrics for your APIs |
-| **Cost Analysis** | Break down API usage and cost by operation |
-| **Alerts** | Configure SLA threshold alerts and notification channels |
-| **Relay** | Manage relay connections (add, view status, remove) |
-| **Settings** | Account details, team members, API keys, BYOK |
+| Section           | Purpose                                                  |
+| ----------------- | -------------------------------------------------------- |
+| **API Tester**    | Send HTTP requests through a relay and inspect results   |
+| **Monitoring**    | View live and historical SLA metrics for your APIs       |
+| **Cost Analysis** | Break down API usage and cost by operation               |
+| **Alerts**        | Configure SLA threshold alerts and notification channels |
+| **Relay**         | Manage relay connections (add, view status, remove)      |
+| **Settings**      | Account details, team members, API keys, BYOK            |
 
 ---
 

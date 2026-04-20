@@ -1,12 +1,12 @@
 /**
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/operations-tab.md
  */
-import { useQuery } from '@tanstack/react-query'
-import { cloudAxios } from '@/lib/cloud-api'
 import { API_BASE_URL, PAGE_SIZE } from '@/config'
-import { useAppSelector } from '@/store/hooks'
+import { cloudAxios } from '@/lib/cloud-api'
 import { selectOperationsTabState, selectSelectedVersion } from '@/store/apiTabsSlice'
-import type { PagedResult, OperationHit } from '@/types/apiTabs'
+import { useAppSelector } from '@/store/hooks'
+import type { OperationHit, PagedResult } from '@/types/apiTabs'
+import { useQuery } from '@tanstack/react-query'
 
 export function useOperationsTab(apiId: string) {
   const { sort, page, query, methodFilter, tagFilter } = useAppSelector(selectOperationsTabState)
@@ -14,7 +14,17 @@ export function useOperationsTab(apiId: string) {
   const from = page * PAGE_SIZE
 
   return useQuery<PagedResult<OperationHit>>({
-    queryKey: ['api-tabs', apiId, 'operations', selectedVersion, sort, page, query, methodFilter, tagFilter],
+    queryKey: [
+      'api-tabs',
+      apiId,
+      'operations',
+      selectedVersion,
+      sort,
+      page,
+      query,
+      methodFilter,
+      tagFilter,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         version: selectedVersion ?? 'latest',

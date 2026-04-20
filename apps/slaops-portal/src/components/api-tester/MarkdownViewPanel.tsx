@@ -43,13 +43,18 @@ function getEffectiveMarkdownContent(displayContent: string): string | null {
       } else if (typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
         const columns = Array.from(new Set(parsed.flatMap((item: any) => Object.keys(item))))
         const escapeCell = (val: any) => {
-          const str = val === null || val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val)
+          const str =
+            val === null || val === undefined
+              ? ''
+              : typeof val === 'object'
+                ? JSON.stringify(val)
+                : String(val)
           return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
         }
         const headerRow = `| ${columns.join(' | ')} |`
         const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`
-        const dataRows = parsed.map((item: any) =>
-          `| ${columns.map((col) => escapeCell(item[col])).join(' | ')} |`
+        const dataRows = parsed.map(
+          (item: any) => `| ${columns.map((col) => escapeCell(item[col])).join(' | ')} |`,
         )
         mdContent = [headerRow, separatorRow, ...dataRows].join('\n')
       } else {
@@ -57,7 +62,11 @@ function getEffectiveMarkdownContent(displayContent: string): string | null {
           const str = val === null || val === undefined ? '' : String(val)
           return str.replace(/\|/g, '\\|').replace(/\n/g, ' ')
         }
-        mdContent = ['| value |', '| --- |', ...parsed.map((v: any) => `| ${escapeCell(v)} |`)].join('\n')
+        mdContent = [
+          '| value |',
+          '| --- |',
+          ...parsed.map((v: any) => `| ${escapeCell(v)} |`),
+        ].join('\n')
       }
     } else {
       return null

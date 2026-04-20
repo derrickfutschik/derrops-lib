@@ -49,9 +49,9 @@ The immutable context passed to every extractor. Built once before any extractor
 interface ExtractionContext {
   tenantId: string
   apiId: string
-  specId: string       // deterministic: SHA256_16(tenantId, info.title, info.version)
-  version: string      // info.version from the spec
-  spec: ResolvedOpenApiSpec  // fully $ref-resolved spec object
+  specId: string // deterministic: SHA256_16(tenantId, info.title, info.version)
+  version: string // info.version from the spec
+  spec: ResolvedOpenApiSpec // fully $ref-resolved spec object
 }
 ```
 
@@ -64,8 +64,8 @@ Returned by the synchronous `extract` method on every extractor. Contains the do
 ```typescript
 interface ExtractionResult<TDoc> {
   documents: TDoc[]
-  truncated: boolean    // true if document count hit the per-entity limit
-  warnings: string[]    // non-fatal issues encountered during extraction (logged, not thrown)
+  truncated: boolean // true if document count hit the per-entity limit
+  warnings: string[] // non-fatal issues encountered during extraction (logged, not thrown)
 }
 ```
 
@@ -76,10 +76,10 @@ One entry per entity type in the array returned by the indexer run. Records what
 ```typescript
 interface ExtractionState {
   entity: OaspecEntity
-  extracted: number    // documents produced by the extractor
-  indexed: number      // documents successfully written to OpenSearch
-  pruned: number       // old-version docs deleted from this index
-  truncated: boolean   // extraction hit the per-entity document limit
+  extracted: number // documents produced by the extractor
+  indexed: number // documents successfully written to OpenSearch
+  pruned: number // old-version docs deleted from this index
+  truncated: boolean // extraction hit the per-entity document limit
   errors: ExtractionError[]
 }
 
@@ -111,13 +111,13 @@ The `extract` method is **pure and synchronous** — it takes the resolved spec 
 
 ### Concrete extractor classes
 
-| Class | Entity | Target index |
-|---|---|---|
-| `SpecExtractor` | `spec` | `…--oaspec--spec` |
-| `ServerExtractor` | `server` | `…--oaspec--server` |
+| Class                | Entity      | Target index           |
+| -------------------- | ----------- | ---------------------- |
+| `SpecExtractor`      | `spec`      | `…--oaspec--spec`      |
+| `ServerExtractor`    | `server`    | `…--oaspec--server`    |
 | `OperationExtractor` | `operation` | `…--oaspec--operation` |
-| `ParamExtractor` | `param` | `…--oaspec--param` |
-| `ModelExtractor` | `model` | `…--oaspec--model` |
+| `ParamExtractor`     | `param`     | `…--oaspec--param`     |
+| `ModelExtractor`     | `model`     | `…--oaspec--model`     |
 
 Each class is responsible only for producing documents of its type. Field-level extraction rules for each are defined in [Spec Field Extraction](./spec-field-extraction).
 
@@ -172,7 +172,7 @@ async function runExtractor<TDoc>(
     state.truncated = result.truncated
   } catch (err) {
     state.errors.push({ phase: 'extract', message: String(err) })
-    return state  // no documents to index — skip remaining phases
+    return state // no documents to index — skip remaining phases
   }
 
   // 2. Flip latest flag + bulk index

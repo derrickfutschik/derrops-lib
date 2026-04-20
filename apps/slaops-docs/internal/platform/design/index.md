@@ -14,6 +14,7 @@ For customer-facing documentation, see the [Docs](/docs/intro) section.
 :::
 
 Design documents serve two purposes:
+
 1. **Architecture records** — capture decisions, tradeoffs, and the reasoning behind how components are built so future engineers (and AI coding assistants) understand context
 2. **Implementation guides** — provide enough detail that a new engineer (or an AI) can implement or extend a component correctly without re-deriving the design
 
@@ -56,21 +57,21 @@ Standards and templates for proposing new platform components — how to write a
 
 Documents are tagged for cross-cutting navigation. Browse by tag at [/internal/platform/design/tags](/internal/platform/design/tags).
 
-| Tag | Description |
-|---|---|
-| `cloud-relay` | Cloud Relay component docs |
-| `aegis` | Aegis Token Broker docs |
-| `openapi-indexer` | OpenAPI indexing pipeline docs |
-| `multi-tenant` | Multi-tenancy design and per-tenant isolation |
-| `infrastructure` | AWS infrastructure design, IaC patterns, and resource conventions |
-| `tagging` | AWS resource tagging standards |
-| `iac` | Infrastructure as Code (CDK) patterns and constructs |
-| `authentication` | Auth protocols — JWT, mTLS, HMAC, IAM |
-| `security` | Security model and trust boundaries |
-| `networking` | Network topology and delivery modes |
-| `data-pipeline` | Data ingestion, indexing, and search |
-| `cli` | slaops-cli tooling |
-| `component-design` | Component proposals and design specs |
-| `architecture` | System architecture and ADRs |
-| `implemented` | Designs for features that have been built |
-| `process` | Team process and standards |
+| Tag                | Description                                                       |
+| ------------------ | ----------------------------------------------------------------- |
+| `cloud-relay`      | Cloud Relay component docs                                        |
+| `aegis`            | Aegis Token Broker docs                                           |
+| `openapi-indexer`  | OpenAPI indexing pipeline docs                                    |
+| `multi-tenant`     | Multi-tenancy design and per-tenant isolation                     |
+| `infrastructure`   | AWS infrastructure design, IaC patterns, and resource conventions |
+| `tagging`          | AWS resource tagging standards                                    |
+| `iac`              | Infrastructure as Code (CDK) patterns and constructs              |
+| `authentication`   | Auth protocols — JWT, mTLS, HMAC, IAM                             |
+| `security`         | Security model and trust boundaries                               |
+| `networking`       | Network topology and delivery modes                               |
+| `data-pipeline`    | Data ingestion, indexing, and search                              |
+| `cli`              | slaops-cli tooling                                                |
+| `component-design` | Component proposals and design specs                              |
+| `architecture`     | System architecture and ADRs                                      |
+| `implemented`      | Designs for features that have been built                         |
+| `process`          | Team process and standards                                        |

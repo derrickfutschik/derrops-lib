@@ -1,12 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ApiManagementModeBadge } from './ApiManagementModeBadge'
-import { ApiStrategyBadge } from './ApiStrategyBadge'
-import { ApiStatsCard } from './ApiStatsCard'
-import { ApiFetchStatusCard } from './ApiFetchStatusCard'
-import { SpecUploadCard } from './SpecUploadCard'
-import { ApiEntityManagementModeEnum, VersionFetchStateStrategyEnum } from '@/client/slaops-cloud'
-import { formatDistanceToNow } from 'date-fns'
 import type { ApiEntity } from '@/client/slaops-cloud'
+import { ApiEntityManagementModeEnum, VersionFetchStateStrategyEnum } from '@/client/slaops-cloud'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatDistanceToNow } from 'date-fns'
+import { ApiFetchStatusCard } from './ApiFetchStatusCard'
+import { ApiManagementModeBadge } from './ApiManagementModeBadge'
+import { ApiStatsCard } from './ApiStatsCard'
+import { ApiStrategyBadge } from './ApiStrategyBadge'
+import { SpecUploadCard } from './SpecUploadCard'
 
 interface OverviewTabProps {
   api: ApiEntity

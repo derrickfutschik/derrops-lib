@@ -1,8 +1,8 @@
 import { OpenAPIIndexerApi } from '@/client/slaops-cloud'
 import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
+import type { CatalogueResponse, IndexingResponse, PresignedUrlResult } from '@/types/indexer'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import type { CatalogueResponse, IndexingResponse, PresignedUrlResult } from '@/types/indexer'
 
 function useIndexerClient() {
   return useMemo(() => new OpenAPIIndexerApi(cloudApiConfig, undefined, cloudAxios), [])

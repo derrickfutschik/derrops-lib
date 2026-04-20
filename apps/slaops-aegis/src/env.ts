@@ -50,7 +50,7 @@ export const env = {
      */
     allowedIds: (process.env.ALLOWED_RELAY_IDS ?? '')
       .split(',')
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean),
   },
 

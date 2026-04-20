@@ -1,30 +1,30 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
 import { VersionFetchStateStrategyEnum } from '@/client/slaops-cloud'
-import { useCreateApi, useAdoptApi } from '@/hooks/useApisApi'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import {
-  setStep,
-  setPath,
-  setSelectedCatalogueHit,
-  setCreatedApiId,
-  resetWizard,
-  selectWizardStep,
-  selectWizardPath,
-  selectSelectedCatalogueHit,
-  selectCreatedApiId,
-  selectSpecContent,
-  selectInfoFetchUrl,
-} from '@/store/newApiWizardSlice'
-import { useToast } from '@/components/ui/use-toast'
-import { PathSelector } from '@/components/apis/PathSelector'
 import { CatalogueAdoptStep } from '@/components/apis/CatalogueAdoptStep'
+import { PathSelector } from '@/components/apis/PathSelector'
+import type { PrivateFormValues } from '@/components/apis/PrivateRegistrationForm'
 import { PrivateRegistrationForm } from '@/components/apis/PrivateRegistrationForm'
 import { SpecUploadStep } from '@/components/apis/SpecUploadStep'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/use-toast'
+import { useAdoptApi, useCreateApi } from '@/hooks/useApisApi'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import {
+  resetWizard,
+  selectCreatedApiId,
+  selectInfoFetchUrl,
+  selectSelectedCatalogueHit,
+  selectSpecContent,
+  selectWizardPath,
+  selectWizardStep,
+  setCreatedApiId,
+  setPath,
+  setSelectedCatalogueHit,
+  setStep,
+} from '@/store/newApiWizardSlice'
 import type { CatalogueHit } from '@/types/indexer'
-import type { PrivateFormValues } from '@/components/apis/PrivateRegistrationForm'
+import { ArrowLeft } from 'lucide-react'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 function StepIndicator({ step, total }: { step: number; total: number }) {
   return (

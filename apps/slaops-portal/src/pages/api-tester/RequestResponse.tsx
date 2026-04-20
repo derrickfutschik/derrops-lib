@@ -1,13 +1,21 @@
+import { MaximizableCodeViewer } from '@/components/api-tester/MaximizableCodeViewer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { MaximizableCodeViewer } from '@/components/api-tester/MaximizableCodeViewer'
-import { ArrowLeftRight, FileCode, Minus, Send } from 'lucide-react'
-import { selectIsSendingRequest, selectRequestResponse, setRequestResponse } from '@/store/apiRequestSlice'
+import {
+  selectIsSendingRequest,
+  selectRequestResponse,
+  setRequestResponse,
+} from '@/store/apiRequestSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { ArrowLeftRight, FileCode, Minus, Send } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  deliveryModeBadgeLabel,
+  extractValidationErrors,
+  getResponseSchemaForStatus,
+} from './response-utils'
 import type { MatchResult } from './types'
-import { deliveryModeBadgeLabel, extractValidationErrors, getResponseSchemaForStatus } from './response-utils'
 
 interface RequestResponseProps {
   matchResult: MatchResult | null
@@ -105,16 +113,17 @@ export function RequestResponse({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Value</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                        Name
+                      </th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                        Value
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(requestResponse.headers).map(([key, value], index) => (
-                      <tr
-                        key={index}
-                        className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}
-                      >
+                      <tr key={index} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
                         <td className="px-3 py-2 font-mono text-foreground">{key}</td>
                         <td className="px-3 py-2 font-mono text-muted-foreground break-all">
                           {value}
@@ -149,9 +158,7 @@ export function RequestResponse({
           title="Response Body"
           content={requestResponse.body}
           contentType={
-            requestResponse.headers['content-type'] ||
-            requestResponse.headers['Content-Type'] ||
-            ''
+            requestResponse.headers['content-type'] || requestResponse.headers['Content-Type'] || ''
           }
           responseSchema={getResponseSchemaForStatus(matchResult, requestResponse.status)}
           validationErrors={extractValidationErrors(matchResult)}

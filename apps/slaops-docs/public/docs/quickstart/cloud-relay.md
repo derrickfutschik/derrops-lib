@@ -16,6 +16,7 @@ A cloud relay runs in your infrastructure and lets the SLAOps Portal reach servi
 **Time to complete**: ~20 minutes
 
 **Prerequisites**:
+
 - An SLAOps account and API key ([Portal login guide](./portal-login))
 - Docker (for self-hosted) or access to your cloud environment
 
@@ -25,10 +26,10 @@ A cloud relay runs in your infrastructure and lets the SLAOps Portal reach servi
 
 Before deploying, choose the delivery mode that fits your network:
 
-| Mode | How it works | Use when |
-|---|---|---|
-| **Managed** | SLAOps-hosted Lambda, no infrastructure required | You want zero-ops setup |
-| **Direct** | SLAOps calls your relay synchronously over HTTPS | Your relay is publicly reachable |
+| Mode               | How it works                                     | Use when                               |
+| ------------------ | ------------------------------------------------ | -------------------------------------- |
+| **Managed**        | SLAOps-hosted Lambda, no infrastructure required | You want zero-ops setup                |
+| **Direct**         | SLAOps calls your relay synchronously over HTTPS | Your relay is publicly reachable       |
 | **Platform-queue** | Your relay polls SLAOps for jobs (outbound-only) | Your relay is behind a NAT or firewall |
 
 The platform-queue mode is the most flexible — your relay never accepts inbound connections, so it works behind firewalls and in private subnets.
@@ -82,15 +83,15 @@ docker run -d \
 
 **Environment variables**:
 
-| Variable | Required | Description |
-|---|---|---|
-| `RELAY_API_KEY` | Yes | Validates inbound calls from SLAOps (direct mode only) |
-| `RELAY_PLATFORM_TOKEN` | Yes | Bearer token for outbound calls to SLAOps |
-| `RELAY_PLATFORM_URL` | Yes | SLAOps control plane URL |
-| `RELAY_DELIVERY_MODE` | Yes | `direct`, `relay-queue`, or `platform-queue` |
-| `RELAY_PORT` | No | Port to listen on (default: `3100`) |
-| `AEGIS_URL` | No | URL of your Aegis instance (if using Aegis) |
-| `AEGIS_REQUIRED` | No | Set to `true` to require Aegis for all requests (default: `false`) |
+| Variable               | Required | Description                                                        |
+| ---------------------- | -------- | ------------------------------------------------------------------ |
+| `RELAY_API_KEY`        | Yes      | Validates inbound calls from SLAOps (direct mode only)             |
+| `RELAY_PLATFORM_TOKEN` | Yes      | Bearer token for outbound calls to SLAOps                          |
+| `RELAY_PLATFORM_URL`   | Yes      | SLAOps control plane URL                                           |
+| `RELAY_DELIVERY_MODE`  | Yes      | `direct`, `relay-queue`, or `platform-queue`                       |
+| `RELAY_PORT`           | No       | Port to listen on (default: `3100`)                                |
+| `AEGIS_URL`            | No       | URL of your Aegis instance (if using Aegis)                        |
+| `AEGIS_REQUIRED`       | No       | Set to `true` to require Aegis for all requests (default: `false`) |
 
 ### 3. Verify the connection
 
@@ -128,13 +129,13 @@ services:
       RELAY_PLATFORM_URL: https://api.slaops.com
       RELAY_DELIVERY_MODE: platform-queue
     ports:
-      - "3100:3100"
+      - '3100:3100'
 
   # Your application service — relay can reach it via service name
   my-api:
     image: my-company/my-api:latest
     ports:
-      - "3001:3001"
+      - '3001:3001'
 ```
 
 ```bash

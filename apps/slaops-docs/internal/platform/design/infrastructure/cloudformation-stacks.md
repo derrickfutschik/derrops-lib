@@ -46,17 +46,18 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--platform--vpc`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsVpcStack` |
-| **Class** | `VpcStack` |
-| **File** | `packages/slaops-infra/lib/stack/vpc.ts` |
-| **Domain / Service** | `platform` / `vpc` |
-| **Dependencies** | none |
+| Field                | Value                                    |
+| -------------------- | ---------------------------------------- |
+| **Logical ID**       | `SlaOpsVpcStack`                         |
+| **Class**            | `VpcStack`                               |
+| **File**             | `packages/slaops-infra/lib/stack/vpc.ts` |
+| **Domain / Service** | `platform` / `vpc`                       |
+| **Dependencies**     | none                                     |
 
 **Resources**: VPC, public/private/isolated subnets across 3 AZs, NAT Gateways, Internet Gateway, optional VPC Flow Log.
 
 **Exports**:
+
 - `slaops--platform--vpc--id`
 - `slaops--platform--vpc--cidr-block`
 - `slaops--platform--vpc--subnet-public-{a,b,c}`
@@ -67,17 +68,18 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--platform--security-groups`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsSecurityGroupStack` |
-| **Class** | `SecurityGroupStack` |
-| **File** | `packages/slaops-infra/lib/stack/security-group.ts` |
-| **Domain / Service** | `platform` / `security-groups` |
-| **Dependencies** | `slaops--platform--vpc` |
+| Field                | Value                                               |
+| -------------------- | --------------------------------------------------- |
+| **Logical ID**       | `SlaOpsSecurityGroupStack`                          |
+| **Class**            | `SecurityGroupStack`                                |
+| **File**             | `packages/slaops-infra/lib/stack/security-group.ts` |
+| **Domain / Service** | `platform` / `security-groups`                      |
+| **Dependencies**     | `slaops--platform--vpc`                             |
 
 **Resources**: Security groups for OpenSearch, Aurora, backend Lambda, and Cloud Lambda.
 
 **Exports**:
+
 - `slaops--platform--opensearch--sg-id`
 - `slaops--platform--app-database--sg-id`
 - `slaops--platform--backend--sg-id`
@@ -87,17 +89,18 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--platform--dns`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsHostedZoneStack` |
-| **Class** | `HostedZoneStack` |
-| **File** | `packages/slaops-infra/lib/stack/private-hosted-zone.ts` |
-| **Domain / Service** | `platform` / `dns` |
-| **Dependencies** | `slaops--platform--vpc` |
+| Field                | Value                                                    |
+| -------------------- | -------------------------------------------------------- |
+| **Logical ID**       | `SlaOpsHostedZoneStack`                                  |
+| **Class**            | `HostedZoneStack`                                        |
+| **File**             | `packages/slaops-infra/lib/stack/private-hosted-zone.ts` |
+| **Domain / Service** | `platform` / `dns`                                       |
+| **Dependencies**     | `slaops--platform--vpc`                                  |
 
 **Resources**: Route 53 private hosted zone associated with the VPC.
 
 **Exports**:
+
 - `slaops--platform--dns--hosted-zone-id`
 - `slaops--platform--dns--hosted-zone-name`
 
@@ -105,17 +108,18 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--platform--app-database`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsDatabaseStack` |
-| **Class** | `AppDatabaseStack` |
-| **File** | `packages/slaops-infra/lib/stack/app-database.ts` |
-| **Domain / Service** | `platform` / `app-database` |
-| **Dependencies** | `slaops--platform--vpc` |
+| Field                | Value                                             |
+| -------------------- | ------------------------------------------------- |
+| **Logical ID**       | `SlaOpsDatabaseStack`                             |
+| **Class**            | `AppDatabaseStack`                                |
+| **File**             | `packages/slaops-infra/lib/stack/app-database.ts` |
+| **Domain / Service** | `platform` / `app-database`                       |
+| **Dependencies**     | `slaops--platform--vpc`                           |
 
 **Resources**: Aurora Serverless v2 PostgreSQL cluster (writer + reader), Secrets Manager credentials, EC2 bastion host.
 
 **Exports**:
+
 - `slaops--platform--app-database--cluster-endpoint`
 - `slaops--platform--app-database--cluster-read-endpoint`
 - `slaops--platform--app-database--name`
@@ -127,17 +131,18 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--platform--opensearch`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsOpenSearchStack` |
-| **Class** | `OpenSearchStack` |
-| **File** | `packages/slaops-infra/lib/stack/app-opensearch.ts` |
-| **Domain / Service** | `platform` / `opensearch` |
-| **Dependencies** | `slaops--platform--vpc`, `slaops--platform--security-groups` |
+| Field                | Value                                                        |
+| -------------------- | ------------------------------------------------------------ |
+| **Logical ID**       | `SlaOpsOpenSearchStack`                                      |
+| **Class**            | `OpenSearchStack`                                            |
+| **File**             | `packages/slaops-infra/lib/stack/app-opensearch.ts`          |
+| **Domain / Service** | `platform` / `opensearch`                                    |
+| **Dependencies**     | `slaops--platform--vpc`, `slaops--platform--security-groups` |
 
 **Resources**: OpenSearch Serverless collection (`slaops--opensearch`), VPC endpoint, network security policy, data access policy.
 
 **Exports**:
+
 - `slaops--platform--opensearch--collection-id`
 - `slaops--platform--opensearch--collection-name`
 - `slaops--platform--opensearch--collection-arn`
@@ -149,17 +154,18 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--auth--cognito`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsAuthStack` |
-| **Class** | `AuthStack` |
-| **File** | `packages/slaops-infra/lib/stack/userpool.ts` |
-| **Domain / Service** | `auth` / `cognito` |
-| **Dependencies** | none |
+| Field                | Value                                         |
+| -------------------- | --------------------------------------------- |
+| **Logical ID**       | `SlaOpsAuthStack`                             |
+| **Class**            | `AuthStack`                                   |
+| **File**             | `packages/slaops-infra/lib/stack/userpool.ts` |
+| **Domain / Service** | `auth` / `cognito`                            |
+| **Dependencies**     | none                                          |
 
 **Resources**: Cognito User Pool, User Pool Client, Identity Pool, pre-token-generation Lambda, SQS publish IAM role, identity pool authenticated IAM role.
 
 **Exports**:
+
 - `slaops--auth--cognito--user-pool-id`
 - `slaops--auth--cognito--user-pool-arn`
 - `slaops--auth--cognito--user-pool-client-id`
@@ -173,18 +179,19 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--oaspec--source`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsOpenApiBucketStack` |
-| **Class** | `OpenApiBucketStack` |
-| **File** | `packages/slaops-infra/lib/stack/app-openapi-bucket.ts` |
-| **Domain / Service** | `oaspec` / `source` |
-| **Dependencies** | none |
-| **Extra tag** | `slaops:tenant-id: slaops` |
+| Field                | Value                                                   |
+| -------------------- | ------------------------------------------------------- |
+| **Logical ID**       | `SlaOpsOpenApiBucketStack`                              |
+| **Class**            | `OpenApiBucketStack`                                    |
+| **File**             | `packages/slaops-infra/lib/stack/app-openapi-bucket.ts` |
+| **Domain / Service** | `oaspec` / `source`                                     |
+| **Dependencies**     | none                                                    |
+| **Extra tag**        | `slaops:tenant-id: slaops`                              |
 
 **Resources**: S3 bucket for SLAOps-managed OpenAPI specifications (`{region}--{env}--slaops--slaops--oaspec--source--specs`). This is the platform's own OASpec catalogue sourced from APIs-guru and other curated collections.
 
 **Exports**:
+
 - `slaops--oaspec--source--bucket-arn`
 - `slaops--oaspec--source--bucket-name`
 
@@ -192,19 +199,20 @@ slaops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last)
 
 ### `slaops--platform--api-gateway`
 
-| Field | Value |
-|---|---|
-| **Logical ID** | `SlaOpsApiStack` |
-| **Class** | `ApiStack` |
-| **File** | `packages/slaops-infra/lib/stack/apigateway.ts` |
-| **Domain / Service** | `platform` / `api-gateway` |
-| **Dependencies** | Amplify API Lambda stack (Lambda ARN passed via env or CDK context) |
+| Field                | Value                                                               |
+| -------------------- | ------------------------------------------------------------------- |
+| **Logical ID**       | `SlaOpsApiStack`                                                    |
+| **Class**            | `ApiStack`                                                          |
+| **File**             | `packages/slaops-infra/lib/stack/apigateway.ts`                     |
+| **Domain / Service** | `platform` / `api-gateway`                                          |
+| **Dependencies**     | Amplify API Lambda stack (Lambda ARN passed via env or CDK context) |
 
 **Deploy condition**: Only deployed when `LAMBDA_FUNCTION_ARN` env var or `lambdaFunctionArn` CDK context value is provided. Deploy the Amplify backend first.
 
 **Resources**: API Gateway REST API proxying to the NestJS API Lambda, CloudWatch access logging, usage plan with rate limiting (50 req/s, 100 burst).
 
 **Exports**:
+
 - `slaops--platform--api-gateway--url`
 - `slaops--platform--api-gateway--id`
 - `slaops--platform--api-gateway--arn`
@@ -221,6 +229,7 @@ Amplify Gen 2 auto-generates CloudFormation stack names at deploy time. The logi
 **Amplify resource**: `backend.api` (function: `amplify/functions/api/`)
 
 **Imports from CDK**:
+
 - `slaops--platform--app-database--cluster-endpoint`
 - `slaops--platform--app-database--secret-arn`
 - `slaops--auth--cognito--user-pool-id`
@@ -231,6 +240,7 @@ Amplify Gen 2 auto-generates CloudFormation stack names at deploy time. The logi
 - `slaops--platform--opensearch--collection-arn`
 
 **Exports**:
+
 - `slaops--platform--api--lambda-arn`
 - `slaops--platform--api--lambda-name`
 
@@ -241,6 +251,7 @@ Amplify Gen 2 auto-generates CloudFormation stack names at deploy time. The logi
 **Amplify resource**: `backend.openapiIndexer` (function: `amplify/functions/openapi-indexer/`)
 
 **Imports from CDK**:
+
 - `slaops--platform--opensearch--collection-endpoint`
 - `slaops--platform--opensearch--collection-arn`
 - `slaops--oaspec--source--bucket-arn`
@@ -249,6 +260,7 @@ Amplify Gen 2 auto-generates CloudFormation stack names at deploy time. The logi
 - `slaops--platform--vpc--subnet-private-{a,b,c}`
 
 **Exports**:
+
 - `slaops--oaspec--indexer--lambda-arn`
 - `slaops--oaspec--storage--bucket-name`
 - `slaops--oaspec--staging--bucket-name`

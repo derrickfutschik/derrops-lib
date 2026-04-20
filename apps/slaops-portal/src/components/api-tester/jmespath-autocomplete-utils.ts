@@ -76,10 +76,7 @@ function normalizeNumericIndices(expr: string): string {
  *
  * Returns paths sorted by relevance (shorter paths first, then alphabetical).
  */
-export function fuzzySearchPaths(
-  paths: string[],
-  query: string,
-): string[] {
+export function fuzzySearchPaths(paths: string[], query: string): string[] {
   const deduped = removeBareArrayPaths(paths)
 
   const raw = query.trim()

@@ -1,18 +1,13 @@
+import type { AegisCreateResponseDto } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { API_BASE_URL } from '@/config'
 import { useCreateAegis } from '@/hooks/useConnectionsApi'
-import type { AegisCreateResponseDto } from '@/client/slaops-cloud'
 import { AlertTriangle } from 'lucide-react'
 import { useState } from 'react'
 import { CopyButton } from './CopyButton'
-import { API_BASE_URL } from '@/config'
 
 interface RegisterAegisDialogProps {
   open: boolean
@@ -75,10 +70,15 @@ export function RegisterAegisDialog({ open, onOpenChange }: RegisterAegisDialogP
             </div>
 
             <div className="bg-secondary/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-              <p>Set this as <code className="text-primary">SLAOPS_REGISTRATION_TOKEN</code> on your Aegis deployment.</p>
+              <p>
+                Set this as <code className="text-primary">SLAOPS_REGISTRATION_TOKEN</code> on your
+                Aegis deployment.
+              </p>
               <p>Also set:</p>
               <div className="flex items-center gap-2">
-                <code className="text-foreground break-all">SLAOPS_PLATFORM_URL = {API_BASE_URL}</code>
+                <code className="text-foreground break-all">
+                  SLAOPS_PLATFORM_URL = {API_BASE_URL}
+                </code>
                 <CopyButton text={API_BASE_URL} />
               </div>
             </div>
@@ -87,7 +87,9 @@ export function RegisterAegisDialog({ open, onOpenChange }: RegisterAegisDialogP
               Once Aegis calls back, status will change to Active.
             </p>
 
-            <Button onClick={handleClose} className="w-full">Done</Button>
+            <Button onClick={handleClose} className="w-full">
+              Done
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">

@@ -52,7 +52,9 @@ export class RegistrationService implements OnModuleInit {
 
       if (response.ok) {
         this.logger.log('Registration handshake succeeded — Aegis instance is now active')
-        this.logger.log('Remove SLAOPS_REGISTRATION_TOKEN from the environment (token is now consumed)')
+        this.logger.log(
+          'Remove SLAOPS_REGISTRATION_TOKEN from the environment (token is now consumed)',
+        )
       } else {
         const text = await response.text()
         this.logger.warn(

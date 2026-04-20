@@ -23,17 +23,17 @@ Commit messages use **Conventional Commits** format. This maps directly to chang
 
 ### Types → Changelog mapping
 
-| Type | Changelog label | Changelog section |
-|---|---|---|
-| `feat` | `pr: new feature` | New Features |
-| `fix` | `pr: bug fix` | Bug Fixes |
-| `perf` | `pr: performance` | Performance |
-| `docs` | `pr: documentation` | Documentation |
-| `refactor` | `pr: maintenance` | Maintenance |
-| `chore` | `pr: maintenance` | Maintenance |
-| `test` | `pr: internal` | *(omitted)* |
-| `ci` | `pr: internal` | *(omitted)* |
-| `build` | `pr: internal` | *(omitted)* |
+| Type       | Changelog label     | Changelog section |
+| ---------- | ------------------- | ----------------- |
+| `feat`     | `pr: new feature`   | New Features      |
+| `fix`      | `pr: bug fix`       | Bug Fixes         |
+| `perf`     | `pr: performance`   | Performance       |
+| `docs`     | `pr: documentation` | Documentation     |
+| `refactor` | `pr: maintenance`   | Maintenance       |
+| `chore`    | `pr: maintenance`   | Maintenance       |
+| `test`     | `pr: internal`      | _(omitted)_       |
+| `ci`       | `pr: internal`      | _(omitted)_       |
+| `build`    | `pr: internal`      | _(omitted)_       |
 
 **Breaking changes** — append `!` after the type (or scope):
 
@@ -53,20 +53,20 @@ This maps to the `pr: breaking change` label and the Breaking Changes section.
 
 Use the package or app name as the scope. Recognised scopes:
 
-| Scope | Maps to |
-|---|---|
-| `portal` | `apps/slaops-portal` |
-| `docs` | `apps/slaops-docs` |
-| `relay` | relay feature area |
-| `client` | `packages/slaops-client` |
-| `axios` | `packages/slaops-client-nodejs-axios` |
-| `config` | `packages/slaops-config` |
-| `infra` | `packages/slaops-infra` |
-| `backend` | `packages/slaops-backend` |
-| `private` | `packages/slaops-private` |
-| `public` | `packages/slaops-public` |
-| `ci` | `.github/` or build tooling |
-| `deps` | dependency updates |
+| Scope     | Maps to                               |
+| --------- | ------------------------------------- |
+| `portal`  | `apps/slaops-portal`                  |
+| `docs`    | `apps/slaops-docs`                    |
+| `relay`   | relay feature area                    |
+| `client`  | `packages/slaops-client`              |
+| `axios`   | `packages/slaops-client-nodejs-axios` |
+| `config`  | `packages/slaops-config`              |
+| `infra`   | `packages/slaops-infra`               |
+| `backend` | `packages/slaops-backend`             |
+| `private` | `packages/slaops-private`             |
+| `public`  | `packages/slaops-public`              |
+| `ci`      | `.github/` or build tooling           |
+| `deps`    | dependency updates                    |
 
 Scope is optional when the change genuinely spans multiple areas with no clear owner.
 
@@ -116,6 +116,7 @@ For globally-unique resources (S3 buckets) prefix with region and environment:
 ```
 
 Examples:
+
 - Lambda function name: `slaops--auth--cognito--pre-token-generation`
 - IAM role name: `slaops--platform--auth--sqs-publish-role`
 - CloudFormation export: `slaops--platform--vpc--id`
@@ -131,14 +132,14 @@ slaops--{domain}--{service}
 
 Every CDK resource must carry these tags. Apply common tags once via `cdk.Tags.of(app)` in `bin/cdk.ts`; apply `slaops:domain` and `slaops:service` inside each stack constructor via `Tags.of(this)`.
 
-| Tag key | Where set | Example |
-|---|---|---|
-| `slaops:org` | `bin/cdk.ts` — `Tags.of(app)` | `slaops` |
-| `slaops:env` | `bin/cdk.ts` — `Tags.of(app)` | `prod` |
-| `slaops:managed-by` | `bin/cdk.ts` — `Tags.of(app)` | `cdk` |
-| `slaops:domain` | stack constructor — `Tags.of(this)` | `platform`, `auth`, `oaspec` |
-| `slaops:service` | stack constructor — `Tags.of(this)` | `vpc`, `cognito`, `opensearch` |
-| `slaops:tenant-id` | per-tenant resources only | `t-a3f8b2`, `slaops` |
+| Tag key             | Where set                           | Example                        |
+| ------------------- | ----------------------------------- | ------------------------------ |
+| `slaops:org`        | `bin/cdk.ts` — `Tags.of(app)`       | `slaops`                       |
+| `slaops:env`        | `bin/cdk.ts` — `Tags.of(app)`       | `prod`                         |
+| `slaops:managed-by` | `bin/cdk.ts` — `Tags.of(app)`       | `cdk`                          |
+| `slaops:domain`     | stack constructor — `Tags.of(this)` | `platform`, `auth`, `oaspec`   |
+| `slaops:service`    | stack constructor — `Tags.of(this)` | `vpc`, `cognito`, `opensearch` |
+| `slaops:tenant-id`  | per-tenant resources only           | `t-a3f8b2`, `slaops`           |
 
 **Caveat**: `CfnCollection` (OpenSearch Serverless) does not inherit CDK stack-level tags. Use `this.collection.tags.setTag()` directly.
 
@@ -166,7 +167,7 @@ Use the same compound kebab-case pattern: `slaops--{domain}--{service}--{key}`. 
   - `>` — angle bracket
   - `-` at the start of a word — can be misread as an arrow fragment
 - Do not use double quotes (`"`) inside an already-quoted label — there is no escape sequence; rephrase to avoid them.
-- Backticks create a **monospace/code styled** label (supported in newer Mermaid): `` A[`code style`] ``
+- Backticks create a **monospace/code styled** label (supported in newer Mermaid): ``A[`code style`]``
 
 ### Node IDs
 

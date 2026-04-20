@@ -1,7 +1,7 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { actionRegistry, ActionArea, ActionGroup } from './actionMeta'
-import type { RootState } from './index'
 import type { CatalogueHit } from '@/types/indexer'
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { ActionArea, ActionGroup, actionRegistry } from './actionMeta'
+import type { RootState } from './index'
 
 export interface OpenApiInfoResult {
   title: string
@@ -101,7 +101,7 @@ export const {
     group: ActionGroup.NewApiWizard,
   },
   setInfoFetchStatus: {
-    description: "Sets the status of the GET /apis/info fetch: idle | loading | success | error.",
+    description: 'Sets the status of the GET /apis/info fetch: idle | loading | success | error.',
     area: ActionArea.UI,
     group: ActionGroup.NewApiWizard,
   },

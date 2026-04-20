@@ -102,10 +102,7 @@ async function resolveSecretUri(
     return result.value
   } catch (err) {
     if (err instanceof SecretStoreError) {
-      throw new TemplateError(
-        `Failed to resolve secret '${secretUri}': ${err.message}`,
-        secretUri,
-      )
+      throw new TemplateError(`Failed to resolve secret '${secretUri}': ${err.message}`, secretUri)
     }
     throw err
   }
@@ -145,16 +142,9 @@ function resolveJit(qualifier: string, expr: string): string {
   }
 }
 
-function resolveVar(
-  name: string,
-  variables: Record<string, unknown>,
-  expr: string,
-): string {
+function resolveVar(name: string, variables: Record<string, unknown>, expr: string): string {
   if (!(name in variables)) {
-    throw new TemplateError(
-      `Variable '${name}' not defined in templateContext.variables`,
-      expr,
-    )
+    throw new TemplateError(`Variable '${name}' not defined in templateContext.variables`, expr)
   }
   return String(variables[name])
 }

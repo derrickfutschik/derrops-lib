@@ -18,14 +18,14 @@ Use `/idea` when you have an unstructured thought, research finding, or "what if
 
 ```yaml
 ---
-id: {filename-without-extension}
-title: {Human Readable Title}
-created_at: {YYYY-MM-DD}
-updated_at: {YYYY-MM-DD}
-author: {GitHub handle or name}
+id: { filename-without-extension }
+title: { Human Readable Title }
+created_at: { YYYY-MM-DD }
+updated_at: { YYYY-MM-DD }
+author: { GitHub handle or name }
 tags:
   - idea
-  - {one-topic-hint — prefer tags from design/tags.yml where applicable}
+  - { one-topic-hint — prefer tags from design/tags.yml where applicable }
 ---
 ```
 
@@ -47,6 +47,7 @@ tags:
 ## Next Steps
 
 When this idea is ready to become a formal design, run `/design` to:
+
 - Search for related ideas and absorb them
 - Create a properly-structured design doc in `internal/platform/design/`
 - Register it in `design/index.md`

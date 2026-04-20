@@ -47,7 +47,11 @@ export class SigningKeyService implements OnModuleInit {
    * Sign a session delegation JWT.
    * Claims beyond the standard ones (iss, sub, aud, iat, exp, jti) are passed in `payload`.
    */
-  async signJwt(payload: Record<string, unknown>, subject: string, audience: string): Promise<string> {
+  async signJwt(
+    payload: Record<string, unknown>,
+    subject: string,
+    audience: string,
+  ): Promise<string> {
     const { SignJWT } = await import('jose')
     const now = Math.floor(Date.now() / 1000)
     return new SignJWT(payload)

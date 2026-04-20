@@ -55,8 +55,12 @@ cfnFunction.vpcConfig = {
 }
 
 // Import OpenSearch endpoint for the API Lambda (search service)
-const opensearchEndpointForApi = cdk.Fn.importValue('slaops--platform--opensearch--collection-endpoint')
-const opensearchCollectionArnForApi = cdk.Fn.importValue('slaops--platform--opensearch--collection-arn')
+const opensearchEndpointForApi = cdk.Fn.importValue(
+  'slaops--platform--opensearch--collection-endpoint',
+)
+const opensearchCollectionArnForApi = cdk.Fn.importValue(
+  'slaops--platform--opensearch--collection-arn',
+)
 
 // Add environment variables using the addEnvironment method from Amplify backend
 backend.api.addEnvironment('DB_HOST', dbEndpoint)

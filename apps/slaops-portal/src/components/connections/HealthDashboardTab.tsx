@@ -1,3 +1,4 @@
+import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -9,10 +10,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { useHealthCheckAegis, useHealthCheckRelay } from '@/hooks/useConnectionsApi'
 import { formatDistanceToNow } from 'date-fns'
-import { Activity, AlertTriangle, CheckCircle, Clock, Loader2, Plus, RefreshCw, Shield, Radio } from 'lucide-react'
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Loader2,
+  Plus,
+  Radio,
+  RefreshCw,
+  Shield,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { StatusBadge, TypeBadge } from './StatusBadge'
 
@@ -86,11 +96,17 @@ export function HealthDashboardTab({
       if (row.type === 'aegis') {
         const res = await healthCheckAegis.mutateAsync(row.id)
         const s = getStatus(res as any)
-        setTestResults((p) => ({ ...p, [row.id]: { ok: s === 'active', msg: s === 'active' ? 'OK' : s } }))
+        setTestResults((p) => ({
+          ...p,
+          [row.id]: { ok: s === 'active', msg: s === 'active' ? 'OK' : s },
+        }))
       } else {
         const res = await healthCheckRelay.mutateAsync(row.id)
         const s = getStatus(res as any)
-        setTestResults((p) => ({ ...p, [row.id]: { ok: s === 'active', msg: s === 'active' ? 'OK' : s } }))
+        setTestResults((p) => ({
+          ...p,
+          [row.id]: { ok: s === 'active', msg: s === 'active' ? 'OK' : s },
+        }))
       }
     } catch (err: any) {
       setTestResults((p) => ({ ...p, [row.id]: { ok: false, msg: err?.message || 'Error' } }))
@@ -145,7 +161,9 @@ export function HealthDashboardTab({
         </Card>
         <Card className="border-border bg-card/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending setup</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Pending setup
+            </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -188,7 +206,9 @@ export function HealthDashboardTab({
                     <div className="flex items-center gap-2">
                       <StatusBadge status={row.status} />
                       {testResult && (
-                        <span className={`text-xs ${testResult.ok ? 'text-success' : 'text-destructive'}`}>
+                        <span
+                          className={`text-xs ${testResult.ok ? 'text-success' : 'text-destructive'}`}
+                        >
                           {testResult.ok ? '✓' : '✗'} {testResult.msg}
                         </span>
                       )}

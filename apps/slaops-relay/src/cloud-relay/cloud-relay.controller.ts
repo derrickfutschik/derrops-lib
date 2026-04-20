@@ -57,11 +57,12 @@ export class CloudRelayController {
       'The relay processes it via its internal queue and stores the result. ' +
       'Poll GET /cloud-relay/job/:id for completion.',
   })
-  @ApiResponse({ status: 201, schema: { type: 'object', properties: { jobId: { type: 'string' } } } })
+  @ApiResponse({
+    status: 201,
+    schema: { type: 'object', properties: { jobId: { type: 'string' } } },
+  })
   @ApiResponse({ status: 401 })
-  async enqueue(
-    @Body() body: EnqueueBody,
-  ): Promise<{ jobId: string }> {
+  async enqueue(@Body() body: EnqueueBody): Promise<{ jobId: string }> {
     return this.queueService.enqueue(body.request, body.tenantId, body.userId)
   }
 
@@ -75,9 +76,7 @@ export class CloudRelayController {
   @ApiResponse({ status: 200 })
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 404 })
-  async getJob(
-    @Param('id') id: string,
-  ): Promise<QueueJobState> {
+  async getJob(@Param('id') id: string): Promise<QueueJobState> {
     const job = await this.queueService.getJob(id)
     if (!job) throw new NotFoundException(`Job ${id} not found or expired`)
     return job

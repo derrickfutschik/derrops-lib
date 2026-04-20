@@ -1,8 +1,13 @@
-import { Button } from '@/components/ui/button'
+import type { AegisInstance } from '@/client/slaops-cloud'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { AegisInstance } from '@/client/slaops-cloud'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Info } from 'lucide-react'
 
 export type AegisMode = 'skip' | 'existing' | 'new'
@@ -43,19 +48,23 @@ export function WizardAegis({
       </div>
 
       <div className="space-y-2">
-        {(['skip', 'existing', 'new'] as const).map(m => (
+        {(['skip', 'existing', 'new'] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => onModeChange(m)}
             className={`w-full text-left rounded-lg border p-3 transition-colors ${
-              mode === m ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/50'
+              mode === m
+                ? 'border-primary bg-primary/5'
+                : 'border-border bg-card hover:border-primary/50'
             }`}
           >
             <div className="font-medium text-sm">
-              {m === 'skip' ? 'Skip — no Aegis for this connection' :
-               m === 'existing' ? 'Link an existing Aegis instance' :
-               'Register a new Aegis instance'}
+              {m === 'skip'
+                ? 'Skip — no Aegis for this connection'
+                : m === 'existing'
+                  ? 'Link an existing Aegis instance'
+                  : 'Register a new Aegis instance'}
             </div>
           </button>
         ))}
@@ -69,17 +78,19 @@ export function WizardAegis({
           ) : (
             <Select
               value={selectedAegisId ?? ''}
-              onValueChange={v => onSelectedAegisIdChange(v || null)}
+              onValueChange={(v) => onSelectedAegisIdChange(v || null)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose an Aegis instance" />
               </SelectTrigger>
               <SelectContent>
-                {existingInstances.map(a => (
+                {existingInstances.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.name}
                     {a.status && (
-                      <span className="ml-2 text-xs text-muted-foreground">({String(a.status)})</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({String(a.status)})
+                      </span>
                     )}
                   </SelectItem>
                 ))}
@@ -102,7 +113,7 @@ export function WizardAegis({
               id="aegis-name"
               placeholder="Production Aegis"
               value={newForm.name}
-              onChange={e => onNewFormChange({ ...newForm, name: e.target.value })}
+              onChange={(e) => onNewFormChange({ ...newForm, name: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -111,9 +122,10 @@ export function WizardAegis({
               id="aegis-url"
               placeholder="https://aegis.example.com"
               value={newForm.url}
-              onChange={e => {
+              onChange={(e) => {
                 const url = e.target.value
-                const jwksUrl = url && !newForm.jwksUrl ? `${url}/.well-known/jwks.json` : newForm.jwksUrl
+                const jwksUrl =
+                  url && !newForm.jwksUrl ? `${url}/.well-known/jwks.json` : newForm.jwksUrl
                 onNewFormChange({ ...newForm, url, jwksUrl })
               }}
             />
@@ -124,11 +136,12 @@ export function WizardAegis({
               id="aegis-jwks"
               placeholder="https://aegis.example.com/.well-known/jwks.json"
               value={newForm.jwksUrl}
-              onChange={e => onNewFormChange({ ...newForm, jwksUrl: e.target.value })}
+              onChange={(e) => onNewFormChange({ ...newForm, jwksUrl: e.target.value })}
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            A one-time registration token will be shown in the success panel after the connection is created.
+            A one-time registration token will be shown in the success panel after the connection is
+            created.
           </p>
         </div>
       )}

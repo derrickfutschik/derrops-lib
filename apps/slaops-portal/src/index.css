@@ -203,17 +203,17 @@ All colors MUST be HSL.
 }
 
 /* Force dark background on all input states */
-[data-amplify-authenticator] input[type="email"],
-[data-amplify-authenticator] input[type="password"],
-[data-amplify-authenticator] input[type="text"],
-[data-amplify-authenticator] input[type="tel"] {
+[data-amplify-authenticator] input[type='email'],
+[data-amplify-authenticator] input[type='password'],
+[data-amplify-authenticator] input[type='text'],
+[data-amplify-authenticator] input[type='tel'] {
   background-color: hsl(217, 33%, 17%) !important;
   background: hsl(217, 33%, 17%) !important;
 }
 
 /* Style password visibility toggle button */
 [data-amplify-authenticator] .amplify-field__show-password,
-[data-amplify-authenticator] button[aria-label*="password"],
+[data-amplify-authenticator] button[aria-label*='password'],
 [data-amplify-authenticator] .amplify-button--link {
   color: hsl(215, 20%, 65%) !important;
   border-color: hsl(217, 33%, 25%) !important;
@@ -221,26 +221,26 @@ All colors MUST be HSL.
 }
 
 [data-amplify-authenticator] .amplify-field__show-password:hover,
-[data-amplify-authenticator] button[aria-label*="password"]:hover {
+[data-amplify-authenticator] button[aria-label*='password']:hover {
   color: hsl(189, 94%, 43%) !important;
   background-color: hsl(217, 33%, 17%) !important;
   border-color: hsl(217, 33%, 25%) !important;
 }
 
 [data-amplify-authenticator] .amplify-field__show-password:focus,
-[data-amplify-authenticator] button[aria-label*="password"]:focus {
+[data-amplify-authenticator] button[aria-label*='password']:focus {
   border-color: hsl(189, 94%, 43%) !important;
   box-shadow: 0 0 0 1px hsl(189, 94%, 43%) !important;
 }
 
 [data-amplify-authenticator] .amplify-field__show-password svg,
-[data-amplify-authenticator] button[aria-label*="password"] svg {
+[data-amplify-authenticator] button[aria-label*='password'] svg {
   fill: currentColor;
   color: hsl(215, 20%, 65%);
 }
 
 [data-amplify-authenticator] .amplify-field__show-password:hover svg,
-[data-amplify-authenticator] button[aria-label*="password"]:hover svg {
+[data-amplify-authenticator] button[aria-label*='password']:hover svg {
   color: hsl(189, 94%, 43%);
 }
 
@@ -259,7 +259,7 @@ All colors MUST be HSL.
   font-weight: 500;
 }
 
-[data-amplify-authenticator] .amplify-tabs-item[data-state="active"],
+[data-amplify-authenticator] .amplify-tabs-item[data-state='active'],
 [data-amplify-authenticator] .amplify-tabs-item--active {
   color: hsl(189, 94%, 43%) !important;
   border-bottom-color: hsl(189, 94%, 43%) !important;

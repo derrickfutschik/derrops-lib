@@ -3,7 +3,11 @@ import { env } from '../env'
 import { CedarPolicyService } from '../cedar/cedar-policy.service'
 import type { CognitoTokenPayload } from '../cedar/cedar-entity.builder'
 import { SigningKeyService } from '../jwks/signing-key.service'
-import { DeniedEndpointDto, PermittedEndpointDto, SessionResponseDto } from './dto/session-response.dto'
+import {
+  DeniedEndpointDto,
+  PermittedEndpointDto,
+  SessionResponseDto,
+} from './dto/session-response.dto'
 import { RequestedEndpointDto, RequestSessionDto } from './dto/request-session.dto'
 
 /** In-memory revocation set — stores JTI values of revoked sessions. */
@@ -33,24 +37,24 @@ export class SessionService {
 
       if (result.allowed) {
         permittedEndpoints.push({
-          host:        endpoint.host,
-          method:      endpoint.method,
-          path:        endpoint.path,
+          host: endpoint.host,
+          method: endpoint.method,
+          path: endpoint.path,
           operationId: endpoint.operationId,
-          relayId:     endpoint.relayId,
+          relayId: endpoint.relayId,
           environment: endpoint.environment,
         })
       } else {
         this.logger.warn(
           `Cedar DENY ${endpoint.method} ${endpoint.host}${endpoint.path} ` +
-          `for user ${userId}: ${result.reason}`,
+            `for user ${userId}: ${result.reason}`,
         )
         deniedEndpoints.push({
-          host:        endpoint.host,
-          method:      endpoint.method,
-          path:        endpoint.path,
+          host: endpoint.host,
+          method: endpoint.method,
+          path: endpoint.path,
           operationId: endpoint.operationId,
-          reason:      result.reason ?? 'denied by policy',
+          reason: result.reason ?? 'denied by policy',
         })
       }
     }
@@ -64,7 +68,7 @@ export class SessionService {
     const expiresAt = new Date((now + env.signing.sessionTtlS) * 1000).toISOString()
 
     const jwtPayload: Record<string, unknown> = {
-      tenantId:          dto.tenantId,
+      tenantId: dto.tenantId,
       permittedEndpoints,
     }
 
@@ -73,7 +77,7 @@ export class SessionService {
 
     this.logger.log(
       `Issued session JWT for user ${userId} (tenant ${dto.tenantId}): ` +
-      `${permittedEndpoints.length} permitted, ${deniedEndpoints.length} denied`,
+        `${permittedEndpoints.length} permitted, ${deniedEndpoints.length} denied`,
     )
 
     return { sessionDelegationJWT: jwt, expiresAt, permittedEndpoints, deniedEndpoints }
@@ -94,7 +98,9 @@ export class SessionService {
     const jwksUrl = env.idp.jwksUrl
 
     if (!jwksUrl) {
-      this.logger.warn('CUSTOMER_IDP_JWKS_URL not set — skipping IdP token validation (development mode)')
+      this.logger.warn(
+        'CUSTOMER_IDP_JWKS_URL not set — skipping IdP token validation (development mode)',
+      )
       const tokenPayload = this.decodeWithoutVerification(userToken)
       return { userId: tokenPayload.sub ?? 'dev-user', tokenPayload }
     }

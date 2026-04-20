@@ -83,11 +83,19 @@ export function writeProfileStore(filePath: string, store: ProfileStore, mode = 
   fs.writeFileSync(filePath, stringify(store), { mode })
 }
 
-export function getSection(filePath: string, profile = DEFAULT_PROFILE): ProfileSection | undefined {
+export function getSection(
+  filePath: string,
+  profile = DEFAULT_PROFILE,
+): ProfileSection | undefined {
   return readProfileStore(filePath)[profile]
 }
 
-export function setSection(filePath: string, values: ProfileSection, profile = DEFAULT_PROFILE, mode = 0o644): void {
+export function setSection(
+  filePath: string,
+  values: ProfileSection,
+  profile = DEFAULT_PROFILE,
+  mode = 0o644,
+): void {
   const store = readProfileStore(filePath)
   store[profile] = { ...(store[profile] ?? {}), ...values }
   writeProfileStore(filePath, store, mode)

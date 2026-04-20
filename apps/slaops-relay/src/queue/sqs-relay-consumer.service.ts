@@ -1,5 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand, MessageSystemAttributeName } from '@aws-sdk/client-sqs'
+import {
+  SQSClient,
+  ReceiveMessageCommand,
+  DeleteMessageCommand,
+  MessageSystemAttributeName,
+} from '@aws-sdk/client-sqs'
 import { env } from '../env'
 import type { CloudProxyRequestDto } from '../cloud-relay/dto/cloud-proxy-request.dto'
 import { ProxyService } from '../cloud-relay/proxy.service'
@@ -52,10 +57,12 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     if (!env.platformSqs.queueUrl) {
-      this.logger.log(JSON.stringify({
-        event: 'sqs_consumer_disabled',
-        reason: 'RELAY_PLATFORM_SQS_QUEUE_URL / SQS_QUEUE_URL not set',
-      }))
+      this.logger.log(
+        JSON.stringify({
+          event: 'sqs_consumer_disabled',
+          reason: 'RELAY_PLATFORM_SQS_QUEUE_URL / SQS_QUEUE_URL not set',
+        }),
+      )
       return
     }
 
@@ -80,13 +87,15 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
       this.idToken = env.cognito.idToken ?? null
     }
 
-    this.logger.log(JSON.stringify({
-      event: 'sqs_consumer_starting',
-      queue_url: env.platformSqs.queueUrl,
-      region: env.platformSqs.region,
-      credential_mode: hasCognito ? 'cognito' : 'sdk-default-chain',
-      relay_id: env.jwt.relayId ?? null,
-    }))
+    this.logger.log(
+      JSON.stringify({
+        event: 'sqs_consumer_starting',
+        queue_url: env.platformSqs.queueUrl,
+        region: env.platformSqs.region,
+        credential_mode: hasCognito ? 'cognito' : 'sdk-default-chain',
+        relay_id: env.jwt.relayId ?? null,
+      }),
+    )
 
     this.running = true
     void this.consumeLoop()
@@ -113,7 +122,9 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
   private async refreshIdToken(): Promise<void> {
     const { refreshToken, clientId, domain } = env.cognito
     if (!refreshToken || !clientId) {
-      throw new Error('Cannot refresh id_token: RELAY_COGNITO_REFRESH_TOKEN or RELAY_COGNITO_CLIENT_ID not set')
+      throw new Error(
+        'Cannot refresh id_token: RELAY_COGNITO_REFRESH_TOKEN or RELAY_COGNITO_CLIENT_ID not set',
+      )
     }
 
     const res = await fetch(`${domain}/oauth2/token`, {
@@ -132,7 +143,7 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
       throw new Error(`Cognito token refresh failed: ${text}`)
     }
 
-    const json = await res.json() as { id_token: string; expires_in: number }
+    const json = (await res.json()) as { id_token: string; expires_in: number }
     this.idToken = json.id_token
     process.env.RELAY_COGNITO_ID_TOKEN = json.id_token
     this.logger.log(JSON.stringify({ event: 'cognito_id_token_refreshed' }))
@@ -161,7 +172,7 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
       signal: AbortSignal.timeout(15_000),
     })
     if (!idRes.ok) throw new Error(`Identity Pool GetId failed: ${idRes.status}`)
-    const { IdentityId } = await idRes.json() as { IdentityId: string }
+    const { IdentityId } = (await idRes.json()) as { IdentityId: string }
 
     const credsRes = await fetch(endpoint, {
       method: 'POST',
@@ -172,10 +183,16 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
       body: JSON.stringify({ IdentityId, Logins: logins }),
       signal: AbortSignal.timeout(15_000),
     })
-    if (!credsRes.ok) throw new Error(`Identity Pool GetCredentialsForIdentity failed: ${credsRes.status}`)
+    if (!credsRes.ok)
+      throw new Error(`Identity Pool GetCredentialsForIdentity failed: ${credsRes.status}`)
 
-    const { Credentials } = await credsRes.json() as {
-      Credentials: { AccessKeyId: string; SecretKey: string; SessionToken: string; Expiration: number }
+    const { Credentials } = (await credsRes.json()) as {
+      Credentials: {
+        AccessKeyId: string
+        SecretKey: string
+        SessionToken: string
+        Expiration: number
+      }
     }
 
     this.credentials = {
@@ -185,10 +202,12 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
       expiration: new Date(Credentials.Expiration * 1000),
     }
 
-    this.logger.log(JSON.stringify({
-      event: 'aws_credentials_refreshed',
-      expires_at: this.credentials.expiration.toISOString(),
-    }))
+    this.logger.log(
+      JSON.stringify({
+        event: 'aws_credentials_refreshed',
+        expires_at: this.credentials.expiration.toISOString(),
+      }),
+    )
 
     this.sqsClient = this.buildSqsClient(this.credentials)
   }
@@ -252,7 +271,10 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     const contentType = raw['contentType'] as string | null | undefined
 
     // Convert headers object to HAR name/value array
-    const headers = Object.entries(rawHeaders).map(([name, value]) => ({ name, value: String(value) }))
+    const headers = Object.entries(rawHeaders).map(([name, value]) => ({
+      name,
+      value: String(value),
+    }))
 
     // queryParams may already be embedded in the URL — emit them into queryString
     // only when the URL does not already contain a query string, to avoid duplication.
@@ -314,19 +336,27 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
           }),
         )
 
-        const messages: Array<{ Body?: string; ReceiptHandle?: string; MessageId?: string; Attributes?: Record<string, string> }> =
-          response.Messages ?? []
+        const messages: Array<{
+          Body?: string
+          ReceiptHandle?: string
+          MessageId?: string
+          Attributes?: Record<string, string>
+        }> = response.Messages ?? []
 
         if (messages.length === 0) {
-          this.logger.debug(JSON.stringify({ event: 'sqs_poll_empty', queue_url: env.platformSqs.queueUrl }))
+          this.logger.debug(
+            JSON.stringify({ event: 'sqs_poll_empty', queue_url: env.platformSqs.queueUrl }),
+          )
           continue
         }
 
-        this.logger.log(JSON.stringify({
-          event: 'sqs_messages_received',
-          count: messages.length,
-          message_ids: messages.map(m => m.MessageId),
-        }))
+        this.logger.log(
+          JSON.stringify({
+            event: 'sqs_messages_received',
+            count: messages.length,
+            message_ids: messages.map((m) => m.MessageId),
+          }),
+        )
 
         for (const message of messages) {
           if (!this.running) break
@@ -334,12 +364,14 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
         }
       } catch (err) {
         if (!this.running) break
-        this.logger.error(JSON.stringify({
-          event: 'sqs_consume_error',
-          error: (err as Error).message,
-          stack: (err as Error).stack,
-        }))
-        await new Promise<void>(r => setTimeout(r, 2_000))
+        this.logger.error(
+          JSON.stringify({
+            event: 'sqs_consume_error',
+            error: (err as Error).message,
+            stack: (err as Error).stack,
+          }),
+        )
+        await new Promise<void>((r) => setTimeout(r, 2_000))
       }
     }
 
@@ -353,26 +385,31 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     Attributes?: Record<string, string>
   }): Promise<void> {
     const receiptHandle = message.ReceiptHandle
-    const receiveCount = message.Attributes?.[MessageSystemAttributeName.ApproximateReceiveCount] ?? 'unknown'
+    const receiveCount =
+      message.Attributes?.[MessageSystemAttributeName.ApproximateReceiveCount] ?? 'unknown'
 
-    this.logger.log(JSON.stringify({
-      event: 'sqs_message_received',
-      message_id: message.MessageId,
-      body_length: message.Body?.length ?? 0,
-      receive_count: receiveCount,
-    }))
+    this.logger.log(
+      JSON.stringify({
+        event: 'sqs_message_received',
+        message_id: message.MessageId,
+        body_length: message.Body?.length ?? 0,
+        receive_count: receiveCount,
+      }),
+    )
 
     // ── Parse ────────────────────────────────────────────────────────────────
     let rawJob: Record<string, unknown>
     try {
       rawJob = JSON.parse(message.Body ?? '{}') as Record<string, unknown>
     } catch (err) {
-      this.logger.warn(JSON.stringify({
-        event: 'sqs_message_parse_error',
-        message_id: message.MessageId,
-        error: (err as Error).message,
-        raw_body: message.Body,
-      }))
+      this.logger.warn(
+        JSON.stringify({
+          event: 'sqs_message_parse_error',
+          message_id: message.MessageId,
+          error: (err as Error).message,
+          raw_body: message.Body,
+        }),
+      )
       await this.deleteMessage(receiptHandle, message.MessageId)
       return
     }
@@ -383,12 +420,14 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     const rawRequest = rawJob['request'] as Record<string, unknown> | undefined
 
     if (!jobId || !rawRequest) {
-      this.logger.warn(JSON.stringify({
-        event: 'sqs_message_invalid',
-        message_id: message.MessageId,
-        reason: !jobId ? 'missing job id' : 'missing request',
-        raw_job: rawJob,
-      }))
+      this.logger.warn(
+        JSON.stringify({
+          event: 'sqs_message_invalid',
+          message_id: message.MessageId,
+          reason: !jobId ? 'missing job id' : 'missing request',
+          raw_job: rawJob,
+        }),
+      )
       await this.deleteMessage(receiptHandle, message.MessageId)
       return
     }
@@ -398,27 +437,31 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     try {
       proxyRequest = this.toCloudProxyRequest(rawRequest)
     } catch (err) {
-      this.logger.warn(JSON.stringify({
-        event: 'sqs_message_normalise_error',
-        job_id: jobId,
-        message_id: message.MessageId,
-        error: (err as Error).message,
-        raw_request: rawRequest,
-      }))
+      this.logger.warn(
+        JSON.stringify({
+          event: 'sqs_message_normalise_error',
+          job_id: jobId,
+          message_id: message.MessageId,
+          error: (err as Error).message,
+          raw_request: rawRequest,
+        }),
+      )
       await this.deleteMessage(receiptHandle, message.MessageId)
       return
     }
 
-    this.logger.log(JSON.stringify({
-      event: 'job_claimed',
-      job_id: jobId,
-      tenant_id: tenantId,
-      user_id: userId,
-      method: proxyRequest.request.method,
-      url: proxyRequest.request.url,
-      header_count: proxyRequest.request.headers.length,
-      query_string_count: proxyRequest.request.queryString.length,
-    }))
+    this.logger.log(
+      JSON.stringify({
+        event: 'job_claimed',
+        job_id: jobId,
+        tenant_id: tenantId,
+        user_id: userId,
+        method: proxyRequest.request.method,
+        url: proxyRequest.request.url,
+        header_count: proxyRequest.request.headers.length,
+        query_string_count: proxyRequest.request.queryString.length,
+      }),
+    )
 
     // ── Execute proxy ────────────────────────────────────────────────────────
     let result: object
@@ -426,33 +469,39 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
     try {
       result = await this.proxyService.proxy(proxyRequest, userId ?? '', tenantId ?? '')
       const r = result as { status?: number; durationMs?: number; error?: string }
-      this.logger.log(JSON.stringify({
-        event: 'job_proxy_complete',
-        job_id: jobId,
-        status: r.status,
-        duration_ms: r.durationMs,
-        failed: false,
-      }))
+      this.logger.log(
+        JSON.stringify({
+          event: 'job_proxy_complete',
+          job_id: jobId,
+          status: r.status,
+          duration_ms: r.durationMs,
+          failed: false,
+        }),
+      )
     } catch (err) {
       failed = true
       result = { error: (err as Error).message }
-      this.logger.warn(JSON.stringify({
-        event: 'job_proxy_error',
-        job_id: jobId,
-        error: (err as Error).message,
-        stack: (err as Error).stack,
-      }))
+      this.logger.warn(
+        JSON.stringify({
+          event: 'job_proxy_error',
+          job_id: jobId,
+          error: (err as Error).message,
+          stack: (err as Error).stack,
+        }),
+      )
     }
 
     // ── Deliver result ───────────────────────────────────────────────────────
     if (env.platform.url && env.platform.token) {
       const resultUrl = `${env.platform.url}/cloud-relay/job/${jobId}/result`
-      this.logger.log(JSON.stringify({
-        event: 'job_result_delivering',
-        job_id: jobId,
-        result_url: resultUrl,
-        failed,
-      }))
+      this.logger.log(
+        JSON.stringify({
+          event: 'job_result_delivering',
+          job_id: jobId,
+          result_url: resultUrl,
+          failed,
+        }),
+      )
       try {
         const postRes = await fetch(resultUrl, {
           method: 'POST',
@@ -465,56 +514,77 @@ export class SqsRelayConsumerService implements OnModuleInit, OnModuleDestroy {
         })
         if (!postRes.ok) {
           let errorBody: string
-          try { errorBody = await postRes.text() } catch { errorBody = '' }
-          this.logger.warn(JSON.stringify({
-            event: 'job_result_deliver_failed',
-            job_id: jobId,
-            http_status: postRes.status,
-            error_body: errorBody,
-          }))
+          try {
+            errorBody = await postRes.text()
+          } catch {
+            errorBody = ''
+          }
+          this.logger.warn(
+            JSON.stringify({
+              event: 'job_result_deliver_failed',
+              job_id: jobId,
+              http_status: postRes.status,
+              error_body: errorBody,
+            }),
+          )
         } else {
-          this.logger.log(JSON.stringify({
-            event: 'job_result_delivered',
-            job_id: jobId,
-            failed,
-          }))
+          this.logger.log(
+            JSON.stringify({
+              event: 'job_result_delivered',
+              job_id: jobId,
+              failed,
+            }),
+          )
         }
       } catch (err) {
-        this.logger.error(JSON.stringify({
-          event: 'job_result_deliver_error',
-          job_id: jobId,
-          error: (err as Error).message,
-        }))
+        this.logger.error(
+          JSON.stringify({
+            event: 'job_result_deliver_error',
+            job_id: jobId,
+            error: (err as Error).message,
+          }),
+        )
       }
     } else {
-      this.logger.debug(JSON.stringify({
-        event: 'job_result_skipped',
-        reason: 'RELAY_PLATFORM_URL / RELAY_PLATFORM_TOKEN not set',
-        job_id: jobId,
-      }))
+      this.logger.debug(
+        JSON.stringify({
+          event: 'job_result_skipped',
+          reason: 'RELAY_PLATFORM_URL / RELAY_PLATFORM_TOKEN not set',
+          job_id: jobId,
+        }),
+      )
     }
 
     await this.deleteMessage(receiptHandle, message.MessageId)
   }
 
-  private async deleteMessage(receiptHandle: string | undefined, messageId?: string): Promise<void> {
+  private async deleteMessage(
+    receiptHandle: string | undefined,
+    messageId?: string,
+  ): Promise<void> {
     if (!receiptHandle) return
     try {
       const sqs = await this.getSqsClient()
-      await sqs.send(new DeleteMessageCommand({
-        QueueUrl: env.platformSqs.queueUrl,
-        ReceiptHandle: receiptHandle,
-      }))
-      this.logger.log(JSON.stringify({
-        event: 'sqs_message_deleted',
-        message_id: messageId,
-      }))
+      await sqs.send(
+        new DeleteMessageCommand({
+          QueueUrl: env.platformSqs.queueUrl,
+          ReceiptHandle: receiptHandle,
+        }),
+      )
+      this.logger.log(
+        JSON.stringify({
+          event: 'sqs_message_deleted',
+          message_id: messageId,
+        }),
+      )
     } catch (err) {
-      this.logger.error(JSON.stringify({
-        event: 'sqs_message_delete_error',
-        message_id: messageId,
-        error: (err as Error).message,
-      }))
+      this.logger.error(
+        JSON.stringify({
+          event: 'sqs_message_delete_error',
+          message_id: messageId,
+          error: (err as Error).message,
+        }),
+      )
     }
   }
 }

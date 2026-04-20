@@ -41,16 +41,16 @@ The Operations tab lists all HTTP operations indexed for the selected API versio
 
 **Query params**:
 
-| Param | Default | Notes |
-|---|---|---|
+| Param     | Default    | Notes                                                                                                  |
+| --------- | ---------- | ------------------------------------------------------------------------------------------------------ |
 | `version` | _(latest)_ | `latest` sentinel or a specific version string. When `latest`, the query uses `term: { latest: true }` |
-| `from` | `0` | OpenSearch `from` |
-| `size` | `10` | OpenSearch `size`, max `100` |
-| `sort` | `path` | Sortable fields: `path`, `method`, `operationId`, `summary` |
-| `order` | `asc` | `asc` or `desc` |
-| `q` | _(empty)_ | Full-text search across `path`, `summary`, `tagsText`, `operationId` |
-| `method` | _(all)_ | Comma-separated HTTP method filter: `get,post,put` |
-| `tag` | _(all)_ | Tag name filter (matches against `tagsText`) |
+| `from`    | `0`        | OpenSearch `from`                                                                                      |
+| `size`    | `10`       | OpenSearch `size`, max `100`                                                                           |
+| `sort`    | `path`     | Sortable fields: `path`, `method`, `operationId`, `summary`                                            |
+| `order`   | `asc`      | `asc` or `desc`                                                                                        |
+| `q`       | _(empty)_  | Full-text search across `path`, `summary`, `tagsText`, `operationId`                                   |
+| `method`  | _(all)_    | Comma-separated HTTP method filter: `get,post,put`                                                     |
+| `tag`     | _(all)_    | Tag name filter (matches against `tagsText`)                                                           |
 
 **OpenSearch query** (against `slaops--{tenantId}--oaspec--operation`):
 
@@ -58,10 +58,7 @@ The Operations tab lists all HTTP operations indexed for the selected API versio
 {
   "query": {
     "bool": {
-      "filter": [
-        { "term": { "apiId": "<apiId>" } },
-        { "term": { "latest": true } }
-      ],
+      "filter": [{ "term": { "apiId": "<apiId>" } }, { "term": { "latest": true } }],
       "must": [
         {
           "multi_match": {
@@ -116,21 +113,22 @@ interface OperationHit {
 ### Toolbar
 
 Above the table:
+
 1. **Search input** — free-text, debounced 300 ms, dispatches query param update which triggers re-fetch.
-2. **Method filter** — multi-select toggle group: `GET POST PUT PATCH DELETE HEAD OPTIONS`. Each button uses `MethodBadge` colour. 
+2. **Method filter** — multi-select toggle group: `GET POST PUT PATCH DELETE HEAD OPTIONS`. Each button uses `MethodBadge` colour.
 3. **Tag filter** — dropdown populated from `OaSpecDocument.tagsText` for the current version. Single-select.
 4. **Version badge** — read-only badge showing the active version (e.g. `v2.1.0 — Latest`).
 
 ### Column layout
 
-| Column | Field | Sortable | Hideable | Notes |
-|---|---|---|---|---|
-| **Method** | `method` | Yes | No | `MethodBadge` component; always visible |
-| **Path** | `path` | Yes | No | Monospace; always visible |
-| **Summary** | `summary` | Yes | Yes | Truncated to one line; deprecated badge prepended when `deprecated: true` |
-| **Operation ID** | `operationId` | Yes | Yes | Monospace; hidden by default |
-| **Tags** | `tagsText` | No | Yes | Rendered as `<Badge variant="secondary">` per tag |
-| **Deprecated** | `deprecated` | Yes | Yes | Amber "⚠ deprecated" badge; hidden by default (deprecation shown inline in Summary) |
+| Column           | Field         | Sortable | Hideable | Notes                                                                                |
+| ---------------- | ------------- | -------- | -------- | ------------------------------------------------------------------------------------ |
+| **Method**       | `method`      | Yes      | No       | `MethodBadge` component; always visible                                              |
+| **Path**         | `path`        | Yes      | No       | Monospace; always visible                                                            |
+| **Summary**      | `summary`     | Yes      | Yes      | Truncated to one line; deprecated badge prepended when `deprecated: true`            |
+| **Operation ID** | `operationId` | Yes      | Yes      | Monospace; hidden by default                                                         |
+| **Tags**         | `tagsText`    | No       | Yes      | Rendered as `<Badge variant="secondary">` per tag                                    |
+| **Deprecated**   | `deprecated`  | Yes      | Yes      | Amber "⚠ deprecated" badge; hidden by default (deprecation shown inline in Summary) |
 
 ### Row click — detail panel
 
@@ -142,6 +140,7 @@ Clicking a row opens `OperationDetailPanel` as a side sheet. The panel fetches n
 ### IndexedDataTable conventions
 
 All column headers follow the [IndexedDataTable convention](./index.md#indexeddatatable-convention):
+
 - Clicking a sortable column header sends a new `sort` + `order` query to the server.
 - EyeOff appears on hover for hideable columns; clicking hides the column client-side.
 - "N columns hidden — Show all" banner appears above the table when any column is hidden.

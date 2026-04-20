@@ -86,7 +86,8 @@ sequenceDiagram
 4. Bulk index new operation documents with `latest: true`.
 
 **Path compaction rules:**
-- Path parameters with integer-like schemas → `{i}` 
+
+- Path parameters with integer-like schemas → `{i}`
 - String path parameters → `{s}`
 - The HTTP method is abbreviated to its first character (uppercased): `G`, `P`, `D`, `A` (PATCH), `H`, `O` (OPTIONS)
 
@@ -159,11 +160,11 @@ interface IndexingResponse {
   }
 
   truncated: {
-    operations: boolean  // true if operation count exceeded index limit
-    models: boolean      // true if model count exceeded index limit
+    operations: boolean // true if operation count exceeded index limit
+    models: boolean // true if model count exceeded index limit
   }
 
-  versions_pruned: number  // number of old versions deleted across all indices
+  versions_pruned: number // number of old versions deleted across all indices
 
   errors: Array<{
     step: 'spec' | 'server' | 'operation' | 'param' | 'model' | 'sql'
@@ -204,13 +205,13 @@ In this case the `apiId` is inferred from the wizard context (passed as a query 
 
 ## Error Handling
 
-| Failure | Behaviour |
-|---|---|
-| Spec parse failure | Abort pipeline, return error — no OpenSearch writes, no SQL update |
-| `api` row not found | Abort pipeline — spec cannot be indexed without a parent API |
+| Failure                 | Behaviour                                                          |
+| ----------------------- | ------------------------------------------------------------------ |
+| Spec parse failure      | Abort pipeline, return error — no OpenSearch writes, no SQL update |
+| `api` row not found     | Abort pipeline — spec cannot be indexed without a parent API       |
 | OpenSearch step N fails | Log error, continue to step N+1 and SQL upsert; record in `errors` |
-| Version pruning fails | Log warning, continue; pruning retried on next index run |
-| SQL update fails | Log error; OpenSearch data is correct but SQL stats are stale |
+| Version pruning fails   | Log warning, continue; pruning retried on next index run           |
+| SQL update fails        | Log error; OpenSearch data is correct but SQL stats are stale      |
 
 ---
 

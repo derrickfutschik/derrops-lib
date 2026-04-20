@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react'
-import type { KeyValuePair } from '@/hooks/useSendRequest'
-import type { BodyType, RawType } from '@/components/api-tester/RequestBodyEditor'
 import type { OpenAPIFormValues } from '@/components/api-tester/OpenAPIParameterForm'
+import type { BodyType, RawType } from '@/components/api-tester/RequestBodyEditor'
+import type { KeyValuePair } from '@/hooks/useSendRequest'
+import { useEffect, useRef } from 'react'
+import { extractPathParamsFromUrl, parseValueByType } from './analyze-utils'
 import type { BuilderMode } from './types'
-import { parseValueByType, extractPathParamsFromUrl } from './analyze-utils'
 
 interface UseOpenAPIFormSyncParams {
   builderMode: BuilderMode
@@ -98,7 +98,8 @@ export function useOpenAPIFormSync({
       })
       .map(([key, value]) => ({
         key,
-        value: Array.isArray(value) || typeof value === 'object' ? JSON.stringify(value) : String(value),
+        value:
+          Array.isArray(value) || typeof value === 'object' ? JSON.stringify(value) : String(value),
         enabled: true,
       }))
     newQueryParams.push({ key: '', value: '', enabled: true })
@@ -111,7 +112,8 @@ export function useOpenAPIFormSync({
       })
       .map(([key, value]) => ({
         key,
-        value: Array.isArray(value) || typeof value === 'object' ? JSON.stringify(value) : String(value),
+        value:
+          Array.isArray(value) || typeof value === 'object' ? JSON.stringify(value) : String(value),
         enabled: true,
       }))
     if (!newHeaders.some((h) => h.key.toLowerCase() === 'content-type')) {
@@ -195,7 +197,11 @@ export function useOpenAPIFormSync({
 
     const normalize = (obj: Record<string, any>): string => {
       const sorted: Record<string, any> = {}
-      Object.keys(obj).sort().forEach((key) => { sorted[key] = obj[key] })
+      Object.keys(obj)
+        .sort()
+        .forEach((key) => {
+          sorted[key] = obj[key]
+        })
       return JSON.stringify(sorted)
     }
 

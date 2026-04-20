@@ -10,11 +10,7 @@ export type SecretValue = {
 export class SecretStoreError extends Error {
   constructor(
     message: string,
-    public readonly code:
-      | 'NOT_FOUND'
-      | 'ACCESS_DENIED'
-      | 'STORE_UNAVAILABLE'
-      | 'INVALID_FORMAT',
+    public readonly code: 'NOT_FOUND' | 'ACCESS_DENIED' | 'STORE_UNAVAILABLE' | 'INVALID_FORMAT',
     /** The store-internal identifier (path within the store, not the full URI). */
     public readonly secretId: string,
   ) {

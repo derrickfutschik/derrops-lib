@@ -46,18 +46,18 @@ Swagger UI is available at `http://localhost:3002/api` when running.
 
 ## Environment variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `3002` | HTTP port |
-| `NODE_ENV` | `development` | Environment |
-| `RELAY_SECRET_BACKEND` | `env` | Secret store backend (`env`, or a custom registered name) |
-| `RELAY_SECRET_CACHE_TTL_S` | `300` | Secret cache TTL in seconds (0 = no cache) |
-| `RELAY_SECRET_PREFETCH` | _(empty)_ | Comma-separated secret IDs to warm on startup |
-| `RELAY_PROXY_TIMEOUT_MS` | `30000` | Default proxy request timeout |
-| `RELAY_PROXY_MAX_BODY_BYTES` | `10485760` | Maximum response body size (10 MB) |
-| `RELAY_VAULT_ADDR` | `http://127.0.0.1:8200` | HashiCorp Vault address |
-| `RELAY_VAULT_TOKEN` | _(none)_ | Vault token |
-| `RELAY_VAULT_MOUNT` | `secret` | Vault KV mount path |
+| Variable                     | Default                 | Description                                               |
+| ---------------------------- | ----------------------- | --------------------------------------------------------- |
+| `PORT`                       | `3002`                  | HTTP port                                                 |
+| `NODE_ENV`                   | `development`           | Environment                                               |
+| `RELAY_SECRET_BACKEND`       | `env`                   | Secret store backend (`env`, or a custom registered name) |
+| `RELAY_SECRET_CACHE_TTL_S`   | `300`                   | Secret cache TTL in seconds (0 = no cache)                |
+| `RELAY_SECRET_PREFETCH`      | _(empty)_               | Comma-separated secret IDs to warm on startup             |
+| `RELAY_PROXY_TIMEOUT_MS`     | `30000`                 | Default proxy request timeout                             |
+| `RELAY_PROXY_MAX_BODY_BYTES` | `10485760`              | Maximum response body size (10 MB)                        |
+| `RELAY_VAULT_ADDR`           | `http://127.0.0.1:8200` | HashiCorp Vault address                                   |
+| `RELAY_VAULT_TOKEN`          | _(none)_                | Vault token                                               |
+| `RELAY_VAULT_MOUNT`          | `secret`                | Vault KV mount path                                       |
 
 ---
 
@@ -70,10 +70,12 @@ The relay exposes a single endpoint. Connection management is handled by `apps/s
 Proxy an HTTP request to an external target. The request body follows the [HAR](http://www.softwareishard.com/blog/har-12-spec/) format.
 
 **Headers required:**
+
 - `x-tenant-id` — Tenant UUID
 - `x-user-id` — User UUID
 
 **Request body:**
+
 ```json
 {
   "request": {
@@ -100,6 +102,7 @@ Proxy an HTTP request to an external target. The request body follows the [HAR](
 ```
 
 **Success response (`200`):**
+
 ```json
 {
   "status": 200,
@@ -112,6 +115,7 @@ Proxy an HTTP request to an external target. The request body follows the [HAR](
 ```
 
 **Error response (`200` with error shape):**
+
 ```json
 {
   "error": "Policy denied: host is a private network address",
@@ -128,25 +132,25 @@ Error codes: `TIMEOUT` | `NETWORK_ERROR` | `INVALID_URL` | `POLICY_DENIED` | `TE
 
 Template expressions can appear in any string field of the HAR request (URL, headers, query params, cookies, body).
 
-| Expression | Description |
-|---|---|
-| `{{secret:MY_SECRET_ID}}` | Value of secret `MY_SECRET_ID` from the configured secret store |
-| `{{secret:MY_SECRET_ID.field}}` | Single field extracted from a JSON-encoded secret |
-| `{{var:name}}` | Variable defined in `templateContext.variables` |
-| `{{jit:uuid}}` | Random UUID (generated at request time) |
-| `{{jit:uuid-short}}` | 8-character UUID fragment |
-| `{{jit:timestamp}}` | Current time as ISO 8601 string |
-| `{{jit:timestamp-unix}}` | Current Unix timestamp (seconds) |
-| `{{jit:timestamp-unix-ms}}` | Current Unix timestamp (milliseconds) |
-| `{{jit:random-hex:N}}` | `N`-character random hex string |
+| Expression                      | Description                                                     |
+| ------------------------------- | --------------------------------------------------------------- |
+| `{{secret:MY_SECRET_ID}}`       | Value of secret `MY_SECRET_ID` from the configured secret store |
+| `{{secret:MY_SECRET_ID.field}}` | Single field extracted from a JSON-encoded secret               |
+| `{{var:name}}`                  | Variable defined in `templateContext.variables`                 |
+| `{{jit:uuid}}`                  | Random UUID (generated at request time)                         |
+| `{{jit:uuid-short}}`            | 8-character UUID fragment                                       |
+| `{{jit:timestamp}}`             | Current time as ISO 8601 string                                 |
+| `{{jit:timestamp-unix}}`        | Current Unix timestamp (seconds)                                |
+| `{{jit:timestamp-unix-ms}}`     | Current Unix timestamp (milliseconds)                           |
+| `{{jit:random-hex:N}}`          | `N`-character random hex string                                 |
 
 ### Variable types in `templateContext.variables`
 
 ```json
 {
-  "tokenVar":  { "type": "secret",  "secretId": "MY_API_KEY" },
-  "regionVar": { "type": "env",     "envVar": "AWS_REGION" },
-  "labelVar":  { "type": "literal", "value": "production" }
+  "tokenVar": { "type": "secret", "secretId": "MY_API_KEY" },
+  "regionVar": { "type": "env", "envVar": "AWS_REGION" },
+  "labelVar": { "type": "literal", "value": "production" }
 }
 ```
 

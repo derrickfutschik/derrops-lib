@@ -16,6 +16,7 @@ Aegis is the SLAOps policy engine. It runs in your infrastructure and gives you 
 **Time to complete**: ~20 minutes
 
 **Prerequisites**:
+
 - A relay already running ([local relay](./local-relay) or [cloud relay](./cloud-relay))
 - Docker
 - Your SLAOps API key (from Portal → Settings → API Keys)
@@ -28,11 +29,11 @@ When a user starts an API testing session in the Portal, Aegis is called once to
 
 This gives you three things:
 
-| Capability | What it means |
-|---|---|
-| **Credential injection** | Aegis resolves secrets from your vault (environment variables, AWS Secrets Manager, HashiCorp Vault) and injects them into requests at execution time. No secrets reach the Portal. |
-| **Request authorisation** | Cedar-based policies define exactly which endpoints each user or group is allowed to call, and with which methods. |
-| **Audit trail** | Every authorisation decision is logged in your environment. |
+| Capability                | What it means                                                                                                                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Credential injection**  | Aegis resolves secrets from your vault (environment variables, AWS Secrets Manager, HashiCorp Vault) and injects them into requests at execution time. No secrets reach the Portal. |
+| **Request authorisation** | Cedar-based policies define exactly which endpoints each user or group is allowed to call, and with which methods.                                                                  |
+| **Audit trail**           | Every authorisation decision is logged in your environment.                                                                                                                         |
 
 Aegis is optional for `local-dev` relays. For production deployments handling sensitive APIs it is strongly recommended.
 
@@ -131,15 +132,15 @@ docker run -d \
 
 **Environment variables**:
 
-| Variable | Required | Description |
-|---|---|---|
-| `AEGIS_PLATFORM_API_KEY` | Yes | Your SLAOps API key — used to verify vendor JWTs |
-| `AEGIS_SIGNING_KEY_PATH` | Yes | Path to the private key PEM file (inside the container) |
-| `AEGIS_IDP_ISSUER` | Yes | OIDC issuer URL for your identity provider |
-| `AEGIS_IDP_AUDIENCE` | Yes | Expected `aud` claim in user tokens |
-| `AEGIS_POLICY_DIR` | No | Directory containing `.cedar` policy files (default: `/policies`) |
-| `AEGIS_PORT` | No | Port to listen on (default: `3200`) |
-| `AEGIS_LOG_LEVEL` | No | `debug`, `info`, `warn`, `error` (default: `info`) |
+| Variable                 | Required | Description                                                       |
+| ------------------------ | -------- | ----------------------------------------------------------------- |
+| `AEGIS_PLATFORM_API_KEY` | Yes      | Your SLAOps API key — used to verify vendor JWTs                  |
+| `AEGIS_SIGNING_KEY_PATH` | Yes      | Path to the private key PEM file (inside the container)           |
+| `AEGIS_IDP_ISSUER`       | Yes      | OIDC issuer URL for your identity provider                        |
+| `AEGIS_IDP_AUDIENCE`     | Yes      | Expected `aud` claim in user tokens                               |
+| `AEGIS_POLICY_DIR`       | No       | Directory containing `.cedar` policy files (default: `/policies`) |
+| `AEGIS_PORT`             | No       | Port to listen on (default: `3200`)                               |
+| `AEGIS_LOG_LEVEL`        | No       | `debug`, `info`, `warn`, `error` (default: `info`)                |
 
 Check the logs to confirm startup:
 
@@ -240,7 +241,7 @@ services:
       - ./aegis-private.pem:/keys/aegis-private.pem:ro
       - ./policies:/policies:ro
     ports:
-      - "3200:3200"
+      - '3200:3200'
 
   slaops-relay:
     image: slaops/relay:latest
@@ -254,7 +255,7 @@ services:
       RELAY_DELIVERY_MODE: platform-queue
       AEGIS_URL: http://slaops-aegis:3200
       AEGIS_PUBLIC_KEY_PATH: /keys/aegis-public.pem
-      AEGIS_REQUIRED: "true"
+      AEGIS_REQUIRED: 'true'
     volumes:
       - ./aegis-public.pem:/keys/aegis-public.pem:ro
 ```
@@ -265,11 +266,11 @@ services:
 
 Aegis can inject secrets into requests so that credentials are never entered in the Portal. Use secret template syntax in your API Tester requests:
 
-| Template | Where the secret comes from |
-|---|---|
-| `{{secret:env:MY_API_KEY}}` | Environment variable on the relay |
-| `{{secret:aws-secrets-manager:my-secret/api-key}}` | AWS Secrets Manager |
-| `{{secret:vault:secret/data/my-api}}` | HashiCorp Vault |
+| Template                                           | Where the secret comes from       |
+| -------------------------------------------------- | --------------------------------- |
+| `{{secret:env:MY_API_KEY}}`                        | Environment variable on the relay |
+| `{{secret:aws-secrets-manager:my-secret/api-key}}` | AWS Secrets Manager               |
+| `{{secret:vault:secret/data/my-api}}`              | HashiCorp Vault                   |
 
 For example, to inject a bearer token into the `Authorization` header:
 

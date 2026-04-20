@@ -47,4 +47,4 @@ export const queueStoreRegistry = new QueueStoreRegistry()
 
 // Register built-in backends
 queueStoreRegistry.register('memory', () => new InMemoryQueueStore())
-queueStoreRegistry.register('sqs', envArg => new SqsQueueStore(envArg))
+queueStoreRegistry.register('sqs', (envArg) => new SqsQueueStore(envArg))

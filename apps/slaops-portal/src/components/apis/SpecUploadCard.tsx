@@ -1,14 +1,14 @@
-import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useUploadUrl, useIndexSpec } from '@/hooks/useIndexerApi'
 import { useToast } from '@/components/ui/use-toast'
+import { useIndexSpec, useUploadUrl } from '@/hooks/useIndexerApi'
+import type { IndexingResponse } from '@/types/indexer'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { IndexingResultPanel } from './IndexingResultPanel'
 import { SpecUploadFileTab } from './SpecUploadFileTab'
 import { SpecUploadPasteTab } from './SpecUploadPasteTab'
 import { SpecUploadUrlTab } from './SpecUploadUrlTab'
-import type { IndexingResponse } from '@/types/indexer'
-import { useQueryClient } from '@tanstack/react-query'
 
 interface SpecUploadCardProps {
   apiId: string
@@ -17,7 +17,12 @@ interface SpecUploadCardProps {
   initialContent?: string
 }
 
-export function SpecUploadCard({ apiId, title = 'Upload Spec', initialUrl, initialContent }: SpecUploadCardProps) {
+export function SpecUploadCard({
+  apiId,
+  title = 'Upload Spec',
+  initialUrl,
+  initialContent,
+}: SpecUploadCardProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const getUploadUrl = useUploadUrl()

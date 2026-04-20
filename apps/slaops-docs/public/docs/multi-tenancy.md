@@ -23,11 +23,11 @@ A tenant is the unit of isolation in SLAOps. When you sign up, a tenant is provi
 
 These three concepts are distinct:
 
-| Concept | Description |
-| -------- | ----------- |
-| **Customer** | An organisation or individual with a SLAOps account. |
-| **User** | A person who authenticates with SLAOps. Every user belongs to exactly one customer. |
-| **Tenant** | An isolated data environment. A customer may own many tenants (e.g., one per environment or business unit). |
+| Concept      | Description                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| **Customer** | An organisation or individual with a SLAOps account.                                                        |
+| **User**     | A person who authenticates with SLAOps. Every user belongs to exactly one customer.                         |
+| **Tenant**   | An isolated data environment. A customer may own many tenants (e.g., one per environment or business unit). |
 
 A user's session is always scoped to a single tenant — not to the customer as a whole. A user can access any of their customer's tenants, but must sign in to each one separately; a single session cannot span multiple tenants.
 
@@ -117,10 +117,10 @@ custom:tenant_id = "t-acme0001"
 
 ### Subdomains
 
-| URL | Purpose |
-| --- | ------- |
-| `{tenantKey}.{customerKey}.app.slaops.com` | Sign in directly to a specific tenant — the typical flow. |
-| `{customerKey}.app.slaops.com` | Sign in at the customer level to see which tenants you have access to, then navigate to one. |
+| URL                                        | Purpose                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `{tenantKey}.{customerKey}.app.slaops.com` | Sign in directly to a specific tenant — the typical flow.                                    |
+| `{customerKey}.app.slaops.com`             | Sign in at the customer level to see which tenants you have access to, then navigate to one. |
 
 Most users will know their tenant's subdomain and go there directly. The customer-level subdomain is a convenience for users who are unsure which tenant to access.
 
@@ -146,12 +146,12 @@ This means it is architecturally impossible for an authenticated request to read
 
 SLAOps enforces tenant isolation at multiple independent levels:
 
-| Level              | What it does                                                                                                                                    |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Storage**        | Your S3 buckets and OpenSearch index are dedicated to your tenant. Access policies permit only your tenant's credentials.                       |
-| **Network**        | All traffic flows through a private VPC. Resources are not publicly accessible.                                                                 |
-| **Authentication** | Every API request is authenticated and your tenant identity is verified before any data is read or written.                                     |
-| **Query scoping**  | All database and search queries are automatically scoped to your tenant. There is no way to query another tenant's data through the SLAOps API. |
+| Level              | What it does                                                                                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Storage**        | Your S3 buckets and OpenSearch index are dedicated to your tenant. Access policies permit only your tenant's credentials.                                                                                   |
+| **Network**        | All traffic flows through a private VPC. Resources are not publicly accessible.                                                                                                                             |
+| **Authentication** | Every API request is authenticated and your tenant identity is verified before any data is read or written.                                                                                                 |
+| **Query scoping**  | All database and search queries are automatically scoped to your tenant. There is no way to query another tenant's data through the SLAOps API.                                                             |
 | **AWS tagging**    | All tenant-specific AWS resources are tagged with both `tenantId` and `customerId`, making it straightforward to filter costs, audit access, and manage resources by tenant or customer in the AWS console. |
 
 ---

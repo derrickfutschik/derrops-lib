@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { User } from '@supabase/supabase-js'
-import { FlaskConical, LogOut, Plus, Settings, BookOpen } from 'lucide-react'
+import { BookOpen, FlaskConical, LogOut, Plus, Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface DashboardHeaderProps {

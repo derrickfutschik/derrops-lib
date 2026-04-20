@@ -22,11 +22,11 @@ This section is the **customer knowledge base**. Everything here is written for 
 
 ## Key concepts
 
-| Page | What it explains |
-|---|---|
+| Page                             | What it explains                                                 |
+| -------------------------------- | ---------------------------------------------------------------- |
 | [Multi-Tenancy](./multi-tenancy) | How your data is isolated; dedicated S3 buckets and search space |
-| [OASpec Bucket](./oaspec-bucket) | How to manage your OpenAPI specifications |
-| [Plans](./plans) | Feature availability and limits by plan |
-| [BYOK](./byok) | Bring your own encryption keys |
-| [Environment](./environment) | Configuration reference |
-| [Glossary](./glossary) | Domain term definitions (OASpec, TopOp, relay, etc.) |
+| [OASpec Bucket](./oaspec-bucket) | How to manage your OpenAPI specifications                        |
+| [Plans](./plans)                 | Feature availability and limits by plan                          |
+| [BYOK](./byok)                   | Bring your own encryption keys                                   |
+| [Environment](./environment)     | Configuration reference                                          |
+| [Glossary](./glossary)           | Domain term definitions (OASpec, TopOp, relay, etc.)             |

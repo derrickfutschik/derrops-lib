@@ -1,24 +1,31 @@
 /**
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/parameters-tab.md
  */
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PAGE_SIZE } from '@/config'
+import { useParametersTab } from '@/hooks/useParametersTab'
+import { cn } from '@/lib/utils'
 import {
   selectParametersTabState,
-  setParametersQuery,
   setParametersLocationFilter,
-  setTabSort,
+  setParametersQuery,
   setTabPage,
-  toggleTabColumn,
+  setTabSort,
   showAllTabColumns,
+  toggleTabColumn,
 } from '@/store/apiTabsSlice'
-import { useParametersTab } from '@/hooks/useParametersTab'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { SortableColHeader } from './SortableColHeader'
 import { TabTableFooter } from './TabTableFooter'
-import { PAGE_SIZE } from '@/config'
-import { cn } from '@/lib/utils'
 
 interface ParametersTabProps {
   apiId: string
@@ -33,8 +40,8 @@ const COLUMNS = [
 ]
 
 const LOCATION_CLASSES: Record<string, string> = {
-  path:   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  query:  'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  path: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  query: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
   header: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   cookie: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
 }
@@ -43,7 +50,8 @@ const LOCATIONS = ['path', 'query', 'header', 'cookie']
 
 export function ParametersTab({ apiId }: ParametersTabProps) {
   const dispatch = useAppDispatch()
-  const { sort, hiddenColumns, page, query, locationFilter } = useAppSelector(selectParametersTabState)
+  const { sort, hiddenColumns, page, query, locationFilter } =
+    useAppSelector(selectParametersTabState)
   const { data, isLoading } = useParametersTab(apiId)
 
   const from = page * PAGE_SIZE
@@ -60,7 +68,9 @@ export function ParametersTab({ apiId }: ParametersTabProps) {
   }
 
   if (isLoading) {
-    return <div className="text-center py-12 text-muted-foreground text-sm">Loading parameters…</div>
+    return (
+      <div className="text-center py-12 text-muted-foreground text-sm">Loading parameters…</div>
+    )
   }
 
   if (!data || (data.hits.length === 0 && !hasFilter)) {
@@ -87,7 +97,9 @@ export function ParametersTab({ apiId }: ParametersTabProps) {
               variant={locationFilter === loc ? 'default' : 'outline'}
               size="sm"
               className="h-7 px-2 text-xs"
-              onClick={() => dispatch(setParametersLocationFilter(locationFilter === loc ? null : loc))}
+              onClick={() =>
+                dispatch(setParametersLocationFilter(locationFilter === loc ? null : loc))
+              }
             >
               {loc}
             </Button>
@@ -137,10 +149,12 @@ export function ParametersTab({ apiId }: ParametersTabProps) {
               )}
               {!hiddenColumns.includes('location') && (
                 <TableCell>
-                  <span className={cn(
-                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                    LOCATION_CLASSES[p.location] ?? 'bg-gray-100 text-gray-700',
-                  )}>
+                  <span
+                    className={cn(
+                      'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                      LOCATION_CLASSES[p.location] ?? 'bg-gray-100 text-gray-700',
+                    )}
+                  >
                     {p.location}
                   </span>
                 </TableCell>

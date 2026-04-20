@@ -1313,9 +1313,9 @@ export class IdentityProviderError extends Error {
   constructor(
     message: string,
     public readonly code:
-      | 'TOKEN_INVALID'      // Signature invalid, malformed, or wrong issuer
-      | 'TOKEN_EXPIRED'      // Token has passed its exp claim
-      | 'USER_NOT_FOUND'     // Token valid but user cannot be resolved
+      | 'TOKEN_INVALID' // Signature invalid, malformed, or wrong issuer
+      | 'TOKEN_EXPIRED' // Token has passed its exp claim
+      | 'USER_NOT_FOUND' // Token valid but user cannot be resolved
       | 'PROVIDER_UNAVAILABLE', // IdP JWKS or userinfo endpoint unreachable
     public readonly provider: string,
   ) {
@@ -1344,9 +1344,9 @@ export interface IdentityProvider {
 
 **Built-in implementations:**
 
-| `AEGIS_IDENTITY_PROVIDER` | Package | Description |
-|---|---|---|
-| `oidc` | `app/` | Generic OIDC/OAuth2 — fetches JWKS from `AEGIS_OIDC_ISSUER/.well-known/jwks.json`, verifies signature and audience |
+| `AEGIS_IDENTITY_PROVIDER` | Package | Description                                                                                                        |
+| ------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `oidc`                    | `app/`  | Generic OIDC/OAuth2 — fetches JWKS from `AEGIS_OIDC_ISSUER/.well-known/jwks.json`, verifies signature and audience |
 
 **Customer-extensible**: Okta, Azure AD, PingFederate, custom SAML bridge — implement `IdentityProvider` and register as `'saml'`, `'okta'`, etc.
 
@@ -1394,10 +1394,7 @@ export interface PolicyStore {
    * Evaluate whether the user may be granted the requested scopes.
    * Returns granted and denied scopes with reasons.
    */
-  evaluate(
-    userCtx: VerifiedUserContext,
-    requestedScopes: RequestedScope[],
-  ): Promise<PolicyDecision>
+  evaluate(userCtx: VerifiedUserContext, requestedScopes: RequestedScope[]): Promise<PolicyDecision>
 
   /** Upsert a policy rule. Used by the admin API. */
   upsertRule(rule: PolicyRule): Promise<void>
@@ -1418,10 +1415,10 @@ export interface PolicyStore {
 
 **Built-in implementations:**
 
-| `AEGIS_POLICY_STORE` | Package | Description |
-|---|---|---|
-| `in-process` | `app/` | JSON rules loaded from `AEGIS_POLICY_FILE` or `AEGIS_POLICY_JSON` env var at startup. Read-only at runtime (restart to reload). |
-| `opa` | `app/` | Delegates evaluation to an Open Policy Agent HTTP sidecar via `AEGIS_OPA_URL`. Rule management APIs pass through to OPA's REST API. Suitable for GitOps-managed policy. |
+| `AEGIS_POLICY_STORE` | Package | Description                                                                                                                                                             |
+| -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `in-process`         | `app/`  | JSON rules loaded from `AEGIS_POLICY_FILE` or `AEGIS_POLICY_JSON` env var at startup. Read-only at runtime (restart to reload).                                         |
+| `opa`                | `app/`  | Delegates evaluation to an Open Policy Agent HTTP sidecar via `AEGIS_OPA_URL`. Rule management APIs pass through to OPA's REST API. Suitable for GitOps-managed policy. |
 
 **Customer-extensible**: database-backed rules, Cedar policy engine, custom enterprise policy service.
 
@@ -1488,12 +1485,12 @@ export interface SessionStore {
 
 **Built-in implementations:**
 
-| `AEGIS_SESSION_STORE` | Package | Description |
-|---|---|---|
-| `in-memory` | `app/` | Process-local Map — clears on restart. Suitable for dev and single-instance Docker deployments with short JWT TTLs. |
-| `dynamo` | `app-aws/` | DynamoDB table with TTL — auto-purges expired entries. IAM role auth. |
-| `cosmos` | `app-azure/` | Azure Cosmos DB with TTL. Managed identity auth. |
-| `firestore` | `app-cp/` | GCP Firestore with TTL. Workload Identity auth. |
+| `AEGIS_SESSION_STORE` | Package      | Description                                                                                                         |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `in-memory`           | `app/`       | Process-local Map — clears on restart. Suitable for dev and single-instance Docker deployments with short JWT TTLs. |
+| `dynamo`              | `app-aws/`   | DynamoDB table with TTL — auto-purges expired entries. IAM role auth.                                               |
+| `cosmos`              | `app-azure/` | Azure Cosmos DB with TTL. Managed identity auth.                                                                    |
+| `firestore`           | `app-cp/`    | GCP Firestore with TTL. Workload Identity auth.                                                                     |
 
 **Customer-extensible**: Redis (`ioredis`), PostgreSQL, custom enterprise session service.
 
@@ -1514,9 +1511,9 @@ export class SigningKeyProviderError extends Error {
   constructor(
     message: string,
     public readonly code:
-      | 'KEY_UNAVAILABLE'   // KMS/vault unreachable
-      | 'SIGNING_FAILED'    // Key exists but signing operation failed
-      | 'KEY_NOT_FOUND',    // Key ID not found in provider
+      | 'KEY_UNAVAILABLE' // KMS/vault unreachable
+      | 'SIGNING_FAILED' // Key exists but signing operation failed
+      | 'KEY_NOT_FOUND', // Key ID not found in provider
   ) {
     super(message)
     this.name = 'SigningKeyProviderError'
@@ -1552,12 +1549,12 @@ export interface SigningKeyProvider {
 
 **Built-in implementations:**
 
-| `AEGIS_SIGNING_KEY_PROVIDER` | Package | Description |
-|---|---|---|
-| `local` | `app/` | RSA-2048 keypair from `AEGIS_LOCAL_PRIVATE_KEY_PEM` (base64 PEM). For Docker/dev only — key is in process memory. |
-| `kms` | `app-aws/` | AWS KMS asymmetric key (RS256 or ES256). Private key never leaves KMS. Key ID via `AEGIS_KMS_KEY_ID`. |
-| `azure-keyvault` | `app-azure/` | Azure Key Vault key. Managed identity auth. Key ID via `AEGIS_AZURE_KEY_VAULT_KEY_ID`. |
-| `gcp-kms` | `app-cp/` | GCP Cloud KMS asymmetric signing key. Workload Identity auth. |
+| `AEGIS_SIGNING_KEY_PROVIDER` | Package      | Description                                                                                                       |
+| ---------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `local`                      | `app/`       | RSA-2048 keypair from `AEGIS_LOCAL_PRIVATE_KEY_PEM` (base64 PEM). For Docker/dev only — key is in process memory. |
+| `kms`                        | `app-aws/`   | AWS KMS asymmetric key (RS256 or ES256). Private key never leaves KMS. Key ID via `AEGIS_KMS_KEY_ID`.             |
+| `azure-keyvault`             | `app-azure/` | Azure Key Vault key. Managed identity auth. Key ID via `AEGIS_AZURE_KEY_VAULT_KEY_ID`.                            |
+| `gcp-kms`                    | `app-cp/`    | GCP Cloud KMS asymmetric signing key. Workload Identity auth.                                                     |
 
 ---
 
@@ -1606,10 +1603,7 @@ export interface EntitlementStore {
    * Return all entitlements for a user, derived by intersecting the user's
    * groups with stored rules. Used by PolicyStore and the entitlements API.
    */
-  getEntitlementsForUser(
-    tenantId: string,
-    userCtx: VerifiedUserContext,
-  ): Promise<ApiEntitlement[]>
+  getEntitlementsForUser(tenantId: string, userCtx: VerifiedUserContext): Promise<ApiEntitlement[]>
 
   /**
    * Return all raw entitlement rules for a tenant.
@@ -1627,9 +1621,9 @@ export interface EntitlementStore {
 
 **Built-in implementations:**
 
-| `AEGIS_ENTITLEMENT_STORE` | Package | Description |
-|---|---|---|
-| `static` | `app/` | JSON rules loaded from `AEGIS_ENTITLEMENT_FILE` or `AEGIS_ENTITLEMENT_JSON` at startup. Read-only at runtime — restart to reload. Suitable for GitOps-managed entitlements. |
+| `AEGIS_ENTITLEMENT_STORE` | Package | Description                                                                                                                                                                 |
+| ------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `static`                  | `app/`  | JSON rules loaded from `AEGIS_ENTITLEMENT_FILE` or `AEGIS_ENTITLEMENT_JSON` at startup. Read-only at runtime — restart to reload. Suitable for GitOps-managed entitlements. |
 
 **Customer-extensible**: database-backed (PostgreSQL, DynamoDB), synced from the main SaaS platform API catalog, managed via the optional admin UI.
 
@@ -1675,11 +1669,11 @@ export const identityProviderRegistry = new IdentityProviderRegistry()
 The five singleton registries exported from `app/`:
 
 ```typescript
-export { identityProviderRegistry }  // AEGIS_IDENTITY_PROVIDER
-export { policyStoreRegistry }       // AEGIS_POLICY_STORE
-export { sessionStoreRegistry }      // AEGIS_SESSION_STORE
+export { identityProviderRegistry } // AEGIS_IDENTITY_PROVIDER
+export { policyStoreRegistry } // AEGIS_POLICY_STORE
+export { sessionStoreRegistry } // AEGIS_SESSION_STORE
 export { signingKeyProviderRegistry } // AEGIS_SIGNING_KEY_PROVIDER
-export { entitlementStoreRegistry }  // AEGIS_ENTITLEMENT_STORE
+export { entitlementStoreRegistry } // AEGIS_ENTITLEMENT_STORE
 ```
 
 Built-in implementations self-register in their package entry points:
@@ -1699,7 +1693,10 @@ signingKeyProviderRegistry.register('kms', (env) => new KmsSigningKeyProvider(en
 
 // app-azure/src/index.ts
 sessionStoreRegistry.register('cosmos', (env) => new CosmosSessionStore(env))
-signingKeyProviderRegistry.register('azure-keyvault', (env) => new AzureKeyVaultSigningProvider(env))
+signingKeyProviderRegistry.register(
+  'azure-keyvault',
+  (env) => new AzureKeyVaultSigningProvider(env),
+)
 
 // app-cp/src/index.ts
 sessionStoreRegistry.register('firestore', (env) => new FirestoreSessionStore(env))
@@ -1715,26 +1712,30 @@ Customers who need a backend not provided out of the box register their implemen
 ```typescript
 // customer-aegis/src/main.ts
 
-import {
-  createAegisApp,
-  sessionStoreRegistry,
-  policyStoreRegistry,
-} from '@slaops/aegis'
+import { createAegisApp, sessionStoreRegistry, policyStoreRegistry } from '@slaops/aegis'
 
 import { RedisSessionStore } from './redis-session-store'
 import { CyberArkPolicyStore } from './cyberark-policy-store'
 
 // Register custom implementations before bootstrap.
 // AEGIS_SESSION_STORE=redis and AEGIS_POLICY_STORE=cyberark must be set in env.
-sessionStoreRegistry.register('redis', (env) => new RedisSessionStore({
-  url: env.REDIS_URL!,
-  tlsCert: env.REDIS_TLS_CERT,
-}))
+sessionStoreRegistry.register(
+  'redis',
+  (env) =>
+    new RedisSessionStore({
+      url: env.REDIS_URL!,
+      tlsCert: env.REDIS_TLS_CERT,
+    }),
+)
 
-policyStoreRegistry.register('cyberark', (env) => new CyberArkPolicyStore({
-  baseUrl: env.CYBERARK_BASE_URL!,
-  appId: env.CYBERARK_APP_ID!,
-}))
+policyStoreRegistry.register(
+  'cyberark',
+  (env) =>
+    new CyberArkPolicyStore({
+      baseUrl: env.CYBERARK_BASE_URL!,
+      appId: env.CYBERARK_APP_ID!,
+    }),
+)
 
 const app = await createAegisApp()
 await app.listen(process.env.PORT ?? 3001)
@@ -1813,9 +1814,7 @@ export async function createAegisApp() {
     entitlementStore: entitlementStoreRegistry.create(env),
   }
 
-  const app = await NestFactory.create(
-    BrokerModule.forRoot(services),
-  )
+  const app = await NestFactory.create(BrokerModule.forRoot(services))
 
   app.setGlobalPrefix('v1')
   // ValidationPipe, exception filters, logging middleware wired here
@@ -1862,6 +1861,7 @@ export class BrokerModule {
 Aegis exposes `GET /.well-known/jwks.json` served by `JwksController` via `SigningKeyProvider.getPublicJwks()`. This is the endpoint the Relay fetches at startup to cache the public key set for local JWT validation — no Aegis round trip per request.
 
 Key rotation behaviour:
+
 - When `rotateKeys()` is called (manually or on a schedule), the new key ID appears in the JWKS immediately.
 - The old key ID must remain in the JWKS for at least one full JWT TTL period so in-flight sessions remain verifiable.
 - The Relay re-fetches JWKS when it encounters an unknown `kid` in an incoming JWT header, picking up new keys without a restart.
@@ -1889,14 +1889,14 @@ export class JwksController {
 
 All deployment templates live in `infra/` at the root of `apps/slaops-aegis`. There is no dependency on `packages/slaops-infra` or any other private SLAOps package.
 
-| Method | Infrastructure | Sub-package | Notes |
-|---|---|---|---|
-| **Docker** | `docker-compose.yml` (root) | `app/` + chosen `app-*/` | `docker run` with env vars. Use Docker Compose to add Redis/Postgres for session store if needed. |
-| **Lambda + API Gateway (AWS)** | `infra/aws/` CDK stack | `app-aws/` | Cold start acceptable — Aegis is in the critical path once per session, not per request. |
-| **ECS / Fargate (AWS)** | `infra/aws/` CDK stack | `app-aws/` | Preferred for high-availability enterprise AWS deployments. Persistent session store via DynamoDB. |
-| **Kubernetes** | Customer-managed Helm/manifests | any `app/` | `app/` with optional OPA sidecar pod for policy. Suitable for multi-cloud and on-premises. |
-| **Azure Container Apps** | `infra/azure/` Bicep | `app-azure/` | Cosmos DB session store + Key Vault signing key. |
-| **GCP Cloud Run** | `infra/gcp/` Terraform | `app-cp/` | Firestore session store + Cloud KMS signing key. |
+| Method                         | Infrastructure                  | Sub-package              | Notes                                                                                              |
+| ------------------------------ | ------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------- |
+| **Docker**                     | `docker-compose.yml` (root)     | `app/` + chosen `app-*/` | `docker run` with env vars. Use Docker Compose to add Redis/Postgres for session store if needed.  |
+| **Lambda + API Gateway (AWS)** | `infra/aws/` CDK stack          | `app-aws/`               | Cold start acceptable — Aegis is in the critical path once per session, not per request.           |
+| **ECS / Fargate (AWS)**        | `infra/aws/` CDK stack          | `app-aws/`               | Preferred for high-availability enterprise AWS deployments. Persistent session store via DynamoDB. |
+| **Kubernetes**                 | Customer-managed Helm/manifests | any `app/`               | `app/` with optional OPA sidecar pod for policy. Suitable for multi-cloud and on-premises.         |
+| **Azure Container Apps**       | `infra/azure/` Bicep            | `app-azure/`             | Cosmos DB session store + Key Vault signing key.                                                   |
+| **GCP Cloud Run**              | `infra/gcp/` Terraform          | `app-cp/`                | Firestore session store + Cloud KMS signing key.                                                   |
 
 ### Self-hosting on AWS (quick start)
 
@@ -1915,28 +1915,28 @@ No SLAOps private packages, no `packages/slaops-infra`, no Amplify dependency. A
 
 All configuration is via environment variables. No `@slaops/config` dependency.
 
-| Variable | Required | Description |
-|---|---|---|
-| `AEGIS_IDENTITY_PROVIDER` | Yes | IdP adapter: `oidc`, or custom registered name |
-| `AEGIS_OIDC_ISSUER` | If `oidc` | OIDC issuer URL — JWKS fetched from `{issuer}/.well-known/jwks.json` |
-| `AEGIS_OIDC_AUDIENCE` | If `oidc` | Expected `aud` claim in the user token |
-| `AEGIS_POLICY_STORE` | Yes | Policy backend: `in-process`, `opa`, or custom |
-| `AEGIS_POLICY_FILE` | If `in-process` | Absolute path to JSON policy rules file |
-| `AEGIS_POLICY_JSON` | If `in-process` | Inline JSON policy rules (alternative to file — useful in Lambda) |
-| `AEGIS_OPA_URL` | If `opa` | Base URL of the OPA HTTP API (e.g. `http://localhost:8181`) |
-| `AEGIS_SESSION_STORE` | Yes | Session backend: `in-memory`, `dynamo`, `cosmos`, `firestore`, or custom |
-| `AEGIS_DYNAMO_TABLE` | If `dynamo` | DynamoDB table name for session records |
-| `AEGIS_SIGNING_KEY_PROVIDER` | Yes | Signing backend: `local`, `kms`, `azure-keyvault`, `gcp-kms` |
-| `AEGIS_LOCAL_PRIVATE_KEY_PEM` | If `local` | RSA private key as base64-encoded PEM. Dev/Docker only. |
-| `AEGIS_KMS_KEY_ID` | If `kms` | AWS KMS key ID or ARN for the asymmetric signing key |
-| `AEGIS_ENTITLEMENT_STORE` | Yes | Entitlement backend: `static`, or custom |
-| `AEGIS_ENTITLEMENT_FILE` | If `static` | Absolute path to JSON entitlement rules file |
-| `AEGIS_ENTITLEMENT_JSON` | If `static` | Inline JSON entitlement rules (alternative to file) |
-| `AEGIS_JWT_ISSUER` | Yes | `iss` claim written into every session delegation JWT |
-| `AEGIS_JWT_AUDIENCE` | Yes | `aud` claim — typically the SaaS control plane identifier |
-| `AEGIS_JWT_TTL_SECONDS` | No | Session delegation JWT lifetime. Default: `1800` (30 min) |
-| `AEGIS_LOG_LEVEL` | No | `debug`, `info`, `warn`, `error`. Default: `info` |
-| `PORT` | No | HTTP port. Default: `3001` |
+| Variable                      | Required        | Description                                                              |
+| ----------------------------- | --------------- | ------------------------------------------------------------------------ |
+| `AEGIS_IDENTITY_PROVIDER`     | Yes             | IdP adapter: `oidc`, or custom registered name                           |
+| `AEGIS_OIDC_ISSUER`           | If `oidc`       | OIDC issuer URL — JWKS fetched from `{issuer}/.well-known/jwks.json`     |
+| `AEGIS_OIDC_AUDIENCE`         | If `oidc`       | Expected `aud` claim in the user token                                   |
+| `AEGIS_POLICY_STORE`          | Yes             | Policy backend: `in-process`, `opa`, or custom                           |
+| `AEGIS_POLICY_FILE`           | If `in-process` | Absolute path to JSON policy rules file                                  |
+| `AEGIS_POLICY_JSON`           | If `in-process` | Inline JSON policy rules (alternative to file — useful in Lambda)        |
+| `AEGIS_OPA_URL`               | If `opa`        | Base URL of the OPA HTTP API (e.g. `http://localhost:8181`)              |
+| `AEGIS_SESSION_STORE`         | Yes             | Session backend: `in-memory`, `dynamo`, `cosmos`, `firestore`, or custom |
+| `AEGIS_DYNAMO_TABLE`          | If `dynamo`     | DynamoDB table name for session records                                  |
+| `AEGIS_SIGNING_KEY_PROVIDER`  | Yes             | Signing backend: `local`, `kms`, `azure-keyvault`, `gcp-kms`             |
+| `AEGIS_LOCAL_PRIVATE_KEY_PEM` | If `local`      | RSA private key as base64-encoded PEM. Dev/Docker only.                  |
+| `AEGIS_KMS_KEY_ID`            | If `kms`        | AWS KMS key ID or ARN for the asymmetric signing key                     |
+| `AEGIS_ENTITLEMENT_STORE`     | Yes             | Entitlement backend: `static`, or custom                                 |
+| `AEGIS_ENTITLEMENT_FILE`      | If `static`     | Absolute path to JSON entitlement rules file                             |
+| `AEGIS_ENTITLEMENT_JSON`      | If `static`     | Inline JSON entitlement rules (alternative to file)                      |
+| `AEGIS_JWT_ISSUER`            | Yes             | `iss` claim written into every session delegation JWT                    |
+| `AEGIS_JWT_AUDIENCE`          | Yes             | `aud` claim — typically the SaaS control plane identifier                |
+| `AEGIS_JWT_TTL_SECONDS`       | No              | Session delegation JWT lifetime. Default: `1800` (30 min)                |
+| `AEGIS_LOG_LEVEL`             | No              | `debug`, `info`, `warn`, `error`. Default: `info`                        |
+| `PORT`                        | No              | HTTP port. Default: `3001`                                               |
 
 ---
 
@@ -1970,4 +1970,4 @@ All configuration is via environment variables. No `@slaops/config` dependency.
 - [ ] `infra/aws`, `infra/azure`, `infra/gcp` self-contained deployment stacks
 - [ ] `Dockerfile` + `docker-compose.yml`
 - [ ] Admin policy APIs (`PUT /v1/admin/policies`, `GET /v1/admin/policies`, `POST /v1/admin/policy-decisions/test`)
-**Status**: Draft — updated with module structure, pluggable service interfaces, registry/factory pattern, deployment model, and NestJS bootstrap details
+      **Status**: Draft — updated with module structure, pluggable service interfaces, registry/factory pattern, deployment model, and NestJS bootstrap details

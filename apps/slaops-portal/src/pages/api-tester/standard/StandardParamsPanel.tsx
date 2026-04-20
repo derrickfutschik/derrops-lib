@@ -1,16 +1,16 @@
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   BodyType,
   FormDataEntry,
   RawType,
   RequestBodyEditor,
 } from '@/components/api-tester/RequestBodyEditor'
-import { Plus, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type KeyValuePair } from '@/hooks/useSendRequest'
+import { clearFocusedQueryParam, setFocusedQueryParam } from '@/store/apiTesterSlice'
 import { useAppDispatch } from '@/store/hooks'
-import { setFocusedQueryParam, clearFocusedQueryParam } from '@/store/apiTesterSlice'
+import { Plus, Trash2 } from 'lucide-react'
 
 interface StandardParamsPanelProps {
   activeTab: string
@@ -31,7 +31,9 @@ interface StandardParamsPanelProps {
   onRawTypeChange: (type: RawType) => void
   formData: FormDataEntry[]
   onFormDataChange: (data: FormDataEntry[]) => void
-  getQueryParamValidationStatus: (key: string) => { isValid: boolean; isUnspecified: boolean } | null
+  getQueryParamValidationStatus: (
+    key: string,
+  ) => { isValid: boolean; isUnspecified: boolean } | null
   getHeaderValidationStatus: (key: string) => { isValid: boolean; isUnspecified: boolean } | null
   getValidationBorderClass: (
     status: { isValid: boolean; isUnspecified: boolean } | null,

@@ -36,6 +36,7 @@ The developer runs the existing `slaops-relay` process on their own machine. Thi
 When the relay cannot accept inbound connections (developer behind NAT or a corporate firewall), it needs a pull-based channel. Rather than the relay HTTP-polling a slaops-cloud endpoint, each relay registration provisions a **dedicated AWS SQS queue**. slaops-cloud publishes jobs to the queue; the relay consumes via SQS long-poll.
 
 This gives:
+
 - **No inbound ports** — the relay only makes outbound connections (SQS + slaops-cloud for result delivery)
 - **Instant delivery** — SQS long-poll (20s) gives near-immediate job pickup vs. a polling interval
 - **Durable queuing** — jobs survive a relay restart without being lost
@@ -94,13 +95,14 @@ No inbound ports are opened on the developer's machine. The developer doesn't to
 
 Relay connections in slaops-cloud carry a `type` discriminator:
 
-| Value | Description |
-|---|---|
-| `managed` | SLAOps-hosted Lambda behind API Gateway |
-| `self-hosted` | Customer-deployed on their own infrastructure |
-| `local-dev` | Developer's local machine — platform-queue only |
+| Value         | Description                                     |
+| ------------- | ----------------------------------------------- |
+| `managed`     | SLAOps-hosted Lambda behind API Gateway         |
+| `self-hosted` | Customer-deployed on their own infrastructure   |
+| `local-dev`   | Developer's local machine — platform-queue only |
 
 A `local-dev` relay has additional constraints enforced by slaops-cloud:
+
 - `delivery_mode` is locked to `platform-queue` and cannot be changed
 - The SSRF policy preset is locked to `dev-local` (see below)
 
@@ -108,9 +110,9 @@ A `local-dev` relay has additional constraints enforced by slaops-cloud:
 
 The standard relay SSRF policy blocks RFC-1918 private addresses to prevent cloud-internal SSRF attacks. A local relay must be able to reach `localhost`, so a dedicated preset is applied:
 
-| Policy | Allows | Blocks |
-|---|---|---|
-| `default` | All public IPs | RFC-1918, link-local, localhost |
+| Policy      | Allows                                 | Blocks                                  |
+| ----------- | -------------------------------------- | --------------------------------------- |
+| `default`   | All public IPs                         | RFC-1918, link-local, localhost         |
 | `dev-local` | `127.0.0.1`, `::1`, and all public IPs | RFC-1918, link-local (except localhost) |
 
 `dev-local` is only applied when `relay_instance.type = 'local-dev'`. It cannot be selected for `managed` or `self-hosted` relays.
@@ -136,7 +138,7 @@ The relay selector in the API Tester:
 - Shows `local-dev` relays with a distinct **Local** badge
 - Warns the developer if the selected target URL begins with `localhost` or `127.0.0.1` but no `local-dev` relay is registered:
 
-  > *Your target is a localhost URL. Start a local relay with `slaops relay start` to route this request.*
+  > _Your target is a localhost URL. Start a local relay with `slaops relay start` to route this request._
 
 ---
 

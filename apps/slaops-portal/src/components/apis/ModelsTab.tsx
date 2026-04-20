@@ -1,27 +1,34 @@
 /**
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/models-tab.md
  */
-import { useState } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PAGE_SIZE } from '@/config'
+import { useModelsTab } from '@/hooks/useModelsTab'
 import {
   selectModelsTabState,
   setModelsQuery,
   setModelsUsedInFilter,
-  setTabSort,
   setTabPage,
-  toggleTabColumn,
+  setTabSort,
   showAllTabColumns,
+  toggleTabColumn,
 } from '@/store/apiTabsSlice'
-import { useModelsTab } from '@/hooks/useModelsTab'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import type { ModelHit } from '@/types/apiTabs'
+import { useState } from 'react'
 import { ModelDetailPanel } from './ModelDetailPanel'
 import { SortableColHeader } from './SortableColHeader'
 import { TabTableFooter } from './TabTableFooter'
-import { PAGE_SIZE } from '@/config'
-import type { ModelHit } from '@/types/apiTabs'
 
 interface ModelsTabProps {
   apiId: string
@@ -35,7 +42,7 @@ const COLUMNS = [
 ]
 
 const USED_IN_CLASSES: Record<string, string> = {
-  request:  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  request: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   response: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 }
 
@@ -142,7 +149,9 @@ export function ModelsTab({ apiId }: ModelsTabProps) {
               )}
               {!hiddenColumns.includes('schemaType') && (
                 <TableCell>
-                  <Badge variant="secondary" className="text-xs font-mono">{model.schemaType}</Badge>
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    {model.schemaType}
+                  </Badge>
                 </TableCell>
               )}
               {!hiddenColumns.includes('usedInText') && (
@@ -185,13 +194,17 @@ export function ModelsTab({ apiId }: ModelsTabProps) {
       />
 
       <ModelDetailPanel
-        model={selected ? {
-          name: selected.name,
-          schemaType: selected.schemaType,
-          usedInText: selected.usedInText,
-          description: selected.description,
-          propertiesText: selected.propertiesText,
-        } : null}
+        model={
+          selected
+            ? {
+                name: selected.name,
+                schemaType: selected.schemaType,
+                usedInText: selected.usedInText,
+                description: selected.description,
+                propertiesText: selected.propertiesText,
+              }
+            : null
+        }
         onClose={() => setSelected(null)}
       />
     </>

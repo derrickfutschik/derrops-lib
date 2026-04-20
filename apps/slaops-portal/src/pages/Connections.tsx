@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAegisInstances, useConnections } from '@/hooks/useConnectionsApi'
 import { signOut } from 'aws-amplify/auth'
-import { ArrowLeft, LogOut, Activity, Cable } from 'lucide-react'
+import { Activity, ArrowLeft, Cable, LogOut } from 'lucide-react'
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 

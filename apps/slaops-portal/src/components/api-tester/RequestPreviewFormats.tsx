@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Copy, Check } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   type RequestData,
@@ -27,7 +27,11 @@ function highlightBash(code: string): React.ReactNode {
     if (i === 0) {
       const match = remaining.match(/^(curl)(\s)/)
       if (match) {
-        parts.push(<span key="cmd" className="text-chart-4 font-semibold">{match[1]}</span>)
+        parts.push(
+          <span key="cmd" className="text-chart-4 font-semibold">
+            {match[1]}
+          </span>,
+        )
         remaining = remaining.slice(match[1].length)
       }
     }
@@ -40,7 +44,11 @@ function highlightBash(code: string): React.ReactNode {
       if (m.index > lastIdx) {
         parts.push(<span key={`t${i}-${lastIdx}`}>{remaining.slice(lastIdx, m.index)}</span>)
       }
-      parts.push(<span key={`f${i}-${m.index}`} className="text-chart-4">{m[1]}</span>)
+      parts.push(
+        <span key={`f${i}-${m.index}`} className="text-chart-4">
+          {m[1]}
+        </span>,
+      )
       parts.push(<span key={`s${i}-${m.index}`}>{m[2]}</span>)
       lastIdx = m.index + m[0].length
     }
@@ -50,7 +58,11 @@ function highlightBash(code: string): React.ReactNode {
       const strParts = strPart.split(/('(?:[^'\\]|\\.)*')/g)
       strParts.forEach((sp, si) => {
         if (sp.startsWith("'") && sp.endsWith("'")) {
-          parts.push(<span key={`str${i}-${si}`} className="text-chart-2">{sp}</span>)
+          parts.push(
+            <span key={`str${i}-${si}`} className="text-chart-2">
+              {sp}
+            </span>,
+          )
         } else if (sp) {
           parts.push(<span key={`r${i}-${si}`}>{sp}</span>)
         }
@@ -113,11 +125,20 @@ function highlightJS(code: string): React.ReactNode {
         parts.push(<span key={`p${i}-${pos}`}>{line.slice(pos, t.start)}</span>)
       }
       const cls =
-        t.type === 'keyword' ? 'text-chart-4 font-semibold' :
-        t.type === 'string' ? 'text-chart-2' :
-        t.type === 'comment' ? 'text-muted-foreground/40 italic' :
-        t.type === 'number' ? 'text-chart-3' : ''
-      parts.push(<span key={`t${i}-${t.start}`} className={cls}>{line.slice(t.start, t.end)}</span>)
+        t.type === 'keyword'
+          ? 'text-chart-4 font-semibold'
+          : t.type === 'string'
+            ? 'text-chart-2'
+            : t.type === 'comment'
+              ? 'text-muted-foreground/40 italic'
+              : t.type === 'number'
+                ? 'text-chart-3'
+                : ''
+      parts.push(
+        <span key={`t${i}-${t.start}`} className={cls}>
+          {line.slice(t.start, t.end)}
+        </span>,
+      )
       pos = t.end
     }
     if (pos < line.length) {
@@ -147,20 +168,44 @@ function highlightJSON(code: string): React.ReactNode {
       }
       if (m[1] && m[2]) {
         // Key
-        parts.push(<span key={`k${i}-${m.index}`} className="text-chart-4">{m[1]}</span>)
-        parts.push(<span key={`c${i}-${m.index}`} className="text-muted-foreground/50">{m[2]}</span>)
+        parts.push(
+          <span key={`k${i}-${m.index}`} className="text-chart-4">
+            {m[1]}
+          </span>,
+        )
+        parts.push(
+          <span key={`c${i}-${m.index}`} className="text-muted-foreground/50">
+            {m[2]}
+          </span>,
+        )
       } else if (m[1]) {
         // String value
-        parts.push(<span key={`s${i}-${m.index}`} className="text-chart-2">{m[1]}</span>)
+        parts.push(
+          <span key={`s${i}-${m.index}`} className="text-chart-2">
+            {m[1]}
+          </span>,
+        )
       } else if (m[3]) {
         // Number
-        parts.push(<span key={`n${i}-${m.index}`} className="text-chart-3">{m[3]}</span>)
+        parts.push(
+          <span key={`n${i}-${m.index}`} className="text-chart-3">
+            {m[3]}
+          </span>,
+        )
       } else if (m[4]) {
         // Boolean
-        parts.push(<span key={`b${i}-${m.index}`} className="text-chart-3">{m[4]}</span>)
+        parts.push(
+          <span key={`b${i}-${m.index}`} className="text-chart-3">
+            {m[4]}
+          </span>,
+        )
       } else if (m[5]) {
         // Null
-        parts.push(<span key={`nl${i}-${m.index}`} className="text-muted-foreground/50">{m[5]}</span>)
+        parts.push(
+          <span key={`nl${i}-${m.index}`} className="text-muted-foreground/50">
+            {m[5]}
+          </span>,
+        )
       }
       lastIdx = m.index + m[0].length
     }
@@ -178,9 +223,12 @@ function highlightJSON(code: string): React.ReactNode {
 
 function highlightCode(format: Exclude<RequestFormat, 'http'>, code: string): React.ReactNode {
   switch (format) {
-    case 'curl': return highlightBash(code)
-    case 'axios': return highlightJS(code)
-    case 'har': return highlightJSON(code)
+    case 'curl':
+      return highlightBash(code)
+    case 'axios':
+      return highlightJS(code)
+    case 'har':
+      return highlightJSON(code)
   }
 }
 
@@ -206,14 +254,15 @@ export function RequestPreviewFormats({ requestData, httpContent }: RequestPrevi
   }, [activeFormat, requestData])
 
   const highlighted = useMemo(
-    () => (activeFormat !== 'http' && activeFormat !== 'http-raw' && formatted)
-      ? highlightCode(activeFormat, formatted)
-      : null,
+    () =>
+      activeFormat !== 'http' && activeFormat !== 'http-raw' && formatted
+        ? highlightCode(activeFormat, formatted)
+        : null,
     [activeFormat, formatted],
   )
 
   const handleCopy = useCallback(() => {
-    const text = (activeFormat === 'http' || activeFormat === 'http-raw') ? httpRaw : formatted!
+    const text = activeFormat === 'http' || activeFormat === 'http-raw' ? httpRaw : formatted!
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       toast.success('Copied to clipboard')
@@ -242,7 +291,12 @@ export function RequestPreviewFormats({ requestData, httpContent }: RequestPrevi
           ))}
         </div>
         {showCopy && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1.5" onClick={handleCopy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1.5"
+            onClick={handleCopy}
+          >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? 'Copied' : 'Copy'}
           </Button>

@@ -24,7 +24,9 @@ export const env = {
      * Example: aws-secretsmanager://arn:...,vault://host/path
      */
     secretPrefetch: process.env.RELAY_SECRET_PREFETCH
-      ? process.env.RELAY_SECRET_PREFETCH.split(',').map(s => s.trim()).filter(Boolean)
+      ? process.env.RELAY_SECRET_PREFETCH.split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [],
     proxyTimeoutMs: parseInt(process.env.RELAY_PROXY_TIMEOUT_MS ?? '30000', 10),
     proxyMaxBodyBytes: parseInt(process.env.RELAY_PROXY_MAX_BODY_BYTES ?? '10485760', 10),

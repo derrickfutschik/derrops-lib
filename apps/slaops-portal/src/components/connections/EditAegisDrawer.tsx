@@ -1,13 +1,8 @@
+import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
-import type { AegisInstance, RelayInstance } from '@/client/slaops-cloud'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useHealthCheckAegis, useUpdateAegis } from '@/hooks/useConnectionsApi'
 import { Activity, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -21,7 +16,12 @@ interface EditAegisDrawerProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function EditAegisDrawer({ aegis, relayInstances, open, onOpenChange }: EditAegisDrawerProps) {
+export function EditAegisDrawer({
+  aegis,
+  relayInstances,
+  open,
+  onOpenChange,
+}: EditAegisDrawerProps) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [jwksUrl, setJwksUrl] = useState('')
@@ -56,7 +56,8 @@ export function EditAegisDrawer({ aegis, relayInstances, open, onOpenChange }: E
     setHealthResult(null)
     try {
       const res = await healthCheck.mutateAsync(aegis.id)
-      const status = typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
+      const status =
+        typeof res.status === 'object' ? JSON.stringify(res.status) : String(res.status)
       setHealthResult({
         ok: status === 'active',
         message: status === 'active' ? 'JWKS valid' : `Status: ${status}`,
@@ -77,17 +78,29 @@ export function EditAegisDrawer({ aegis, relayInstances, open, onOpenChange }: E
           <div className="space-y-5 mt-6">
             <div className="space-y-2">
               <Label className="text-foreground">Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-secondary/30 border-border" />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-secondary/30 border-border"
+              />
             </div>
 
             <div className="space-y-2">
               <Label className="text-foreground">URL</Label>
-              <Input value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary/30 border-border" />
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="bg-secondary/30 border-border"
+              />
             </div>
 
             <div className="space-y-2">
               <Label className="text-foreground">JWKS URL</Label>
-              <Input value={jwksUrl} onChange={(e) => setJwksUrl(e.target.value)} className="bg-secondary/30 border-border" />
+              <Input
+                value={jwksUrl}
+                onChange={(e) => setJwksUrl(e.target.value)}
+                className="bg-secondary/30 border-border"
+              />
             </div>
 
             <div className="space-y-2">
@@ -102,7 +115,13 @@ export function EditAegisDrawer({ aegis, relayInstances, open, onOpenChange }: E
 
             <div className="flex items-center gap-3">
               <Label className="text-muted-foreground text-xs">Status</Label>
-              <StatusBadge status={typeof aegis.status === 'object' ? JSON.stringify(aegis.status) : String(aegis.status)} />
+              <StatusBadge
+                status={
+                  typeof aegis.status === 'object'
+                    ? JSON.stringify(aegis.status)
+                    : String(aegis.status)
+                }
+              />
             </div>
 
             {isPending && (
@@ -145,11 +164,7 @@ export function EditAegisDrawer({ aegis, relayInstances, open, onOpenChange }: E
               )}
             </div>
 
-            <Button
-              onClick={handleSave}
-              disabled={updateAegis.isPending}
-              className="w-full"
-            >
+            <Button onClick={handleSave} disabled={updateAegis.isPending} className="w-full">
               {updateAegis.isPending ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>

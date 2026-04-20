@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useCatalogue } from '@/hooks/useIndexerApi'
 import type { CatalogueHit } from '@/types/indexer'
-import { useDebounce } from '@/hooks/useDebounce'
+import { useState } from 'react'
 
 interface WizardCatalogueSearchProps {
   onSelect: (hit: CatalogueHit) => void
@@ -21,17 +21,25 @@ function CatalogueHitRow({ hit, onSelect }: { hit: CatalogueHit; onSelect: () =>
         )}
         <div className="flex gap-2 mt-1.5">
           {hit.operationCount != null && (
-            <Badge variant="secondary" className="text-xs">{hit.operationCount} ops</Badge>
+            <Badge variant="secondary" className="text-xs">
+              {hit.operationCount} ops
+            </Badge>
           )}
           {hit.serverCount != null && (
-            <Badge variant="secondary" className="text-xs">{hit.serverCount} servers</Badge>
+            <Badge variant="secondary" className="text-xs">
+              {hit.serverCount} servers
+            </Badge>
           )}
           {hit.version && (
-            <Badge variant="outline" className="text-xs font-mono">{hit.version}</Badge>
+            <Badge variant="outline" className="text-xs font-mono">
+              {hit.version}
+            </Badge>
           )}
         </div>
       </div>
-      <Button size="sm" onClick={onSelect}>Use this API</Button>
+      <Button size="sm" onClick={onSelect}>
+        Use this API
+      </Button>
     </div>
   )
 }

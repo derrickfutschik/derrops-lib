@@ -39,7 +39,12 @@ function deliveryModeBadge(mode: string) {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function RelaySelector({ connectionId, connections, isLoading, onSelect }: RelaySelectorProps) {
+export function RelaySelector({
+  connectionId,
+  connections,
+  isLoading,
+  onSelect,
+}: RelaySelectorProps) {
   const navigate = useNavigate()
 
   const localConnections = connections.filter((c) => c.type === 'local-dev')

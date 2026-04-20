@@ -2,19 +2,26 @@
  * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/servers-tab.md
  */
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PAGE_SIZE } from '@/config'
+import { useServersTab } from '@/hooks/useServersTab'
 import {
   selectServersTabState,
-  setTabSort,
   setTabPage,
-  toggleTabColumn,
+  setTabSort,
   showAllTabColumns,
+  toggleTabColumn,
 } from '@/store/apiTabsSlice'
-import { useServersTab } from '@/hooks/useServersTab'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { SortableColHeader } from './SortableColHeader'
 import { TabTableFooter } from './TabTableFooter'
-import { PAGE_SIZE } from '@/config'
 
 interface ServersTabProps {
   apiId: string
@@ -99,14 +106,19 @@ export function ServersTab({ apiId }: ServersTabProps) {
                 <TableCell className="font-mono text-xs">{s.rawUrl}</TableCell>
               )}
               {!hiddenColumns.includes('hostShape') && (
-                <TableCell className="font-mono text-xs text-muted-foreground">{s.hostShape || '—'}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {s.hostShape || '—'}
+                </TableCell>
               )}
               {!hiddenColumns.includes('basePath') && (
                 <TableCell className="font-mono text-xs">{s.basePath || '/'}</TableCell>
               )}
               {!hiddenColumns.includes('scheme') && (
                 <TableCell>
-                  <Badge className={`text-xs ${SCHEME_CLASSES[s.scheme] ?? ''}`} variant="secondary">
+                  <Badge
+                    className={`text-xs ${SCHEME_CLASSES[s.scheme] ?? ''}`}
+                    variant="secondary"
+                  >
                     {s.scheme || '—'}
                   </Badge>
                 </TableCell>

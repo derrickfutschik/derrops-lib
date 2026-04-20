@@ -1,3 +1,4 @@
+import { Service } from '@/client/slaops-cloud/models/service'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
@@ -8,16 +9,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Eye, FileCode, Send } from 'lucide-react'
-import { selectRightPanelTab, setRightPanelTab as setRightPanelTabAction } from '@/store/apiTesterSlice'
 import { selectRequestResponse } from '@/store/apiRequestSlice'
+import {
+  selectRightPanelTab,
+  setRightPanelTab as setRightPanelTabAction,
+} from '@/store/apiTesterSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { Service } from '@/client/slaops-cloud/models/service'
-import type { BuilderMode, MatchResult, OperationOption } from './types'
-import { OpenAPIMatchResponse } from './OpenAPIMatchResponse'
-import { RequestResponse } from './RequestResponse'
-import { PreviewRequest } from './PreviewRequest'
+import { Eye, FileCode, Send } from 'lucide-react'
 import { MatchModeSelectorPanel } from './MatchModeSelectorPanel'
+import { OpenAPIMatchResponse } from './OpenAPIMatchResponse'
+import { PreviewRequest } from './PreviewRequest'
+import { RequestResponse } from './RequestResponse'
+import type { BuilderMode, MatchResult, OperationOption } from './types'
 
 interface RequestResponseTabProps {
   matchResult: MatchResult | null
@@ -44,7 +47,13 @@ interface RequestResponseTabProps {
 }
 
 function MatchTabLabel({ matchResult }: { matchResult: MatchResult | null }) {
-  if (!matchResult) return <><FileCode className="h-4 w-4" /><span>Match</span></>
+  if (!matchResult)
+    return (
+      <>
+        <FileCode className="h-4 w-4" />
+        <span>Match</span>
+      </>
+    )
 
   const errorCount = matchResult.validationErrors?.length || 0
   const warningCount = matchResult.validationWarnings?.length || 0
@@ -192,10 +201,7 @@ export function RequestResponseTab({
 
             {/* Wide container: Tabs */}
             <TabsList className="bg-muted/50 hidden @[400px]:grid grid-cols-3 w-full">
-              <TabsTrigger
-                value="match"
-                className="w-full flex items-center justify-between gap-2"
-              >
+              <TabsTrigger value="match" className="w-full flex items-center justify-between gap-2">
                 {matchResult ? (
                   (() => {
                     const errorCount = matchResult.validationErrors?.length || 0

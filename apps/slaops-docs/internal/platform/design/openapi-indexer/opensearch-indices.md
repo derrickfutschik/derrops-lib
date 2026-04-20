@@ -24,13 +24,13 @@ This document defines the five OpenSearch indices used by the OASpec domain, the
 
 The original design used a single `openapi-specs` index with aggregated stats and sample operations. The revision separates the data into five dedicated indices because each entity type has distinct query patterns, field requirements, and update cadences:
 
-| Index (entity segment) | Primary Query Pattern |
-|---|---|
-| `…--oaspec--spec` | Search by title/description; get spec metadata; version listing |
-| `…--oaspec--server` | Match incoming request host to a known server; find servers for an API |
+| Index (entity segment) | Primary Query Pattern                                                            |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `…--oaspec--spec`      | Search by title/description; get spec metadata; version listing                  |
+| `…--oaspec--server`    | Match incoming request host to a known server; find servers for an API           |
 | `…--oaspec--operation` | Semantic search across all operations by summary/description; method+path lookup |
-| `…--oaspec--param` | Find parameters by name, type, or description across all APIs |
-| `…--oaspec--model` | Look up schemas/models by name; find all models for a spec |
+| `…--oaspec--param`     | Find parameters by name, type, or description across all APIs                    |
+| `…--oaspec--model`     | Look up schemas/models by name; find all models for a spec                       |
 
 Keeping them separate also allows independent mapping configuration, index-level IAM policies if needed, and targeted reindexing of a single entity type without touching others.
 
@@ -44,13 +44,13 @@ Following the [Derrops naming conventions](/blog/derrops-naming-sheet), OpenSear
 slaops--{tenantId}--oaspec--{entity}
 ```
 
-| Index | Example (tenant: `t-acme0001`) |
-|---|---|
-| `slaops--{tenantId}--oaspec--spec` | `slaops--t-acme0001--oaspec--spec` |
-| `slaops--{tenantId}--oaspec--server` | `slaops--t-acme0001--oaspec--server` |
+| Index                                   | Example (tenant: `t-acme0001`)          |
+| --------------------------------------- | --------------------------------------- |
+| `slaops--{tenantId}--oaspec--spec`      | `slaops--t-acme0001--oaspec--spec`      |
+| `slaops--{tenantId}--oaspec--server`    | `slaops--t-acme0001--oaspec--server`    |
 | `slaops--{tenantId}--oaspec--operation` | `slaops--t-acme0001--oaspec--operation` |
-| `slaops--{tenantId}--oaspec--param` | `slaops--t-acme0001--oaspec--param` |
-| `slaops--{tenantId}--oaspec--model` | `slaops--t-acme0001--oaspec--model` |
+| `slaops--{tenantId}--oaspec--param`     | `slaops--t-acme0001--oaspec--param`     |
+| `slaops--{tenantId}--oaspec--model`     | `slaops--t-acme0001--oaspec--model`     |
 
 The SLAOps-managed public catalogue uses the reserved global tenant `t-glbl0000` (e.g. `slaops--t-glbl0000--oaspec--spec`).
 
@@ -63,6 +63,7 @@ The SLAOps-managed public catalogue uses the reserved global tenant `t-glbl0000`
 Every document in every index carries a `latest: boolean` field. At any point in time, **exactly one document per `apiId` per index** has `latest: true`.
 
 When a new version is indexed:
+
 1. The single document with `apiId = <apiId> AND latest = true` is updated to `latest: false`. (Exactly one such document exists, or none for the first version — targeting only this document avoids touching all retained historical versions.)
 2. The new documents are written with `latest: true`.
 
@@ -92,25 +93,25 @@ Stores one document per spec version — the top-level metadata extracted from t
 ```typescript
 interface OaSpecDocument {
   // Identity
-  id: string               // "{tenantId}-{SHA256_16(title, version)}" — see API Data Model: ID Generation
-  apiId: string            // FK → api.id in PostgreSQL
+  id: string // "{tenantId}-{SHA256_16(title, version)}" — see API Data Model: ID Generation
+  apiId: string // FK → api.id in PostgreSQL
   tenantId: string
-  version: string          // from info.version
-  specVersion: string      // openapi field value, e.g. "3.1.0"
+  version: string // from info.version
+  specVersion: string // openapi field value, e.g. "3.1.0"
 
   // Versioning
   latest: boolean
-  indexedAt: string        // ISO timestamp
+  indexedAt: string // ISO timestamp
   updatedAt: string
 
   // Metadata
   title: string
   description: string
   termsOfService?: string
-  contactText?: string     // "Name <email> url" — flat text, e.g. "Stripe Support support@stripe.com https://stripe.com"
-  licenseText?: string     // "MIT https://opensource.org/licenses/MIT"
+  contactText?: string // "Name <email> url" — flat text, e.g. "Stripe Support support@stripe.com https://stripe.com"
+  licenseText?: string // "MIT https://opensource.org/licenses/MIT"
   externalDocsText?: string // "description url"
-  tagsText: string         // space-separated tags — e.g. "payments billing invoices webhooks"
+  tagsText: string // space-separated tags — e.g. "payments billing invoices webhooks"
 
   // Aggregate counts (mirrors api SQL row — redundant but avoids SQL round-trip)
   operationCount: number
@@ -120,16 +121,17 @@ interface OaSpecDocument {
 
   // S3 storage reference — permanent location in the OASpec bucket (see /docs/oaspec-bucket)
   // Used to serve the raw spec file (pre-signed read URL) without a pipeline round-trip
-  s3Bucket: string         // e.g. "us-east-1--prod--slaops--t-acme0001--oaspec--storage--specs"
-  s3Key: string            // e.g. "APIs/stripe.com/payments/2024-01/openapi.yaml"
+  s3Bucket: string // e.g. "us-east-1--prod--slaops--t-acme0001--oaspec--storage--specs"
+  s3Key: string // e.g. "APIs/stripe.com/payments/2024-01/openapi.yaml"
   fileSize: number
-  fileFormat: string       // "yaml" | "json"
+  fileFormat: string // "yaml" | "json"
 }
 ```
 
 **No arrays.** `tagsText` is a space-separated string — full-text search still finds specs by tag without keyword array indexing. Aggregate counts support tabular display without querying nested docs.
 
 **OpenSearch mapping highlights:**
+
 - `title`, `description`, `tagsText`: `text` with `standard` analyzer
 - `title` also has a `.keyword` sub-field for sorting
 - `latest`: `boolean` — always included in enrichment filters
@@ -144,29 +146,29 @@ Each server entry from the spec's `servers` array becomes a separate document. O
 ```typescript
 interface OaServerDocument {
   // Identity
-  id: string               // "{tenantId}-{SHA256_16(title, version, server.url)}"
+  id: string // "{tenantId}-{SHA256_16(title, version, server.url)}"
   apiId: string
-  specId: string           // FK to spec document — see API Data Model: ID Generation
+  specId: string // FK to spec document — see API Data Model: ID Generation
   tenantId: string
   version: string
-  serverIndex: number      // position in the servers array
+  serverIndex: number // position in the servers array
 
   // Versioning
   latest: boolean
   indexedAt: string
 
   // Server fields
-  rawUrl: string           // e.g. "https://cloudtrail.{region}.amazonaws.com"
+  rawUrl: string // e.g. "https://cloudtrail.{region}.amazonaws.com"
   description?: string
 
   // Parsed for matching (see Search Design)
-  scheme: string           // "https" | "http"
-  hostTemplate: string     // "cloudtrail.{region}.amazonaws.com"
-  hostShape: string        // "cloudtrail.*.amazonaws.com" (vars replaced with *)
-  dnsSuffix: string        // "amazonaws.com"
-  fixedLabelsText: string  // space-separated fixed labels — "cloudtrail"
-  varLabelsText: string    // space-separated variable names — "region"
-  basePath: string         // server URL path component, e.g. "/v1" or "/"
+  scheme: string // "https" | "http"
+  hostTemplate: string // "cloudtrail.{region}.amazonaws.com"
+  hostShape: string // "cloudtrail.*.amazonaws.com" (vars replaced with *)
+  dnsSuffix: string // "amazonaws.com"
+  fixedLabelsText: string // space-separated fixed labels — "cloudtrail"
+  varLabelsText: string // space-separated variable names — "region"
+  basePath: string // server URL path component, e.g. "/v1" or "/"
 
   // Variables flattened to searchable text — "region:us-east-1 stage:prod"
   variablesText?: string
@@ -176,10 +178,12 @@ interface OaServerDocument {
 **No arrays.** `fixedLabelsText` and `varLabelsText` are space-separated strings. `variablesText` serialises each variable as `name:default` joined by spaces, keeping the index flat.
 
 **Key fields for request matching:**
+
 - `hostShape` is the primary lookup key for enrichment. See [Search Design](./search-design).
 - `basePath` disambiguates multiple APIs on the same server domain.
 
 **OpenSearch mapping highlights:**
+
 - `hostShape`, `basePath`, `dnsSuffix`: `keyword` for exact and wildcard matching
 - `rawUrl`, `description`, `variablesText`: `text`
 - `fixedLabelsText`, `varLabelsText`: `text` (search only — not used for filtering)
@@ -193,24 +197,24 @@ Each HTTP operation in the spec (combination of HTTP method + path) becomes a se
 ```typescript
 interface OaOperationDocument {
   // Identity
-  id: string               // "{tenantId}-{SHA256_16(title, version, method, path)}"
+  id: string // "{tenantId}-{SHA256_16(title, version, method, path)}"
   apiId: string
-  specId: string           // FK to spec document
+  specId: string // FK to spec document
   tenantId: string
   version: string
-  serverIndex?: number     // if this operation is server-specific
+  serverIndex?: number // if this operation is server-specific
 
   // Versioning
   latest: boolean
   indexedAt: string
 
   // Operation fields
-  method: string           // "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS"
-  path: string             // "/users/{userId}/orders"
+  method: string // "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS"
+  path: string // "/users/{userId}/orders"
   operationId?: string
   summary?: string
   description?: string
-  tagsText: string         // space-separated tags — "payments billing"
+  tagsText: string // space-separated tags — "payments billing"
   deprecated: boolean
 
   // Compact path key for fast matching (see Search Design)
@@ -218,8 +222,8 @@ interface OaOperationDocument {
   pathKey: string
 
   // Referenced IDs flattened to space-separated text for cross-lookup
-  parameterIdsText: string    // "param-uuid-1 param-uuid-2"
-  requestModelId?: string     // scalar — single request body model
+  parameterIdsText: string // "param-uuid-1 param-uuid-2"
+  requestModelId?: string // scalar — single request body model
   responseModelIdsText: string // "model-uuid-1 model-uuid-2"
 }
 ```
@@ -229,6 +233,7 @@ interface OaOperationDocument {
 **`pathKey`.** The compacted path key supports efficient operation matching during enrichment. See [Search Design — Operation Matching](./search-design#operation-matching).
 
 **OpenSearch mapping highlights:**
+
 - `summary`, `description`, `tagsText`, `parameterIdsText`, `responseModelIdsText`: `text`
 - `method`, `path`, `operationId`, `specId`, `apiId`: `keyword`
 - `latest`, `deprecated`: `boolean`
@@ -242,7 +247,7 @@ Each parameter defined in the spec (at the operation or path level) becomes a do
 ```typescript
 interface OaParamDocument {
   // Identity
-  id: string               // "{tenantId}-{SHA256_16(title, version, name, location)}"
+  id: string // "{tenantId}-{SHA256_16(title, version, name, location)}"
   apiId: string
   specId: string
   tenantId: string
@@ -254,13 +259,13 @@ interface OaParamDocument {
 
   // Parameter fields
   name: string
-  location: string         // "path" | "query" | "header" | "cookie"  (renamed from `in` — reserved word)
+  location: string // "path" | "query" | "header" | "cookie"  (renamed from `in` — reserved word)
   required: boolean
   deprecated: boolean
   description?: string
-  schemaType?: string      // JSON Schema type: "string", "integer", "boolean", "array", "object"
-  schemaFormat?: string    // e.g. "uuid", "date-time", "uri"
-  exampleText?: string     // string representation of the example value
+  schemaType?: string // JSON Schema type: "string", "integer", "boolean", "array", "object"
+  schemaFormat?: string // e.g. "uuid", "date-time", "uri"
+  exampleText?: string // string representation of the example value
 
   // Operations that reference this parameter — space-separated IDs for text lookup
   operationIdsText: string
@@ -270,6 +275,7 @@ interface OaParamDocument {
 **No arrays.** `operationIdsText` is a space-separated string of operation IDs. A `match` query finds all parameters used by a given operation. `example` is serialised to `exampleText` (JSON string) rather than stored as an untyped value.
 
 **OpenSearch mapping highlights:**
+
 - `name`, `location`, `schemaType`, `schemaFormat`: `keyword`
 - `description`, `exampleText`, `operationIdsText`: `text`
 
@@ -282,7 +288,7 @@ Each schema in `components.schemas` (and inline request/response bodies) becomes
 ```typescript
 interface OaModelDocument {
   // Identity
-  id: string               // "{tenantId}-{SHA256_16(title, version, modelName)}"
+  id: string // "{tenantId}-{SHA256_16(title, version, modelName)}"
   apiId: string
   specId: string
   tenantId: string
@@ -295,7 +301,7 @@ interface OaModelDocument {
   // Model fields
   name: string
   description?: string
-  schemaType: string       // "object" | "array" | "string" | "integer" etc.
+  schemaType: string // "object" | "array" | "string" | "integer" etc.
 
   // All properties serialised as a single searchable text block.
   // Format per property: "{name} {type} {format?} - {description?}"
@@ -314,10 +320,13 @@ interface OaModelDocument {
 **No arrays.** `propertiesText` concatenates every property's name, type, format, and description into a single text field. A search for `"uuid"` or `"payment total"` still finds the model via full-text match without any nested or array mapping. `operationIdsText` and `usedInText` follow the same pattern.
 
 **Properties text format:**
+
 ```
 {name} {type} {format?} - {description?}
 ```
+
 Example for a `Payment` model:
+
 ```
 id string uuid - Unique payment identifier
 amount number - Total payment amount in minor units
@@ -327,6 +336,7 @@ created_at string date-time - Timestamp of payment creation
 ```
 
 **OpenSearch mapping highlights:**
+
 - `name`, `schemaType`: `keyword`
 - `description`, `propertiesText`, `operationIdsText`, `usedInText`: `text` with `standard` analyzer
 
@@ -343,9 +353,13 @@ created_at string date-time - Timestamp of payment creation
 ```
 
 Index names are always constructed as:
+
 ```typescript
 // slaops--{tenantId}--oaspec--{entity}
-function oaspecIndex(tenantId: string, entity: 'spec' | 'server' | 'operation' | 'param' | 'model'): string {
+function oaspecIndex(
+  tenantId: string,
+  entity: 'spec' | 'server' | 'operation' | 'param' | 'model',
+): string {
   return `slaops--${tenantId}--oaspec--${entity}`
 }
 

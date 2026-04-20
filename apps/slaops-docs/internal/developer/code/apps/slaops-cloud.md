@@ -145,27 +145,26 @@ src/
 
 See the [Cloud Relay Component Design](/internal/platform/design/cloud-relay/component-cloud-relay) for the full architecture, sequence diagrams, and design decisions.
 
-
 The cloud relay subsystem (`relay-instance/`, `aegis-instance/`, `cloud-relay/`, `vendor-jwt/`) implements the SLAOps relay network control plane:
 
-| Module | Responsibility |
-|--------|---------------|
-| `vendor-jwt` | Mint ES256 vendor JWTs (5-min TTL, relay-scoped) for platform→relay auth; serve JWKS |
-| `relay-instance` | Registry of customer-deployed relay agents; health checks via vendor JWT |
-| `aegis-instance` | Registry of customer Aegis brokers; one-time registration token flow |
-| `cloud-relay` | Connection and job queue for proxying requests through a relay |
+| Module           | Responsibility                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `vendor-jwt`     | Mint ES256 vendor JWTs (5-min TTL, relay-scoped) for platform→relay auth; serve JWKS |
+| `relay-instance` | Registry of customer-deployed relay agents; health checks via vendor JWT             |
+| `aegis-instance` | Registry of customer Aegis brokers; one-time registration token flow                 |
+| `cloud-relay`    | Connection and job queue for proxying requests through a relay                       |
 
 ### Key Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/.well-known/jwks.json` | Vendor signing public key in JWKS format |
-| `GET` | `/cloud-relay/relay-instance` | List relay instances (tenant-scoped) |
-| `POST` | `/cloud-relay/relay-instance` | Register a new relay instance |
-| `POST` | `/cloud-relay/relay-instance/:id/health-check` | Trigger health check for relay |
-| `GET` | `/cloud-relay/aegis-instance` | List Aegis broker instances |
-| `POST` | `/cloud-relay/aegis-instance` | Register a new Aegis instance (generates token) |
-| `POST` | `/cloud-relay/aegis/register` | Aegis self-registration handshake |
+| Method | Path                                           | Description                                     |
+| ------ | ---------------------------------------------- | ----------------------------------------------- |
+| `GET`  | `/.well-known/jwks.json`                       | Vendor signing public key in JWKS format        |
+| `GET`  | `/cloud-relay/relay-instance`                  | List relay instances (tenant-scoped)            |
+| `POST` | `/cloud-relay/relay-instance`                  | Register a new relay instance                   |
+| `POST` | `/cloud-relay/relay-instance/:id/health-check` | Trigger health check for relay                  |
+| `GET`  | `/cloud-relay/aegis-instance`                  | List Aegis broker instances                     |
+| `POST` | `/cloud-relay/aegis-instance`                  | Register a new Aegis instance (generates token) |
+| `POST` | `/cloud-relay/aegis/register`                  | Aegis self-registration handshake               |
 
 ## Deployment
 

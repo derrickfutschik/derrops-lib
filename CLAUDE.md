@@ -83,24 +83,24 @@ Each package has the standard scripts: `build`, `dev`, `test`, `test:watch`, `cl
 
 ## Packages — quick reference
 
-| Package | Purpose | Details |
-|---|---|---|
-| `@slaops/private` | Core types, interfaces, shared constants | [CLAUDE.md](packages/slaops-private/CLAUDE.md) |
-| `@slaops/public` | Reusable utilities (HTTP helpers, transforms) | [CLAUDE.md](packages/slaops-public/CLAUDE.md) |
-| `@slaops/config` | Zod-validated config, dot-notation access | [CLAUDE.md](packages/slaops-config/CLAUDE.md) |
-| `@slaops/client` | Base SlaOps HTTP client class | [CLAUDE.md](packages/slaops-client/CLAUDE.md) |
-| `slaops-client-nodejs-axios` | Axios interceptor client for Node.js | [CLAUDE.md](packages/slaops-client-nodejs-axios/CLAUDE.md) |
-| `@slaops/infra` | CDK stacks: VPC, Aurora, Cognito, API GW | [CLAUDE.md](packages/slaops-infra/CLAUDE.md) |
-| `@slaops/backend` | Amplify Lambda function deployment | [CLAUDE.md](packages/slaops-backend/CLAUDE.md) |
-| `@slaops/test` | Cross-package integration tests | [CLAUDE.md](packages/slaops-test/CLAUDE.md) |
+| Package                      | Purpose                                       | Details                                                    |
+| ---------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| `@slaops/private`            | Core types, interfaces, shared constants      | [CLAUDE.md](packages/slaops-private/CLAUDE.md)             |
+| `@slaops/public`             | Reusable utilities (HTTP helpers, transforms) | [CLAUDE.md](packages/slaops-public/CLAUDE.md)              |
+| `@slaops/config`             | Zod-validated config, dot-notation access     | [CLAUDE.md](packages/slaops-config/CLAUDE.md)              |
+| `@slaops/client`             | Base SlaOps HTTP client class                 | [CLAUDE.md](packages/slaops-client/CLAUDE.md)              |
+| `slaops-client-nodejs-axios` | Axios interceptor client for Node.js          | [CLAUDE.md](packages/slaops-client-nodejs-axios/CLAUDE.md) |
+| `@slaops/infra`              | CDK stacks: VPC, Aurora, Cognito, API GW      | [CLAUDE.md](packages/slaops-infra/CLAUDE.md)               |
+| `@slaops/backend`            | Amplify Lambda function deployment            | [CLAUDE.md](packages/slaops-backend/CLAUDE.md)             |
+| `@slaops/test`               | Cross-package integration tests               | [CLAUDE.md](packages/slaops-test/CLAUDE.md)                |
 
 ## Apps — quick reference
 
-| App | Purpose | Details |
-|---|---|---|
-| `slaops-docs` | Docusaurus site at https://blog.SLAOps.com (port 3000) | [CLAUDE.md](apps/slaops-docs/CLAUDE.md) |
-| `slaops-portal` | React monitoring dashboard (port 8080) | [CLAUDE.md](apps/slaops-portal/CLAUDE.md) |
-| `slaops-cloud` | NestJS backend API (deployed as Lambda) | [CLAUDE.md](apps/slaops-cloud/CLAUDE.md) |
+| App             | Purpose                                                | Details                                   |
+| --------------- | ------------------------------------------------------ | ----------------------------------------- |
+| `slaops-docs`   | Docusaurus site at https://blog.SLAOps.com (port 3000) | [CLAUDE.md](apps/slaops-docs/CLAUDE.md)   |
+| `slaops-portal` | React monitoring dashboard (port 8080)                 | [CLAUDE.md](apps/slaops-portal/CLAUDE.md) |
+| `slaops-cloud`  | NestJS backend API (deployed as Lambda)                | [CLAUDE.md](apps/slaops-cloud/CLAUDE.md)  |
 
 ## Key Conventions
 
@@ -150,29 +150,30 @@ Follow these steps for any feature, fix, or significant change:
 
 ### Documentation locations
 
-| Location | Access | Purpose |
-|---|---|---|
-| `apps/slaops-docs/public/docs/` | Public | User-facing platform docs |
-| `apps/slaops-docs/public/security/` | Public | Customer security / compliance overview |
-| `apps/slaops-docs/internal/platform/design/` | Private | ADRs, design docs |
-| `apps/slaops-docs/internal/platform/drafts/` | Private | WIP ideas, research notes |
-| `apps/slaops-docs/internal/developer/code/` | Private | Auto-copied monorepo READMEs |
-| `apps/slaops-docs/internal/devops/` | Private | Sprint planning, user stories |
-| `apps/slaops-docs/internal/security/` | Private | Full security KB |
-| `apps/slaops-docs/internal/testing/` | Private | Test reports |
-| `apps/slaops-docs/changelog/source/` | Public | Release changelog entries |
+| Location                                     | Access  | Purpose                                 |
+| -------------------------------------------- | ------- | --------------------------------------- |
+| `apps/slaops-docs/public/docs/`              | Public  | User-facing platform docs               |
+| `apps/slaops-docs/public/security/`          | Public  | Customer security / compliance overview |
+| `apps/slaops-docs/internal/platform/design/` | Private | ADRs, design docs                       |
+| `apps/slaops-docs/internal/platform/drafts/` | Private | WIP ideas, research notes               |
+| `apps/slaops-docs/internal/developer/code/`  | Private | Auto-copied monorepo READMEs            |
+| `apps/slaops-docs/internal/devops/`          | Private | Sprint planning, user stories           |
+| `apps/slaops-docs/internal/security/`        | Private | Full security KB                        |
+| `apps/slaops-docs/internal/testing/`         | Private | Test reports                            |
+| `apps/slaops-docs/changelog/source/`         | Public  | Release changelog entries               |
 
 `/internal/*` is protected by Cognito at the Amplify Hosting layer. Consult `apps/slaops-docs/public/docs/glossary.md` for domain terminology (OASpec, OASpecDoc, TopOp, APIUser, etc.).
 
 ### Claude Code doc tooling
 
-| Skill | When to use |
-|---|---|
-| `/idea` | Capture a raw idea or research note in `internal/platform/drafts/` |
-| `/design` | Create a formal design doc — searches drafts for related ideas first, pre-fills lifecycle frontmatter |
-| `/release` | Guided release: summarises git log → creates changelog entry → tags and pushes |
+| Skill      | When to use                                                                                           |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| `/idea`    | Capture a raw idea or research note in `internal/platform/drafts/`                                    |
+| `/design`  | Create a formal design doc — searches drafts for related ideas first, pre-fills lifecycle frontmatter |
+| `/release` | Guided release: summarises git log → creates changelog entry → tags and pushes                        |
 
 Active rules during any doc session:
+
 - `.claude/rules/doc-tagging.md` — tag format and completeness
 - `.claude/rules/doc-workflow.md` — doc tier placement, lifecycle transitions, idea absorption, quickstart sync
 
