@@ -104,6 +104,10 @@ Each package has the standard scripts: `build`, `dev`, `test`, `test:watch`, `cl
 
 ## Key Conventions
 
+### Run Prettier after changes
+
+After making any code changes, run `pnpm run format` to ensure all files meet Prettier standards before committing.
+
 ### Never use `process.env` directly
 
 Always use `@slaops/config`. See [packages/slaops-config/CLAUDE.md](packages/slaops-config/CLAUDE.md) for the full API.
