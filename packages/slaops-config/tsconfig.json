@@ -5,7 +5,8 @@
     "baseUrl": "./",
     "paths": {
       "@slaops/config/*": ["./src/*"],
-      "@slaops/cloud/*": ["../../apps/slaops-cloud/src/*"]
+      "@slaops/cloud/*": ["../../apps/slaops-cloud/src/*"],
+      "@derrops-conventions": ["../derrops-conventions/src/index.ts"]
     }
   },
   "include": ["src"]

@@ -842,6 +842,9 @@ importers:
 
   packages/slaops-config:
     dependencies:
+      '@derrops-conventions':
+        specifier: workspace:*
+        version: link:../derrops-conventions
       zod:
         specifier: ^3.23.0
         version: 3.25.76

@@ -1,3 +1,5 @@
+import { DerropsConventions } from '@derrops-conventions'
+
 import { configFromEnv, getConfigInputOverride, setOnCacheReset } from './from-env'
 import { ConfigInput } from './schema'
 
@@ -55,14 +57,18 @@ export const makeConfig = (cfg?: ConfigInput) => {
   const globalTenantId = 't-glbl0000'
 
   const opensearchPrefix = input.OPENSEARCH_INDEX_PREFIX ?? `${env}--${app}`.toLowerCase()
+  const opensearchSuffix = input.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
 
-  const opensearchIndexName = (domain: string, entity: string) =>
-    `${opensearchPrefix}--${domain}--${entity}`.toLowerCase()
-  const opensearchTenantIndexName = (tenantId: string, domain: string, entity: string) =>
-    `${opensearchPrefix}--${entity}--${domain}--${tenantId}`.toLowerCase()
+  const conventions = new DerropsConventions({
+    region: input.AWS_REGION,
+    env,
+    org: app, // TODO - introduce an org variable
+  }).domain(['oaspec', 'monitoring'])
 
-  const logBucketName = (tenantId: string) =>
-    `${input.AWS_REGION}--${env}--${app}--${tenantId}--logs--storage`
+  const oaspec = conventions.with({
+    domain: 'oaspec',
+    type: 'openSearchIndex',
+  })
 
   return {
     /** Whether to enable mock authentication, note that this is very dangerous and should not be enabled in production */
@@ -87,6 +93,8 @@ export const makeConfig = (cfg?: ConfigInput) => {
     /** Single shared bucket for all tenant OASpec raw files. Object keys are prefixed with {tenantId}/.
      *  Per-tenant dedicated buckets are a future infrastructure task. */
     'slaops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
+
+    'slaops.oaspec.staging.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--staging`,
 
     /** Global tenant ID for the SLAOps-managed public catalogue */
     'opensearch.oaspec.global-tenant-id': 't-glbl0000',
@@ -210,34 +218,40 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'opensearch.suffix': opensearchSuffix,
 
     /** Index of the OpenAPI APIs */
-    'opensearch.index.openapi.apis': opensearchIndexName('openapi-apis'),
+    'opensearch.index.openapi.apis': oaspec.name({ entity: 'openapi-apis' }),
 
     /** Index of the OpenAPI Operations */
-    'opensearch.index.openapi.operations': opensearchIndexName('openapi-operations'),
+    'opensearch.index.openapi.operations': oaspec.name({ entity: 'openapi-operations' }),
 
     /** Template of the OpenAPI APIs */
-    'opensearch.template.openapi.apis': opensearchIndexName('openapi-apis'),
+    'opensearch.template.openapi.apis': oaspec.name({ entity: 'openapi-apis' }),
 
     /** Template of the OpenAPI Operations */
-    'opensearch.template.openapi.operations': opensearchIndexName('openapi-operations'),
+    'opensearch.template.openapi.operations': oaspec.name({ entity: 'openapi-operations' }),
 
     /** Pipeline of the OpenAPI APIs */
-    'opensearch.pipeline.openapi.apis': opensearchIndexName('openapi-apis'),
+    'opensearch.pipeline.openapi.apis': oaspec.name({ entity: 'openapi-apis' }),
 
     /** Pipeline of the OpenAPI Operations */
-    'opensearch.pipeline.openapi.operations': opensearchIndexName('openapi-operations'),
+    'opensearch.pipeline.openapi.operations': oaspec.name({ entity: 'openapi-operations' }),
 
     /** Returns the OASpec index name for a given tenant and entity type.
      *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}
      *  Example: slaops--dev--t-abc123--oaspec--spec */
     'opensearch.oaspec.index': (tenantId: string, entity: string) =>
-      `${opensearchPrefix}--${tenantId}--oaspec--${entity}`,
+      conventions.name({ type: 'openSearchIndex', domain: 'oaspec', entity, tenant: tenantId }),
 
     /** Returns the OASpec search alias name for a given tenant and entity type.
      *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}--search
      *  Example: slaops--dev--t-abc123--oaspec--spec--search */
     'opensearch.oaspec.search-alias': (tenantId: string, entity: string) =>
-      `${opensearchPrefix}--${tenantId}--oaspec--${entity}--search`,
+      conventions.name({
+        type: 'openSearchIndex',
+        domain: 'oaspec',
+        entity,
+        tenant: tenantId,
+        key: 'search',
+      }),
 
     'app.pagination.default.size': 20,
 

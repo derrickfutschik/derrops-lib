@@ -32,7 +32,8 @@
     "dev": "tsup src/index.ts src/dev-env.ts src/local-env.ts src/test-env.ts --format esm,cjs --dts --watch"
   },
   "dependencies": {
-    "zod": "^3.23.0"
+    "zod": "^3.23.0",
+    "@derrops-conventions": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
