@@ -5,15 +5,19 @@ sidebar_label: Parameters Tab
 sidebar_position: 5
 created_at: 2026-04-19
 updated_at: 2026-04-19
-implemented_at: ~
+implemented_at: 2026-04-19
+implements:
+  - apps/slaops-portal/src/components/apis/ParametersTab.tsx
+  - apps/slaops-portal/src/hooks/useParametersTab.ts
 author: Derrick
-status: draft
+status: implemented
 tags:
   - openapi-indexer
   - component-design
   - data-pipeline
   - oaspec
   - portal
+  - implemented
 ---
 
 # Parameters Tab Design

@@ -1,3 +1,10 @@
+/**
+ * OpenAPI Indexer Service — orchestrates the six-step spec indexing pipeline.
+ *
+ * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/indexing-pipeline.md
+ * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/spec-field-extraction.md
+ * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/extractor-pattern.md
+ */
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
@@ -10,6 +17,10 @@ import { OpenApiParserService } from './openapi-parser.service'
 import { oaspecId } from './oaspec-id'
 import {
   CatalogueHit,
+  OaModelDocument,
+  OaOperationDocument,
+  OaParamDocument,
+  OaServerDocument,
   OaSpecDocument,
 } from './oaspec-documents'
 import {
@@ -64,7 +75,34 @@ export interface IndexingResponse {
 
 export { ExtractionState, ExtractionError }
 
+export interface PagedResult<T> {
+  total: number
+  from: number
+  size: number
+  hits: T[]
+}
+
+export interface VersionHit {
+  id: string
+  version: string
+  latest: boolean
+  specVersion: string
+  indexedAt: string
+  operationCount: number
+  serverCount: number
+  parameterCount: number
+  modelCount: number
+  fileSize: number
+  fileFormat: 'yaml' | 'json'
+}
+
 const PRESIGNED_URL_EXPIRES_IN = 3600
+
+function extractTotal(raw: unknown): number {
+  if (raw == null) return 0
+  if (typeof raw === 'object') return (raw as { value: number }).value
+  return raw as number
+}
 
 const EXTRACTORS: ISpecExtractor<unknown>[] = [
   new SpecExtractor(),
@@ -278,6 +316,148 @@ export class OpenApiIndexerService implements OnModuleInit {
     }))
 
     return { total, hits }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tab view queries
+  // ---------------------------------------------------------------------------
+
+  // Text fields cannot be sorted directly in OpenSearch — use the .keyword sub-field.
+  // Numeric, date, and boolean fields are passed through unchanged.
+  // unmapped_type prevents a 500 when the index is empty or the field was never indexed.
+  private static toSortSpec(field: string, order: 'asc' | 'desc'): Record<string, unknown> {
+    const NUMERIC_FIELDS = new Set([
+      'serverIndex', 'operationCount', 'serverCount', 'parameterCount', 'modelCount',
+      'fileSize', 'latest', 'required', 'deprecated',
+    ])
+    const DATE_FIELDS = new Set(['indexedAt'])
+    if (DATE_FIELDS.has(field)) return { [field]: { order, unmapped_type: 'date' } }
+    if (NUMERIC_FIELDS.has(field)) return { [field]: { order, unmapped_type: 'long' } }
+    return { [`${field}.keyword`]: { order, unmapped_type: 'keyword' } }
+  }
+
+  async queryVersions(
+    apiId: string, tenantId: string,
+    from: number, size: number,
+    sortField: string, sortOrder: 'asc' | 'desc',
+  ): Promise<PagedResult<VersionHit>> {
+    const index = config['opensearch.oaspec.index'](tenantId, 'spec')
+    const body = {
+      query: { term: { 'apiId.keyword': apiId } },
+      sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
+      from, size,
+    }
+    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({ body: body as never, index })
+    return {
+      total: extractTotal(response.hits.total), from, size,
+      hits: response.hits.hits.map((h) => ({
+        id: h._source.id,
+        version: h._source.version,
+        latest: h._source.latest,
+        specVersion: h._source.specVersion,
+        indexedAt: h._source.indexedAt,
+        operationCount: h._source.operationCount,
+        serverCount: h._source.serverCount,
+        parameterCount: h._source.parameterCount,
+        modelCount: h._source.modelCount,
+        fileSize: h._source.fileSize,
+        fileFormat: h._source.fileFormat,
+      })),
+    }
+  }
+
+  async queryOperations(
+    apiId: string, tenantId: string, version: string,
+    from: number, size: number,
+    sortField: string, sortOrder: 'asc' | 'desc',
+    q?: string, method?: string, tag?: string,
+  ): Promise<PagedResult<OaOperationDocument>> {
+    const index = config['opensearch.oaspec.index'](tenantId, 'operation')
+    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const filters: object[] = [{ term: { 'apiId.keyword': apiId } }, versionFilter]
+    if (method) {
+      const methods = method.split(',').map((m) => m.trim().toLowerCase()).filter(Boolean)
+      if (methods.length) filters.push({ terms: { 'method.keyword': methods } })
+    }
+    if (tag) filters.push({ match: { tagsText: tag } })
+    const body = {
+      query: {
+        bool: {
+          filter: filters,
+          ...(q ? { must: [{ multi_match: { query: q, fields: ['path', 'summary', 'tagsText', 'operationId'], fuzziness: 'AUTO' } }] } : {}),
+        },
+      },
+      sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
+      from, size,
+    }
+    const response = await this.tsClient.searchTS<OaOperationDocument, Record<string, never>>({ body: body as never, index })
+    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+  }
+
+  async queryServers(
+    apiId: string, tenantId: string, version: string,
+    from: number, size: number,
+    sortField: string, sortOrder: 'asc' | 'desc',
+  ): Promise<PagedResult<OaServerDocument>> {
+    const index = config['opensearch.oaspec.index'](tenantId, 'server')
+    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const body = {
+      query: { bool: { filter: [{ term: { 'apiId.keyword': apiId } }, versionFilter] } },
+      sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
+      from, size,
+    }
+    const response = await this.tsClient.searchTS<OaServerDocument, Record<string, never>>({ body: body as never, index })
+    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+  }
+
+  async queryParameters(
+    apiId: string, tenantId: string, version: string,
+    from: number, size: number,
+    sortField: string, sortOrder: 'asc' | 'desc',
+    q?: string, location?: string, operationId?: string,
+  ): Promise<PagedResult<OaParamDocument>> {
+    const index = config['opensearch.oaspec.index'](tenantId, 'param')
+    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const filters: object[] = [{ term: { 'apiId.keyword': apiId } }, versionFilter]
+    if (location) filters.push({ term: { 'location.keyword': location } })
+    if (operationId) filters.push({ match: { operationIdsText: operationId } })
+    const body = {
+      query: {
+        bool: {
+          filter: filters,
+          ...(q ? { must: [{ multi_match: { query: q, fields: ['name', 'description'], fuzziness: 'AUTO' } }] } : {}),
+        },
+      },
+      sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
+      from, size,
+    }
+    const response = await this.tsClient.searchTS<OaParamDocument, Record<string, never>>({ body: body as never, index })
+    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+  }
+
+  async queryModels(
+    apiId: string, tenantId: string, version: string,
+    from: number, size: number,
+    sortField: string, sortOrder: 'asc' | 'desc',
+    q?: string, usedIn?: string, operationId?: string,
+  ): Promise<PagedResult<OaModelDocument>> {
+    const index = config['opensearch.oaspec.index'](tenantId, 'model')
+    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const filters: object[] = [{ term: { 'apiId.keyword': apiId } }, versionFilter]
+    if (usedIn) filters.push({ match: { usedInText: usedIn } })
+    if (operationId) filters.push({ match: { operationIdsText: operationId } })
+    const body = {
+      query: {
+        bool: {
+          filter: filters,
+          ...(q ? { must: [{ multi_match: { query: q, fields: ['name', 'description', 'propertiesText'], fuzziness: 'AUTO' } }] } : {}),
+        },
+      },
+      sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
+      from, size,
+    }
+    const response = await this.tsClient.searchTS<OaModelDocument, Record<string, never>>({ body: body as never, index })
+    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
   }
 
   // ---------------------------------------------------------------------------

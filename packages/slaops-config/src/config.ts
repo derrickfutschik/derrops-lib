@@ -55,10 +55,11 @@ export const makeConfig = (cfg?: ConfigInput) => {
   const globalTenantId = 't-glbl0000'
 
   const opensearchPrefix = input.OPENSEARCH_INDEX_PREFIX ?? `${env}--${app}`.toLowerCase()
-  const opensearchSuffix = input.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
 
-  const opensearchIndexName = (entity: string) =>
-    `${opensearchPrefix}-${entity}-${opensearchSuffix}`.toLowerCase()
+  const opensearchIndexName = (domain: string, entity: string) =>
+    `${opensearchPrefix}--${domain}--${entity}`.toLowerCase()
+  const opensearchTenantIndexName = (tenantId: string, domain: string, entity: string) =>
+    `${opensearchPrefix}--${entity}--${domain}--${tenantId}`.toLowerCase()
 
   const logBucketName = (tenantId: string) =>
     `${input.AWS_REGION}--${env}--${app}--${tenantId}--logs--storage`
@@ -230,13 +231,13 @@ export const makeConfig = (cfg?: ConfigInput) => {
      *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}
      *  Example: slaops--dev--t-abc123--oaspec--spec */
     'opensearch.oaspec.index': (tenantId: string, entity: string) =>
-      `${opensearchPrefix}--${opensearchSuffix}--${tenantId}--oaspec--${entity}`,
+      `${opensearchPrefix}--${tenantId}--oaspec--${entity}`,
 
     /** Returns the OASpec search alias name for a given tenant and entity type.
      *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}--search
      *  Example: slaops--dev--t-abc123--oaspec--spec--search */
     'opensearch.oaspec.search-alias': (tenantId: string, entity: string) =>
-      `${opensearchPrefix}--${opensearchSuffix}--${tenantId}--oaspec--${entity}--search`,
+      `${opensearchPrefix}--${tenantId}--oaspec--${entity}--search`,
 
     'app.pagination.default.size': 20,
 

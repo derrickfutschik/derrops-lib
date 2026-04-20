@@ -5,15 +5,19 @@ sidebar_label: Overview
 sidebar_position: 1
 created_at: 2026-04-19
 updated_at: 2026-04-19
-implemented_at: ~
+implemented_at: 2026-04-19
+implements:
+  - apps/slaops-portal/src/store/apiTabsSlice.ts
+  - apps/slaops-portal/src/types/apiTabs.ts
 author: Derrick
-status: draft
+status: implemented
 tags:
   - openapi-indexer
   - component-design
   - data-pipeline
   - oaspec
   - portal
+  - implemented
 ---
 
 # API Detail Tab Views

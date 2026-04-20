@@ -1,10 +1,13 @@
 import type { Indices_PutIndexTemplate_Request } from '@opensearch-project/opensearch/api/indices/putIndexTemplate'
 
+// Multi-field mapping: text for full-text search, .keyword for exact-match filtering and sorting.
+const kw = { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } } as const
+
 /** Index template for OaSpecDocument — one doc per spec version per tenant. */
 export const oaspecSpecTemplate: Indices_PutIndexTemplate_Request = {
   name: 'oaspec-spec-template',
   body: {
-    index_patterns: ['slaops--*--oaspec--spec'],
+    index_patterns: ['*--oaspec--spec'],
     template: {
       settings: {
         analysis: {
@@ -23,23 +26,23 @@ export const oaspecSpecTemplate: Indices_PutIndexTemplate_Request = {
       mappings: {
         dynamic: 'false',
         properties: {
-          id: { type: 'keyword' },
-          apiId: { type: 'keyword' },
-          tenantId: { type: 'keyword' },
-          version: { type: 'keyword' },
-          specVersion: { type: 'keyword' },
+          id: kw,
+          apiId: kw,
+          tenantId: kw,
+          version: kw,
+          specVersion: kw,
           latest: { type: 'boolean' },
           indexedAt: { type: 'date' },
           updatedAt: { type: 'date' },
           title: {
             type: 'text',
             fields: {
-              keyword: { type: 'keyword' },
+              keyword: { type: 'keyword', ignore_above: 256 },
               auto: { type: 'text', analyzer: 'autocomplete', search_analyzer: 'standard' },
             },
           },
           description: { type: 'text' },
-          termsOfService: { type: 'keyword' },
+          termsOfService: kw,
           contactText: { type: 'text' },
           licenseText: { type: 'text' },
           externalDocsText: { type: 'text' },
@@ -48,10 +51,10 @@ export const oaspecSpecTemplate: Indices_PutIndexTemplate_Request = {
           serverCount: { type: 'integer' },
           parameterCount: { type: 'integer' },
           modelCount: { type: 'integer' },
-          s3Bucket: { type: 'keyword' },
-          s3Key: { type: 'keyword' },
+          s3Bucket: kw,
+          s3Key: kw,
           fileSize: { type: 'long' },
-          fileFormat: { type: 'keyword' },
+          fileFormat: kw,
         },
       },
     },

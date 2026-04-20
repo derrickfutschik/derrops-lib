@@ -5,15 +5,19 @@ sidebar_label: Operations Tab
 sidebar_position: 3
 created_at: 2026-04-19
 updated_at: 2026-04-19
-implemented_at: ~
+implemented_at: 2026-04-19
+implements:
+  - apps/slaops-portal/src/components/apis/OperationsTab.tsx
+  - apps/slaops-portal/src/hooks/useOperationsTab.ts
 author: Derrick
-status: draft
+status: implemented
 tags:
   - openapi-indexer
   - component-design
   - data-pipeline
   - oaspec
   - portal
+  - implemented
 ---
 
 # Operations Tab Design

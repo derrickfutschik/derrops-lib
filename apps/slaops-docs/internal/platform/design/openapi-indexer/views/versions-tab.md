@@ -5,15 +5,19 @@ sidebar_label: Versions Tab
 sidebar_position: 2
 created_at: 2026-04-19
 updated_at: 2026-04-19
-implemented_at: ~
+implemented_at: 2026-04-19
+implements:
+  - apps/slaops-portal/src/components/apis/VersionsTab.tsx
+  - apps/slaops-portal/src/hooks/useVersionsTab.ts
 author: Derrick
-status: draft
+status: implemented
 tags:
   - openapi-indexer
   - component-design
   - data-pipeline
   - oaspec
   - portal
+  - implemented
 ---
 
 # Versions Tab Design

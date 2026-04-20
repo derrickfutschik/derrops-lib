@@ -1,31 +1,34 @@
 import type { Indices_PutIndexTemplate_Request } from '@opensearch-project/opensearch/api/indices/putIndexTemplate'
 
+// Multi-field mapping: text for full-text search, .keyword for exact-match filtering and sorting.
+const kw = { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } } as const
+
 /** Index template for OaServerDocument — one doc per server entry per spec version. */
 export const oaspecServerTemplate: Indices_PutIndexTemplate_Request = {
   name: 'oaspec-server-template',
   body: {
-    index_patterns: ['slaops--*--oaspec--server'],
+    index_patterns: ['*--oaspec--server'],
     template: {
       mappings: {
         dynamic: 'false',
         properties: {
-          id: { type: 'keyword' },
-          apiId: { type: 'keyword' },
-          specId: { type: 'keyword' },
-          tenantId: { type: 'keyword' },
-          version: { type: 'keyword' },
+          id: kw,
+          apiId: kw,
+          specId: kw,
+          tenantId: kw,
+          version: kw,
           serverIndex: { type: 'integer' },
           latest: { type: 'boolean' },
           indexedAt: { type: 'date' },
-          rawUrl: { type: 'text' },
+          rawUrl: kw,
           description: { type: 'text' },
-          scheme: { type: 'keyword' },
-          hostTemplate: { type: 'keyword' },
-          hostShape: { type: 'keyword' },
-          dnsSuffix: { type: 'keyword' },
+          scheme: kw,
+          hostTemplate: kw,
+          hostShape: kw,
+          dnsSuffix: kw,
           fixedLabelsText: { type: 'text' },
           varLabelsText: { type: 'text' },
-          basePath: { type: 'keyword' },
+          basePath: kw,
           variablesText: { type: 'text' },
         },
       },
