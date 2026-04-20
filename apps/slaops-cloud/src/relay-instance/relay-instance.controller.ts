@@ -46,10 +46,7 @@ export class RelayInstanceController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new relay instance' })
   @ApiResponse({ status: 201, type: RelayInstance })
-  create(
-    @Body() dto: CreateRelayInstanceDto,
-    @CurrentUser() user: User,
-  ): Promise<RelayInstance> {
+  create(@Body() dto: CreateRelayInstanceDto, @CurrentUser() user: User): Promise<RelayInstance> {
     return this.relayInstanceService.create(dto, user['custom:tenant_id'])
   }
 
@@ -72,16 +69,16 @@ export class RelayInstanceController {
   @ApiParam({ name: 'id', description: 'RelayInstance UUID' })
   @ApiResponse({ status: 204 })
   @ApiResponse({ status: 404 })
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: User,
-  ): Promise<void> {
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User): Promise<void> {
     return this.relayInstanceService.remove(id, user['custom:tenant_id'])
   }
 
   @Post(':id/health-check')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)' })
+  @ApiOperation({
+    summary:
+      'Trigger a health check on the relay instance (mints a platform JWT and calls relay /health)',
+  })
   @ApiParam({ name: 'id', description: 'RelayInstance UUID' })
   @ApiResponse({ status: 200, type: RelayInstance })
   @ApiResponse({ status: 404 })

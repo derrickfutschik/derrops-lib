@@ -60,14 +60,10 @@ export class RelayQueueService {
   ): Promise<string> {
     if (mode === 'relay') {
       if (!customerQueueUrl) {
-        throw new Error(
-          'sqs_queue_mode=relay requires relay_sqs_queue_url to be provided',
-        )
+        throw new Error('sqs_queue_mode=relay requires relay_sqs_queue_url to be provided')
       }
       if (!customerQueueUrl.endsWith('.fifo')) {
-        throw new Error(
-          'relay_sqs_queue_url must be an SQS FIFO queue URL (must end in .fifo)',
-        )
+        throw new Error('relay_sqs_queue_url must be an SQS FIFO queue URL (must end in .fifo)')
       }
       return customerQueueUrl
     }

@@ -70,7 +70,10 @@ function parseFrom(raw: string | undefined): number {
 }
 
 function parseSize(raw: string | undefined): number {
-  return Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(raw ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE))
+  return Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, parseInt(raw ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE),
+  )
 }
 
 function parseOrder(raw: string | undefined): 'asc' | 'desc' {
@@ -131,7 +134,12 @@ export class OpenApiIndexerController {
   @Get('catalogue')
   @ApiOperation({ summary: 'Search the platform-managed API catalogue' })
   @ApiQuery({ name: 'q', required: false, description: 'Search query' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max results (default 10)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Max results (default 10)',
+  })
   @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Offset (default 0)' })
   @ApiResponse({ status: 200 })
   async searchCatalogue(
@@ -167,15 +175,23 @@ export class OpenApiIndexerController {
     @CurrentUser() user?: User,
   ): Promise<PagedResult<VersionHit>> {
     return this.indexerService.queryVersions(
-      apiId, user!['custom:tenant_id'],
-      parseFrom(from), parseSize(size), sort, parseOrder(order),
+      apiId,
+      user!['custom:tenant_id'],
+      parseFrom(from),
+      parseSize(size),
+      sort,
+      parseOrder(order),
     )
   }
 
   @Get('api/:apiId/operations')
   @ApiOperation({ summary: 'Paginated operations for an API version' })
   @ApiParam({ name: 'apiId', description: 'API UUID' })
-  @ApiQuery({ name: 'version', required: false, description: 'Specific version or "latest" (default)' })
+  @ApiQuery({
+    name: 'version',
+    required: false,
+    description: 'Specific version or "latest" (default)',
+  })
   @ApiQuery({ name: 'from', required: false, type: Number })
   @ApiQuery({ name: 'size', required: false, type: Number })
   @ApiQuery({ name: 'sort', required: false, type: String })
@@ -197,9 +213,16 @@ export class OpenApiIndexerController {
     @CurrentUser() user?: User,
   ): Promise<PagedResult<OaOperationDocument>> {
     return this.indexerService.queryOperations(
-      apiId, user!['custom:tenant_id'], version,
-      parseFrom(from), parseSize(size), sort, parseOrder(order),
-      q, method, tag,
+      apiId,
+      user!['custom:tenant_id'],
+      version,
+      parseFrom(from),
+      parseSize(size),
+      sort,
+      parseOrder(order),
+      q,
+      method,
+      tag,
     )
   }
 
@@ -222,8 +245,13 @@ export class OpenApiIndexerController {
     @CurrentUser() user?: User,
   ): Promise<PagedResult<OaServerDocument>> {
     return this.indexerService.queryServers(
-      apiId, user!['custom:tenant_id'], version,
-      parseFrom(from), parseSize(size), sort, parseOrder(order),
+      apiId,
+      user!['custom:tenant_id'],
+      version,
+      parseFrom(from),
+      parseSize(size),
+      sort,
+      parseOrder(order),
     )
   }
 
@@ -252,9 +280,16 @@ export class OpenApiIndexerController {
     @CurrentUser() user?: User,
   ): Promise<PagedResult<OaParamDocument>> {
     return this.indexerService.queryParameters(
-      apiId, user!['custom:tenant_id'], version,
-      parseFrom(from), parseSize(size), sort, parseOrder(order),
-      q, location, operationId,
+      apiId,
+      user!['custom:tenant_id'],
+      version,
+      parseFrom(from),
+      parseSize(size),
+      sort,
+      parseOrder(order),
+      q,
+      location,
+      operationId,
     )
   }
 
@@ -283,9 +318,16 @@ export class OpenApiIndexerController {
     @CurrentUser() user?: User,
   ): Promise<PagedResult<OaModelDocument>> {
     return this.indexerService.queryModels(
-      apiId, user!['custom:tenant_id'], version,
-      parseFrom(from), parseSize(size), sort, parseOrder(order),
-      q, usedIn, operationId,
+      apiId,
+      user!['custom:tenant_id'],
+      version,
+      parseFrom(from),
+      parseSize(size),
+      sort,
+      parseOrder(order),
+      q,
+      usedIn,
+      operationId,
     )
   }
 }

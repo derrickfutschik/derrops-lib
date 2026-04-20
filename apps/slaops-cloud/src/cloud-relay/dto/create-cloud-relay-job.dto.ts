@@ -14,7 +14,9 @@ export class CreateCloudRelayJobDto {
   @IsUUID()
   connectionId: string
 
-  @ApiProperty({ description: 'Full CloudProxyRequestDto payload (HAR request + optional templateContext)' })
+  @ApiProperty({
+    description: 'Full CloudProxyRequestDto payload (HAR request + optional templateContext)',
+  })
   @IsObject()
   request: CloudRelayJobRequestDto
 }

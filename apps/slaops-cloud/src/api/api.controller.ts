@@ -42,10 +42,17 @@ export class ApiController {
       'Downloads the YAML/JSON at openapi_doc_url (server-side, bypassing browser CORS restrictions) ' +
       'and returns the info.title, info.description, and info.version fields.',
   })
-  @ApiQuery({ name: 'openapi_doc_url', required: true, description: 'URL of the remote OpenAPI document' })
+  @ApiQuery({
+    name: 'openapi_doc_url',
+    required: true,
+    description: 'URL of the remote OpenAPI document',
+  })
   @ApiResponse({ status: 200, type: OpenApiInfoResultDto })
   @ApiResponse({ status: 400, description: 'Missing or invalid URL, or private/loopback address' })
-  @ApiResponse({ status: 422, description: 'Could not parse the document or extract the info block' })
+  @ApiResponse({
+    status: 422,
+    description: 'Could not parse the document or extract the info block',
+  })
   @ApiResponse({ status: 502, description: 'Remote URL could not be reached' })
   getInfo(@Query('openapi_doc_url') url: string): Promise<OpenApiInfoResultDto> {
     if (!url) throw new BadRequestException('openapi_doc_url is required')
@@ -91,10 +98,7 @@ export class ApiController {
   @ApiOperation({ summary: 'Delete an API' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiResponse({ status: 204 })
-  async remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: User,
-  ): Promise<void> {
+  async remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User): Promise<void> {
     return this.apiService.remove(id, user['custom:tenant_id'])
   }
 

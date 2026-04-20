@@ -139,9 +139,7 @@ export class ApiService {
     try {
       parsed = yaml.parse(text)
     } catch {
-      throw new UnprocessableEntityException(
-        'Could not parse the OpenAPI document as YAML or JSON',
-      )
+      throw new UnprocessableEntityException('Could not parse the OpenAPI document as YAML or JSON')
     }
 
     if (

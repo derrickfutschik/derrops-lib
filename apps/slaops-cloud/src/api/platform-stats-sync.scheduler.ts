@@ -5,7 +5,6 @@ import { config } from '@slaops/config'
 import { Repository } from 'typeorm'
 import { ApiEntity } from './entities/api.entity'
 
-
 /**
  * Nightly job that refreshes cached OASpec stats on platform-managed api rows
  * by reading the corresponding global spec document from OpenSearch.

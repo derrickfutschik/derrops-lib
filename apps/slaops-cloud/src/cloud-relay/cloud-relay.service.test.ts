@@ -64,7 +64,12 @@ describe('CloudRelayService.createConnection', () => {
   describe('managed type (default)', () => {
     it('creates connection with direct delivery_mode and no SQS fields', async () => {
       const result = await service.createConnection(
-        { type: 'managed', name: 'my-relay', url: 'https://relay.example.com', delivery_mode: 'direct' },
+        {
+          type: 'managed',
+          name: 'my-relay',
+          url: 'https://relay.example.com',
+          delivery_mode: 'direct',
+        },
         TENANT_ID,
         USER_ID,
       )
@@ -124,11 +129,7 @@ describe('CloudRelayService.createConnection', () => {
     })
 
     it('calls resolveRelayQueue with platform mode and stores returned queue URL and region', async () => {
-      const result = await service.createConnection(
-        { type: 'local-dev' },
-        TENANT_ID,
-        USER_ID,
-      )
+      const result = await service.createConnection({ type: 'local-dev' }, TENANT_ID, USER_ID)
 
       expect(relayQueue.resolveRelayQueue).toHaveBeenCalledWith(
         'platform',

@@ -25,7 +25,9 @@ export class VendorJwtService implements OnModuleInit {
       this.logger.log('Loading vendor signing key from SLAOPS_VENDOR_SIGNING_KEY_JWK')
       await this.loadFromJson(signingKeyJson)
     } else {
-      this.logger.warn('SLAOPS_VENDOR_SIGNING_KEY_JWK not set — generating ephemeral key (development only)')
+      this.logger.warn(
+        'SLAOPS_VENDOR_SIGNING_KEY_JWK not set — generating ephemeral key (development only)',
+      )
       await this.generateEphemeralKey()
     }
   }

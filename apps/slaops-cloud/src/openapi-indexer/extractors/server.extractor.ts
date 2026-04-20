@@ -1,6 +1,11 @@
 import { OaServerDocument } from '../oaspec-documents'
 import { oaspecId } from '../oaspec-id'
-import { ExtractionContext, ExtractionResult, ISpecExtractor, OaspecEntity } from '../extractor.types'
+import {
+  ExtractionContext,
+  ExtractionResult,
+  ISpecExtractor,
+  OaspecEntity,
+} from '../extractor.types'
 
 function deriveHostShape(serverUrl: string): {
   scheme: string
@@ -15,13 +20,21 @@ function deriveHostShape(serverUrl: string): {
   try {
     parsed = new URL(serverUrl.replace(/\{[^}]+\}/g, 'placeholder'))
   } catch {
-    return { scheme: 'https', hostTemplate: serverUrl, hostShape: serverUrl, dnsSuffix: '', fixedLabelsText: '', varLabelsText: '', basePath: '/' }
+    return {
+      scheme: 'https',
+      hostTemplate: serverUrl,
+      hostShape: serverUrl,
+      dnsSuffix: '',
+      fixedLabelsText: '',
+      varLabelsText: '',
+      basePath: '/',
+    }
   }
 
   const scheme = parsed.protocol.replace(':', '')
   const basePath = parsed.pathname || '/'
   const hostTemplate = serverUrl.includes('://')
-    ? serverUrl.split('://')[1]?.split('/')[0] ?? parsed.hostname
+    ? (serverUrl.split('://')[1]?.split('/')[0] ?? parsed.hostname)
     : parsed.hostname
 
   const varPattern = /\{([^}]+)\}/g
@@ -34,10 +47,22 @@ function deriveHostShape(serverUrl: string): {
   const dnsSuffix = labels.length >= 2 ? labels.slice(-2).join('.') : hostShape
   const fixedLabels = hostShape.split('.').filter((l) => l !== '*' && l !== '')
 
-  return { scheme, hostTemplate, hostShape, dnsSuffix, fixedLabelsText: fixedLabels.join(' '), varLabelsText: varLabels.join(' '), basePath }
+  return {
+    scheme,
+    hostTemplate,
+    hostShape,
+    dnsSuffix,
+    fixedLabelsText: fixedLabels.join(' '),
+    varLabelsText: varLabels.join(' '),
+    basePath,
+  }
 }
 
-type RawServer = { url?: string; description?: string; variables?: Record<string, { default?: string }> }
+type RawServer = {
+  url?: string
+  description?: string
+  variables?: Record<string, { default?: string }>
+}
 
 export class ServerExtractor implements ISpecExtractor<OaServerDocument> {
   readonly entity: OaspecEntity = 'server'
@@ -59,7 +84,9 @@ export class ServerExtractor implements ISpecExtractor<OaServerDocument> {
       rawUrl: server.url ?? '',
       description: server.description,
       variablesText: server.variables
-        ? Object.entries(server.variables).map(([k, v]) => `${k}:${v?.default ?? ''}`).join(' ')
+        ? Object.entries(server.variables)
+            .map(([k, v]) => `${k}:${v?.default ?? ''}`)
+            .join(' ')
         : undefined,
       ...deriveHostShape(server.url ?? ''),
     }))

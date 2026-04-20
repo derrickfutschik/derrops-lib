@@ -16,15 +16,21 @@ let cachedServer: any
 async function bootstrapServer(): Promise<any> {
   if (!cachedServer) {
     const expressApp = express()
-    const nestApp = await NestFactory.create<NestExpressApplication>(AppModule, new ExpressAdapter(expressApp), {
-      logger:
-        process.env.NODE_ENV === 'production'
-          ? ['error', 'warn']
-          : ['log', 'error', 'warn', 'debug', 'verbose'],
-    })
+    const nestApp = await NestFactory.create<NestExpressApplication>(
+      AppModule,
+      new ExpressAdapter(expressApp),
+      {
+        logger:
+          process.env.NODE_ENV === 'production'
+            ? ['error', 'warn']
+            : ['log', 'error', 'warn', 'debug', 'verbose'],
+      },
+    )
 
     // Enable text body parsing for YAML/plain-text OpenAPI specs
-    nestApp.useBodyParser('text', { type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'] })
+    nestApp.useBodyParser('text', {
+      type: ['text/plain', 'text/yaml', 'application/x-yaml', 'application/yaml'],
+    })
 
     // Enable CORS for frontend integration
     nestApp.enableCors({

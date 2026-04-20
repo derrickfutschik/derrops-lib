@@ -10,13 +10,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common'
-import {
-  ApiOperation,
-  ApiParam,
-  ApiProperty,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger'
+import { ApiOperation, ApiParam, ApiProperty, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { User } from '../user/user.dto'
 import { AegisCreateResponse, AegisInstanceService } from './aegis-instance.service'
@@ -100,10 +94,7 @@ export class AegisInstanceController {
   @ApiParam({ name: 'id', description: 'AegisInstance UUID' })
   @ApiResponse({ status: 204 })
   @ApiResponse({ status: 404 })
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: User,
-  ): Promise<void> {
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User): Promise<void> {
     return this.aegisInstanceService.remove(id, user['custom:tenant_id'])
   }
 

@@ -148,7 +148,10 @@ export class CloudRelayService {
   }
 
   /** Test SQS connectivity by sending a canary message and verifying the send succeeds. */
-  async testQueueConnection(id: string, tenantId: string): Promise<{ sent: boolean; error?: string }> {
+  async testQueueConnection(
+    id: string,
+    tenantId: string,
+  ): Promise<{ sent: boolean; error?: string }> {
     const connection = await this.requireConnection(id, tenantId)
 
     if (!connection.sqs_queue_url) {
@@ -170,7 +173,9 @@ export class CloudRelayService {
 
   /** Resolve a connection by id+tenant, throwing 404 if not found. */
   private async requireConnection(id: string, tenantId: string): Promise<CloudRelayConnection> {
-    const connection = await this.connectionRepository.findOne({ where: { id, tenant_id: tenantId } })
+    const connection = await this.connectionRepository.findOne({
+      where: { id, tenant_id: tenantId },
+    })
     if (!connection) throw new NotFoundException(`Cloud relay connection ${id} not found`)
     return connection
   }
@@ -443,7 +448,7 @@ export class CloudRelayService {
    */
   async claimNextJob(connection: CloudRelayConnection): Promise<CloudRelayJob | null> {
     // Use a transaction + FOR UPDATE SKIP LOCKED for safe concurrent claiming
-    return this.jobRepository.manager.transaction(async manager => {
+    return this.jobRepository.manager.transaction(async (manager) => {
       const job = await manager
         .createQueryBuilder(CloudRelayJob, 'job')
         .where('job.connection_id = :connectionId', { connectionId: connection.id })

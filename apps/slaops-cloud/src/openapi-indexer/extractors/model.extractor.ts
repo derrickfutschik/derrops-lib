@@ -1,7 +1,12 @@
 import { config } from '@slaops/config'
 import { OaModelDocument } from '../oaspec-documents'
 import { oaspecId } from '../oaspec-id'
-import { ExtractionContext, ExtractionResult, ISpecExtractor, OaspecEntity } from '../extractor.types'
+import {
+  ExtractionContext,
+  ExtractionResult,
+  ISpecExtractor,
+  OaspecEntity,
+} from '../extractor.types'
 
 type RawSchema = {
   description?: string

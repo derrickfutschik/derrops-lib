@@ -1,12 +1,23 @@
 import { config } from '@slaops/config'
 import { OaOperationDocument } from '../oaspec-documents'
 import { oaspecId } from '../oaspec-id'
-import { ExtractionContext, ExtractionResult, ISpecExtractor, OaspecEntity } from '../extractor.types'
+import {
+  ExtractionContext,
+  ExtractionResult,
+  ISpecExtractor,
+  OaspecEntity,
+} from '../extractor.types'
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'] as const
 
 const METHOD_INITIAL: Record<string, string> = {
-  GET: 'G', POST: 'P', PUT: 'U', DELETE: 'D', PATCH: 'A', HEAD: 'H', OPTIONS: 'O',
+  GET: 'G',
+  POST: 'P',
+  PUT: 'U',
+  DELETE: 'D',
+  PATCH: 'A',
+  HEAD: 'H',
+  OPTIONS: 'O',
 }
 
 function compactPath(path: string): string {

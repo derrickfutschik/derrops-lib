@@ -8,7 +8,6 @@ import { ALL_INGEST_PIPELINES } from './resource/pipelines'
 const OASPEC_ENTITIES = ['spec', 'server', 'operation', 'param', 'model'] as const
 type OaspecEntity = (typeof OASPEC_ENTITIES)[number]
 
-
 @Injectable()
 export class OpenSearchService {
   private readonly logger = new Logger(OpenSearchService.name)

@@ -9,7 +9,13 @@ export class VersionFetchState {
       'url_fetch — platform fetches the spec from fetch_url on a schedule.',
     default: 'manual',
   })
-  @Column({ name: 'fetch_strategy', type: 'varchar', length: 20, nullable: true, default: 'manual' })
+  @Column({
+    name: 'fetch_strategy',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    default: 'manual',
+  })
   strategy: 'manual' | 'url_fetch' | null = 'manual'
 
   @ApiPropertyOptional({

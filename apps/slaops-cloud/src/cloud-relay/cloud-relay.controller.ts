@@ -160,7 +160,7 @@ export class CloudRelayController {
   @ApiOperation({
     summary: 'Test SQS queue connectivity for a platform-queue or hybrid relay connection',
     description:
-      'Sends a canary message to the connection\'s SQS queue and verifies the send succeeds. ' +
+      "Sends a canary message to the connection's SQS queue and verifies the send succeeds. " +
       'Validates that the platform role has sqs:SendMessage permission on the queue.',
   })
   @ApiParam({ name: 'id', description: 'Connection UUID' })

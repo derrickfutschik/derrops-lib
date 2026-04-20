@@ -1,7 +1,12 @@
 import { config } from '@slaops/config'
 import { OaParamDocument } from '../oaspec-documents'
 import { oaspecId } from '../oaspec-id'
-import { ExtractionContext, ExtractionResult, ISpecExtractor, OaspecEntity } from '../extractor.types'
+import {
+  ExtractionContext,
+  ExtractionResult,
+  ISpecExtractor,
+  OaspecEntity,
+} from '../extractor.types'
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'] as const
 
@@ -23,7 +28,10 @@ export class ParamExtractor implements ISpecExtractor<OaParamDocument> {
     const title: string = spec['info']?.title ?? ''
     const paths: Record<string, Record<string, { parameters?: RawParam[] }>> = spec['paths'] ?? {}
 
-    const paramMap = new Map<string, { doc: Omit<OaParamDocument, 'operationIdsText'>; operationIds: Set<string> }>()
+    const paramMap = new Map<
+      string,
+      { doc: Omit<OaParamDocument, 'operationIdsText'>; operationIds: Set<string> }
+    >()
 
     const addParam = (name: string, location: string, param: RawParam, opId?: string) => {
       const paramId = oaspecId(tenantId, title, version, name, location)
@@ -39,7 +47,7 @@ export class ParamExtractor implements ISpecExtractor<OaParamDocument> {
             indexedAt,
             name: param.name ?? name,
             location,
-            required: param.required ?? (location === 'path'),
+            required: param.required ?? location === 'path',
             deprecated: param.deprecated ?? false,
             description: param.description,
             schemaType: param.schema?.type,
@@ -69,10 +77,12 @@ export class ParamExtractor implements ISpecExtractor<OaParamDocument> {
       }
     }
 
-    const documents: OaParamDocument[] = Array.from(paramMap.values()).map(({ doc, operationIds }) => ({
-      ...doc,
-      operationIdsText: Array.from(operationIds).join(' '),
-    }))
+    const documents: OaParamDocument[] = Array.from(paramMap.values()).map(
+      ({ doc, operationIds }) => ({
+        ...doc,
+        operationIdsText: Array.from(operationIds).join(' '),
+      }),
+    )
 
     const limit = config['opensearch.oaspec.max-params-per-spec']
     const truncated = documents.length > limit

@@ -60,7 +60,7 @@ export class CloudRelayConnection {
     description:
       'platform — SLAOps provisions and owns the SQS FIFO queue (default for local-dev). ' +
       'relay    — Customer provisions the queue in their own AWS account and grants the SlaOpsSqsPublishRole SendMessage access. ' +
-      'Use relay mode when the customer\'s network cannot reach SQS endpoints in the SLAOps account.',
+      "Use relay mode when the customer's network cannot reach SQS endpoints in the SLAOps account.",
   })
   @Column({ type: 'varchar', length: 20, nullable: true })
   sqs_queue_mode: 'platform' | 'relay' | null
@@ -70,7 +70,8 @@ export class CloudRelayConnection {
       'SQS FIFO queue URL for this relay connection. ' +
       'platform mode: provisioned by slaops-cloud and stored here. ' +
       'relay mode: provided by the customer at registration time.',
-    example: 'https://sqs.ap-southeast-2.amazonaws.com/123456789/slaops-acme-local-abc123-relay456.fifo',
+    example:
+      'https://sqs.ap-southeast-2.amazonaws.com/123456789/slaops-acme-local-abc123-relay456.fifo',
   })
   @Column({ type: 'text', nullable: true })
   sqs_queue_url: string | null
@@ -83,7 +84,8 @@ export class CloudRelayConnection {
   sqs_region: string | null
 
   @ApiPropertyOptional({
-    description: 'UUID of the linked AegisInstance. Optional — null means no Aegis for this connection.',
+    description:
+      'UUID of the linked AegisInstance. Optional — null means no Aegis for this connection.',
     example: '9a1b2c3d-4e5f-6789-abcd-ef0123456789',
   })
   @Column({ type: 'uuid', nullable: true })

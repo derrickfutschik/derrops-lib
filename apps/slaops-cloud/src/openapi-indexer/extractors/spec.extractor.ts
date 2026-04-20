@@ -1,17 +1,34 @@
 import { OaSpecDocument } from '../oaspec-documents'
-import { ExtractionContext, ExtractionResult, ISpecExtractor, OaspecEntity } from '../extractor.types'
+import {
+  ExtractionContext,
+  ExtractionResult,
+  ISpecExtractor,
+  OaspecEntity,
+} from '../extractor.types'
 
 export class SpecExtractor implements ISpecExtractor<OaSpecDocument> {
   readonly entity: OaspecEntity = 'spec'
 
   extract(ctx: ExtractionContext): ExtractionResult<OaSpecDocument> {
-    const { spec, tenantId, apiId, specId, version, indexedAt, s3Bucket, s3Key, fileSize, fileFormat } = ctx
+    const {
+      spec,
+      tenantId,
+      apiId,
+      specId,
+      version,
+      indexedAt,
+      s3Bucket,
+      s3Key,
+      fileSize,
+      fileFormat,
+    } = ctx
 
     const tagsText = (spec['tags']?.map((t: { name: string }) => t.name) ?? []).join(' ')
 
     const contactText = spec['info']?.contact
       ? [spec['info'].contact.name, spec['info'].contact.email, spec['info'].contact.url]
-          .filter(Boolean).join(' ')
+          .filter(Boolean)
+          .join(' ')
       : undefined
 
     const licenseText = spec['info']?.license

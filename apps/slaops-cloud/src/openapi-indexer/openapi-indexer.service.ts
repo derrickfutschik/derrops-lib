@@ -9,7 +9,10 @@ import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { Client } from '@opensearch-project/opensearch'
-import { IndexingError, IndexingErrorCode } from '@slaops/cloud/openapi-search/types/openapi-index.types'
+import {
+  IndexingError,
+  IndexingErrorCode,
+} from '@slaops/cloud/openapi-search/types/openapi-index.types'
 import { config } from '@slaops/config'
 import { Search, TypescriptOSProxyClient } from 'opensearch-ts'
 import { v4 as uuid } from 'uuid'
@@ -138,7 +141,9 @@ export class OpenApiIndexerService implements OnModuleInit {
     const objectKey = key || `${uuid()}/openapi.yaml`
     const command = new PutObjectCommand({ Bucket: bucket, Key: objectKey })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const url = await getSignedUrl(this.s3Client as any, command, { expiresIn: PRESIGNED_URL_EXPIRES_IN })
+    const url = await getSignedUrl(this.s3Client as any, command, {
+      expiresIn: PRESIGNED_URL_EXPIRES_IN,
+    })
     return { url, key: objectKey, bucket, expiresIn: PRESIGNED_URL_EXPIRES_IN }
   }
 
@@ -165,7 +170,16 @@ export class OpenApiIndexerService implements OnModuleInit {
         version: '',
         specOpensearchId: '',
         durationMs: Date.now() - startTime,
-        states: [{ entity: 'spec', extracted: 0, indexed: 0, pruned: 0, truncated: false, errors: [{ phase: 'extract', message: `API row not found: ${msg}` }] }],
+        states: [
+          {
+            entity: 'spec',
+            extracted: 0,
+            indexed: 0,
+            pruned: 0,
+            truncated: false,
+            errors: [{ phase: 'extract', message: `API row not found: ${msg}` }],
+          },
+        ],
       }
     }
 
@@ -187,7 +201,16 @@ export class OpenApiIndexerService implements OnModuleInit {
         version: '',
         specOpensearchId: '',
         durationMs: Date.now() - startTime,
-        states: [{ entity: 'spec', extracted: 0, indexed: 0, pruned: 0, truncated: false, errors: [{ phase: 'extract', message: `Parse error: ${msg}` }] }],
+        states: [
+          {
+            entity: 'spec',
+            extracted: 0,
+            indexed: 0,
+            pruned: 0,
+            truncated: false,
+            errors: [{ phase: 'extract', message: `Parse error: ${msg}` }],
+          },
+        ],
       }
     }
 
@@ -225,7 +248,8 @@ export class OpenApiIndexerService implements OnModuleInit {
     }
 
     // ── Step 6: Update api SQL row + back-fill spec counts ────────────────────
-    const getCounts = (entity: OaspecEntity) => states.find((s) => s.entity === entity)?.indexed ?? 0
+    const getCounts = (entity: OaspecEntity) =>
+      states.find((s) => s.entity === entity)?.indexed ?? 0
 
     try {
       await this.apiService.updateOaSpecStats(apiId, tenantId, {
@@ -266,7 +290,9 @@ export class OpenApiIndexerService implements OnModuleInit {
       states.push(sqlState)
     }
 
-    const hasSpecError = states.some((s) => s.entity === 'spec' && s.errors.some((e) => e.phase === 'extract'))
+    const hasSpecError = states.some(
+      (s) => s.entity === 'spec' && s.errors.some((e) => e.phase === 'extract'),
+    )
 
     return {
       success: !hasSpecError,
@@ -296,14 +322,18 @@ export class OpenApiIndexerService implements OnModuleInit {
       : { match_all: {} }
 
     const body: CatalogueSearch = { from: offset, size: limit, query: rawQuery as never }
-    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({ body, index })
+    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({
+      body,
+      index,
+    })
 
     const hitsTotal = response.hits.total
-    const total = hitsTotal == null
-      ? 0
-      : typeof hitsTotal === 'object' && hitsTotal != null
-        ? (hitsTotal as { value: number }).value
-        : (hitsTotal as number)
+    const total =
+      hitsTotal == null
+        ? 0
+        : typeof hitsTotal === 'object' && hitsTotal != null
+          ? (hitsTotal as { value: number }).value
+          : (hitsTotal as number)
 
     const hits: CatalogueHit[] = response.hits.hits.map((h) => ({
       id: h._id,
@@ -327,8 +357,15 @@ export class OpenApiIndexerService implements OnModuleInit {
   // unmapped_type prevents a 500 when the index is empty or the field was never indexed.
   private static toSortSpec(field: string, order: 'asc' | 'desc'): Record<string, unknown> {
     const NUMERIC_FIELDS = new Set([
-      'serverIndex', 'operationCount', 'serverCount', 'parameterCount', 'modelCount',
-      'fileSize', 'latest', 'required', 'deprecated',
+      'serverIndex',
+      'operationCount',
+      'serverCount',
+      'parameterCount',
+      'modelCount',
+      'fileSize',
+      'latest',
+      'required',
+      'deprecated',
     ])
     const DATE_FIELDS = new Set(['indexedAt'])
     if (DATE_FIELDS.has(field)) return { [field]: { order, unmapped_type: 'date' } }
@@ -337,19 +374,28 @@ export class OpenApiIndexerService implements OnModuleInit {
   }
 
   async queryVersions(
-    apiId: string, tenantId: string,
-    from: number, size: number,
-    sortField: string, sortOrder: 'asc' | 'desc',
+    apiId: string,
+    tenantId: string,
+    from: number,
+    size: number,
+    sortField: string,
+    sortOrder: 'asc' | 'desc',
   ): Promise<PagedResult<VersionHit>> {
     const index = config['opensearch.oaspec.index'](tenantId, 'spec')
     const body = {
       query: { term: { 'apiId.keyword': apiId } },
       sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
-      from, size,
+      from,
+      size,
     }
-    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({ body: body as never, index })
+    const response = await this.tsClient.searchTS<OaSpecDocument, Record<string, never>>({
+      body: body as never,
+      index,
+    })
     return {
-      total: extractTotal(response.hits.total), from, size,
+      total: extractTotal(response.hits.total),
+      from,
+      size,
       hits: response.hits.hits.map((h) => ({
         id: h._source.id,
         version: h._source.version,
@@ -367,16 +413,26 @@ export class OpenApiIndexerService implements OnModuleInit {
   }
 
   async queryOperations(
-    apiId: string, tenantId: string, version: string,
-    from: number, size: number,
-    sortField: string, sortOrder: 'asc' | 'desc',
-    q?: string, method?: string, tag?: string,
+    apiId: string,
+    tenantId: string,
+    version: string,
+    from: number,
+    size: number,
+    sortField: string,
+    sortOrder: 'asc' | 'desc',
+    q?: string,
+    method?: string,
+    tag?: string,
   ): Promise<PagedResult<OaOperationDocument>> {
     const index = config['opensearch.oaspec.index'](tenantId, 'operation')
-    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const versionFilter =
+      version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
     const filters: object[] = [{ term: { 'apiId.keyword': apiId } }, versionFilter]
     if (method) {
-      const methods = method.split(',').map((m) => m.trim().toLowerCase()).filter(Boolean)
+      const methods = method
+        .split(',')
+        .map((m) => m.trim().toLowerCase())
+        .filter(Boolean)
       if (methods.length) filters.push({ terms: { 'method.keyword': methods } })
     }
     if (tag) filters.push({ match: { tagsText: tag } })
@@ -384,40 +440,82 @@ export class OpenApiIndexerService implements OnModuleInit {
       query: {
         bool: {
           filter: filters,
-          ...(q ? { must: [{ multi_match: { query: q, fields: ['path', 'summary', 'tagsText', 'operationId'], fuzziness: 'AUTO' } }] } : {}),
+          ...(q
+            ? {
+                must: [
+                  {
+                    multi_match: {
+                      query: q,
+                      fields: ['path', 'summary', 'tagsText', 'operationId'],
+                      fuzziness: 'AUTO',
+                    },
+                  },
+                ],
+              }
+            : {}),
         },
       },
       sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
-      from, size,
+      from,
+      size,
     }
-    const response = await this.tsClient.searchTS<OaOperationDocument, Record<string, never>>({ body: body as never, index })
-    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+    const response = await this.tsClient.searchTS<OaOperationDocument, Record<string, never>>({
+      body: body as never,
+      index,
+    })
+    return {
+      total: extractTotal(response.hits.total),
+      from,
+      size,
+      hits: response.hits.hits.map((h) => h._source),
+    }
   }
 
   async queryServers(
-    apiId: string, tenantId: string, version: string,
-    from: number, size: number,
-    sortField: string, sortOrder: 'asc' | 'desc',
+    apiId: string,
+    tenantId: string,
+    version: string,
+    from: number,
+    size: number,
+    sortField: string,
+    sortOrder: 'asc' | 'desc',
   ): Promise<PagedResult<OaServerDocument>> {
     const index = config['opensearch.oaspec.index'](tenantId, 'server')
-    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const versionFilter =
+      version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
     const body = {
       query: { bool: { filter: [{ term: { 'apiId.keyword': apiId } }, versionFilter] } },
       sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
-      from, size,
+      from,
+      size,
     }
-    const response = await this.tsClient.searchTS<OaServerDocument, Record<string, never>>({ body: body as never, index })
-    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+    const response = await this.tsClient.searchTS<OaServerDocument, Record<string, never>>({
+      body: body as never,
+      index,
+    })
+    return {
+      total: extractTotal(response.hits.total),
+      from,
+      size,
+      hits: response.hits.hits.map((h) => h._source),
+    }
   }
 
   async queryParameters(
-    apiId: string, tenantId: string, version: string,
-    from: number, size: number,
-    sortField: string, sortOrder: 'asc' | 'desc',
-    q?: string, location?: string, operationId?: string,
+    apiId: string,
+    tenantId: string,
+    version: string,
+    from: number,
+    size: number,
+    sortField: string,
+    sortOrder: 'asc' | 'desc',
+    q?: string,
+    location?: string,
+    operationId?: string,
   ): Promise<PagedResult<OaParamDocument>> {
     const index = config['opensearch.oaspec.index'](tenantId, 'param')
-    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const versionFilter =
+      version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
     const filters: object[] = [{ term: { 'apiId.keyword': apiId } }, versionFilter]
     if (location) filters.push({ term: { 'location.keyword': location } })
     if (operationId) filters.push({ match: { operationIdsText: operationId } })
@@ -425,24 +523,46 @@ export class OpenApiIndexerService implements OnModuleInit {
       query: {
         bool: {
           filter: filters,
-          ...(q ? { must: [{ multi_match: { query: q, fields: ['name', 'description'], fuzziness: 'AUTO' } }] } : {}),
+          ...(q
+            ? {
+                must: [
+                  { multi_match: { query: q, fields: ['name', 'description'], fuzziness: 'AUTO' } },
+                ],
+              }
+            : {}),
         },
       },
       sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
-      from, size,
+      from,
+      size,
     }
-    const response = await this.tsClient.searchTS<OaParamDocument, Record<string, never>>({ body: body as never, index })
-    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+    const response = await this.tsClient.searchTS<OaParamDocument, Record<string, never>>({
+      body: body as never,
+      index,
+    })
+    return {
+      total: extractTotal(response.hits.total),
+      from,
+      size,
+      hits: response.hits.hits.map((h) => h._source),
+    }
   }
 
   async queryModels(
-    apiId: string, tenantId: string, version: string,
-    from: number, size: number,
-    sortField: string, sortOrder: 'asc' | 'desc',
-    q?: string, usedIn?: string, operationId?: string,
+    apiId: string,
+    tenantId: string,
+    version: string,
+    from: number,
+    size: number,
+    sortField: string,
+    sortOrder: 'asc' | 'desc',
+    q?: string,
+    usedIn?: string,
+    operationId?: string,
   ): Promise<PagedResult<OaModelDocument>> {
     const index = config['opensearch.oaspec.index'](tenantId, 'model')
-    const versionFilter = version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
+    const versionFilter =
+      version === 'latest' ? { term: { latest: true } } : { term: { 'version.keyword': version } }
     const filters: object[] = [{ term: { 'apiId.keyword': apiId } }, versionFilter]
     if (usedIn) filters.push({ match: { usedInText: usedIn } })
     if (operationId) filters.push({ match: { operationIdsText: operationId } })
@@ -450,14 +570,35 @@ export class OpenApiIndexerService implements OnModuleInit {
       query: {
         bool: {
           filter: filters,
-          ...(q ? { must: [{ multi_match: { query: q, fields: ['name', 'description', 'propertiesText'], fuzziness: 'AUTO' } }] } : {}),
+          ...(q
+            ? {
+                must: [
+                  {
+                    multi_match: {
+                      query: q,
+                      fields: ['name', 'description', 'propertiesText'],
+                      fuzziness: 'AUTO',
+                    },
+                  },
+                ],
+              }
+            : {}),
         },
       },
       sort: [OpenApiIndexerService.toSortSpec(sortField, sortOrder)],
-      from, size,
+      from,
+      size,
     }
-    const response = await this.tsClient.searchTS<OaModelDocument, Record<string, never>>({ body: body as never, index })
-    return { total: extractTotal(response.hits.total), from, size, hits: response.hits.hits.map((h) => h._source) }
+    const response = await this.tsClient.searchTS<OaModelDocument, Record<string, never>>({
+      body: body as never,
+      index,
+    })
+    return {
+      total: extractTotal(response.hits.total),
+      from,
+      size,
+      hits: response.hits.hits.map((h) => h._source),
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -493,7 +634,10 @@ export class OpenApiIndexerService implements OnModuleInit {
       state.extracted = documents.length
       state.truncated = result.truncated
     } catch (err: unknown) {
-      state.errors.push({ phase: 'extract', message: err instanceof Error ? err.message : String(err) })
+      state.errors.push({
+        phase: 'extract',
+        message: err instanceof Error ? err.message : String(err),
+      })
       return state
     }
 
@@ -504,27 +648,45 @@ export class OpenApiIndexerService implements OnModuleInit {
         await this.opensearchClient.bulk({
           body: documents.flatMap((doc) => {
             const d = doc as { id: string }
-            return [{ index: { _index: config['opensearch.oaspec.index'](ctx.tenantId, extractor.entity), _id: d.id } }, doc]
+            return [
+              {
+                index: {
+                  _index: config['opensearch.oaspec.index'](ctx.tenantId, extractor.entity),
+                  _id: d.id,
+                },
+              },
+              doc,
+            ]
           }),
           refresh: true,
         })
       }
       state.indexed = documents.length
     } catch (err: unknown) {
-      state.errors.push({ phase: 'index', message: err instanceof Error ? err.message : String(err) })
+      state.errors.push({
+        phase: 'index',
+        message: err instanceof Error ? err.message : String(err),
+      })
     }
 
     // Prune old versions for this entity's index
     try {
       state.pruned = await this._pruneVersionsForEntity(ctx.tenantId, ctx.apiId, extractor.entity)
     } catch (err: unknown) {
-      state.errors.push({ phase: 'prune', message: err instanceof Error ? err.message : String(err) })
+      state.errors.push({
+        phase: 'prune',
+        message: err instanceof Error ? err.message : String(err),
+      })
     }
 
     return state
   }
 
-  private async _setLatestFalse(tenantId: string, entity: OaspecEntity | string, apiId: string): Promise<void> {
+  private async _setLatestFalse(
+    tenantId: string,
+    entity: OaspecEntity | string,
+    apiId: string,
+  ): Promise<void> {
     await this.opensearchClient.updateByQuery({
       index: config['opensearch.oaspec.index'](tenantId, entity),
       body: {
@@ -535,7 +697,11 @@ export class OpenApiIndexerService implements OnModuleInit {
     })
   }
 
-  private async _pruneVersionsForEntity(tenantId: string, apiId: string, entity: OaspecEntity): Promise<number> {
+  private async _pruneVersionsForEntity(
+    tenantId: string,
+    apiId: string,
+    entity: OaspecEntity,
+  ): Promise<number> {
     const retention = config['opensearch.oaspec.version-retention']
     const specIndex = config['opensearch.oaspec.index'](tenantId, 'spec')
 
@@ -553,7 +719,11 @@ export class OpenApiIndexerService implements OnModuleInit {
 
     const result = await this.opensearchClient.deleteByQuery({
       index: config['opensearch.oaspec.index'](tenantId, entity),
-      body: { query: { bool: { filter: [{ term: { apiId } }, { terms: { version: versionsToDelete } }] } } },
+      body: {
+        query: {
+          bool: { filter: [{ term: { apiId } }, { terms: { version: versionsToDelete } }] },
+        },
+      },
       refresh: true,
     })
 
