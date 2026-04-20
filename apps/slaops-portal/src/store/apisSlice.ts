@@ -9,9 +9,6 @@ interface ApisState {
   wizardStep: number
   wizardPath: 'catalogue' | 'private' | null
   detailTab: DetailTab
-  operationsQuery: string
-  paramsQuery: string
-  modelsQuery: string
 }
 
 const initialState: ApisState = {
@@ -19,9 +16,6 @@ const initialState: ApisState = {
   wizardStep: 1,
   wizardPath: null,
   detailTab: 'overview',
-  operationsQuery: '',
-  paramsQuery: '',
-  modelsQuery: '',
 }
 
 const apisSlice = createSlice({
@@ -44,15 +38,6 @@ const apisSlice = createSlice({
     setDetailTab(state, action: PayloadAction<DetailTab>) {
       state.detailTab = action.payload
     },
-    setOperationsQuery(state, action: PayloadAction<string>) {
-      state.operationsQuery = action.payload
-    },
-    setParamsQuery(state, action: PayloadAction<string>) {
-      state.paramsQuery = action.payload
-    },
-    setModelsQuery(state, action: PayloadAction<string>) {
-      state.modelsQuery = action.payload
-    },
   },
 })
 
@@ -61,9 +46,6 @@ export const {
   setWizardStep,
   setWizardPath,
   setDetailTab,
-  setOperationsQuery,
-  setParamsQuery,
-  setModelsQuery,
 } = actionRegistry.registerAll(apisSlice.actions, {
   setWizardOpen: {
     description: 'Opens or closes the new API wizard. Resets step and path on close.',
@@ -85,21 +67,6 @@ export const {
     area: ActionArea.UI,
     group: ActionGroup.Apis,
   },
-  setOperationsQuery: {
-    description: 'Sets the search query for the operations tab.',
-    area: ActionArea.UI,
-    group: ActionGroup.Apis,
-  },
-  setParamsQuery: {
-    description: 'Sets the search query for the parameters tab.',
-    area: ActionArea.UI,
-    group: ActionGroup.Apis,
-  },
-  setModelsQuery: {
-    description: 'Sets the search query for the models tab.',
-    area: ActionArea.UI,
-    group: ActionGroup.Apis,
-  },
 })
 
 export const apisReducer = apisSlice.reducer
@@ -108,6 +75,3 @@ export const selectWizardOpen = (state: RootState) => state.apis.wizardOpen
 export const selectWizardStep = (state: RootState) => state.apis.wizardStep
 export const selectWizardPath = (state: RootState) => state.apis.wizardPath
 export const selectDetailTab = (state: RootState) => state.apis.detailTab
-export const selectOperationsQuery = (state: RootState) => state.apis.operationsQuery
-export const selectParamsQuery = (state: RootState) => state.apis.paramsQuery
-export const selectModelsQuery = (state: RootState) => state.apis.modelsQuery

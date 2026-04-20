@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +13,7 @@ import { EditApiDrawer } from '@/components/apis/EditApiDrawer'
 import { useApi } from '@/hooks/useApisApi'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { selectDetailTab, setDetailTab } from '@/store/apisSlice'
+import { resetAllTabs } from '@/store/apiTabsSlice'
 
 const ApiDetail = () => {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +22,10 @@ const ApiDetail = () => {
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: api, isLoading } = useApi(id ?? '')
+
+  useEffect(() => {
+    dispatch(resetAllTabs())
+  }, [id, dispatch])
 
   if (isLoading) {
     return (
@@ -58,11 +63,11 @@ const ApiDetail = () => {
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab api={api} /></TabsContent>
-          <TabsContent value="versions"><VersionsTab /></TabsContent>
-          <TabsContent value="operations"><OperationsTab operations={[]} /></TabsContent>
-          <TabsContent value="servers"><ServersTab servers={[]} /></TabsContent>
-          <TabsContent value="parameters"><ParametersTab parameters={[]} /></TabsContent>
-          <TabsContent value="models"><ModelsTab models={[]} /></TabsContent>
+          <TabsContent value="versions"><VersionsTab apiId={id ?? ''} /></TabsContent>
+          <TabsContent value="operations"><OperationsTab apiId={id ?? ''} /></TabsContent>
+          <TabsContent value="servers"><ServersTab apiId={id ?? ''} /></TabsContent>
+          <TabsContent value="parameters"><ParametersTab apiId={id ?? ''} /></TabsContent>
+          <TabsContent value="models"><ModelsTab apiId={id ?? ''} /></TabsContent>
         </Tabs>
       </main>
 

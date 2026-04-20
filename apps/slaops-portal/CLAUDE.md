@@ -344,6 +344,10 @@ const RequestVolumeChart = createChartPanel('Request Volume')
 const ResponseTimeTrendsChart = createChartPanel('Response Time Trends')
 ```
 
+### Design doc references
+
+Hook and component files that implement a formal design document carry a `@designDoc` tag in their file-level JSDoc block. When editing one of these files, check the linked design doc and update it if the change alters the designed behaviour or UI contract. See `.claude/rules/design-sync.md`.
+
 ### Anti-patterns to avoid
 
 - A single `.tsx` file exceeding ~500 lines without a clear reason.
@@ -494,6 +498,55 @@ catch (error: unknown) {
   }
 }
 ```
+
+## IndexedDataTable Convention
+
+All data tables in the **API detail view tabs** (Versions, Operations, Servers, Parameters, Models) must follow this convention. It is derived from `src/components/api-tester/TableViewPanel.tsx`, which is the reference implementation.
+
+### Required behaviours
+
+**Sortable columns**
+- Every sortable column header is clickable. Click once → sort asc; click again → sort desc.
+- The active sort column shows `ArrowUp` (asc) or `ArrowDown` (desc) from `lucide-react`. Inactive sortable columns show `ArrowUpDown` at reduced opacity.
+- Sort is **server-side**: clicking dispatches a new OpenSearch query with updated `sort` + `order` params. There is no client-side sort.
+
+**Hideable columns**
+- Hideable columns show an `EyeOff` icon button on header hover. Clicking hides the column **client-side**.
+- When one or more columns are hidden, a banner appears above the table: `N column(s) hidden — Show all`. "Show all" restores all columns.
+- Column visibility lives in Redux — it survives tab switches.
+
+**Status bar**
+- A fixed bar at the bottom of the table shows the row count: `{from+1}–{from+size} of {total} {entity}` when paginated, or `{total} {entity}` for small result sets.
+- When a search or filter is active, show `{returned}/{total} {entity}`.
+
+**Row index column**
+- Include a leading `#` column (monospace, muted) showing the 0-based row index. Not sortable, not hideable.
+
+**Pagination controls**
+- `< Prev | Page N of M | Next >` bar directly beneath the status bar.
+- OpenSearch defaults: `size=10`, `from=0`. Maximum `size=100`.
+
+### Redux state shape (per tab)
+
+Each tab has its own Redux slice. The state shape follows this pattern:
+
+```typescript
+interface SomeTabState {
+  sort: { field: string; direction: 'asc' | 'desc' }
+  hiddenColumns: string[]     // column field names
+  page: number                // 0-based
+}
+```
+
+The tab slice exports selectors `selectSort`, `selectHiddenColumns`, `selectPage` that the tab component reads via `useAppSelector`.
+
+### What NOT to do
+
+- Do not filter data client-side from a pre-loaded array — all filtering and sorting must go to OpenSearch.
+- Do not invent a local sort state — always reflect what the server returned.
+- Do not skip the status bar — it is part of the convention.
+
+---
 
 ## TypeScript Conventions
 

@@ -1,44 +1,70 @@
+/**
+ * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/models-tab.md
+ */
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { selectModelsQuery, setModelsQuery } from '@/store/apisSlice'
-import { useDebounce } from '@/hooks/useDebounce'
+import {
+  selectModelsTabState,
+  setModelsQuery,
+  setModelsUsedInFilter,
+  setTabSort,
+  setTabPage,
+  toggleTabColumn,
+  showAllTabColumns,
+} from '@/store/apiTabsSlice'
+import { useModelsTab } from '@/hooks/useModelsTab'
 import { ModelDetailPanel } from './ModelDetailPanel'
-
-interface Model {
-  name: string
-  schemaType?: string
-  usedInText?: string
-  description?: string
-  propertiesText?: string
-}
+import { SortableColHeader } from './SortableColHeader'
+import { TabTableFooter } from './TabTableFooter'
+import { PAGE_SIZE } from '@/config'
+import type { ModelHit } from '@/types/apiTabs'
 
 interface ModelsTabProps {
-  models: Model[]
+  apiId: string
 }
+
+const COLUMNS = [
+  { field: 'name', label: 'Name', sortable: true },
+  { field: 'schemaType', label: 'Type', sortable: true },
+  { field: 'usedInText', label: 'Used in', sortable: false },
+  { field: 'description', label: 'Description', sortable: false },
+]
 
 const USED_IN_CLASSES: Record<string, string> = {
   request:  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   response: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 }
 
-export function ModelsTab({ models }: ModelsTabProps) {
+const USED_IN_OPTIONS = ['request', 'response']
+
+export function ModelsTab({ apiId }: ModelsTabProps) {
   const dispatch = useAppDispatch()
-  const query = useAppSelector(selectModelsQuery)
-  const debouncedQuery = useDebounce(query, 300)
-  const [selected, setSelected] = useState<Model | null>(null)
+  const { sort, hiddenColumns, page, query, usedInFilter } = useAppSelector(selectModelsTabState)
+  const { data, isLoading } = useModelsTab(apiId)
+  const [selected, setSelected] = useState<ModelHit | null>(null)
 
-  const filtered = debouncedQuery
-    ? models.filter(
-        (m) =>
-          m.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-          m.description?.toLowerCase().includes(debouncedQuery.toLowerCase()),
-      )
-    : models
+  const from = page * PAGE_SIZE
+  const visible = COLUMNS.filter((c) => !hiddenColumns.includes(c.field))
+  const hasFilter = !!(query || usedInFilter)
 
-  if (models.length === 0) {
+  function handleSort(field: string) {
+    const direction = sort.field === field && sort.direction === 'asc' ? 'desc' : 'asc'
+    dispatch(setTabSort({ tab: 'models', field, direction }))
+  }
+
+  function handleHide(field: string) {
+    dispatch(toggleTabColumn({ tab: 'models', column: field }))
+  }
+
+  if (isLoading) {
+    return <div className="text-center py-12 text-muted-foreground text-sm">Loading models…</div>
+  }
+
+  if (!data || (data.hits.length === 0 && !hasFilter)) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
         Models will appear here after the spec is indexed.
@@ -48,58 +74,126 @@ export function ModelsTab({ models }: ModelsTabProps) {
 
   return (
     <>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
-          placeholder="Search models..."
+          placeholder="Search models…"
           value={query}
           onChange={(e) => dispatch(setModelsQuery(e.target.value))}
-          className="max-w-sm"
+          className="max-w-xs h-8 text-sm"
         />
+        <div className="flex gap-1">
+          {USED_IN_OPTIONS.map((opt) => (
+            <Button
+              key={opt}
+              variant={usedInFilter === opt ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 px-2 text-xs capitalize"
+              onClick={() => dispatch(setModelsUsedInFilter(usedInFilter === opt ? null : opt))}
+            >
+              {opt}
+            </Button>
+          ))}
+        </div>
       </div>
+
+      {hiddenColumns.length > 0 && (
+        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{hiddenColumns.length} column(s) hidden</span>
+          <button
+            className="underline hover:text-foreground"
+            onClick={() => dispatch(showAllTabColumns({ tab: 'models' }))}
+          >
+            Show all
+          </button>
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead className="w-24">Type</TableHead>
-            <TableHead>Used in</TableHead>
-            <TableHead>Description</TableHead>
+            <TableHead className="w-8 text-muted-foreground font-mono">#</TableHead>
+            {visible.map((col) =>
+              col.sortable ? (
+                <SortableColHeader
+                  key={col.field}
+                  field={col.field}
+                  label={col.label}
+                  activeField={sort.field}
+                  activeDirection={sort.direction}
+                  onSort={handleSort}
+                  onHide={handleHide}
+                />
+              ) : (
+                <TableHead key={col.field}>{col.label}</TableHead>
+              ),
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.map((model, i) => (
+          {data.hits.map((model, i) => (
             <TableRow
-              key={i}
+              key={model.id}
               className="cursor-pointer hover:bg-secondary/50"
               onClick={() => setSelected(model)}
             >
-              <TableCell className="font-medium text-sm">{model.name}</TableCell>
-              <TableCell>
-                {model.schemaType && (
+              <TableCell className="font-mono text-xs text-muted-foreground">{from + i}</TableCell>
+              {!hiddenColumns.includes('name') && (
+                <TableCell className="font-medium text-sm">{model.name}</TableCell>
+              )}
+              {!hiddenColumns.includes('schemaType') && (
+                <TableCell>
                   <Badge variant="secondary" className="text-xs font-mono">{model.schemaType}</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1 flex-wrap">
-                  {model.usedInText?.split(' ').filter(Boolean).map((use) => (
-                    <span
-                      key={use}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        USED_IN_CLASSES[use] ?? 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {use}
-                    </span>
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
-                {model.description}
-              </TableCell>
+                </TableCell>
+              )}
+              {!hiddenColumns.includes('usedInText') && (
+                <TableCell>
+                  <div className="flex gap-1 flex-wrap">
+                    {model.usedInText
+                      ?.split(' ')
+                      .filter(Boolean)
+                      .map((use) => (
+                        <span
+                          key={use}
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            USED_IN_CLASSES[use] ?? 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {use}
+                        </span>
+                      ))}
+                  </div>
+                </TableCell>
+              )}
+              {!hiddenColumns.includes('description') && (
+                <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                  {model.description}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <ModelDetailPanel model={selected} onClose={() => setSelected(null)} />
+
+      <TabTableFooter
+        total={data.total}
+        from={from}
+        page={page}
+        entity="models"
+        hasFilter={hasFilter}
+        onPrev={() => dispatch(setTabPage({ tab: 'models', page: page - 1 }))}
+        onNext={() => dispatch(setTabPage({ tab: 'models', page: page + 1 }))}
+      />
+
+      <ModelDetailPanel
+        model={selected ? {
+          name: selected.name,
+          schemaType: selected.schemaType,
+          usedInText: selected.usedInText,
+          description: selected.description,
+          propertiesText: selected.propertiesText,
+        } : null}
+        onClose={() => setSelected(null)}
+      />
     </>
   )
 }

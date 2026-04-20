@@ -1,24 +1,36 @@
+/**
+ * @designDoc apps/slaops-docs/internal/platform/design/openapi-indexer/views/parameters-tab.md
+ */
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { selectParamsQuery, setParamsQuery } from '@/store/apisSlice'
-import { useDebounce } from '@/hooks/useDebounce'
+import {
+  selectParametersTabState,
+  setParametersQuery,
+  setParametersLocationFilter,
+  setTabSort,
+  setTabPage,
+  toggleTabColumn,
+  showAllTabColumns,
+} from '@/store/apiTabsSlice'
+import { useParametersTab } from '@/hooks/useParametersTab'
+import { SortableColHeader } from './SortableColHeader'
+import { TabTableFooter } from './TabTableFooter'
+import { PAGE_SIZE } from '@/config'
 import { cn } from '@/lib/utils'
 
-interface Parameter {
-  name: string
-  location: string
-  schemaType?: string
-  schemaFormat?: string
-  required?: boolean
-  deprecated?: boolean
-  description?: string
+interface ParametersTabProps {
+  apiId: string
 }
 
-interface ParametersTabProps {
-  parameters: Parameter[]
-}
+const COLUMNS = [
+  { field: 'name', label: 'Name', sortable: true },
+  { field: 'location', label: 'Location', sortable: true },
+  { field: 'schemaType', label: 'Type', sortable: false },
+  { field: 'required', label: 'Req.', sortable: false },
+  { field: 'description', label: 'Description', sortable: false },
+]
 
 const LOCATION_CLASSES: Record<string, string> = {
   path:   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -27,31 +39,31 @@ const LOCATION_CLASSES: Record<string, string> = {
   cookie: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
 }
 
-function LocationBadge({ location }: { location: string }) {
-  return (
-    <span className={cn(
-      'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-      LOCATION_CLASSES[location] ?? 'bg-gray-100 text-gray-700',
-    )}>
-      {location}
-    </span>
-  )
-}
+const LOCATIONS = ['path', 'query', 'header', 'cookie']
 
-export function ParametersTab({ parameters }: ParametersTabProps) {
+export function ParametersTab({ apiId }: ParametersTabProps) {
   const dispatch = useAppDispatch()
-  const query = useAppSelector(selectParamsQuery)
-  const debouncedQuery = useDebounce(query, 300)
+  const { sort, hiddenColumns, page, query, locationFilter } = useAppSelector(selectParametersTabState)
+  const { data, isLoading } = useParametersTab(apiId)
 
-  const filtered = debouncedQuery
-    ? parameters.filter(
-        (p) =>
-          p.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-          p.description?.toLowerCase().includes(debouncedQuery.toLowerCase()),
-      )
-    : parameters
+  const from = page * PAGE_SIZE
+  const visible = COLUMNS.filter((c) => !hiddenColumns.includes(c.field))
+  const hasFilter = !!(query || locationFilter)
 
-  if (parameters.length === 0) {
+  function handleSort(field: string) {
+    const direction = sort.field === field && sort.direction === 'asc' ? 'desc' : 'asc'
+    dispatch(setTabSort({ tab: 'parameters', field, direction }))
+  }
+
+  function handleHide(field: string) {
+    dispatch(toggleTabColumn({ tab: 'parameters', column: field }))
+  }
+
+  if (isLoading) {
+    return <div className="text-center py-12 text-muted-foreground text-sm">Loading parameters…</div>
+  }
+
+  if (!data || (data.hits.length === 0 && !hasFilter)) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
         Parameters will appear here after the spec is indexed.
@@ -60,42 +72,107 @@ export function ParametersTab({ parameters }: ParametersTabProps) {
   }
 
   return (
-    <>
-      <div className="mb-4">
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
-          placeholder="Search parameters..."
+          placeholder="Search parameters…"
           value={query}
-          onChange={(e) => dispatch(setParamsQuery(e.target.value))}
-          className="max-w-sm"
+          onChange={(e) => dispatch(setParametersQuery(e.target.value))}
+          className="max-w-xs h-8 text-sm"
         />
+        <div className="flex gap-1">
+          {LOCATIONS.map((loc) => (
+            <Button
+              key={loc}
+              variant={locationFilter === loc ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => dispatch(setParametersLocationFilter(locationFilter === loc ? null : loc))}
+            >
+              {loc}
+            </Button>
+          ))}
+        </div>
       </div>
+
+      {hiddenColumns.length > 0 && (
+        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{hiddenColumns.length} column(s) hidden</span>
+          <button
+            className="underline hover:text-foreground"
+            onClick={() => dispatch(showAllTabColumns({ tab: 'parameters' }))}
+          >
+            Show all
+          </button>
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead className="w-24">Location</TableHead>
-            <TableHead className="w-32">Type</TableHead>
-            <TableHead className="w-16">Req.</TableHead>
-            <TableHead>Description</TableHead>
+            <TableHead className="w-8 text-muted-foreground font-mono">#</TableHead>
+            {visible.map((col) =>
+              col.sortable ? (
+                <SortableColHeader
+                  key={col.field}
+                  field={col.field}
+                  label={col.label}
+                  activeField={sort.field}
+                  activeDirection={sort.direction}
+                  onSort={handleSort}
+                  onHide={handleHide}
+                />
+              ) : (
+                <TableHead key={col.field}>{col.label}</TableHead>
+              ),
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.map((param, i) => (
-            <TableRow key={i}>
-              <TableCell className="font-mono text-xs">{param.name}</TableCell>
-              <TableCell><LocationBadge location={param.location} /></TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">
-                {[param.schemaType, param.schemaFormat].filter(Boolean).join(' ') || '—'}
-              </TableCell>
-              <TableCell>{param.required ? '✓' : ''}</TableCell>
-              <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
-                {param.deprecated && <span className="text-amber-600 mr-1">⚠</span>}
-                {param.description}
-              </TableCell>
+          {data.hits.map((p, i) => (
+            <TableRow key={p.id}>
+              <TableCell className="font-mono text-xs text-muted-foreground">{from + i}</TableCell>
+              {!hiddenColumns.includes('name') && (
+                <TableCell className="font-mono text-xs">{p.name}</TableCell>
+              )}
+              {!hiddenColumns.includes('location') && (
+                <TableCell>
+                  <span className={cn(
+                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                    LOCATION_CLASSES[p.location] ?? 'bg-gray-100 text-gray-700',
+                  )}>
+                    {p.location}
+                  </span>
+                </TableCell>
+              )}
+              {!hiddenColumns.includes('schemaType') && (
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {[p.schemaType, p.schemaFormat].filter(Boolean).join(' ') || '—'}
+                </TableCell>
+              )}
+              {!hiddenColumns.includes('required') && (
+                <TableCell className="text-xs">{p.required ? '✓' : ''}</TableCell>
+              )}
+              {!hiddenColumns.includes('description') && (
+                <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                  {p.deprecated && <span className="text-amber-600 mr-1">⚠</span>}
+                  {p.description}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </>
+
+      <TabTableFooter
+        total={data.total}
+        from={from}
+        page={page}
+        entity="parameters"
+        hasFilter={hasFilter}
+        onPrev={() => dispatch(setTabPage({ tab: 'parameters', page: page - 1 }))}
+        onNext={() => dispatch(setTabPage({ tab: 'parameters', page: page + 1 }))}
+      />
+    </div>
   )
 }
