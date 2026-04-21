@@ -124,6 +124,86 @@ import { config } from '@slaops/config'
 const bucketName = config['slaops.oaspec.storage.bucket'] // ✅
 ```
 
+## IAM policy generation
+
+Never write an IAM policy ARN or action list as a plain string. IAM policies must be generated
+from the same `DerropsConventions` instance used to name the resources — this guarantees the ARNs
+in the policy match the names in the stack.
+
+### Setup — store the account ID once
+
+Set `.arnContext({ accountId })` on the org-level convention instance. Region is sourced from
+the `region` segment already on the instance.
+
+```typescript
+const orgConvention = new DerropsConventions({ org: 'slaops', env, region })
+  .arnContext({ accountId })
+  .tagPrefix('slaops:')
+  .tagKeys('org', 'domain', 'service')
+```
+
+`.arnContext()` propagates through `.with()` — derived instances inherit it automatically.
+
+### Static mode — explicit resource declarations
+
+Use when you are building a policy for a known, fixed set of resources (e.g. a Lambda execution
+role, a CDK-defined IAM policy construct).
+
+```typescript
+const executionPolicy = dbConvention.staticPolicy()
+  .include('dynamoDb', { key: 'sessions' }, { permissions: 'readWrite' })
+  .include('ssmParam', { key: 'db-password' }, { permissions: 'read' })
+  .include('s3Bucket', { key: 'artefacts' }, { permissions: 'read' })
+  .buildPolicy()
+// → standard AWS IAM JSON policy document
+```
+
+### Dynamic mode — session-recorded policies
+
+Use when you are naming resources in a loop or factory and want the policy to mirror exactly
+what was named — no parallel maintenance of a separate list.
+
+```typescript
+const session = svcConvention.dynamicPolicy()
+
+const tableName = session.name({ type: 'dynamoDb', key: 'orders' }, { permissions: 'readWrite' })
+const paramName = session.name({ type: 'ssmParam', key: 'api-key' }, { permissions: 'read' })
+// ... other naming calls — only the types that have ARN metadata are recorded
+
+const policy = session.buildPolicy()
+```
+
+### Permission tiers
+
+| Tier        | Use for                                       |
+| ----------- | --------------------------------------------- |
+| `read`      | Read-only — `Get*`, `List*`, `Describe*`       |
+| `readWrite` | Mutating workloads — adds `Put*`, `Delete*`, etc. |
+| `manage`    | Administrative — `<service>:*`                |
+
+Prefer the named tier over a manual `actionsFor` list. Use `actionsFor` only when the built-in
+tiers do not fit (e.g. a custom action subset for a tightly-scoped role).
+
+### Decision — static vs dynamic
+
+```
+Writing an IAM policy?
+  ├─ Resources are fixed and known at CDK/infra definition time?
+  │   └─ Yes → .staticPolicy().include(type, options, { permissions })
+  └─ Resources are produced by a naming loop or factory?
+      └─ Yes → .dynamicPolicy() — pass the session where names are generated
+```
+
+### Rules
+
+- Never call `new iam.PolicyStatement({ resources: ['arn:aws:s3:::...'] })` with a literal ARN.
+- Never pass a raw action string like `'s3:GetObject'` outside of `actionsFor` — use a permission tier.
+- The convention instance used for `.staticPolicy()` / `.dynamicPolicy()` must be the same instance
+  (or a `.with()` derivative) used to generate the resource names — this is the only guarantee
+  that ARNs match names.
+- `accountId` must be set via `.arnContext()` before calling `.staticPolicy()` or `.dynamicPolicy()`.
+  Keep it in the org-level instance in `lib/names.ts` or `slaops-config`; do not pass it at each call site.
+
 ## Tagging AWS resources
 
 Never call `Tags.of(this).add(key, value)` with a manually typed string. Use
@@ -146,7 +226,7 @@ Before creating a new name constant, search the package and `slaops-config` for 
 Never define the same name in two places. If a local constant needs to become cross-package,
 move it to `slaops-config` and update all import sites.
 
-## Checklist — before writing any resource name
+## Checklist — before writing any resource name or IAM policy
 
 1. Search the current package for an existing constant.
 2. Search `packages/slaops-config/src/` for an existing shared constant.
@@ -155,3 +235,4 @@ move it to `slaops-config` and update all import sites.
 5. Add using the org → domain → service nesting pattern with a JSDoc comment.
 6. Reference via the exported constant — never reconstruct the string at a call site.
 7. For CDK resources, apply tags via `applyTags((k, v) => Tags.of(this).add(k, v))`.
+8. For IAM policies, use `.staticPolicy()` or `.dynamicPolicy()` on the same convention instance — never write ARNs or action lists as strings.
