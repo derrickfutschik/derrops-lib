@@ -97,6 +97,7 @@ Auth: Amplify Hosting access rule protects `/internal/*` with Cognito. All other
 - **Math**: remark-math + rehype-katex.
 - **Code imports**: remark-code-import.
 - **Mermaid**: see `.claude/rules/mermaid-authoring.md` for authoring rules (silent failures on violations).
+- **Admonition titles**: use bracket syntax — `:::tip[My Title]`, not `:::tip My Title` (space syntax is Docusaurus 2 and silently fails in 3.x).
 - **React 19**, **Node.js >= 22**, **pnpm 8.15.4+**.
 
 ---

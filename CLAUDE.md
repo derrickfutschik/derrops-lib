@@ -125,6 +125,16 @@ const port = process.env.PORT
 
 Every configurable value (limits, sizes, timeouts, names, prefixes) must be a named property in `packages/slaops-config/src/config.ts` with a JSDoc comment. See [packages/slaops-config/CLAUDE.md](packages/slaops-config/CLAUDE.md).
 
+### AWS resource names and CDK tagging
+
+Never write an AWS resource name, CloudFormation export name, or CDK tag value as a plain string.
+All names are generated with `DerropsConventions` (from `@derrops-conventions`) following an
+`org → domain → service` nesting pattern. Define names in the package where they're used; elevate
+to `packages/slaops-config/src/` only when shared across multiple packages. CDK tags are applied
+via `applyTags((k, v) => Tags.of(this).add(k, v))`, never via `Tags.of(this).add()` with manual strings.
+
+See `.claude/rules/resource-naming.md` for the full pattern, decision tree, and examples.
+
 ### TypeScript path mappings
 
 `paths` in `tsconfig.base.json` do **not** merge into child configs — each child must redeclare the paths it needs. See the path mapping convention in individual `tsconfig.json` files. Current cross-module mapping: `@slaops/cloud/*` → `apps/slaops-cloud/src/*`.

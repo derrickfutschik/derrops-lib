@@ -8,11 +8,11 @@ tags: [devops, aws]
 draft: false
 ---
 
-:::tip Implementation
+# Derrops Guide to Naming Conventions and Segregation
+
+:::tip[Implementation]
 The conventions described in this guide are implemented as a TypeScript library in the [`@derrops-conventions`](https://github.com/slaops/slaops-platform/tree/main/packages/derrops-conventions) package. See the [cheatsheet](./derrops-naming-sheet) for a per-service quick reference.
 :::
-
-# Derrops Guide to Naming Conventions and Segregation
 
 I've been meaning to make this guide, having worked at a SAAS from the very get-go, I've now got to live with some good and some bad decisions. It's been very hard to pinpoint why the naming conventions have lead to complexity. And overtime I realized that with engineering, you often make decisions based on the tradeoffs, but ultimately you do optimize for something. If you don't figure out what that something should be, you end having a solution which is not optimized for the problem you are trying to solve.
 
