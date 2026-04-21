@@ -150,7 +150,8 @@ Use when you are building a policy for a known, fixed set of resources (e.g. a L
 role, a CDK-defined IAM policy construct).
 
 ```typescript
-const executionPolicy = dbConvention.staticPolicy()
+const executionPolicy = dbConvention
+  .staticPolicy()
   .include('dynamoDb', { key: 'sessions' }, { permissions: 'readWrite' })
   .include('ssmParam', { key: 'db-password' }, { permissions: 'read' })
   .include('s3Bucket', { key: 'artefacts' }, { permissions: 'read' })
@@ -175,11 +176,11 @@ const policy = session.buildPolicy()
 
 ### Permission tiers
 
-| Tier        | Use for                                       |
-| ----------- | --------------------------------------------- |
-| `read`      | Read-only — `Get*`, `List*`, `Describe*`       |
+| Tier        | Use for                                           |
+| ----------- | ------------------------------------------------- |
+| `read`      | Read-only — `Get*`, `List*`, `Describe*`          |
 | `readWrite` | Mutating workloads — adds `Put*`, `Delete*`, etc. |
-| `manage`    | Administrative — `<service>:*`                |
+| `manage`    | Administrative — `<service>:*`                    |
 
 Prefer the named tier over a manual `actionsFor` list. Use `actionsFor` only when the built-in
 tiers do not fit (e.g. a custom action subset for a tightly-scoped role).
