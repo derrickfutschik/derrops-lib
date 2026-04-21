@@ -106,7 +106,7 @@ Each package has the standard scripts: `build`, `dev`, `test`, `test:watch`, `cl
 
 ### Run Prettier after changes
 
-After making any code changes, run `pnpm run format` to ensure all files meet Prettier standards before committing.
+After making any code changes, run `pnpm run format:changed` to format only modified/added/renamed files before committing. Use `pnpm run format` only when you need to reformat the entire project.
 
 ### Never use `process.env` directly
 
