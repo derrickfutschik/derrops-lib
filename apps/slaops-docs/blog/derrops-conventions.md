@@ -594,6 +594,86 @@ In the pool model, tenant isolation is enforced at the application or data layer
 | SSM (if per-tenant config needed) | `/acme/payments/checkout-api/t-a3f8b2/feature-flags`    |
 | Resource names                    | Never                                                   |
 
+## TypeScript Implementation
+
+The [`@derrops-conventions`](https://github.com/slaops/slaops-platform/tree/main/packages/derrops-conventions) package encodes every convention described in this guide into a composable TypeScript builder. Rather than manually concatenating strings — and hoping each team member remembers the delimiter rules — you configure a `DerropsConventions` instance once and call `.name()`.
+
+### Composable instances and defaults propagation
+
+The builder is designed around the idea that naming context flows down through your application. Set org-level defaults at startup, derive a scoped instance per domain, then derive again per service. Each `with()` call creates an immutable child — mutations to the child never affect the parent.
+
+```typescript
+// Root instance — org-wide defaults
+const conventions = new DerropsConventions({ org: 'acme', region: 'ap-southeast-2', env: 'prod' })
+
+// Domain-scoped instance
+const payments = conventions.with({ domain: 'payments' })
+
+// Service-scoped instance with a default resource type
+const checkoutSsm = payments.with({ service: 'checkout-api', type: 'ssmParam' })
+
+// type is now optional — defaults to ssmParam
+checkoutSsm.name({ key: 'stripe-webhook-secret' })
+// → '/acme/payments/checkout-api/stripe-webhook-secret'
+
+// Override for a single call
+checkoutSsm.name({ type: 'lambdaFunction', key: 'webhook-handler' })
+// → 'acme--payments--checkout-api--webhook-handler'
+```
+
+### Type-safe segment constraints
+
+Convention violations are typically caught at runtime, long after the resource was created. The library's constraint helpers move those errors to compile time:
+
+```typescript
+const naming = new DerropsConventions({ org: 'acme' })
+  .domain(['payments', 'identity', 'platform'])
+  .service(['checkout-api', 'auth-service'])
+  .env(['prod', 'dev', 'staging'])
+
+// TypeScript error — 'billing' is not in the domain list
+naming.name({ type: 'lambdaFunction', domain: 'billing', service: 'checkout-api' })
+
+// TypeScript error — 'preprod' is not in the env list
+naming.name({ type: 's3Bucket', env: 'preprod', key: 'data' })
+```
+
+No runtime validation occurs — these are compile-time phantom types. The constraint narrows the accepted union without adding overhead.
+
+### Automatic suffixes
+
+Some resource types require a fixed suffix that is part of the AWS naming spec. The library appends these automatically:
+
+```typescript
+naming.name({ type: 'sqsFifoQueue', key: 'events' })
+// → 'acme--payments--checkout-api--events.fifo'   (not 'events.fifo' manually added)
+
+naming.name({ type: 'dynamoDbGsi', key: 'by-user' })
+// → 'acme--payments--checkout-api--by-user--gsi'
+
+naming.name({ type: 'sqsDlq', key: 'events' })
+// → 'acme--payments--checkout-api--events--dlq'
+
+naming.name({ type: 'ec2ElasticIp' })
+// → 'acme--payments--checkout-api--eip'  (no key needed — fixed suffix encodes it)
+```
+
+### Org-wide vs domain-scoped resources
+
+Not every resource belongs to a single domain. WAF Web ACLs, API Gateway REST APIs, and Service Catalog portfolios often serve the entire org or span multiple domains. These types still work correctly with the library — simply omit the domain (and service) segments:
+
+```typescript
+// Org-wide WAF ACL — no domain or service
+naming.name({ type: 'wafWebAcl', org: 'acme' })
+// → 'acme--waf'
+
+// Service Catalog portfolio — org/domain boundary, no service
+naming.name({ type: 'serviceCatalogPortfolio', org: 'acme', domain: 'platform' })
+// → 'acme--platform--portfolio'
+```
+
+All segments are optional — if a value is not supplied (neither as a default nor as a call-time override), it is omitted from the output.
+
 ## Tagging (Suggestions)
 
 ### Tagging Env
@@ -604,6 +684,50 @@ Many would argue that you need to tag every resource with what environment it li
 
 If there is some other need to tag resources, such as for security or compliance or because of a tool or service you are using.
 Then have the `Account` the source of truth and perform batch tagging as needed. This will reduce the _Maintainability_.
+
+### Enforced tagging with the library
+
+The library makes the "tag everything" guideline enforceable rather than advisory. Tags are generated alongside names from the same segment values — no manual duplication:
+
+```typescript
+const naming = new DerropsConventions({ org: 'acme', domain: 'payments', service: 'checkout-api' })
+
+naming.tags()
+// → { domain: 'payments', service: 'checkout-api' }
+
+// Expand to all four canonical tags
+naming.tagKeys('org', 'domain', 'service', 'environment').tags({ env: 'prod' })
+// → { org: 'acme', domain: 'payments', service: 'checkout-api', environment: 'prod' }
+```
+
+Custom tags and enforcement policies can be layered on:
+
+```typescript
+naming
+  // Compute extra tags from the segment values
+  .tagRule((segments) => ({
+    sensitive: String(segments.env === 'prod' && segments.domain === 'auth'),
+    'cost-center': costCenterMap[segments.domain ?? ''],
+  }))
+
+  // Augment with dynamic values after the segment tags are resolved
+  .tagAugment((tags) => ({
+    'last-deployed': new Date().toISOString(),
+    'resource-id': `${tags['domain']}/${tags['service']}`,
+  }))
+
+  // Enforce policies — throw if violated
+  .policy(
+    (tags) => 'cost-center' in tags && Boolean(tags['cost-center']),
+    'cost-center tag is required',
+  )
+  .policy((tags) => Boolean(tags['service']), 'service tag must not be empty')
+
+  // Apply prefix and casing for platform-specific key formats
+  .tagPrefix('slaops:')
+```
+
+The pipeline order is: built-in segment tags → `tagRule()` → `tagAugment()` → limit validation → `policy()`. Tag rules receive the segment values; augmentors receive the accumulated tag dict. This separation of concerns means rules that depend on identity ("which domain is this?") are separate from rules that depend on the resolved tag state ("does this tag have a value?").
 
 # Concrete Examples:
 

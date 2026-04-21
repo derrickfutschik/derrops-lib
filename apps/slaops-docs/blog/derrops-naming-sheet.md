@@ -23,26 +23,89 @@ Quick reference guide for naming AWS resources following the Derrops conventions
 
 Before using this cheatsheet, understand what each placeholder means:
 
-| Variable                | Definition                                       | Example                                                       | Required?                                                           | Notes                                                                                      |
-| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `{region}`              | AWS region code                                  | `ap-southeast-2`, `us-east-1`, `eu-west-1`                    | ✅ Only for globally unique services (S3, CloudFront, ACM, Route53) | Omit if using account-per-region segregation                                               |
-| `{env}`                 | Deployment environment                           | `prod`, `dev`, `staging`, `uat`                               | ✅ Only for globally unique services (S3) or DNS                    | Omit if using account-per-environment segregation (recommended)                            |
-| `{org}`                 | Organization/top-level business unit             | `acme`, `mycompany`, `client-name`                            | ✅ Always required                                                  | Most stable segment; rarely changes                                                        |
-| `{tenant}`              | Isolated tenant within the org (silo model only) | `t-a3f8b2`, `t-9c1d44`                                        | ✅ Silo model only                                                  | Always an **opaque ID**, never a human-readable name. See [Multi-Tenancy](#multi-tenancy). |
-| `{domain}`              | Business capability / bounded domain             | `payments`, `identity`, `analytics`, `platform`               | ✅ Always required                                                  | Owned independently; more stable than teams                                                |
-| `{service}`             | Deployable service unit                          | `checkout-api`, `auth-service`, `webhook-worker`              | ✅ Always required                                                  | The primary identity; can be renamed/refactored                                            |
-| `{key}`                 | Specific resource or config within service       | `transactions`, `webhook-secret`, `primary`, `cache`          | ✅ Always required                                                  | Purpose-specific identifier; changes frequently                                            |
-| `{partition}`           | Data partition grouping (logs, events only)      | `2024/01/15/14`, `2024-01-15`                                 | ❌ Optional; data storage only                                      | Only for time-series or partitioned data in S3/Glue                                        |
-| `{purpose}`             | Functional purpose                               | `alb`, `db`, `lambda`, `encryption-enabled`                   | ✅ When needed for clarity                                          | Qualifies the resource type                                                                |
-| `{type}`                | Resource subtype                                 | `web`, `worker`, `private`, `public`, `primary`, `replica`    | ✅ When distinguishing variants                                     | Makes specific instances identifiable                                                      |
-| `{az}`                  | Availability zone                                | `1a`, `1b`, `1c`                                              | ✅ For multi-AZ resources                                           | Ensures subnets are distributed                                                            |
-| `{consumer}`            | API consumer/client                              | `mobile-client`, `partner-integrations`, `internal`           | ✅ For API keys and access                                          | Identifies who consumes the resource                                                       |
-| `{target}`              | Target system for data source                    | `dynamodb`, `rds`, `lambda`, `s3`                             | ✅ For integration points                                           | What the resource connects to                                                              |
-| `{num}`                 | Sequential number                                | `01`, `02`, `03`                                              | ❌ Optional; for instance naming                                    | Zero-padded for sorting                                                                    |
-| `{yyyy}/{mm}/{dd}/{hh}` | Date/time partitions                             | `2024/01/15/14`                                               | ✅ For time-series data only                                        | Each level is independently queryable                                                      |
-| `{file}`                | Filename                                         | `transactions.json`, `logs.parquet`                           | ✅ For object/file storage                                          | The final artifact identifier                                                              |
-| `{version}` or `{tag}`  | Semantic version or release tag                  | `1.2.3`, `latest`, `v2.0.0-beta`                              | ✅ For images and artifacts                                         | Identifies specific release                                                                |
-| `{registry}`            | Container registry host                          | `123456789.dkr.ecr.ap-southeast-2.amazonaws.com`, `docker.io` | ✅ For container images                                             | Where the image is hosted                                                                  |
+| Variable                | Definition                                       | Example                                                       | Required?                                                           | Notes                                                                                                                                                                        |
+| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{region}`              | AWS region code                                  | `ap-southeast-2`, `us-east-1`, `eu-west-1`                    | ✅ Only for globally unique services (S3, CloudFront, ACM, Route53) | Omit if using account-per-region segregation                                                                                                                                 |
+| `{env}`                 | Deployment environment                           | `prod`, `dev`, `staging`, `uat`                               | ✅ Only for globally unique services (S3) or DNS                    | Omit if using account-per-environment segregation (recommended)                                                                                                              |
+| `{org}`                 | Organization/top-level business unit             | `acme`, `mycompany`, `client-name`                            | ✅ Always required                                                  | Most stable segment; rarely changes                                                                                                                                          |
+| `{tenant}`              | Isolated tenant within the org (silo model only) | `t-a3f8b2`, `t-9c1d44`                                        | ✅ Silo model only                                                  | Always an **opaque ID**, never a human-readable name. See [Multi-Tenancy](#multi-tenancy).                                                                                   |
+| `{domain}`              | Business capability / bounded domain             | `payments`, `identity`, `analytics`, `platform`               | ✅ Always required                                                  | Owned independently; more stable than teams                                                                                                                                  |
+| `{service}`             | Deployable service unit                          | `checkout-api`, `auth-service`, `webhook-worker`              | ✅ Always required                                                  | The primary identity; can be renamed/refactored                                                                                                                              |
+| `{key}`                 | Specific resource or config within service       | `transactions`, `webhook-secret`, `primary`, `cache`          | ✅ Always required                                                  | Purpose-specific identifier; changes frequently                                                                                                                              |
+| `{partition}`           | Data partition grouping (logs, events only)      | `2024/01/15/14`, `2024-01-15`                                 | ❌ Optional; data storage only                                      | Only for time-series or partitioned data in S3/Glue                                                                                                                          |
+| `{purpose}`             | Functional purpose                               | `alb`, `db`, `lambda`, `encryption-enabled`                   | ✅ When needed for clarity                                          | Qualifies the resource type                                                                                                                                                  |
+| `{type}` / `{kind}`     | Resource subtype                                 | `web`, `worker`, `private`, `public`, `primary`, `replica`    | ✅ When distinguishing variants                                     | Makes specific instances identifiable. In the TypeScript library this segment is named `kind` (to avoid collision with the `type` parameter that selects the resource type). |
+| `{az}`                  | Availability zone                                | `1a`, `1b`, `1c`                                              | ✅ For multi-AZ resources                                           | Ensures subnets are distributed                                                                                                                                              |
+| `{consumer}`            | API consumer/client                              | `mobile-client`, `partner-integrations`, `internal`           | ✅ For API keys and access                                          | Identifies who consumes the resource                                                                                                                                         |
+| `{target}`              | Target system for data source                    | `dynamodb`, `rds`, `lambda`, `s3`                             | ✅ For integration points                                           | What the resource connects to                                                                                                                                                |
+| `{num}`                 | Sequential number                                | `01`, `02`, `03`                                              | ❌ Optional; for instance naming                                    | Zero-padded for sorting                                                                                                                                                      |
+| `{yyyy}/{mm}/{dd}/{hh}` | Date/time partitions                             | `2024/01/15/14`                                               | ✅ For time-series data only                                        | Each level is independently queryable                                                                                                                                        |
+| `{file}`                | Filename                                         | `transactions.json`, `logs.parquet`                           | ✅ For object/file storage                                          | The final artifact identifier                                                                                                                                                |
+| `{version}` or `{tag}`  | Semantic version or release tag                  | `1.2.3`, `latest`, `v2.0.0-beta`                              | ✅ For images and artifacts                                         | Identifies specific release                                                                                                                                                  |
+| `{registry}`            | Container registry host                          | `123456789.dkr.ecr.ap-southeast-2.amazonaws.com`, `docker.io` | ✅ For container images                                             | Where the image is hosted                                                                                                                                                    |
+
+---
+
+## Using the TypeScript Library
+
+The `@derrops-conventions` package implements every pattern in this cheatsheet. Rather than copying these patterns by hand, you configure a builder once and call `.name()` per resource:
+
+```typescript
+import { DerropsConventions } from '@derrops-conventions'
+
+const naming = new DerropsConventions({ org: 'acme', env: 'prod' })
+  .domain(['payments', 'identity', 'platform'])
+  .service(['checkout-api', 'auth-service'])
+
+// Correct suffix appended automatically for each type
+naming.name({ type: 'sqsFifoQueue', domain: 'payments', service: 'checkout-api', key: 'events' })
+// → 'acme--payments--checkout-api--events.fifo'   ← .fifo is automatic
+
+naming.name({ type: 'dynamoDbGsi', domain: 'payments', service: 'checkout-api', key: 'by-user' })
+// → 'acme--payments--checkout-api--by-user--gsi'  ← --gsi is automatic
+
+naming.name({ type: 'ec2ElasticIp', domain: 'payments', service: 'checkout-api' })
+// → 'acme--payments--checkout-api--eip'           ← --eip is automatic
+
+// Subnet uses kind + az segment keys
+naming.name({
+  type: 'subnet',
+  domain: 'payments',
+  service: 'checkout-api',
+  kind: 'private',
+  az: '1a',
+})
+// → 'acme--payments--checkout-api--private--1a'
+
+// Org-wide resources — omit domain/service when they don't apply
+naming.name({ type: 'wafWebAcl', org: 'acme' })
+// → 'acme--waf'
+```
+
+The library also enforces the tagging strategy with a composable pipeline:
+
+```typescript
+const naming = new DerropsConventions({ org: 'acme' })
+  .tagKeys('org', 'domain', 'service', 'environment')
+  .tagPrefix('slaops:')
+  .tagRule((segments) => ({
+    'cost-center': getCostCenter(segments.domain),
+  }))
+  .tagAugment(() => ({
+    'last-deployed': new Date().toISOString(),
+  }))
+  .policy((tags) => 'cost-center' in tags, 'cost-center tag is required on all resources')
+
+naming.tags({ domain: 'payments', service: 'checkout-api', env: 'prod' })
+// → {
+//     'slaops:org': 'acme',
+//     'slaops:domain': 'payments',
+//     'slaops:service': 'checkout-api',
+//     'slaops:environment': 'prod',
+//     'cost-center': 'payments-team',
+//     'last-deployed': '2026-04-21T...',
+//   }
+```
 
 ---
 
@@ -460,6 +523,22 @@ Apply these tags to **all** resources for cost allocation and resource managemen
 | `cost-center`     | Cost allocation  | `payments-team` | Billing attribution            |
 | `backup-required` | boolean          | `true`          | Backup policy enforcement      |
 | `terraform`       | boolean          | `true`          | IaC management indicator       |
+
+The `@derrops-conventions` library turns this advisory table into enforced behaviour. Use `.tagRule()` to compute tags from segments, `.tagAugment()` for dynamic values, and `.policy()` to throw if required tags are absent:
+
+```typescript
+// Enforce that every resource carries a cost-center tag
+conventions
+  .tagKeys('org', 'domain', 'service', 'environment')
+  .tagRule((segs) => ({ 'cost-center': costCenterMap[segs.domain ?? ''] }))
+  .policy(
+    (tags) => Boolean(tags['cost-center']),
+    'cost-center tag must be present on all resources',
+  )
+  .maxTags(15)
+```
+
+Tag limits default to AWS constraints (128-char key, 256-char value, 50 tags max) and can be tightened per-instance. See the [package README](https://github.com/slaops/slaops-platform/tree/main/packages/derrops-conventions) for the full API.
 
 ---
 
