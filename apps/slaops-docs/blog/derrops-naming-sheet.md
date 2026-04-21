@@ -7,6 +7,10 @@ tags: [devops, aws]
 draft: false
 ---
 
+:::tip Implementation
+The patterns in this cheatsheet are implemented as a TypeScript library in the [`@derrops-conventions`](https://github.com/slaops/slaops-platform/tree/main/packages/derrops-conventions) package. For the full rationale behind these conventions see the [conventions guide](./derrops-conventions).
+:::
+
 # AWS Resource Naming Cheatsheet
 
 Quick reference guide for naming AWS resources following the Derrops conventions. All examples assume **account-segregated environments** (preferred approach).
