@@ -588,6 +588,18 @@ If you genuinely need both — per-tenant IAM scoping _and_ efficient cross-tena
 
 ### Tag-Based Tenant Isolation (ABAC)
 
+#### Naming is organisational. Tags are the security boundary.
+
+A resource name tells you which tenant a resource belongs to. It does not prevent a different tenant's IAM principal from accessing it. If a Lambda execution role has `dynamodb:GetItem` on `arn:aws:dynamodb:*:*:table/acme--payments--checkout-api--*`, it can read any tenant's table — regardless of whether the table name contains `t-a3f8b2` or `t-9c1d44`. The name is a label, not a lock.
+
+Resource tag conditions on IAM policies are AWS's equivalent of **Row Level Security** in a relational database. In PostgreSQL, RLS filters rows at the engine layer so one user's query can never return another user's rows, even with a `SELECT *`. In AWS, `aws:ResourceTag/tenant` conditions filter access at the IAM evaluation layer so one tenant's principal can never receive a grant on another tenant's resource, even if the policy's `Resource` ARN matches both.
+
+The complete enforcement pattern has three steps:
+
+1. **Name it** — the convention produces a unique name per tenant, making resources individually addressable.
+2. **Tag it** — at provisioning time, apply the `tenant` tag to every tenant-scoped resource via `.applyTags()`. A resource without its tag is unprotected.
+3. **Enforce it** — IAM policies carry a `Condition` that checks `aws:ResourceTag/tenant` against the caller's session tag. No condition = no isolation, regardless of what the name says.
+
 The tenant-first vs tenant-second-last tension is a false dilemma. Both placements tie the security boundary to the naming hierarchy. AWS IAM conditions decouple them entirely.
 
 **How it works:**
@@ -616,7 +628,7 @@ IAM policies then enforce the boundary via a condition rather than a prefix:
 }
 ```
 
-The `Resource` ARN uses a wildcard that spans all tenants. The `Condition` narrows access to only the resources carrying that tenant's tag — regardless of where `{tenant}` sits in the name.
+The `Resource` ARN uses a wildcard that spans all tenants. The `Condition` narrows access to only the resources carrying that tenant's tag — regardless of where `{tenant}` sits in the name. Even if the wildcard accidentally matched a resource for a different tenant, the tag condition blocks access at the IAM evaluation layer.
 
 **What this unlocks:**
 
@@ -629,9 +641,11 @@ Tenant can move to second-last position (`/{org}/{domain}/{service}/{tenant}/{ke
 | Offboard tenant (delete all resources) | Enumerate by `tenant` tag, not by prefix        |
 | New tenant onboarding                  | Tag resources correctly — no IAM policy changes |
 
-**What's required:**
+**What's required — and what breaks if you skip it:**
 
-Tags must be applied **faithfully and atomically at provisioning time** — not added later as an afterthought. A resource that exists without its `tenant` tag is accessible to any role that can reach the ARN wildcard. The library's `.tagKeys('tenant')` and `.policy()` make this enforceable:
+Tags must be applied **atomically at provisioning time**, not added as an afterthought. A resource that exists even briefly without its `tenant` tag is unprotected — any IAM principal whose policy matches the ARN wildcard can access it until the tag is applied. This is the same risk as a database table that exists without an RLS policy attached.
+
+The library's `.tagKeys('tenant')` and `.policy()` make this a deploy-time guarantee rather than an operational discipline:
 
 ```typescript
 const tenantConvention = orgConvention
@@ -641,6 +655,28 @@ const tenantConvention = orgConvention
     (tags) => Boolean(tags['tenant']),
     'tenant tag is required on all tenant-scoped resources',
   )
+```
+
+If `.tags()` is called on this instance and `tenant` is somehow absent, it throws before any resource is tagged. In CDK stacks, that means a synthesis error before any resource is deployed.
+
+The complete three-step usage in a CDK stack:
+
+```typescript
+// Step 1 — name it
+const tableName = tenantConvention.name({ type: 'dynamoDb', key: 'orders' })
+// → 'acme--payments--checkout-api--t-a3f8b2--orders'
+
+// Step 2 — tag it atomically at provisioning
+const table = new dynamodb.Table(this, 'OrdersTable', {
+  tableName,
+  // ... table config
+})
+tenantConvention.applyTags((k, v) => Tags.of(table).add(k, v))
+// Applies: { tenant: 't-a3f8b2', domain: 'payments', service: 'checkout-api', ... }
+
+// Step 3 — enforce it via IAM condition
+// The tenantConvention.staticPolicy() generates the policy with the tag condition automatically.
+// Without the condition, step 1 and 2 alone provide zero cross-tenant protection.
 ```
 
 **IAM policy generation with ABAC:**
@@ -714,6 +750,10 @@ In the pool model, tenant isolation is enforced at the application or data layer
 | DynamoDB partition key            | `PK: TENANT#t-a3f8b2`                                   |
 | SSM (if per-tenant config needed) | `/acme/payments/checkout-api/t-a3f8b2/feature-flags`    |
 | Resource names                    | Never                                                   |
+
+**The pool model still requires tag-based enforcement for cross-tenant protection.** Omitting tenant from resource names does not mean you can omit it from your IAM policies. A pool DynamoDB table shared by all tenants must still carry an `aws:ResourceTag/tenant` condition if per-tenant IAM isolation is required — otherwise any Lambda execution role with access to the table can query any tenant's rows.
+
+In practice, pool model deployments often rely entirely on application-layer isolation (the application itself enforces which tenant ID it queries for). This is equivalent to a database with no RLS enabled — the application is the only guard. That is acceptable for lower-risk data, but should be a deliberate architectural decision, not an omission. For sensitive data in a pool model, tag the shared resource with a `data-classification` tag (e.g. `{ "data-classification": "tenant-data" }`) and use it to scope audit trails and access reviews even when per-tenant IAM conditions are not in play.
 
 ## TypeScript Implementation
 
