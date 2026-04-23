@@ -1043,40 +1043,66 @@ Environment isolation is provided entirely by the account boundary. No env quali
 
 DNS is not an exception to the naming convention — it is the same hierarchy represented in reverse due to DNS delegation design.
 
-### The `apex` segment
+### The `apex` segment and `.apexMapping()`
 
-The `{org}` segment (e.g. `acme`) is the internal organizational identifier used in resource names and IAM paths. For DNS, the correct TLD is the registered domain the organisation has purchased — `acme.com`, `acme.io`, etc. These are not always the same string.
+The `{org}` segment (e.g. `acme`) is the internal identifier used in resource names, IAM paths, and tags. For DNS, the correct root is the registered domain the organisation has purchased — `acme.com`, `acme.io`, etc. These are not always the same string, and the purchased domain is never a tag.
 
-The library provides a dedicated `apex` segment for exactly this purpose. Set it once on the org-level convention instance and all DNS resource types (`route53HostedZone`, `route53Record`, `route53PrivateRecord`, `cloudFrontAlias`, `acmCertificate`) automatically use it in place of `org` to produce valid FQDNs:
+The library provides a dedicated `apex` segment for DNS resource types (`route53HostedZone`, `route53Record`, `route53PrivateRecord`, `cloudFrontAlias`, `acmCertificate`). Set it on the convention instance and DNS names automatically become valid FQDNs. All other resource types ignore `apex` entirely.
+
+**Simple case — `apex` is the full zone for this deployment:**
 
 ```typescript
-const conventions = new DerropsConventions({
+// Dev convention — apex already encodes the env qualifier
+const devConventions = new DerropsConventions({
   org: 'acme',
-  apex: 'acme.com', // registered DNS domain — used only for DNS resource types
+  apex: 'dev.acme.com',
+  env: 'dev',
+}).with({ domain: 'payments', service: 'checkout-api' })
+
+// Prod convention — no env qualifier in the zone
+const prodConventions = new DerropsConventions({
+  org: 'acme',
+  apex: 'acme.com',
   env: 'prod',
-  region: 'us-east-1',
-})
+}).with({ domain: 'payments', service: 'checkout-api' })
 
-const payments = conventions.with({ domain: 'payments', service: 'checkout-api' })
+devConventions.name({ type: 'route53HostedZone' }) // → 'dev.acme.com'
+prodConventions.name({ type: 'route53HostedZone' }) // → 'acme.com'
+devConventions.name({ type: 'route53Record' }) // → 'checkout-api.dev.acme.com'
+prodConventions.name({ type: 'route53Record' }) // → 'checkout-api.acme.com'
 
-// DNS names use apex — correct FQDN
-payments.name({ type: 'route53HostedZone' }) // → 'prod.acme.com'
-payments.name({ type: 'route53Record' }) // → 'checkout-api.prod.acme.com'
-payments.name({ type: 'acmCertificate' }) // → 'checkout-api.prod.acme.com'
-payments.name({ type: 'cloudFrontAlias' }) // → 'checkout-api.prod.acme.com'
-
-// All other resource types use org as normal — no change
-payments.name({ type: 'lambdaFunction', key: 'handler' })
+// Non-DNS types are unaffected
+devConventions.name({ type: 'lambdaFunction', key: 'handler' })
 // → 'acme--payments--checkout-api--handler'
 ```
 
-`apex` is never included in tag output by default — it is a naming-only segment. If you need it as a tag, add it via `.tagRule()`.
+**Dynamic case — `.apexMapping()` derives the zone from segments at naming time:**
 
-Type-safe constraint:
+Production domains often drop the env qualifier entirely, or use a custom subdomain pattern that varies by environment. `.apexMapping()` handles this without needing separate convention instances:
 
 ```typescript
-const conventions = new DerropsConventions({ org: 'acme' }).apex(['acme.com']) // constrains to literal union at compile time
+const conventions = new DerropsConventions({ org: 'acme', apex: 'acme.com', env: 'dev' })
+  // prod → 'acme.com', all others → '{env}.acme.com'
+  .apexMapping((s) => (s.env === 'prod' ? s.apex! : `${s.env}.${s.apex}`))
+  .with({ domain: 'payments', service: 'checkout-api' })
+
+conventions.name({ type: 'route53HostedZone' }) // → 'dev.acme.com'
+conventions.with({ env: 'prod' }).name({ type: 'route53HostedZone' }) // → 'acme.com'
+conventions.with({ env: 'staging' }).name({ type: 'route53Record' }) // → 'checkout-api.staging.acme.com'
 ```
+
+Custom subdomain patterns are equally straightforward:
+
+```typescript
+// prod → 'app.acme.com', others → 'app-{env}.acme.com'
+conventions.apexMapping((s) => (s.env === 'prod' ? `app.${s.apex}` : `app-${s.env}.${s.apex}`))
+// dev:  route53HostedZone → 'app-dev.acme.com'
+// prod: route53HostedZone → 'app.acme.com'
+```
+
+The mapping is inherited by all derived instances via `.with()` and can be overridden per-instance without affecting the parent. It only runs when `apex` appears in the resource type's segment list — non-DNS types are never affected.
+
+`apex` is never included in tag output by default — it is a naming-only segment.
 
 ---
 
