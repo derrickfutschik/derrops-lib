@@ -235,20 +235,23 @@ Within an org, resources belong to one of two namespace types:
 | ❌ Human-readable slug | `bigcorp`  | S3 namespace squatting: bad actor pre-registers `ap-southeast-2--prod--acme--bigcorp--data` |
 | ✅ Opaque short ID     | `t-a3f8b2` | Not guessable; stable even if tenant rebrands                                               |
 
-### Tenant Placement: Tenant-First vs Tenant-Second-Last
+### Tenant Placement: Tenant-First vs Tenant-Second-Last + ABAC
 
-The position of `{tenant}` encodes the architectural relationship between tenant and service. See the full tradeoff discussion in the conventions guide. Summary:
+The position of `{tenant}` encodes the architectural relationship between tenant and service. With ABAC (tag-based IAM isolation), tenant-second-last is the recommended default for most silo deployments — it removes the binary tradeoff between security and query efficiency.
 
-| Placement              | Structure                                  | Primary axis   | Cross-tenant prefix queries                               | Per-tenant IAM prefix               |
-| ---------------------- | ------------------------------------------ | -------------- | --------------------------------------------------------- | ----------------------------------- |
-| **Tenant-first**       | `/{org}/{tenant}/{domain}/{service}/{key}` | Tenant (silo)  | ❌ Not possible — must enumerate + assume role per tenant | ✅ Single prefix                    |
-| **Tenant-second-last** | `/{org}/{domain}/{service}/{tenant}/{key}` | Service (pool) | ✅ `/acme/payments/checkout-api/*`                        | ❌ Must enumerate all service paths |
+| Placement                          | Structure                                  | Cross-tenant prefix queries                               | Per-tenant IAM isolation                       | When to use                                             |
+| ---------------------------------- | ------------------------------------------ | --------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| **Tenant-second-last + ABAC** ✅   | `/{org}/{domain}/{service}/{tenant}/{key}` | ✅ `/acme/payments/checkout-api/*`                        | ✅ `aws:ResourceTag/tenant` condition          | Recommended default for silo deployments                |
+| **Tenant-first**                   | `/{org}/{tenant}/{domain}/{service}/{key}` | ❌ Not possible — must enumerate + assume role per tenant | ✅ Single prefix condition                     | When services lack `aws:ResourceTag` support, or tags can't be guaranteed at provisioning |
+| **Tenant-second-last (no ABAC)**   | `/{org}/{domain}/{service}/{tenant}/{key}` | ✅ `/acme/payments/checkout-api/*`                        | ❌ Must enumerate all service paths            | Pool model only — shared infrastructure                 |
 
-**Choose tenant-first when:** operations are primarily per-tenant; cross-tenant services consume from shared aggregation layers (EventBridge, Kinesis, data lake); you need hard per-tenant IAM boundaries.
+**Choose tenant-second-last + ABAC when:** most services support `aws:ResourceTag` conditions, and you can guarantee tags are applied at provisioning. This is the recommended approach — it aligns with the stability principle (tenant is less stable than service) and eliminates the cross-tenant query restriction.
 
-**Choose tenant-second-last when:** services regularly need direct wildcard access across tenant data; service is the primary organizational unit; tenants are data partitions within a shared deployment.
+**Choose tenant-first when:** services in your stack don't reliably support `aws:ResourceTag` conditions; or tags cannot be guaranteed atomically at resource creation time (e.g. third-party tooling that creates resources without tagging).
 
-**If you need both:** build a shared aggregation layer for cross-tenant services and keep tenant-first for infrastructure. No single placement solves a hybrid model — that tension lives in the architecture, not the naming.
+**S3 bucket exception:** Even with ABAC, S3 bucket names must include tenant for hard global-namespace isolation. Use `.moveSegment('tenant', 'domain')` on a scoped instance to place tenant before domain for S3 only, without changing the parent convention.
+
+See the full ABAC discussion in the [conventions guide](./derrops-conventions#tag-based-tenant-isolation-abac).
 
 **Push vs Pull for cross-tenant data:**
 
@@ -513,16 +516,17 @@ Secrets Manager: acme/payments/checkout-api/db-password
 
 Apply these tags to **all** resources for cost allocation and resource management:
 
-| Tag Key           | Value            | Example         | Purpose                        |
-| ----------------- | ---------------- | --------------- | ------------------------------ |
-| `org`             | Organization     | `acme`          | Top-level ownership            |
-| `domain`          | Business domain  | `payments`      | Capability boundary            |
-| `service`         | Service name     | `checkout-api`  | Deployment unit                |
-| `environment`     | Deployment stage | `prod`          | Optional if account-segregated |
-| `owner`           | Team/person      | `payments-team` | Responsibility tracking        |
-| `cost-center`     | Cost allocation  | `payments-team` | Billing attribution            |
-| `backup-required` | boolean          | `true`          | Backup policy enforcement      |
-| `terraform`       | boolean          | `true`          | IaC management indicator       |
+| Tag Key           | Value            | Example         | Purpose                                                    |
+| ----------------- | ---------------- | --------------- | ---------------------------------------------------------- |
+| `org`             | Organization     | `acme`          | Top-level ownership                                        |
+| `domain`          | Business domain  | `payments`      | Capability boundary                                        |
+| `service`         | Service name     | `checkout-api`  | Deployment unit                                            |
+| `tenant`          | Tenant ID        | `t-a3f8b2`      | **Required for ABAC isolation** (silo model) — enables `aws:ResourceTag/tenant` conditions in IAM |
+| `environment`     | Deployment stage | `prod`          | Optional if account-segregated                             |
+| `owner`           | Team/person      | `payments-team` | Responsibility tracking                                    |
+| `cost-center`     | Cost allocation  | `payments-team` | Billing attribution                                        |
+| `backup-required` | boolean          | `true`          | Backup policy enforcement                                  |
+| `terraform`       | boolean          | `true`          | IaC management indicator                                   |
 
 The `@derrops-conventions` library turns this advisory table into enforced behaviour. Use `.tagRule()` to compute tags from segments, `.tagAugment()` for dynamic values, and `.policy()` to throw if required tags are absent:
 
