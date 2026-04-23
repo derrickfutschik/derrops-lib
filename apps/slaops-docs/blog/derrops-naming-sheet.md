@@ -239,11 +239,11 @@ Within an org, resources belong to one of two namespace types:
 
 The position of `{tenant}` encodes the architectural relationship between tenant and service. With ABAC (tag-based IAM isolation), tenant-second-last is the recommended default for most silo deployments — it removes the binary tradeoff between security and query efficiency.
 
-| Placement                          | Structure                                  | Cross-tenant prefix queries                               | Per-tenant IAM isolation                       | When to use                                             |
-| ---------------------------------- | ------------------------------------------ | --------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
-| **Tenant-second-last + ABAC** ✅   | `/{org}/{domain}/{service}/{tenant}/{key}` | ✅ `/acme/payments/checkout-api/*`                        | ✅ `aws:ResourceTag/tenant` condition          | Recommended default for silo deployments                |
-| **Tenant-first**                   | `/{org}/{tenant}/{domain}/{service}/{key}` | ❌ Not possible — must enumerate + assume role per tenant | ✅ Single prefix condition                     | When services lack `aws:ResourceTag` support, or tags can't be guaranteed at provisioning |
-| **Tenant-second-last (no ABAC)**   | `/{org}/{domain}/{service}/{tenant}/{key}` | ✅ `/acme/payments/checkout-api/*`                        | ❌ Must enumerate all service paths            | Pool model only — shared infrastructure                 |
+| Placement                        | Structure                                  | Cross-tenant prefix queries                               | Per-tenant IAM isolation              | When to use                                                                               |
+| -------------------------------- | ------------------------------------------ | --------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Tenant-second-last + ABAC** ✅ | `/{org}/{domain}/{service}/{tenant}/{key}` | ✅ `/acme/payments/checkout-api/*`                        | ✅ `aws:ResourceTag/tenant` condition | Recommended default for silo deployments                                                  |
+| **Tenant-first**                 | `/{org}/{tenant}/{domain}/{service}/{key}` | ❌ Not possible — must enumerate + assume role per tenant | ✅ Single prefix condition            | When services lack `aws:ResourceTag` support, or tags can't be guaranteed at provisioning |
+| **Tenant-second-last (no ABAC)** | `/{org}/{domain}/{service}/{tenant}/{key}` | ✅ `/acme/payments/checkout-api/*`                        | ❌ Must enumerate all service paths   | Pool model only — shared infrastructure                                                   |
 
 **Choose tenant-second-last + ABAC when:** most services support `aws:ResourceTag` conditions, and you can guarantee tags are applied at provisioning. This is the recommended approach — it aligns with the stability principle (tenant is less stable than service) and eliminates the cross-tenant query restriction.
 
@@ -516,17 +516,17 @@ Secrets Manager: acme/payments/checkout-api/db-password
 
 Apply these tags to **all** resources for cost allocation and resource management:
 
-| Tag Key           | Value            | Example         | Purpose                                                    |
-| ----------------- | ---------------- | --------------- | ---------------------------------------------------------- |
-| `org`             | Organization     | `acme`          | Top-level ownership                                        |
-| `domain`          | Business domain  | `payments`      | Capability boundary                                        |
-| `service`         | Service name     | `checkout-api`  | Deployment unit                                            |
+| Tag Key           | Value            | Example         | Purpose                                                                                           |
+| ----------------- | ---------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| `org`             | Organization     | `acme`          | Top-level ownership                                                                               |
+| `domain`          | Business domain  | `payments`      | Capability boundary                                                                               |
+| `service`         | Service name     | `checkout-api`  | Deployment unit                                                                                   |
 | `tenant`          | Tenant ID        | `t-a3f8b2`      | **Required for ABAC isolation** (silo model) — enables `aws:ResourceTag/tenant` conditions in IAM |
-| `environment`     | Deployment stage | `prod`          | Optional if account-segregated                             |
-| `owner`           | Team/person      | `payments-team` | Responsibility tracking                                    |
-| `cost-center`     | Cost allocation  | `payments-team` | Billing attribution                                        |
-| `backup-required` | boolean          | `true`          | Backup policy enforcement                                  |
-| `terraform`       | boolean          | `true`          | IaC management indicator                                   |
+| `environment`     | Deployment stage | `prod`          | Optional if account-segregated                                                                    |
+| `owner`           | Team/person      | `payments-team` | Responsibility tracking                                                                           |
+| `cost-center`     | Cost allocation  | `payments-team` | Billing attribution                                                                               |
+| `backup-required` | boolean          | `true`          | Backup policy enforcement                                                                         |
+| `terraform`       | boolean          | `true`          | IaC management indicator                                                                          |
 
 The `@derrops-conventions` library turns this advisory table into enforced behaviour. Use `.tagRule()` to compute tags from segments, `.tagAugment()` for dynamic values, and `.policy()` to throw if required tags are absent:
 

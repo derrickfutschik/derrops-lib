@@ -572,15 +572,15 @@ Tenant-second-last says "a service contains tenant data" — one shared deployme
 
 #### Decision Guide
 
-| Signal from your architecture                                                             | Recommended placement                                                                          |
-| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Signal from your architecture                                                             | Recommended placement                                                                           |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | You need per-tenant IAM isolation AND natural cross-tenant prefix queries                 | **Tenant-second-last + ABAC tags** (recommended — see [ABAC](#tag-based-tenant-isolation-abac)) |
-| Services in your stack don't reliably support `aws:ResourceTag` conditions                | **Tenant-first**                                                                               |
-| You cannot guarantee tenant tags are applied at provisioning time                         | **Tenant-first**                                                                               |
-| Primary operations are per-tenant (provision, offboard, bill, debug one tenant at a time) | **Tenant-first** or ABAC                                                                       |
-| Cross-tenant services consume from shared aggregation layers, not tenant namespaces       | **Tenant-first** — the constraint doesn't apply in practice                                    |
-| Cross-tenant services regularly pull directly from tenant namespaces at scale             | **Tenant-second-last** (or invest in a shared aggregation layer first)                         |
-| Services are the primary organizational unit; tenants are data partitions within them     | **Tenant-second-last** — this is pool, not silo                                                |
+| Services in your stack don't reliably support `aws:ResourceTag` conditions                | **Tenant-first**                                                                                |
+| You cannot guarantee tenant tags are applied at provisioning time                         | **Tenant-first**                                                                                |
+| Primary operations are per-tenant (provision, offboard, bill, debug one tenant at a time) | **Tenant-first** or ABAC                                                                        |
+| Cross-tenant services consume from shared aggregation layers, not tenant namespaces       | **Tenant-first** — the constraint doesn't apply in practice                                     |
+| Cross-tenant services regularly pull directly from tenant namespaces at scale             | **Tenant-second-last** (or invest in a shared aggregation layer first)                          |
+| Services are the primary organizational unit; tenants are data partitions within them     | **Tenant-second-last** — this is pool, not silo                                                 |
 
 If you genuinely need both — per-tenant IAM scoping _and_ efficient cross-tenant namespace queries — neither placement fully satisfies you without ABAC. See below.
 
@@ -603,14 +603,16 @@ IAM policies then enforce the boundary via a condition rather than a prefix:
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"],
-    "Resource": "arn:aws:dynamodb:*:*:table/acme--payments--checkout-api--*",
-    "Condition": {
-      "StringEquals": { "dynamodb:ResourceTag/tenant": "t-a3f8b2" }
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"],
+      "Resource": "arn:aws:dynamodb:*:*:table/acme--payments--checkout-api--*",
+      "Condition": {
+        "StringEquals": { "dynamodb:ResourceTag/tenant": "t-a3f8b2" }
+      }
     }
-  }]
+  ]
 }
 ```
 
@@ -620,12 +622,12 @@ The `Resource` ARN uses a wildcard that spans all tenants. The `Condition` narro
 
 Tenant can move to second-last position (`/{org}/{domain}/{service}/{tenant}/{key}`) — right of `service`, where it belongs under the stability principle. Tenants are provisioned and offboarded at runtime; they are less stable than org, domain, or service. The stability principle says this, the naming hierarchy should say this too.
 
-| Operation                              | With ABAC (tenant-second-last)                   |
-| -------------------------------------- | ------------------------------------------------ |
-| Cross-tenant prefix query              | ✅ `/acme/payments/checkout-api/*`               |
-| Per-tenant IAM isolation               | ✅ `aws:ResourceTag/tenant` condition            |
-| Offboard tenant (delete all resources) | Enumerate by `tenant` tag, not by prefix         |
-| New tenant onboarding                  | Tag resources correctly — no IAM policy changes  |
+| Operation                              | With ABAC (tenant-second-last)                  |
+| -------------------------------------- | ----------------------------------------------- |
+| Cross-tenant prefix query              | ✅ `/acme/payments/checkout-api/*`              |
+| Per-tenant IAM isolation               | ✅ `aws:ResourceTag/tenant` condition           |
+| Offboard tenant (delete all resources) | Enumerate by `tenant` tag, not by prefix        |
+| New tenant onboarding                  | Tag resources correctly — no IAM policy changes |
 
 **What's required:**
 
@@ -635,7 +637,10 @@ Tags must be applied **faithfully and atomically at provisioning time** — not 
 const tenantConvention = orgConvention
   .with({ tenant: tenantId })
   .tagKeys('org', 'domain', 'service', 'tenant')
-  .policy((tags) => Boolean(tags['tenant']), 'tenant tag is required on all tenant-scoped resources')
+  .policy(
+    (tags) => Boolean(tags['tenant']),
+    'tenant tag is required on all tenant-scoped resources',
+  )
 ```
 
 **IAM policy generation with ABAC:**
@@ -649,7 +654,7 @@ const policy = tenantConvention
   .staticPolicy()
   .include('dynamoDb', { key: 'orders' }, { permissions: 'readWrite' })
   .include('ssmParam', { key: 'api-key' }, { permissions: 'read' })
-  .withTenantAbac()     // reads tenant from convention defaults
+  .withTenantAbac() // reads tenant from convention defaults
   .buildPolicy()
 ```
 
@@ -664,7 +669,10 @@ S3 bucket names are globally unique and require tenant in the name for hard name
 const svc = org.with({ domain: 'payments', service: 'checkout', tenant: 't-a3f8b2' })
 
 // S3 exception: tenant before domain for global uniqueness
-const s3Bucket = svc.with({}).moveSegment('tenant', 'domain').name({ type: 's3Bucket', key: 'data' })
+const s3Bucket = svc
+  .with({})
+  .moveSegment('tenant', 'domain')
+  .name({ type: 's3Bucket', key: 'data' })
 // → 'ap-southeast-2--prod--acme--t-a3f8b2--payments--checkout--data'
 
 // All other resources: ABAC positioning
@@ -676,21 +684,21 @@ const table = svc.name({ type: 'dynamoDb', key: 'orders' })
 
 **AWS service compatibility:**
 
-| Service                 | Condition key                      | ABAC support |
-| ----------------------- | ---------------------------------- | ------------ |
-| DynamoDB                | `dynamodb:ResourceTag/tenant`      | ✅           |
-| Lambda                  | `lambda:ResourceTag/tenant`        | ✅           |
-| SSM Parameter Store     | `ssm:ResourceTag/tenant`           | ✅           |
-| SQS                     | `sqs:ResourceTag/tenant`           | ✅           |
-| SNS                     | `aws:ResourceTag/tenant`           | ✅           |
-| Kinesis                 | `kinesis:ResourceTag/tenant`       | ✅           |
-| EventBridge             | `events:ResourceTag/tenant`        | ✅           |
-| RDS                     | `rds:ResourceTag/tenant`           | ✅           |
-| ElastiCache             | `aws:ResourceTag/tenant`           | ✅           |
-| ECS / EC2               | `ecs:ResourceTag/tenant`           | ✅           |
-| S3 bucket               | `aws:ResourceTag/tenant`           | ⚠️ Bucket-level condition support is limited — use per-tenant bucket naming (see above) for hard silo isolation |
-| IAM                     | —                                  | ❌ IAM resources do not support `ResourceTag` conditions on themselves — continue using tenant-first IAM paths |
-| CloudFormation          | —                                  | ❌ Stack resources do not support `ResourceTag` conditions |
+| Service             | Condition key                 | ABAC support                                                                                                    |
+| ------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| DynamoDB            | `dynamodb:ResourceTag/tenant` | ✅                                                                                                              |
+| Lambda              | `lambda:ResourceTag/tenant`   | ✅                                                                                                              |
+| SSM Parameter Store | `ssm:ResourceTag/tenant`      | ✅                                                                                                              |
+| SQS                 | `sqs:ResourceTag/tenant`      | ✅                                                                                                              |
+| SNS                 | `aws:ResourceTag/tenant`      | ✅                                                                                                              |
+| Kinesis             | `kinesis:ResourceTag/tenant`  | ✅                                                                                                              |
+| EventBridge         | `events:ResourceTag/tenant`   | ✅                                                                                                              |
+| RDS                 | `rds:ResourceTag/tenant`      | ✅                                                                                                              |
+| ElastiCache         | `aws:ResourceTag/tenant`      | ✅                                                                                                              |
+| ECS / EC2           | `ecs:ResourceTag/tenant`      | ✅                                                                                                              |
+| S3 bucket           | `aws:ResourceTag/tenant`      | ⚠️ Bucket-level condition support is limited — use per-tenant bucket naming (see above) for hard silo isolation |
+| IAM                 | —                             | ❌ IAM resources do not support `ResourceTag` conditions on themselves — continue using tenant-first IAM paths  |
+| CloudFormation      | —                             | ❌ Stack resources do not support `ResourceTag` conditions                                                      |
 
 For IAM paths and CloudFormation stacks, tenant-first placement remains appropriate even when ABAC is used for all other resource types.
 

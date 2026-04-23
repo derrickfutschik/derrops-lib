@@ -62,8 +62,8 @@ vpcConvention.name({ type: 'vpc', key: 'id' })
 // → 'slaops--platform--vpc--id'   (also correct for CloudFormation export names)
 
 // S3 (global: true — includes region + env automatically)
-platformConvention.name({ type: 's3Bucket', service: 'oaspec', key: 'storage', tenant: tenantId })
-// → 'ap-southeast-2--dev--slaops--{tenantId}--oaspec--storage'
+oaspecConvention.name({ type: 's3Bucket', service: 'storage', tenant: tenantId })
+// → 'ap-southeast-2--dev--slaops--oaspec--storage--{tenantId}'
 ```
 
 Use the `type` that matches the AWS resource. Full list: `DerropsConventions.resourceTypes()` or
@@ -144,66 +144,86 @@ const orgConvention = new DerropsConventions({ org: 'slaops', env, region })
 
 `.arnContext()` propagates through `.with()` — derived instances inherit it automatically.
 
-### Static mode — explicit resource declarations
+### Preferred — `.resource()` + `PolicyBuilder`
 
-Use when you are building a policy for a known, fixed set of resources (e.g. a Lambda execution
-role, a CDK-defined IAM policy construct).
+Use `.resource()` to get a first-class resource descriptor (name, ARN, type, tags), then express
+permission intent directly on the resource object and compose grants in a `PolicyBuilder`.
+Resources with identical action sets are **automatically merged into one statement**.
+
+```typescript
+const table = svcConvention.resource({ type: 'dynamoDb', key: 'orders' })
+const gsi = svcConvention.resource({ type: 'dynamoDbGsi', key: 'orders' })
+const param = svcConvention.resource({ type: 'ssmParam', key: 'db-password' })
+const bucket = svcConvention.resource({ type: 's3Bucket', key: 'artefacts' })
+
+const policy = svcConvention
+  .policyBuilder()
+  .allow(table.write(), gsi.write()) // merged: same DynamoDB actions → 1 statement
+  .allow(param.read())
+  .allow(bucket.read())
+  .build()
+// → standard AWS IAM JSON policy document with 3 statements
+```
+
+**Permission methods on `Resource`:**
+
+| Method             | Maps to tier | Use for                                     |
+| ------------------ | ------------ | ------------------------------------------- |
+| `.read()`          | `read`       | Read-only — `Get*`, `List*`, `Describe*`    |
+| `.write()`         | `readWrite`  | Read + write — adds `Put*`, `Delete*`, etc. |
+| `.manage()`        | `manage`     | Full control — `<service>:*`                |
+| `.raw(...actions)` | —            | Explicit action subset or wildcard          |
+
+**Escape hatch for non-ARN resources** (e.g. CloudWatch metrics, which require `Resource: '*'`):
+
+```typescript
+import { rawGrant } from '@derrops-conventions'
+
+policy.allow(rawGrant(['cloudwatch:PutMetricData', 'cloudwatch:PutMetricAlarm'], '*'))
+```
+
+Use `table.name`, `table.arn`, `table.arns`, `table.tags` wherever you previously used the string
+returned by `.name()` — the resource object carries all of that.
+
+### Legacy — static mode
+
+Use only when maintaining existing CDK code that pre-dates `.resource()`.
 
 ```typescript
 const executionPolicy = dbConvention
   .staticPolicy()
   .include('dynamoDb', { key: 'sessions' }, { permissions: 'readWrite' })
   .include('ssmParam', { key: 'db-password' }, { permissions: 'read' })
-  .include('s3Bucket', { key: 'artefacts' }, { permissions: 'read' })
   .buildPolicy()
-// → standard AWS IAM JSON policy document
 ```
 
-### Dynamic mode — session-recorded policies
+### Legacy — dynamic mode
 
-Use when you are naming resources in a loop or factory and want the policy to mirror exactly
-what was named — no parallel maintenance of a separate list.
+Use only when maintaining existing CDK code that pre-dates `.resource()`.
 
 ```typescript
 const session = svcConvention.dynamicPolicy()
-
 const tableName = session.name({ type: 'dynamoDb', key: 'orders' }, { permissions: 'readWrite' })
-const paramName = session.name({ type: 'ssmParam', key: 'api-key' }, { permissions: 'read' })
-// ... other naming calls — only the types that have ARN metadata are recorded
-
 const policy = session.buildPolicy()
 ```
 
-### Permission tiers
-
-| Tier        | Use for                                           |
-| ----------- | ------------------------------------------------- |
-| `read`      | Read-only — `Get*`, `List*`, `Describe*`          |
-| `readWrite` | Mutating workloads — adds `Put*`, `Delete*`, etc. |
-| `manage`    | Administrative — `<service>:*`                    |
-
-Prefer the named tier over a manual `actionsFor` list. Use `actionsFor` only when the built-in
-tiers do not fit (e.g. a custom action subset for a tightly-scoped role).
-
-### Decision — static vs dynamic
+### Decision tree
 
 ```
 Writing an IAM policy?
-  ├─ Resources are fixed and known at CDK/infra definition time?
-  │   └─ Yes → .staticPolicy().include(type, options, { permissions })
-  └─ Resources are produced by a naming loop or factory?
-      └─ Yes → .dynamicPolicy() — pass the session where names are generated
+  └─ Default → .resource() + .policyBuilder()
+       ├─ Cross-convention resources? → new PolicyBuilder() directly, pass Resource objects from each
+       └─ Non-ARN service (CloudWatch metrics etc.)? → rawGrant(['action'], '*')
 ```
 
 ### Rules
 
 - Never call `new iam.PolicyStatement({ resources: ['arn:aws:s3:::...'] })` with a literal ARN.
-- Never pass a raw action string like `'s3:GetObject'` outside of `actionsFor` — use a permission tier.
-- The convention instance used for `.staticPolicy()` / `.dynamicPolicy()` must be the same instance
-  (or a `.with()` derivative) used to generate the resource names — this is the only guarantee
-  that ARNs match names.
-- `accountId` must be set via `.arnContext()` before calling `.staticPolicy()` or `.dynamicPolicy()`.
-  Keep it in the org-level instance in `lib/names.ts` or `slaops-config`; do not pass it at each call site.
+- Never write an IAM action string directly — use `.read()`, `.write()`, `.manage()`, or `.raw()`.
+- The convention instance used for `.resource()` must be the same instance (or a `.with()` derivative)
+  used to generate the resource name — this is the only guarantee that ARNs match names.
+- `accountId` must be set via `.arnContext()` before calling `.resource()`, `.staticPolicy()`, or `.dynamicPolicy()`.
+  Keep it on the org-level instance in `lib/names.ts` or `slaops-config`; do not pass it at each call site.
 
 ## Tagging AWS resources
 
@@ -236,4 +256,4 @@ move it to `slaops-config` and update all import sites.
 5. Add using the org → domain → service nesting pattern with a JSDoc comment.
 6. Reference via the exported constant — never reconstruct the string at a call site.
 7. For CDK resources, apply tags via `applyTags((k, v) => Tags.of(this).add(k, v))`.
-8. For IAM policies, use `.staticPolicy()` or `.dynamicPolicy()` on the same convention instance — never write ARNs or action lists as strings.
+8. For IAM policies, use `.resource()` + `.policyBuilder()` on the same convention instance — never write ARNs or action lists as strings. Use `.read()`, `.write()`, `.manage()`, or `.raw()` on the resource object to express permission intent.
