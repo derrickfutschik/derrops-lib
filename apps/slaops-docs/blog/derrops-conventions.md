@@ -1036,12 +1036,47 @@ Environment isolation is provided entirely by the account boundary. No env quali
 
 | Prefix Convention            | DNS Convention               |
 | ---------------------------- | ---------------------------- |
-| `{org}/{domain}/{service}`   | `{service}.{env}.{org}.com`  |
+| `{org}/{domain}/{service}`   | `{service}.{env}.{apex}`     |
 | Hierarchy grows left → right | Hierarchy grows right → left |
 | Namespace via account        | Namespace via env subdomain  |
 | Logical identity preserved   | Logical identity preserved   |
 
 DNS is not an exception to the naming convention — it is the same hierarchy represented in reverse due to DNS delegation design.
+
+### The `apex` segment
+
+The `{org}` segment (e.g. `acme`) is the internal organizational identifier used in resource names and IAM paths. For DNS, the correct TLD is the registered domain the organisation has purchased — `acme.com`, `acme.io`, etc. These are not always the same string.
+
+The library provides a dedicated `apex` segment for exactly this purpose. Set it once on the org-level convention instance and all DNS resource types (`route53HostedZone`, `route53Record`, `route53PrivateRecord`, `cloudFrontAlias`, `acmCertificate`) automatically use it in place of `org` to produce valid FQDNs:
+
+```typescript
+const conventions = new DerropsConventions({
+  org: 'acme',
+  apex: 'acme.com', // registered DNS domain — used only for DNS resource types
+  env: 'prod',
+  region: 'us-east-1',
+})
+
+const payments = conventions.with({ domain: 'payments', service: 'checkout-api' })
+
+// DNS names use apex — correct FQDN
+payments.name({ type: 'route53HostedZone' }) // → 'prod.acme.com'
+payments.name({ type: 'route53Record' }) // → 'checkout-api.prod.acme.com'
+payments.name({ type: 'acmCertificate' }) // → 'checkout-api.prod.acme.com'
+payments.name({ type: 'cloudFrontAlias' }) // → 'checkout-api.prod.acme.com'
+
+// All other resource types use org as normal — no change
+payments.name({ type: 'lambdaFunction', key: 'handler' })
+// → 'acme--payments--checkout-api--handler'
+```
+
+`apex` is never included in tag output by default — it is a naming-only segment. If you need it as a tag, add it via `.tagRule()`.
+
+Type-safe constraint:
+
+```typescript
+const conventions = new DerropsConventions({ org: 'acme' }).apex(['acme.com']) // constrains to literal union at compile time
+```
 
 ---
 
