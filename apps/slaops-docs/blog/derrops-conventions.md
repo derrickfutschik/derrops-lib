@@ -1104,6 +1104,76 @@ The mapping is inherited by all derived instances via `.with()` and can be overr
 
 `apex` is never included in tag output by default — it is a naming-only segment.
 
+### Multi-Region and Multi-Locale DNS
+
+When operating in more than one region or country, you face a structural question before the env-qualification question: which base domain does this deployment even belong to?
+
+#### The two modes
+
+**Mode A — one purchased domain per locale**
+
+You buy `acme.com` (US/EU) and `acme.com.au` (Australia). The domain itself encodes the locale at the TLD level. Within each domain, env is a subdomain:
+
+```
+prod.acme.com          dev.acme.com
+prod.acme.com.au       dev.acme.com.au
+```
+
+**Mode B — single domain, region as subdomain**
+
+You only buy `acme.com`. The Australian deployment lives at `au.acme.com` — a subdomain of your single purchased domain:
+
+```
+acme.com               dev.acme.com
+au.acme.com            dev.au.acme.com
+```
+
+The hosted-zone hierarchy mirrors account-level NS delegation: `acme.com` (central) → `au.acme.com` (AU accounts) → `dev.au.acme.com` (dev in AU) → `checkout-api.dev.au.acme.com` (service record).
+
+Mode B costs less (one domain registration) and is simpler to manage. Mode A gives you country-code TLDs that users and regulators often expect for local presence, and provides hard DNS isolation at the apex level.
+
+#### `apexZones()` — central region-to-domain mapping
+
+Whichever mode you choose, the region-to-zone lookup should be defined once, centrally. `.apexZones()` takes an inverted map of `{ domain → [regions] }` and resolves the right base domain from the instance's `region` segment at naming time:
+
+```typescript
+const conventions = new DerropsConventions({ org: 'acme', region: 'us-east-1', env: 'prod' })
+  .apexZones({
+    'acme.com': ['us-east-1', 'us-west-2', 'eu-west-1'],
+    'acme.com.au': ['ap-southeast-2'], // Mode A
+    // 'au.acme.com': ['ap-southeast-2'],       // Mode B alternative
+  })
+  // env qualification composes on top — runs after zone lookup resolves s.apex
+  .apexMapping((s) => (s.env === 'prod' ? s.apex! : `${s.env}.${s.apex}`))
+  .with({ domain: 'payments', service: 'checkout-api' })
+
+// us-east-1, prod
+conventions.name({ type: 'route53HostedZone' }) // → 'acme.com'
+conventions.name({ type: 'route53Record' }) // → 'checkout-api.acme.com'
+
+// ap-southeast-2, prod
+conventions.with({ region: 'ap-southeast-2' }).name({ type: 'route53HostedZone' }) // → 'acme.com.au'
+conventions.with({ region: 'ap-southeast-2' }).name({ type: 'route53Record' }) // → 'checkout-api.acme.com.au'
+
+// ap-southeast-2, dev (env qualification runs on the resolved zone)
+conventions.with({ region: 'ap-southeast-2', env: 'dev' }).name({ type: 'route53HostedZone' }) // → 'dev.acme.com.au'
+conventions.with({ region: 'ap-southeast-2', env: 'dev' }).name({ type: 'route53Record' }) // → 'checkout-api.dev.acme.com.au'
+```
+
+Non-DNS resource types (`lambdaFunction`, `s3Bucket`, etc.) are completely unaffected — `apexZones` and `apexMapping` only run when `apex` appears in the resource type's segment list.
+
+#### Comparison
+
+|                       | Mode A: domain per locale              | Mode B: single domain              |
+| --------------------- | -------------------------------------- | ---------------------------------- |
+| Example               | `acme.com` + `acme.com.au`             | `acme.com` only, `au.acme.com`     |
+| Domain registrations  | One per locale                         | One                                |
+| TLD authority         | Country-code TLD per region            | Subdomain of a single TLD          |
+| NS delegation         | Per-locale, at registrar level         | Per-locale, within your own DNS    |
+| Local presence signal | Strong (`.com.au` is AU)               | Weaker (subdomain)                 |
+| Regulatory fit        | Better for country-specific compliance | Depends on jurisdiction            |
+| Zone isolation        | Hard (separate apex per locale)        | Soft (subdomain under shared apex) |
+
 ---
 
 ## AWS SSM Parameter Store
