@@ -8,6 +8,8 @@
       "Bash(grep *)",
       "Bash(ls *)",
       "Bash(cp *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
       "Bash(mv *)",
       "Bash(mkdir *)",
       "Bash(rm *)",
