@@ -172,6 +172,22 @@ Therefore it makes sense the order of the segments should be the most stable to 
 | `{partition}` | **How** is data subdivided?   | Very Low _(Optional)_ | Data partitioning boundary       | changes constantly; new values generated at runtime (e.g. a new date partition every day). Only relevant for data storage — omit everywhere else |
 | `{key}`       | **What** configuration value? | Low                   | Configuration/value boundary     | changes most frequently                                                                                                                          |
 
+### Why region and env precede org
+
+Region and env might appear to be optional modifiers — in the preferred account-segregated case they are dropped entirely. But when they do appear, it is because the name must function across a global or cross-account namespace where the physical and lifecycle boundaries are not already provided structurally. In that context, region and env are not describing the resource — they are *scoping* it: in this physical location, at this lifecycle stage, owned by this org.
+
+The hierarchy flows from physical space to logical identity:
+
+- `{region}` — **where** in the world (infrastructure locality)
+- `{env}` — **which** lifecycle stage (deployment boundary)
+- `{org}` — **who** owns it (logical identity)
+
+This mirrors how AWS constructs global resource identity. When a name must be unique across the entire AWS global namespace — an S3 bucket, a CloudFront alias — the broadest physical scoping dimensions come first. A bucket named `ap-southeast-2--prod--acme--payments--...` is unambiguous without any other context: it tells you exactly which physical, lifecycle, and organisational boundary it belongs to, in that order.
+
+There is also a practical asymmetry in cardinality: the set of AWS regions is bounded and fixed; the set of deployment environments is small and bounded. They make cheap, maximally-discriminating prefixes. Org names are stable, but they carry business semantics — scoping with infrastructure dimensions first pushes the org identifier deeper into the hierarchy where it belongs.
+
+When the surrounding system already provides the region and env boundary — an AWS account (SSM, IAM), the S3 bucket name — those segments are redundant within the path and are omitted. `{org}` leads because it is the leftmost *required* segment within that context. This is why SSM parameters, S3 object keys, and IAM paths all start at `{org}` directly: the namespace they live in already encodes the physical and lifecycle scope.
+
 ### Fully Qualified Examples
 
 | Example                                     | Value                                                                   |
@@ -1238,11 +1254,18 @@ Every prefix is a valid, queryable operational boundary:
 IAM policies can scope access using path prefixes. A role for `checkout-api` can be granted access to only `/acme/payments/checkout-api/*`, with no wildcard bleed into sibling services or domains.
 :::
 
-If the Parameter Store is **not** account-segregated by environment, add `{env}` after `{org}`:
+If the Parameter Store is **not** account-segregated by environment, `{env}` precedes `{org}` — the deployment boundary scopes the ownership boundary:
 
 ```
-/{org}/{env}/{domain}/{service}/{key}
-/acme/prod/payments/checkout-api/stripe-webhook-secret
+/{env}/{org}/{domain}/{service}/{key}
+/prod/acme/payments/checkout-api/stripe-webhook-secret
+```
+
+If also not segregated by region:
+
+```
+/{region}/{env}/{org}/{domain}/{service}/{key}
+/ap-southeast-2/prod/acme/payments/checkout-api/stripe-webhook-secret
 ```
 
 ---
@@ -1283,8 +1306,109 @@ Prefix boundaries remain meaningful at every level, including within the partiti
 | `acme/payments/checkout-api/2024/01/15/14/transactions-00001.json` | A specific log file                                                    |
 
 :::note
-S3 bucket names are globally unique and require `{env}` and often `{region}` in the bucket name itself (see Concrete Examples above). But within the bucket, object key prefixes follow the standard hierarchy without `{env}` — the bucket name is already the environment boundary.
+S3 bucket names are globally unique and require `{env}` and often `{region}` in the bucket name itself (see Concrete Examples above). But within the bucket, object key paths start at `{org}` directly — the bucket name already encodes the region and environment, so those segments are redundant inside it. The bucket itself is the physical and lifecycle boundary; below it, only logical identity remains.
 :::
+
+### Cross-Account Sync: Account ID as First Segment
+
+When objects from multiple accounts are replicated to a central bucket — a logging aggregation, compliance archive, or analytics store — the AWS account ID becomes the first segment of the object key in the destination bucket. A bucket policy using `${aws:PrincipalAccount}` ensures each source account can only write to its own prefix:
+
+```json
+{
+  "Effect": "Allow",
+  "Principal": "*",
+  "Action": "s3:PutObject",
+  "Resource": "arn:aws:s3:::central-logs/${aws:PrincipalAccount}/*",
+  "Condition": {
+    "StringEquals": { "aws:PrincipalOrgID": "o-xxxxxxxxxx" }
+  }
+}
+```
+
+`${aws:PrincipalAccount}` is an IAM policy variable that resolves to the caller's account ID at request evaluation time — distinct from the CloudFormation pseudo-parameter `${AWS::AccountId}`, which resolves to the deploying account at synthesis time and produces a static value. A source account with ID `123456789012` can call `PutObject`, but the `Resource` ARN only matches keys under the `123456789012/` prefix. Even with `PutObject` granted, writing to another account's prefix is blocked at IAM evaluation — the account ID in the key path is the enforcement mechanism.
+
+Object key structure in the central destination bucket:
+
+```
+{accountId}/{org}/{domain}/{service}/{partition}/{key}
+123456789012/acme/payments/checkout-api/2024/01/15/events-00001.json
+987654321098/acme/payments/checkout-api/2024/01/15/events-00001.json
+```
+
+`{accountId}` precedes `{org}` here — not because it is logically superior in the naming hierarchy, but because it is the security principal the bucket policy can verify at IAM evaluation time. The org name is a label; the account ID is the verifiable identity. Without this prefix, a misconfigured or compromised account could overwrite another account's objects in the shared destination bucket.
+
+| Prefix                                                        | Scope                                    |
+| ------------------------------------------------------------- | ---------------------------------------- |
+| `123456789012/`                                               | All objects synced from the prod account |
+| `123456789012/acme/`                                          | All org data from the prod account       |
+| `123456789012/acme/payments/`                                 | All payments data from the prod account  |
+| `123456789012/acme/payments/checkout-api/`                    | All service data from the prod account   |
+| `123456789012/acme/payments/checkout-api/2024/01/15/`         | One day's data from the prod account     |
+
+:::note
+In the source bucket — within the originating account — objects follow the standard `{org}/{domain}/{service}/...` hierarchy without an account ID prefix. The account ID segment is only required in the central destination bucket where multiple accounts write to the same namespace and the bucket policy must be able to scope writes per account.
+:::
+
+#### Using the library
+
+The `@derrops-conventions` library supports this through `.insertSegment(key, value, position)`. Custom segments are not part of the standard `Segments` interface — they are registered separately and participate in `name()` and `s3Prefix()` but are never emitted by `tags()`, since they are infrastructure identifiers, not ownership labels.
+
+**Setting up the central-bucket convention:**
+
+```typescript
+const svcConvention = new DerropsConventions({
+  org: 'acme',
+  domain: 'payments',
+  service: 'checkout-api',
+})
+
+const sourceAccountId = '123456789012'
+
+// Source bucket (within the originating account) — standard key, no account prefix
+const partition = DerropsConventions.datePartition(new Date(), 'hour')
+const sourceKey = svcConvention.name({ type: 's3LogKey', partition, key: 'events-00001.json' })
+// → 'acme/payments/checkout-api/2024/01/15/14/events-00001.json'
+
+// Central destination bucket — account ID always first (index 0)
+const centralConvention = svcConvention
+  .with({})
+  .insertSegmentAt('accountId', sourceAccountId, 0)
+
+centralConvention.name({ type: 's3LogKey', partition, key: 'events-00001.json' })
+// → '123456789012/acme/payments/checkout-api/2024/01/15/14/events-00001.json'
+
+centralConvention.s3Prefix({ date: new Date(), granularity: 'hour' })
+// → '123456789012/acme/payments/checkout-api/2024/01/15/14/'
+
+centralConvention.s3Prefix()
+// → '123456789012/acme/payments/checkout-api/'
+```
+
+Two methods are available depending on whether you know the absolute position or need to place relative to a known segment:
+
+| Method | When to use | Example |
+|---|---|---|
+| `.insertSegmentAt(key, value, index)` | Position is known absolutely — e.g. always first | `.insertSegmentAt('accountId', id, 0)` |
+| `.insertSegment(key, value, { before/after })` | Position is relative to an anchor segment | `.insertSegment('tier', 'gold', { after: 'org' })` |
+
+Index is clamped to `[0, order.length]`, so `0` always means first regardless of current order length.
+
+**Tags are unaffected:**
+
+```typescript
+centralConvention.tagKeys('org', 'domain', 'service').tags()
+// → { org: 'acme', domain: 'payments', service: 'checkout-api' }
+// accountId does not appear — it is an infrastructure identity, not an ownership tag
+```
+
+**Propagation through `.with()`:**
+
+```typescript
+// The custom segment propagates to child instances
+const billingConvention = centralConvention.with({ service: 'billing-api' })
+billingConvention.s3Prefix()
+// → '123456789012/acme/payments/billing-api/'
+```
 
 ### Tenant in S3: Bucket Name vs Object Key Prefix
 
@@ -1337,6 +1461,10 @@ Use when: tenants require hard storage isolation (compliance mandates, contractu
 ## AWS IAM Paths
 
 IAM roles, users, groups, and policies support an optional `/path/` prefix that can be used to organise resources and scope access via IAM policy conditions (`iam:ResourceTag` or path-based conditions).
+
+:::note
+IAM is a global service scoped to an AWS account — region does not apply to IAM resource names, and environment isolation is provided by account segregation. IAM paths therefore start at `{org}` directly, the same as the account-segregated case for all other resource types.
+:::
 
 ```
 /{org}/{domain}/{service}/
