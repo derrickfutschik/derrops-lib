@@ -1,6 +1,6 @@
 ---
 slug: derrops-network-topology
-title: "Derrops Network Topology: Partitioning a VPC with the Naming Convention"
+title: 'Derrops Network Topology: Partitioning a VPC with the Naming Convention'
 date: 2026-04-24
 authors: [derrops]
 tags: [devops, aws, networking]
@@ -13,7 +13,7 @@ draft: false
 The types and topology generation methods described in this post are implemented in the [`@derrops-conventions`](https://github.com/slaops/slaops-platform/tree/main/packages/derrops-conventions) package.
 :::
 
-The naming convention for AWS network resources is not just about aesthetics. When the resource name itself encodes the network boundary it lives at, you gain a property that is hard to get any other way: you can read a CloudTrail log, a VPC flow log, or an AWS Config rule and immediately understand *which layer of your network* a resource belongs to, without consulting a wiki.
+The naming convention for AWS network resources is not just about aesthetics. When the resource name itself encodes the network boundary it lives at, you gain a property that is hard to get any other way: you can read a CloudTrail log, a VPC flow log, or an AWS Config rule and immediately understand _which layer of your network_ a resource belongs to, without consulting a wiki.
 
 This post describes how to partition a VPC following the Derrops convention, why the three-layer stability model matters for operational simplicity, and how to generate all required resource names from the convention without writing strings by hand.
 
@@ -50,6 +50,7 @@ Security Group      Service        acme--payments--checkout-api--web    Inter-se
 ### How to read a resource name
 
 `acme--payments--private--1a` parses as:
+
 - `acme` — the org VPC this subnet lives in
 - `payments` — the domain whose workloads run here
 - `private` — the tier (private = NAT egress, no direct inbound)
@@ -135,11 +136,11 @@ const orgLayer = orgConvention.orgNetworkLayer()
 
 const vpc = new ec2.CfnVPC(this, 'OrgVpc', {
   cidrBlock: '10.0.0.0/16',
-  tags: [{ key: 'Name', value: orgLayer.vpc }],   // 'acme'
+  tags: [{ key: 'Name', value: orgLayer.vpc }], // 'acme'
 })
 
 const tgw = new ec2.CfnTransitGateway(this, 'OrgTgw', {
-  tags: [{ key: 'Name', value: orgLayer.transitGateway }],  // 'acme--tgw'
+  tags: [{ key: 'Name', value: orgLayer.transitGateway }], // 'acme--tgw'
 })
 ```
 
@@ -184,14 +185,14 @@ const serviceConvention = domainConvention.with({ service: 'checkout-api' })
 const serviceLayer = serviceConvention.serviceNetworkLayer(['web', 'db'])
 
 const webSg = new ec2.SecurityGroup(this, 'WebSg', {
-  securityGroupName: serviceLayer.securityGroups['web']!,  // 'acme--payments--checkout-api--web'
+  securityGroupName: serviceLayer.securityGroups['web']!, // 'acme--payments--checkout-api--web'
   vpc: ec2.Vpc.fromLookup(this, 'Vpc', { vpcName: orgLayer.vpc }),
   description: 'HTTP/HTTPS inbound for checkout-api',
 })
 webSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443))
 
 const dbSg = new ec2.SecurityGroup(this, 'DbSg', {
-  securityGroupName: serviceLayer.securityGroups['db']!,   // 'acme--payments--checkout-api--db'
+  securityGroupName: serviceLayer.securityGroups['db']!, // 'acme--payments--checkout-api--db'
   vpc: ec2.Vpc.fromLookup(this, 'Vpc', { vpcName: orgLayer.vpc }),
   description: 'PostgreSQL inbound from checkout-api',
 })
@@ -296,9 +297,9 @@ const CIDR: Record<string, string> = {
 
 // Authorization rules — description = convention subnet name, CIDR from allocation table
 const rules = [
-  { group: 'engineers-group-id',   subnet: 'acme--platform--isolated' },  // OpenSearch only
-  { group: 'dba-group-id',         subnet: 'acme--payments--isolated' },   // RDS only
-  { group: 'developers-group-id',  subnet: 'acme--payments--private' },    // App services only
+  { group: 'engineers-group-id', subnet: 'acme--platform--isolated' }, // OpenSearch only
+  { group: 'dba-group-id', subnet: 'acme--payments--isolated' }, // RDS only
+  { group: 'developers-group-id', subnet: 'acme--payments--private' }, // App services only
 ]
 
 for (const { group, subnet } of rules) {
@@ -310,10 +311,12 @@ for (const { group, subnet } of rules) {
 
 // full-access group gets two rules (one per subnet)
 endpoint.addAuthorizationRule('full-access → acme--platform--isolated', {
-  cidr: CIDR['acme--platform--isolated']!, groupId: 'full-access-group-id',
+  cidr: CIDR['acme--platform--isolated']!,
+  groupId: 'full-access-group-id',
 })
 endpoint.addAuthorizationRule('full-access → acme--payments--isolated', {
-  cidr: CIDR['acme--payments--isolated']!, groupId: 'full-access-group-id',
+  cidr: CIDR['acme--payments--isolated']!,
+  groupId: 'full-access-group-id',
 })
 ```
 
@@ -324,19 +327,20 @@ The endpoint SG itself is a broad allow — authorization rules do the real work
 ```typescript
 const vpnSg = new ec2.SecurityGroup(this, 'VpnEndpointSg', {
   securityGroupName: platform.with({ service: 'client-vpn' }).name({
-    type: 'ec2SecurityGroup', purpose: 'all',
-  }),  // → 'acme--platform--client-vpn--all'
+    type: 'ec2SecurityGroup',
+    purpose: 'all',
+  }), // → 'acme--platform--client-vpn--all'
   vpc,
   description: 'Client VPN endpoint — authorization rules restrict per-group destinations',
 })
 vpnSg.addEgressRule(ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.allTraffic())
 
 const endpoint = new ec2.ClientVpnEndpoint(this, 'VpnEndpoint', {
-  cidr: '172.16.0.0/22',             // VPN client IP pool, outside VPC CIDR
+  cidr: '172.16.0.0/22', // VPN client IP pool, outside VPC CIDR
   serverCertificateArn: '...',
   vpc,
-  securityGroups: [vpnSg],           // shared by ALL connected users
-  splitTunnel: true,                  // only VPC traffic routes through VPN
+  securityGroups: [vpnSg], // shared by ALL connected users
+  splitTunnel: true, // only VPC traffic routes through VPN
 })
 ```
 
@@ -360,4 +364,4 @@ VPC peering connections grow as O(n²) — with 5 orgs, you need 10 peering conn
 
 ---
 
-*Further reading: [Derrops Guide to Naming Conventions](./derrops-conventions) · [AWS Resource Naming Cheatsheet](./derrops-naming-sheet)*
+_Further reading: [Derrops Guide to Naming Conventions](./derrops-conventions) · [AWS Resource Naming Cheatsheet](./derrops-naming-sheet)_

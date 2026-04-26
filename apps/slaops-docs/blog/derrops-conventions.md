@@ -174,7 +174,7 @@ Therefore it makes sense the order of the segments should be the most stable to 
 
 ### Why region and env precede org
 
-Region and env might appear to be optional modifiers — in the preferred account-segregated case they are dropped entirely. But when they do appear, it is because the name must function across a global or cross-account namespace where the physical and lifecycle boundaries are not already provided structurally. In that context, region and env are not describing the resource — they are *scoping* it: in this physical location, at this lifecycle stage, owned by this org.
+Region and env might appear to be optional modifiers — in the preferred account-segregated case they are dropped entirely. But when they do appear, it is because the name must function across a global or cross-account namespace where the physical and lifecycle boundaries are not already provided structurally. In that context, region and env are not describing the resource — they are _scoping_ it: in this physical location, at this lifecycle stage, owned by this org.
 
 The hierarchy flows from physical space to logical identity:
 
@@ -186,7 +186,7 @@ This mirrors how AWS constructs global resource identity. When a name must be un
 
 There is also a practical asymmetry in cardinality: the set of AWS regions is bounded and fixed; the set of deployment environments is small and bounded. They make cheap, maximally-discriminating prefixes. Org names are stable, but they carry business semantics — scoping with infrastructure dimensions first pushes the org identifier deeper into the hierarchy where it belongs.
 
-When the surrounding system already provides the region and env boundary — an AWS account (SSM, IAM), the S3 bucket name — those segments are redundant within the path and are omitted. `{org}` leads because it is the leftmost *required* segment within that context. This is why SSM parameters, S3 object keys, and IAM paths all start at `{org}` directly: the namespace they live in already encodes the physical and lifecycle scope.
+When the surrounding system already provides the region and env boundary — an AWS account (SSM, IAM), the S3 bucket name — those segments are redundant within the path and are omitted. `{org}` leads because it is the leftmost _required_ segment within that context. This is why SSM parameters, S3 object keys, and IAM paths all start at `{org}` directly: the namespace they live in already encodes the physical and lifecycle scope.
 
 ### Fully Qualified Examples
 
@@ -1337,13 +1337,13 @@ Object key structure in the central destination bucket:
 
 `{accountId}` precedes `{org}` here — not because it is logically superior in the naming hierarchy, but because it is the security principal the bucket policy can verify at IAM evaluation time. The org name is a label; the account ID is the verifiable identity. Without this prefix, a misconfigured or compromised account could overwrite another account's objects in the shared destination bucket.
 
-| Prefix                                                        | Scope                                    |
-| ------------------------------------------------------------- | ---------------------------------------- |
-| `123456789012/`                                               | All objects synced from the prod account |
-| `123456789012/acme/`                                          | All org data from the prod account       |
-| `123456789012/acme/payments/`                                 | All payments data from the prod account  |
-| `123456789012/acme/payments/checkout-api/`                    | All service data from the prod account   |
-| `123456789012/acme/payments/checkout-api/2024/01/15/`         | One day's data from the prod account     |
+| Prefix                                                | Scope                                    |
+| ----------------------------------------------------- | ---------------------------------------- |
+| `123456789012/`                                       | All objects synced from the prod account |
+| `123456789012/acme/`                                  | All org data from the prod account       |
+| `123456789012/acme/payments/`                         | All payments data from the prod account  |
+| `123456789012/acme/payments/checkout-api/`            | All service data from the prod account   |
+| `123456789012/acme/payments/checkout-api/2024/01/15/` | One day's data from the prod account     |
 
 :::note
 In the source bucket — within the originating account — objects follow the standard `{org}/{domain}/{service}/...` hierarchy without an account ID prefix. The account ID segment is only required in the central destination bucket where multiple accounts write to the same namespace and the bucket policy must be able to scope writes per account.
@@ -1370,9 +1370,7 @@ const sourceKey = svcConvention.name({ type: 's3LogKey', partition, key: 'events
 // → 'acme/payments/checkout-api/2024/01/15/14/events-00001.json'
 
 // Central destination bucket — account ID always first (index 0)
-const centralConvention = svcConvention
-  .with({})
-  .insertSegmentAt('accountId', sourceAccountId, 0)
+const centralConvention = svcConvention.with({}).insertSegmentAt('accountId', sourceAccountId, 0)
 
 centralConvention.name({ type: 's3LogKey', partition, key: 'events-00001.json' })
 // → '123456789012/acme/payments/checkout-api/2024/01/15/14/events-00001.json'
@@ -1386,10 +1384,10 @@ centralConvention.s3Prefix()
 
 Two methods are available depending on whether you know the absolute position or need to place relative to a known segment:
 
-| Method | When to use | Example |
-|---|---|---|
-| `.insertSegmentAt(key, value, index)` | Position is known absolutely — e.g. always first | `.insertSegmentAt('accountId', id, 0)` |
-| `.insertSegment(key, value, { before/after })` | Position is relative to an anchor segment | `.insertSegment('tier', 'gold', { after: 'org' })` |
+| Method                                         | When to use                                      | Example                                            |
+| ---------------------------------------------- | ------------------------------------------------ | -------------------------------------------------- |
+| `.insertSegmentAt(key, value, index)`          | Position is known absolutely — e.g. always first | `.insertSegmentAt('accountId', id, 0)`             |
+| `.insertSegment(key, value, { before/after })` | Position is relative to an anchor segment        | `.insertSegment('tier', 'gold', { after: 'org' })` |
 
 Index is clamped to `[0, order.length]`, so `0` always means first regardless of current order length.
 
