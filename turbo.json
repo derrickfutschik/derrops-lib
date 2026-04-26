@@ -2,6 +2,10 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "tasks": {
+    "@derrops-conventions#build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", "build/**", ".docusaurus/**"],
