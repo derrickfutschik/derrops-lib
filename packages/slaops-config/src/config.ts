@@ -1,4 +1,4 @@
-import { DerropsConventions, cfgKey } from '@derrops-conventions'
+import { DerropsConventions } from '@derrops-conventions'
 
 import { configFromEnv, getConfigInputOverride, setOnCacheReset } from './from-env'
 import { ConfigInput } from './schema'
@@ -70,6 +70,8 @@ export const makeConfig = (cfg?: ConfigInput) => {
     type: 'openSearchIndex',
   })
 
+  const oaspecCache = conventions.with({ domain: 'oaspec', service: 'dynamodb-cache' })
+
   return {
     /** Whether to enable mock authentication, note that this is very dangerous and should not be enabled in production */
     'app.auth.mock.enabled': !isProd && input.VITE_APP_AUTH_MOCK_ENABLED,
@@ -127,7 +129,7 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'oaspec.url-fetch.backoff-threshold': 3,
 
     /** TTL in seconds for DynamoDB host→specId enrichment cache entries */
-    [cfgKey('oaspec', 'dynamodb-cache', 'ttl-seconds')]: 300,
+    [oaspecCache.cfgKey('ttl-seconds')]: 300,
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
