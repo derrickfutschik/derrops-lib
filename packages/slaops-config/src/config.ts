@@ -129,7 +129,11 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'oaspec.url-fetch.backoff-threshold': 3,
 
     /** TTL in seconds for DynamoDB host→specId enrichment cache entries */
-    [oaspecCache.cfgKey('ttl-seconds')]: 300,
+    // [oaspecCache.cfgKey('ttl-seconds')]: 300,
+    // [conventions.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgKey('ttl-seconds')]: 300,
+    // conventions.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgProp(300, 'ttl-seconds')
+
+    ...oaspecCache.cfgProp(300, 'ttl-seconds'),
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
