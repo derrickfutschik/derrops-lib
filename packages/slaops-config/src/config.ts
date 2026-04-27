@@ -1,4 +1,4 @@
-import { DerropsConventions } from '@derrops-conventions'
+import { DerropsConventions, cfgKey } from '@derrops-conventions'
 
 import { configFromEnv, getConfigInputOverride, setOnCacheReset } from './from-env'
 import { ConfigInput } from './schema'
@@ -127,7 +127,7 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'oaspec.url-fetch.backoff-threshold': 3,
 
     /** TTL in seconds for DynamoDB host→specId enrichment cache entries */
-    'dynamodb.oaspec-cache.ttl-seconds': 300,
+    [cfgKey('oaspec', 'dynamodb-cache', 'ttl-seconds')]: 300,
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
