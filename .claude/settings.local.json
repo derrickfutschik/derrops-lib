@@ -23,7 +23,8 @@
       "WebSearch",
       "Bash(wc -l *)",
       "Bash(git checkout *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(awk -F: '{print $1}')"
     ]
   }
 }
