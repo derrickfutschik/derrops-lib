@@ -37,7 +37,7 @@ export class AuthStack extends Stack {
   public readonly userPoolClient: cognito.UserPoolClient
   public readonly identityPool: cognito.CfnIdentityPool
   /** IAM role slaops-cloud uses to publish to SQS relay queues (both platform-owned and cross-account relay-owned). */
-  public readonly sqsPublishRole: iam.Role
+  public readonly: iam.Role
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props)

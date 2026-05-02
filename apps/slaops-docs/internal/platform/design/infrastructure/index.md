@@ -17,4 +17,5 @@ These documents are for platform engineers. They describe how SLAOps provisions,
 - [Platform Domains](./platform-domains) — authoritative domain registry: domain names, CDK tag values, responsibilities, and the services each domain owns. Start here when adding a new stack or writing documentation.
 - [Multi-Tenancy](./multi-tenancy) — per-tenant resource catalogue, TenantConstruct, access control layers, lifecycle management
 - [Tagging Conventions](./tagging-conventions) — required AWS tags, CDK enforcement, cost allocation, and IAM condition key patterns
+- [Domain & Service Registry](./service-registry) — authoritative registry of every `slaops:domain` + `slaops:service` combination: active services, planned services, generated name patterns, and `DerropsConventions` instantiation examples. Start here when naming a new resource.
 - [CDK Naming & Tagging Audit](./cdk-naming-tagging-audit) — verified current-state reference: all resource names, export names, and applied tags

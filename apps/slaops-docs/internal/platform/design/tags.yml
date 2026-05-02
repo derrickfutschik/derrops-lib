@@ -15,8 +15,8 @@ authentication:
   description: Auth protocols, JWT, mTLS, HMAC, IAM
 
 security:
-  label: Security
-  description: Security model, trust boundaries, and threat mitigations
+  label: Security / Domain — Security
+  description: Security model, trust boundaries, and threat mitigations; also the slaops:domain tag for platform security infrastructure (KMS, certificates, WAF, Secrets Manager, compliance)
 
 networking:
   label: Networking
@@ -79,9 +79,9 @@ platform:
   label: Domain — Platform
   description: Core shared infrastructure domain — VPC, database, OpenSearch, API Gateway
 
-auth:
-  label: Domain — Auth
-  description: Authentication and authorization domain — Cognito, IAM, identity
+user-management:
+  label: Domain — User Management
+  description: User management domain — Cognito User Pool, identity pool, JWT customisation, user profiles
 
 oaspec:
   label: Domain — OASpec

@@ -63,7 +63,9 @@ export const makeConfig = (cfg?: ConfigInput) => {
     region: input.AWS_REGION,
     env,
     org: app, // TODO - introduce an org variable
-  }).domain(['oaspec', 'monitoring'])
+  })
+    .domain(['oaspec', 'auth'])
+    .service(['userpool', 'app-client'])
 
   const oaspec = conventions.with({
     domain: 'oaspec',
