@@ -1,1 +1,1 @@
-git push git@github.com:derrickfutschik/slaops-portal.git $(git subtree split --prefix=apps/slaops-portal HEAD):main
+git push git@github.com:derrickfutschik/derrops-portal.git $(git subtree split --prefix=apps/derrops-portal HEAD):main

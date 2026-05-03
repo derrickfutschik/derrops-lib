@@ -39,7 +39,7 @@ Ask: "Based on these changes, I suggest version X.Y.Z (patch|minor|major bump). 
 
 ### 3. Create the changelog source file
 
-Create `apps/slaops-docs/changelog/source/X.Y.Z.md` with this structure:
+Create `apps/derrops-docs/changelog/source/X.Y.Z.md` with this structure:
 
 ```markdown
 ---
@@ -81,7 +81,7 @@ Omit sections that have no entries. The `<!-- truncate -->` marker must appear i
 
 ### 4. Ask the user to review
 
-Tell the user: "Please review `apps/slaops-docs/changelog/source/X.Y.Z.md` before I tag. Run `pnpm start` in `apps/slaops-docs` to verify rendering if needed."
+Tell the user: "Please review `apps/derrops-docs/changelog/source/X.Y.Z.md` before I tag. Run `pnpm start` in `apps/derrops-docs` to verify rendering if needed."
 
 Wait for confirmation before proceeding.
 
@@ -98,5 +98,5 @@ Confirm: "Tag vX.Y.Z pushed. The changelog will publish on the next Amplify depl
 
 ## Reference
 
-- Full changelog format and PR label scheme: `apps/slaops-docs/changelog/CLAUDE.md`
+- Full changelog format and PR label scheme: `apps/derrops-docs/changelog/CLAUDE.md`
 - Commit type → changelog section mapping: `CONVENTIONS.md`

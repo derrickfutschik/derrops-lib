@@ -1,0 +1,72 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": ".",
+    },
+    {
+      "name": "@derrops/private",
+      "path": "packages/derrops-private",
+    },
+    {
+      "name": "@derrops/public",
+      "path": "packages/derrops-public",
+    },
+    {
+      "name": "@derrops/client",
+      "path": "packages/derrops-client",
+    },
+    {
+      "name": "derrops-client-nodejs-axios",
+      "path": "packages/derrops-client-nodejs-axios",
+    },
+    {
+      "name": "@derrops/test",
+      "path": "packages/derrops-test",
+    },
+    {
+      "name": "@derrops/infra",
+      "path": "packages/derrops-infra",
+    },
+    {
+      "name": "@derrops/backend",
+      "path": "packages/derrops-backend",
+    },
+    {
+      "name": "derrops-docs",
+      "path": "apps/derrops-docs",
+    },
+    {
+      "name": "derrops-portal",
+      "path": "apps/derrops-portal",
+    },
+    {
+      "name": "derrops-cloud",
+      "path": "apps/derrops-cloud",
+    },
+  ],
+  "settings": {
+    "terminal.integrated.env.osx": {
+      "PATH": "/Users/dfutschik/.nvm/versions/node/v22.21.1/bin:${env:PATH}",
+    },
+
+    // Enable Jest per workspace folder
+    "jest.autoRun": "off",
+    "jest.runMode": "on-demand",
+    "jest.disabledWorkspaceFolders": ["Root"],
+    "jest.jestCommandLine": "pnpm exec dotenv -e ${workspaceFolder}/.env -- pnpm exec jest",
+    "jestrunner.jestCommand": "pnpm exec dotenv -e ${workspaceFolder}/.env -- pnpm exec jest",
+    "jest.nodeEnv": {
+      "NODE_OPTIONS": "--experimental-vm-modules",
+      "PATH": "/Users/dfutschik/.nvm/versions/node/v22.21.1/bin:/usr/local/bin:/usr/bin:/bin",
+    },
+
+    "jestrunner.nodeEnv": {
+      "NODE_OPTIONS": "--experimental-vm-modules",
+      "PATH": "/Users/dfutschik/.nvm/versions/node/v22.21.1/bin:/usr/local/bin:/usr/bin:/bin",
+    },
+  },
+  "extensions": {
+    "recommendations": ["orta.vscode-jest"],
+  },
+}

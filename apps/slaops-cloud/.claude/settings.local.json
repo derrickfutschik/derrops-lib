@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//Users/dfutschik/slaops/slaops-platform/**)",
-      "Bash(pnpm --filter @slaops/config run build)"
-    ]
-  }
-}

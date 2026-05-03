@@ -1,21 +1,21 @@
-# SLAOps Desktop Application - Implementation Plan
+# Derrops Desktop Application - Implementation Plan
 
 ## Overview
 
-Create a Tauri-based desktop application at `apps/slaops-desktop/` that shares code with the existing `apps/slaops-portal/` web application via a new shared package `packages/slaops-ui/`.
+Create a Tauri-based desktop application at `apps/derrops-desktop/` that shares code with the existing `apps/derrops-portal/` web application via a new shared package `packages/derrops-ui/`.
 
 **Key Decisions:**
 
 - Framework: Tauri 2.0 (Rust-based, ~3-5MB bundle)
 - Backend: Supabase cloud (desktop as client, requires internet)
-- Code Sharing: New `@slaops/ui` package for all shared components/pages
+- Code Sharing: New `@derrops/ui` package for all shared components/pages
 - Routing: HashRouter (required for desktop)
 - Target Platforms: macOS (.dmg) and Windows (.msi)
 
 ## Architecture
 
 ```
-packages/slaops-ui/          # NEW - Shared UI package
+packages/derrops-ui/          # NEW - Shared UI package
   ├── src/
   │   ├── components/        # All shadcn/ui components (from portal)
   │   ├── pages/            # All page components (from portal)
@@ -25,13 +25,13 @@ packages/slaops-ui/          # NEW - Shared UI package
   │   └── index.css         # Shared styles
   └── package.json
 
-apps/slaops-portal/          # MODIFIED - Web app using shared package
+apps/derrops-portal/          # MODIFIED - Web app using shared package
   ├── src/
   │   ├── App.tsx           # BrowserRouter wrapper
   │   └── main.tsx          # Web entry point
-  └── package.json          # Add @slaops/ui dependency
+  └── package.json          # Add @derrops/ui dependency
 
-apps/slaops-desktop/         # NEW - Desktop app using shared package
+apps/derrops-desktop/         # NEW - Desktop app using shared package
   ├── src/
   │   ├── App.tsx           # HashRouter wrapper
   │   └── main.tsx          # Desktop entry point
@@ -39,7 +39,7 @@ apps/slaops-desktop/         # NEW - Desktop app using shared package
   │   ├── src/main.rs
   │   ├── Cargo.toml
   │   └── tauri.conf.json
-  └── package.json          # Add @slaops/ui dependency
+  └── package.json          # Add @derrops/ui dependency
 ```
 
 ## Implementation Phases
@@ -49,13 +49,13 @@ apps/slaops-desktop/         # NEW - Desktop app using shared package
 **1.1 Create package structure:**
 
 ```bash
-mkdir -p packages/slaops-ui/src
+mkdir -p packages/derrops-ui/src
 ```
 
 **1.2 Create package.json:**
-File: `packages/slaops-ui/package.json`
+File: `packages/derrops-ui/package.json`
 
-- Set name: `@slaops/ui`
+- Set name: `@derrops/ui`
 - Set version: `0.1.0`
 - Set type: `module`
 - Add all current portal dependencies (React, Radix UI, Supabase, etc.)
@@ -64,23 +64,23 @@ File: `packages/slaops-ui/package.json`
 **1.3 Move shared code from portal:**
 
 ```bash
-cp -r apps/slaops-portal/src/components packages/slaops-ui/src/
-cp -r apps/slaops-portal/src/pages packages/slaops-ui/src/
-cp -r apps/slaops-portal/src/hooks packages/slaops-ui/src/
-cp -r apps/slaops-portal/src/lib packages/slaops-ui/src/
-cp -r apps/slaops-portal/src/integrations packages/slaops-ui/src/
-cp apps/slaops-portal/src/index.css packages/slaops-ui/src/
+cp -r apps/derrops-portal/src/components packages/derrops-ui/src/
+cp -r apps/derrops-portal/src/pages packages/derrops-ui/src/
+cp -r apps/derrops-portal/src/hooks packages/derrops-ui/src/
+cp -r apps/derrops-portal/src/lib packages/derrops-ui/src/
+cp -r apps/derrops-portal/src/integrations packages/derrops-ui/src/
+cp apps/derrops-portal/src/index.css packages/derrops-ui/src/
 ```
 
 **1.4 Create index.ts:**
-File: `packages/slaops-ui/src/index.ts`
+File: `packages/derrops-ui/src/index.ts`
 
 - Export all pages (Landing, Auth, Dashboard, AddService, ServiceDetails, ApiTester, NotFound)
 - Export commonly used components (Toaster, Sonner, TooltipProvider)
 - Export utilities and integrations
 
 **1.5 Create TypeScript config:**
-Files: `packages/slaops-ui/tsconfig.json`, `packages/slaops-ui/tsconfig.node.json`
+Files: `packages/derrops-ui/tsconfig.json`, `packages/derrops-ui/tsconfig.node.json`
 
 - Extend base config
 - Set up path alias `@/*` → `./src/*`
@@ -95,26 +95,26 @@ pnpm install
 ### Phase 2: Update Portal to Use Shared Package
 
 **2.1 Update package.json:**
-File: `apps/slaops-portal/package.json`
+File: `apps/derrops-portal/package.json`
 
-- Add dependency: `"@slaops/ui": "workspace:*"`
-- Remove dependencies now in @slaops/ui (keep only portal-specific)
+- Add dependency: `"@derrops/ui": "workspace:*"`
+- Remove dependencies now in @derrops/ui (keep only portal-specific)
 
 **2.2 Update App.tsx:**
-File: `apps/slaops-portal/src/App.tsx`
+File: `apps/derrops-portal/src/App.tsx`
 
-- Change imports to use `@slaops/ui` for pages
+- Change imports to use `@derrops/ui` for pages
 - Keep BrowserRouter (web-specific)
 
 **2.3 Update main.tsx:**
-File: `apps/slaops-portal/src/main.tsx`
+File: `apps/derrops-portal/src/main.tsx`
 
-- Import styles from `@slaops/ui/styles`
+- Import styles from `@derrops/ui/styles`
 
 **2.4 Remove moved files:**
 
 ```bash
-cd apps/slaops-portal
+cd apps/derrops-portal
 rm -rf src/components src/pages src/hooks src/lib src/integrations
 ```
 
@@ -122,8 +122,8 @@ rm -rf src/components src/pages src/hooks src/lib src/integrations
 
 ```bash
 pnpm install
-pnpm --filter @slaops/portal run build
-pnpm --filter @slaops/portal run dev  # Verify at http://localhost:8080
+pnpm --filter @derrops/portal run build
+pnpm --filter @derrops/portal run dev  # Verify at http://localhost:8080
 ```
 
 ### Phase 3: Set Up Tauri Desktop App
@@ -142,41 +142,41 @@ macOS: `xcode-select --install`
 
 ```bash
 cd apps
-mkdir slaops-desktop
-cd slaops-desktop
-npm create tauri-app@latest . -- --name slaops-desktop --template vanilla-ts --manager pnpm
+mkdir derrops-desktop
+cd derrops-desktop
+npm create tauri-app@latest . -- --name derrops-desktop --template vanilla-ts --manager pnpm
 ```
 
 **3.4 Create package.json:**
-File: `apps/slaops-desktop/package.json`
+File: `apps/derrops-desktop/package.json`
 
 - Scripts: dev, build, build:dev, preview, tauri
-- Dependencies: @slaops/ui, @tanstack/react-query, react, react-dom, react-router-dom, @tauri-apps/api
+- Dependencies: @derrops/ui, @tanstack/react-query, react, react-dom, react-router-dom, @tauri-apps/api
 - DevDependencies: @tauri-apps/cli, @vitejs/plugin-react-swc, tailwindcss, etc.
 
 ### Phase 4: Create Desktop Application Code
 
 **4.1 Create App.tsx:**
-File: `apps/slaops-desktop/src/App.tsx`
+File: `apps/derrops-desktop/src/App.tsx`
 
-- Import pages from `@slaops/ui`
+- Import pages from `@derrops/ui`
 - Use **HashRouter** instead of BrowserRouter (critical difference)
 - Same route structure as portal
 
 **4.2 Create main.tsx:**
-File: `apps/slaops-desktop/src/main.tsx`
+File: `apps/derrops-desktop/src/main.tsx`
 
-- Import styles from `@slaops/ui/styles`
+- Import styles from `@derrops/ui/styles`
 - Render App component
 
 **4.3 Create index.html:**
-File: `apps/slaops-desktop/index.html`
+File: `apps/derrops-desktop/index.html`
 
-- Title: "SLAOps Desktop"
+- Title: "Derrops Desktop"
 - Script: `/src/main.tsx`
 
 **4.4 Create vite.config.ts:**
-File: `apps/slaops-desktop/vite.config.ts`
+File: `apps/derrops-desktop/vite.config.ts`
 
 - Port: 1420 (Tauri expects fixed port)
 - strictPort: true
@@ -185,24 +185,24 @@ File: `apps/slaops-desktop/vite.config.ts`
 - envPrefix: ["VITE_", "TAURI_"]
 
 **4.5 Create tailwind.config.ts:**
-File: `apps/slaops-desktop/tailwind.config.ts`
+File: `apps/derrops-desktop/tailwind.config.ts`
 
 - Copy from portal
-- Content: include both `./src/**/*.{ts,tsx}` and `../../packages/slaops-ui/src/**/*.{ts,tsx}`
+- Content: include both `./src/**/*.{ts,tsx}` and `../../packages/derrops-ui/src/**/*.{ts,tsx}`
 
 **4.6 Create tsconfig.json:**
-File: `apps/slaops-desktop/tsconfig.json`
+File: `apps/derrops-desktop/tsconfig.json`
 
 - Similar to portal
-- Add path aliases for @slaops/ui
+- Add path aliases for @derrops/ui
 
 ### Phase 5: Configure Tauri Backend
 
 **5.1 Configure tauri.conf.json:**
-File: `apps/slaops-desktop/src-tauri/tauri.conf.json`
+File: `apps/derrops-desktop/src-tauri/tauri.conf.json`
 
-- productName: "SLAOps"
-- identifier: "com.slaops.desktop"
+- productName: "Derrops"
+- identifier: "com.derrops.desktop"
 - version: "0.1.0"
 - Window: 1280x800, min 1024x600, centered
 - beforeDevCommand: "pnpm dev"
@@ -213,31 +213,31 @@ File: `apps/slaops-desktop/src-tauri/tauri.conf.json`
 - Bundle targets: ["dmg", "msi"]
 
 **5.2 Configure Cargo.toml:**
-File: `apps/slaops-desktop/src-tauri/Cargo.toml`
+File: `apps/derrops-desktop/src-tauri/Cargo.toml`
 
-- name: "slaops-desktop"
+- name: "derrops-desktop"
 - version: "0.1.0"
 - edition: "2021"
 - Dependencies: tauri v2, serde, serde_json
 - Features: custom-protocol
 
 **5.3 Create main.rs:**
-File: `apps/slaops-desktop/src-tauri/src/main.rs`
+File: `apps/derrops-desktop/src-tauri/src/main.rs`
 
 - Basic Tauri app (default template is sufficient)
 
 **5.4 Generate icons:**
 
 ```bash
-cp apps/slaops-portal/public/favicon.png apps/slaops-desktop/app-icon.png
-cd apps/slaops-desktop
+cp apps/derrops-portal/public/favicon.png apps/derrops-desktop/app-icon.png
+cd apps/derrops-desktop
 pnpm tauri icon app-icon.png
 ```
 
 ### Phase 6: Environment Variables
 
 **6.1 Create .env:**
-File: `apps/slaops-desktop/.env`
+File: `apps/derrops-desktop/.env`
 
 ```
 VITE_SUPABASE_PROJECT_ID="omjpxenvfphdxkarmsxk"
@@ -246,13 +246,13 @@ VITE_SUPABASE_URL="https://omjpxenvfphdxkarmsxk.supabase.co"
 ```
 
 **6.2 Create .env.example:**
-File: `apps/slaops-desktop/.env.example`
+File: `apps/derrops-desktop/.env.example`
 
 - Template with placeholder values
 - Instructions on where to get credentials
 
 **6.3 Update .gitignore:**
-File: `apps/slaops-desktop/.gitignore`
+File: `apps/derrops-desktop/.gitignore`
 
 - Ignore: node*modules, dist, src-tauri/target, .env, *.dmg, \_.msi
 
@@ -262,9 +262,9 @@ File: `apps/slaops-desktop/.gitignore`
 File: `package.json`
 Add scripts:
 
-- `dev:desktop`: `pnpm --filter slaops-desktop run dev`
-- `build:desktop`: `pnpm --filter slaops-desktop run build`
-- `build:desktop:dev`: `pnpm --filter slaops-desktop run build:dev`
+- `dev:desktop`: `pnpm --filter derrops-desktop run dev`
+- `build:desktop`: `pnpm --filter derrops-desktop run build`
+- `build:desktop:dev`: `pnpm --filter derrops-desktop run build:dev`
 
 **7.2 Update turbo.json:**
 File: `turbo.json`
@@ -275,7 +275,7 @@ File: `turbo.json`
 ### Phase 8: Documentation
 
 **8.1 Create README.md:**
-File: `apps/slaops-desktop/README.md`
+File: `apps/derrops-desktop/README.md`
 
 - Overview, tech stack, development setup
 - Prerequisites (Node.js, Rust, platform tools)
@@ -286,7 +286,7 @@ File: `apps/slaops-desktop/README.md`
 - Troubleshooting
 
 **8.2 Create CLAUDE.md:**
-File: `apps/slaops-desktop/CLAUDE.md`
+File: `apps/derrops-desktop/CLAUDE.md`
 
 - Architecture decisions
 - Code sharing strategy
@@ -298,21 +298,21 @@ File: `apps/slaops-desktop/CLAUDE.md`
 
 **8.3 Update root CLAUDE.md:**
 File: `CLAUDE.md`
-Add section for slaops-desktop package with links to detailed docs
+Add section for derrops-desktop package with links to detailed docs
 
 ### Phase 9: Testing & Verification
 
 **9.1 Test shared package:**
 
 ```bash
-pnpm --filter @slaops/ui run typecheck
+pnpm --filter @derrops/ui run typecheck
 ```
 
 **9.2 Test portal:**
 
 ```bash
-pnpm --filter @slaops/portal run build
-pnpm --filter @slaops/portal run dev
+pnpm --filter @derrops/portal run build
+pnpm --filter @derrops/portal run dev
 ```
 
 - Verify at http://localhost:8080
@@ -345,30 +345,30 @@ pnpm build:desktop
 
 **Shared UI Package:**
 
-- `packages/slaops-ui/package.json` - Package definition with all dependencies
-- `packages/slaops-ui/src/index.ts` - Export all shared code
-- `packages/slaops-ui/tsconfig.json` - TypeScript configuration
+- `packages/derrops-ui/package.json` - Package definition with all dependencies
+- `packages/derrops-ui/src/index.ts` - Export all shared code
+- `packages/derrops-ui/tsconfig.json` - TypeScript configuration
 
 **Desktop App:**
 
-- `apps/slaops-desktop/package.json` - Desktop dependencies and scripts
-- `apps/slaops-desktop/src/App.tsx` - HashRouter configuration
-- `apps/slaops-desktop/src/main.tsx` - Desktop entry point
-- `apps/slaops-desktop/vite.config.ts` - Tauri-specific Vite config
-- `apps/slaops-desktop/src-tauri/tauri.conf.json` - Tauri configuration (window, security, bundle)
-- `apps/slaops-desktop/src-tauri/Cargo.toml` - Rust dependencies
-- `apps/slaops-desktop/src-tauri/src/main.rs` - Rust backend
-- `apps/slaops-desktop/.env` - Supabase credentials
-- `apps/slaops-desktop/README.md` - User documentation
-- `apps/slaops-desktop/CLAUDE.md` - Developer documentation
+- `apps/derrops-desktop/package.json` - Desktop dependencies and scripts
+- `apps/derrops-desktop/src/App.tsx` - HashRouter configuration
+- `apps/derrops-desktop/src/main.tsx` - Desktop entry point
+- `apps/derrops-desktop/vite.config.ts` - Tauri-specific Vite config
+- `apps/derrops-desktop/src-tauri/tauri.conf.json` - Tauri configuration (window, security, bundle)
+- `apps/derrops-desktop/src-tauri/Cargo.toml` - Rust dependencies
+- `apps/derrops-desktop/src-tauri/src/main.rs` - Rust backend
+- `apps/derrops-desktop/.env` - Supabase credentials
+- `apps/derrops-desktop/README.md` - User documentation
+- `apps/derrops-desktop/CLAUDE.md` - Developer documentation
 
 ### Files to Modify
 
 **Portal:**
 
-- `apps/slaops-portal/package.json` - Add @slaops/ui dependency
-- `apps/slaops-portal/src/App.tsx` - Import from @slaops/ui
-- `apps/slaops-portal/src/main.tsx` - Import styles from @slaops/ui
+- `apps/derrops-portal/package.json` - Add @derrops/ui dependency
+- `apps/derrops-portal/src/App.tsx` - Import from @derrops/ui
+- `apps/derrops-portal/src/main.tsx` - Import styles from @derrops/ui
 
 **Monorepo Root:**
 
@@ -378,7 +378,7 @@ pnpm build:desktop
 
 ### Files to Move
 
-Move from `apps/slaops-portal/src/` to `packages/slaops-ui/src/`:
+Move from `apps/derrops-portal/src/` to `packages/derrops-ui/src/`:
 
 - `components/` directory
 - `pages/` directory
@@ -409,7 +409,7 @@ Move from `apps/slaops-portal/src/` to `packages/slaops-ui/src/`:
 
 ## Success Criteria
 
-- [ ] Shared @slaops/ui package builds without errors
+- [ ] Shared @derrops/ui package builds without errors
 - [ ] Portal continues to work exactly as before
 - [ ] Desktop app launches in dev mode (`pnpm dev:desktop`)
 - [ ] All routes navigate correctly in desktop app

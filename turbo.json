@@ -17,10 +17,10 @@
     },
     "generate:client": {
       "dependsOn": ["generate:openapi"],
-      "outputs": ["../slaops-portal/src/client/slaops-cloud/**"]
+      "outputs": ["../derrops-portal/src/client/derrops-cloud/**"]
     },
-    "@slaops/portal#build": {
-      "dependsOn": ["@slaops/cloud#generate:client", "^build"],
+    "@derrops/portal#build": {
+      "dependsOn": ["@derrops/cloud#generate:client", "^build"],
       "outputs": ["dist/**"],
       "env": [
         "NODE_ENV",

@@ -1,6 +1,6 @@
 # Dev Environment Quick Start
 
-Start the full SLAOps dev environment with a single command.
+Start the full Derrops dev environment with a single command.
 
 ## First-time setup
 
@@ -31,16 +31,16 @@ source .tmuxinator.env && tmuxinator start -p .tmuxinator.yml
 | Window                                                             | What it runs                                           |
 | ------------------------------------------------------------------ | ------------------------------------------------------ |
 | `root`                                                             | Git / build shell                                      |
-| `slaops-docs`                                                      | Docusaurus dev server (`DOCS_PORT`)                    |
-| `slaops-portal`                                                    | Vite dev server (`PORTAL_PORT`)                        |
-| `slaops-cloud`                                                     | OpenSearch migrate → NestJS API (`CLOUD_PORT`)         |
-| `slaops-relay`                                                     | Relay service (`RELAY_PORT`)                           |
-| `slaops-aegis`                                                     | Aegis auth service (`AEGIS_PORT`)                      |
+| `derrops-docs`                                                      | Docusaurus dev server (`DOCS_PORT`)                    |
+| `derrops-portal`                                                    | Vite dev server (`PORTAL_PORT`)                        |
+| `derrops-cloud`                                                     | OpenSearch migrate → NestJS API (`CLOUD_PORT`)         |
+| `derrops-relay`                                                     | Relay service (`RELAY_PORT`)                           |
+| `derrops-aegis`                                                     | Aegis auth service (`AEGIS_PORT`)                      |
 | `relay-aegis-setup`                                                | Polls until both services are up, then runs smoke test |
-| `slaops-tests`                                                     | Vitest watch mode                                      |
+| `derrops-tests`                                                     | Vitest watch mode                                      |
 | `devserver`                                                        | SSH shell into dev server                              |
 | `opensearch` / `opensearch-dashboards` / `localstack` / `postgres` | Docker Compose log tails (remote)                      |
-| `slaops-cloudflared`                                               | Cloudflare tunnel                                      |
+| `derrops-cloudflared`                                               | Cloudflare tunnel                                      |
 
 ## Configuring `.tmuxinator.env`
 
@@ -48,12 +48,12 @@ source .tmuxinator.env && tmuxinator start -p .tmuxinator.yml
 | ---------------------- | -------------------------------------- | ----------------------------------- |
 | `DEVSERVER_IP`         | `192.168.7.233`                        | Dev server IP for SSH windows       |
 | `DEVSERVER_USER`       | `derrick`                              | SSH username                        |
-| `DEVSERVER_PATH`       | `/home/derrick/slaops/slaops-platform` | Remote repo path                    |
-| `DOCS_PORT`            | `3001`                                 | slaops-docs port                    |
-| `PORTAL_PORT`          | `3000`                                 | slaops-portal port                  |
-| `CLOUD_PORT`           | `8080`                                 | slaops-cloud port                   |
-| `RELAY_PORT`           | `8081`                                 | slaops-relay port                   |
-| `AEGIS_PORT`           | `8082`                                 | slaops-aegis port                   |
+| `DEVSERVER_PATH`       | `/home/derrick/derrops/derrops-platform` | Remote repo path                    |
+| `DOCS_PORT`            | `3001`                                 | derrops-docs port                    |
+| `PORTAL_PORT`          | `3000`                                 | derrops-portal port                  |
+| `CLOUD_PORT`           | `8080`                                 | derrops-cloud port                   |
+| `RELAY_PORT`           | `8081`                                 | derrops-relay port                   |
+| `AEGIS_PORT`           | `8082`                                 | derrops-aegis port                   |
 | `RELAY_QUEUE_BACKEND`  | `memory`                               | Queue backend for relay             |
 | `RELAY_SECRET_BACKEND` | `env`                                  | Secret backend for relay            |
 | `AEGIS_SIGNING_KEY_ID` | `aegis-dev-1`                          | Aegis signing key ID                |
@@ -62,5 +62,5 @@ source .tmuxinator.env && tmuxinator start -p .tmuxinator.yml
 ## Stop
 
 ```bash
-tmuxinator stop slaops-apps
+tmuxinator stop derrops-apps
 ```

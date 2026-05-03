@@ -1,6 +1,6 @@
 # Scripts
 
-Utility scripts for the SLAOps platform monorepo.
+Utility scripts for the Derrops platform monorepo.
 
 ## Test Notifications (`test-notify.sh`)
 
@@ -24,8 +24,8 @@ Run tests with desktop notifications when the test suite completes.
 pnpm run test:notify
 
 # Run tests for a specific package with notifications
-pnpm run test:notify --filter @slaops/private
-pnpm run test:notify --filter @slaops/public
+pnpm run test:notify --filter @derrops/private
+pnpm run test:notify --filter @derrops/public
 
 # Direct execution
 ./scripts/test-notify.sh
@@ -94,7 +94,7 @@ Run tests in watch mode with desktop notifications after each test run.
 pnpm run test:watch:notify
 
 # Watch tests for a specific package with notifications
-pnpm run test:watch:notify --filter @slaops/private
+pnpm run test:watch:notify --filter @derrops/private
 
 # Direct execution
 ./scripts/test-watch-notify.sh

@@ -1,0 +1,164 @@
+import { ServiceApi } from '@/client/derrops-cloud'
+import { Service } from '@/client/derrops-cloud/models/service'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useToast } from '@/hooks/use-toast'
+import { cloudApiConfig, cloudAxios } from '@/lib/cloud-api'
+import { Activity, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+type ServiceStatus = 'healthy' | 'warning' | 'critical' | 'unknown'
+
+const BADGE_VARIANT: Record<ServiceStatus, 'default' | 'secondary' | 'destructive'> = {
+  healthy: 'default',
+  warning: 'secondary',
+  critical: 'destructive',
+  unknown: 'destructive',
+}
+
+const BADGE_CLASS: Record<ServiceStatus, string> = {
+  healthy: 'bg-success/20 text-success border-success/50',
+  warning: 'bg-warning/20 text-warning border-warning/50',
+  critical: 'bg-destructive/20 text-destructive border-destructive/50',
+  unknown: 'bg-destructive/20 text-destructive border-destructive/50',
+}
+
+const ServicesList = () => {
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchServices()
+  }, [])
+
+  const fetchServices = async () => {
+    try {
+      const serviceApi = new ServiceApi(cloudApiConfig, undefined, cloudAxios)
+
+      const response = await serviceApi.serviceControllerFindAll(
+        'id,name,endpoint,availability,response_time',
+      )
+      const data = response.data
+
+      // Sort by created_at descending (newest first)
+      const mappedServices: Service[] = [...data].sort((a, b) => {
+        // Since we don't have created_at in the response, we'll just return the data as-is
+        // If sorting is needed, it should be done on the backend
+        return 0
+      })
+
+      setServices(mappedServices)
+    } catch (error: unknown) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load services',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusFromAvailability = (availability: number | null): ServiceStatus => {
+    if (!availability) return 'unknown'
+    if (availability >= 99.5) return 'healthy'
+    if (availability >= 98) return 'warning'
+    return 'critical'
+  }
+
+  if (loading) {
+    return (
+      <Card className="border-border bg-card/50 backdrop-blur">
+        <CardHeader>
+          <CardTitle className="text-foreground">Monitored Services</CardTitle>
+          <CardDescription>Overview of your SaaS application integrations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center text-muted-foreground">Loading services...</div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (services.length === 0) {
+    return (
+      <Card className="border-border bg-card/50 backdrop-blur">
+        <CardHeader>
+          <CardTitle className="text-foreground">Monitored Services</CardTitle>
+          <CardDescription>Overview of your SaaS application integrations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center">
+            <p className="text-muted-foreground mb-4">No services added yet</p>
+            <Button onClick={() => navigate('/add-service')}>Add Your First Service</Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="border-border bg-card/50 backdrop-blur">
+      <CardHeader>
+        <CardTitle className="text-foreground">Monitored Services</CardTitle>
+        <CardDescription>Overview of your SaaS application integrations</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {services.map((service) => {
+            const status = getStatusFromAvailability(service.availability)
+
+            return (
+              <div
+                key={service.id}
+                className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
+                onClick={() => navigate(`/service/${service.id}`)}
+              >
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-foreground">{service.name}</h3>
+                      <Badge variant={BADGE_VARIANT[status]} className={BADGE_CLASS[status]}>
+                        <Activity className="h-3 w-3 mr-1" />
+                        {status}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-6 text-sm text-muted-foreground">
+                      {service.availability && <span>Uptime: {service.availability}%</span>}
+                      {service.response_time && <span>Avg Latency: {service.response_time}ms</span>}
+                      {service.endpoint && (
+                        <span className="font-mono truncate max-w-xs">{service.endpoint}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-success" />
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-4"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/service/${service.id}`)
+                  }}
+                >
+                  View Details
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default ServicesList

@@ -1,0 +1,107 @@
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+import * as jwt from 'jsonwebtoken'
+import type { Request } from 'express'
+import { config } from '@derrops/config'
+import { mockToken } from './auth.mock'
+
+export interface CognitoClaims {
+  /** Cognito User Pool subject — stable UUID per user, used as userId. */
+  sub: string
+  /** Tenant the user belongs to — injected by the Pre-Token Generation Lambda. */
+  tenantId: string
+  email?: string
+  [key: string]: unknown
+}
+
+/**
+ * CognitoGuard — verifies the Cognito id_token (or access_token) sent as
+ * `Authorization: Bearer <token>` and attaches the verified claims to `request.user`.
+ *
+ * Uses jose's createRemoteJWKSet which fetches and caches the Cognito JWKS
+ * automatically, re-fetching only when a new `kid` is seen.
+ *
+ * When `app.auth.mock.enabled` is true, signature verification is skipped and
+ * the default mock payload from config is used instead.
+ *
+ * Controllers extract claims via the @CurrentUser() decorator.
+ */
+@Injectable()
+export class CognitoGuard implements CanActivate {
+  private readonly logger = new Logger(CognitoGuard.name)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly jwks: ReturnType<typeof createRemoteJWKSet>
+  private readonly issuer: string
+
+  constructor() {
+    const region = config['aws.region']
+    const userPoolId = config['aws.cognito.userPoolId']
+    const jwksUri = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`
+    this.issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`
+    this.jwks = createRemoteJWKSet(new URL(jwksUri))
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<Request>()
+
+    if (config['app.auth.mock.enabled']) {
+      const decoded = jwt.decode(mockToken({})) as Record<string, unknown>
+      request.user = this.buildClaims(decoded)
+      return true
+    }
+
+    const token = this.extractBearer(request)
+    if (!token) {
+      throw new UnauthorizedException('Missing Authorization Bearer token')
+    }
+
+    try {
+      const { payload } = await jwtVerify(token, this.jwks, {
+        issuer: this.issuer,
+        algorithms: ['RS256'],
+      })
+
+      if (!payload.sub) {
+        throw new UnauthorizedException('Token missing sub claim')
+      }
+
+      const claims = this.buildClaims(payload as Record<string, unknown>)
+      if (!claims.tenantId) {
+        throw new UnauthorizedException(
+          'Token missing tenantId claim — user may not be assigned to a tenant',
+        )
+      }
+
+      request.user = claims
+      return true
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err
+      this.logger.debug(`JWT verification failed: ${(err as Error).message}`)
+      throw new UnauthorizedException('Invalid or expired token')
+    }
+  }
+
+  /**
+   * Normalises a raw JWT payload into CognitoClaims.
+   * Handles both real tokens (tenantId set by Pre-Token Generation Lambda)
+   * and mock tokens (custom:tenant_id from config mock payload).
+   */
+  private buildClaims(payload: Record<string, unknown>): CognitoClaims {
+    return {
+      ...payload,
+      sub: payload['sub'] as string,
+      tenantId: (payload['tenantId'] ?? payload['custom:tenant_id']) as string,
+    }
+  }
+
+  private extractBearer(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? []
+    return type === 'Bearer' ? token : undefined
+  }
+}

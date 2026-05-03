@@ -1,0 +1,26 @@
+# buildPath: '/' runs install/build from repo root so cache paths match where
+# pnpm and Turbo write (node_modules, .pnpm-store, .turbo at repo root).
+version: 1
+applications:
+  - appRoot: apps/derrops-docs
+    env:
+      variables:
+        NODE_OPTIONS: '--max_old_space_size=4096'
+    frontend:
+      buildPath: /
+      phases:
+        preBuild:
+          commands:
+            - chmod +x apps/derrops-docs/amplify-prebuild.sh
+            - ./apps/derrops-docs/amplify-prebuild.sh
+        build:
+          commands:
+            - chmod +x apps/derrops-docs/amplify-build.sh
+            - ./apps/derrops-docs/amplify-build.sh
+      artifacts:
+        baseDirectory: apps/derrops-docs/build
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .pnpm-store/**/*

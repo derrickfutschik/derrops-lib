@@ -10,11 +10,11 @@ be referenced across package boundaries:
 
 | Scope                                                      | Where to define                                                      |
 | ---------------------------------------------------------- | -------------------------------------------------------------------- |
-| Used only within one package (e.g. only in `slaops-infra`) | A constants file in that package (e.g. `lib/names.ts`)               |
-| Shared across two or more packages/apps                    | `packages/slaops-config/src/` — add to `config.ts` or a sibling file |
+| Used only within one package (e.g. only in `derrops-infra`) | A constants file in that package (e.g. `lib/names.ts`)               |
+| Shared across two or more packages/apps                    | `packages/derrops-config/src/` — add to `config.ts` or a sibling file |
 | Runtime-dynamic (varies per tenant/env/request)            | `config.ts` as a function property: `config['key'](tenantId, ...)`   |
 
-Before adding anything to `slaops-config`, ask: is this name actually consumed outside the
+Before adding anything to `derrops-config`, ask: is this name actually consumed outside the
 package where it's defined? If no, keep it local.
 
 ## Decision tree
@@ -23,11 +23,11 @@ package where it's defined? If no, keep it local.
 Creating or referencing an AWS resource name?
   ├─ Already defined somewhere in this package?
   │   └─ Yes → use it. Stop here.
-  ├─ Already defined in slaops-config (shared)?
+  ├─ Already defined in derrops-config (shared)?
   │   └─ Yes → import and use it. Stop here.
   └─ No → is this name needed outside the current package?
        ├─ No  → define it locally (constants file in the same package)
-       └─ Yes → add it to packages/slaops-config/src/ and reference via config['key']
+       └─ Yes → add it to packages/derrops-config/src/ and reference via config['key']
 ```
 
 ## Nesting pattern
@@ -37,8 +37,8 @@ derivation — one level at a time:
 
 ```typescript
 // org-level root
-const orgConvention = new DerropsConventions({ org: 'slaops', env, region })
-  .tagPrefix('slaops:')
+const orgConvention = new DerropsConventions({ org: 'derrops', env, region })
+  .tagPrefix('derrops:')
   .tagKeys('org', 'domain', 'service')
 
 // domain-level
@@ -56,14 +56,14 @@ const dbConvention = platformConvention.with({ service: 'app-database' })
 
 ```typescript
 vpcConvention.name({ type: 'vpc' })
-// → 'slaops--platform--vpc'
+// → 'derrops--platform--vpc'
 
 vpcConvention.name({ type: 'vpc', key: 'id' })
-// → 'slaops--platform--vpc--id'   (also correct for CloudFormation export names)
+// → 'derrops--platform--vpc--id'   (also correct for CloudFormation export names)
 
 // S3 (global: true — includes region + env automatically)
 oaspecConvention.name({ type: 's3Bucket', service: 'storage', tenant: tenantId })
-// → 'ap-southeast-2--dev--slaops--oaspec--storage--{tenantId}'
+// → 'ap-southeast-2--dev--derrops--oaspec--storage--{tenantId}'
 ```
 
 Use the `type` that matches the AWS resource. Full list: `DerropsConventions.resourceTypes()` or
@@ -73,15 +73,15 @@ Use the `type` that matches the AWS resource. Full list: `DerropsConventions.res
 
 Any package that needs to generate names may import `@derrops-conventions` directly — provided
 it has the package in its own `dependencies`. There is no rule that names must funnel through
-`slaops-config`; the rule is only that names shared across packages must be stored in one
+`derrops-config`; the rule is only that names shared across packages must be stored in one
 authoritative location (whichever package is the natural owner) and referenced from there.
 
 ```typescript
-// ✅ OK in slaops-infra if 'slaops-infra' is the only consumer
+// ✅ OK in derrops-infra if 'derrops-infra' is the only consumer
 //   lib/names.ts
 import { DerropsConventions } from '@derrops-conventions'
 
-const org = new DerropsConventions({ org: 'slaops' })
+const org = new DerropsConventions({ org: 'derrops' })
 const platform = org.with({ domain: 'platform' })
 
 export const NAMES = {
@@ -89,9 +89,9 @@ export const NAMES = {
   opensearchEp: platform.with({ service: 'opensearch' }).name({ type: 'openSearchDomain', key: 'endpoint' }),
 } as const
 
-// ✅ OK in slaops-config when the name is consumed by both infra and the app
-//   packages/slaops-config/src/config.ts  (or a sibling file)
-'slaops.oaspec.storage.bucket': orgConvention.with({ domain: 'oaspec' }).name({
+// ✅ OK in derrops-config when the name is consumed by both infra and the app
+//   packages/derrops-config/src/config.ts  (or a sibling file)
+'derrops.oaspec.storage.bucket': orgConvention.with({ domain: 'oaspec' }).name({
   type: 's3Bucket', service: 'storage', tenant: globalTenantId
 }),
 ```
@@ -101,9 +101,9 @@ export const NAMES = {
 ### App code (NestJS, Lambda handlers, portal)
 
 ```typescript
-import { config } from '@slaops/config'
-const bucket = config['slaops.oaspec.storage.bucket'] // ✅
-const bucket = `${region}--${env}--slaops--oaspec--...` // ❌ never inline
+import { config } from '@derrops/config'
+const bucket = config['derrops.oaspec.storage.bucket'] // ✅
+const bucket = `${region}--${env}--derrops--oaspec--...` // ❌ never inline
 ```
 
 ### CDK infra stacks — locally-scoped names
@@ -114,14 +114,14 @@ import { NAMES } from '../names'
 Fn.importValue(NAMES.vpcExportId) // ✅
 new CfnOutput(this, 'VpcId', { exportName: NAMES.vpcExportId }) // ✅
 
-new CfnOutput(this, 'VpcId', { exportName: 'slaops--platform--vpc--id' }) // ❌
+new CfnOutput(this, 'VpcId', { exportName: 'derrops--platform--vpc--id' }) // ❌
 ```
 
 ### CDK infra stacks — cross-package names
 
 ```typescript
-import { config } from '@slaops/config'
-const bucketName = config['slaops.oaspec.storage.bucket'] // ✅
+import { config } from '@derrops/config'
+const bucketName = config['derrops.oaspec.storage.bucket'] // ✅
 ```
 
 ## IAM policy generation
@@ -136,9 +136,9 @@ Set `.arnContext({ accountId })` on the org-level convention instance. Region is
 the `region` segment already on the instance.
 
 ```typescript
-const orgConvention = new DerropsConventions({ org: 'slaops', env, region })
+const orgConvention = new DerropsConventions({ org: 'derrops', env, region })
   .arnContext({ accountId })
-  .tagPrefix('slaops:')
+  .tagPrefix('derrops:')
   .tagKeys('org', 'domain', 'service')
 ```
 
@@ -223,7 +223,7 @@ Writing an IAM policy?
 - The convention instance used for `.resource()` must be the same instance (or a `.with()` derivative)
   used to generate the resource name — this is the only guarantee that ARNs match names.
 - `accountId` must be set via `.arnContext()` before calling `.resource()`, `.staticPolicy()`, or `.dynamicPolicy()`.
-  Keep it on the org-level instance in `lib/names.ts` or `slaops-config`; do not pass it at each call site.
+  Keep it on the org-level instance in `lib/names.ts` or `derrops-config`; do not pass it at each call site.
 
 ## Tagging AWS resources
 
@@ -235,24 +235,24 @@ Never call `Tags.of(this).add(key, value)` with a manually typed string. Use
 svcConvention.applyTags((k, v) => Tags.of(this).add(k, v))
 
 // ❌
-Tags.of(this).add('slaops:domain', 'platform')
-Tags.of(this).add('slaops:service', 'vpc')
+Tags.of(this).add('derrops:domain', 'platform')
+Tags.of(this).add('derrops:service', 'vpc')
 ```
 
 Configure `tagPrefix` and `tagKeys` once on the org-level instance; they propagate via `.with()`.
 
 ## No duplicate definitions
 
-Before creating a new name constant, search the package and `slaops-config` for an existing one.
+Before creating a new name constant, search the package and `derrops-config` for an existing one.
 Never define the same name in two places. If a local constant needs to become cross-package,
-move it to `slaops-config` and update all import sites.
+move it to `derrops-config` and update all import sites.
 
 ## Checklist — before writing any resource name or IAM policy
 
 1. Search the current package for an existing constant.
-2. Search `packages/slaops-config/src/` for an existing shared constant.
+2. Search `packages/derrops-config/src/` for an existing shared constant.
 3. If found, use it. Do not duplicate.
-4. If not found, decide: local (package constants file) or shared (`slaops-config`)?
+4. If not found, decide: local (package constants file) or shared (`derrops-config`)?
 5. Add using the org → domain → service nesting pattern with a JSDoc comment.
 6. Reference via the exported constant — never reconstruct the string at a call site.
 7. For CDK resources, apply tags via `applyTags((k, v) => Tags.of(this).add(k, v))`.

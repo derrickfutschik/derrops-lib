@@ -18,7 +18,7 @@ app.derrops.com -> server
 - GUI with drag and top open api specs
 - GUI which can take an open api url, (setup auto-updating to be done later)
 - Enable versioning on the s3 bucket for overriding existing APIs
-- Prefix for each tenant (global managed by slaops)
+- Prefix for each tenant (global managed by derrops)
 
 ## Searching
 

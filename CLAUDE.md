@@ -1,27 +1,27 @@
-# SLAOps Platform
+# Derrops Platform
 
-A monorepo for the SLAOps platform — a DevOps solution for monitoring, logging, and analysing HTTP requests and API usage across your applications.
+A monorepo for the Derrops platform — a DevOps solution for monitoring, logging, and analysing HTTP requests and API usage across your applications.
 
-SLAOps provides: HTTP request/response monitoring, OpenAPI spec validation, API performance metrics, SLA compliance tracking, cost analysis, and real-time alerts.
+Derrops provides: HTTP request/response monitoring, OpenAPI spec validation, API performance metrics, SLA compliance tracking, cost analysis, and real-time alerts.
 
 ## Monorepo Structure
 
 ```
-slaops-platform/
+derrops-platform/
 ├── packages/
-│   ├── slaops-private/            # @slaops/private    – Core types & utilities (private, no deps)
-│   ├── slaops-public/             # @slaops/public     – Shared utilities (public npm)
-│   ├── slaops-config/             # @slaops/config     – Zod-validated config management
-│   ├── slaops-client/             # @slaops/client     – Base HTTP client (public npm)
-│   ├── slaops-client-nodejs-axios/# slaops-client-nodejs-axios – Axios interceptor client (public npm)
-│   ├── slaops-infra/              # @slaops/infra      – AWS CDK stacks (DB, VPC, Auth, API GW)
-│   ├── slaops-backend/            # @slaops/backend    – AWS Amplify Lambda function deployment
-│   └── slaops-test/               # @slaops/test       – Cross-package integration tests
+│   ├── derrops-private/            # @derrops/private    – Core types & utilities (private, no deps)
+│   ├── derrops-public/             # @derrops/public     – Shared utilities (public npm)
+│   ├── derrops-config/             # @derrops/config     – Zod-validated config management
+│   ├── derrops-client/             # @derrops/client     – Base HTTP client (public npm)
+│   ├── derrops-client-nodejs-axios/# derrops-client-nodejs-axios – Axios interceptor client (public npm)
+│   ├── derrops-infra/              # @derrops/infra      – AWS CDK stacks (DB, VPC, Auth, API GW)
+│   ├── derrops-backend/            # @derrops/backend    – AWS Amplify Lambda function deployment
+│   └── derrops-test/               # @derrops/test       – Cross-package integration tests
 │
 ├── apps/
-│   ├── slaops-docs/               # Docusaurus docs site → apps/slaops-docs/CLAUDE.md
-│   ├── slaops-portal/             # React monitoring portal → apps/slaops-portal/CLAUDE.md
-│   └── slaops-cloud/              # NestJS backend API → apps/slaops-cloud/CLAUDE.md
+│   ├── derrops-docs/               # Docusaurus docs site → apps/derrops-docs/CLAUDE.md
+│   ├── derrops-portal/             # React monitoring portal → apps/derrops-portal/CLAUDE.md
+│   └── derrops-cloud/              # NestJS backend API → apps/derrops-cloud/CLAUDE.md
 │
 └── scripts/
     └── ai-commit.sh               # AI-powered commit message generator (pnpm commit)
@@ -30,15 +30,15 @@ slaops-platform/
 ### Package build order (dependency graph)
 
 ```
-@slaops/private  (no deps)
+@derrops/private  (no deps)
        ↓
-@slaops/public · @slaops/config (standalone, zod only)
+@derrops/public · @derrops/config (standalone, zod only)
        ↓
-@slaops/client
+@derrops/client
        ↓
-slaops-client-nodejs-axios
+derrops-client-nodejs-axios
        ↓
-@slaops/test  (dev deps on all — built last)
+@derrops/test  (dev deps on all — built last)
 ```
 
 `pnpm run build` at the root handles this order automatically.
@@ -85,22 +85,22 @@ Each package has the standard scripts: `build`, `dev`, `test`, `test:watch`, `cl
 
 | Package                      | Purpose                                       | Details                                                    |
 | ---------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
-| `@slaops/private`            | Core types, interfaces, shared constants      | [CLAUDE.md](packages/slaops-private/CLAUDE.md)             |
-| `@slaops/public`             | Reusable utilities (HTTP helpers, transforms) | [CLAUDE.md](packages/slaops-public/CLAUDE.md)              |
-| `@slaops/config`             | Zod-validated config, dot-notation access     | [CLAUDE.md](packages/slaops-config/CLAUDE.md)              |
-| `@slaops/client`             | Base SlaOps HTTP client class                 | [CLAUDE.md](packages/slaops-client/CLAUDE.md)              |
-| `slaops-client-nodejs-axios` | Axios interceptor client for Node.js          | [CLAUDE.md](packages/slaops-client-nodejs-axios/CLAUDE.md) |
-| `@slaops/infra`              | CDK stacks: VPC, Aurora, Cognito, API GW      | [CLAUDE.md](packages/slaops-infra/CLAUDE.md)               |
-| `@slaops/backend`            | Amplify Lambda function deployment            | [CLAUDE.md](packages/slaops-backend/CLAUDE.md)             |
-| `@slaops/test`               | Cross-package integration tests               | [CLAUDE.md](packages/slaops-test/CLAUDE.md)                |
+| `@derrops/private`            | Core types, interfaces, shared constants      | [CLAUDE.md](packages/derrops-private/CLAUDE.md)             |
+| `@derrops/public`             | Reusable utilities (HTTP helpers, transforms) | [CLAUDE.md](packages/derrops-public/CLAUDE.md)              |
+| `@derrops/config`             | Zod-validated config, dot-notation access     | [CLAUDE.md](packages/derrops-config/CLAUDE.md)              |
+| `@derrops/client`             | Base Derrops HTTP client class                 | [CLAUDE.md](packages/derrops-client/CLAUDE.md)              |
+| `derrops-client-nodejs-axios` | Axios interceptor client for Node.js          | [CLAUDE.md](packages/derrops-client-nodejs-axios/CLAUDE.md) |
+| `@derrops/infra`              | CDK stacks: VPC, Aurora, Cognito, API GW      | [CLAUDE.md](packages/derrops-infra/CLAUDE.md)               |
+| `@derrops/backend`            | Amplify Lambda function deployment            | [CLAUDE.md](packages/derrops-backend/CLAUDE.md)             |
+| `@derrops/test`               | Cross-package integration tests               | [CLAUDE.md](packages/derrops-test/CLAUDE.md)                |
 
 ## Apps — quick reference
 
 | App             | Purpose                                                | Details                                   |
 | --------------- | ------------------------------------------------------ | ----------------------------------------- |
-| `slaops-docs`   | Docusaurus site at https://blog.SLAOps.com (port 3000) | [CLAUDE.md](apps/slaops-docs/CLAUDE.md)   |
-| `slaops-portal` | React monitoring dashboard (port 8080)                 | [CLAUDE.md](apps/slaops-portal/CLAUDE.md) |
-| `slaops-cloud`  | NestJS backend API (deployed as Lambda)                | [CLAUDE.md](apps/slaops-cloud/CLAUDE.md)  |
+| `derrops-docs`   | Docusaurus site at https://blog.Derrops.com (port 3000) | [CLAUDE.md](apps/derrops-docs/CLAUDE.md)   |
+| `derrops-portal` | React monitoring dashboard (port 8080)                 | [CLAUDE.md](apps/derrops-portal/CLAUDE.md) |
+| `derrops-cloud`  | NestJS backend API (deployed as Lambda)                | [CLAUDE.md](apps/derrops-cloud/CLAUDE.md)  |
 
 ## Key Conventions
 
@@ -110,11 +110,11 @@ After making any code changes, run `pnpm run format:changed` to format only modi
 
 ### Never use `process.env` directly
 
-Always use `@slaops/config`. See [packages/slaops-config/CLAUDE.md](packages/slaops-config/CLAUDE.md) for the full API.
+Always use `@derrops/config`. See [packages/derrops-config/CLAUDE.md](packages/derrops-config/CLAUDE.md) for the full API.
 
 ```typescript
 // ✅
-import { config } from '@slaops/config'
+import { config } from '@derrops/config'
 const port = config['app.port']
 
 // ❌
@@ -123,14 +123,14 @@ const port = process.env.PORT
 
 ### No magic numbers or hardcoded values
 
-Every configurable value (limits, sizes, timeouts, names, prefixes) must be a named property in `packages/slaops-config/src/config.ts` with a JSDoc comment. See [packages/slaops-config/CLAUDE.md](packages/slaops-config/CLAUDE.md).
+Every configurable value (limits, sizes, timeouts, names, prefixes) must be a named property in `packages/derrops-config/src/config.ts` with a JSDoc comment. See [packages/derrops-config/CLAUDE.md](packages/derrops-config/CLAUDE.md).
 
 ### AWS resource names, IAM policies, and CDK tagging
 
 Never write an AWS resource name, CloudFormation export name, CDK tag value, or IAM policy ARN
 as a plain string. All names are generated with `DerropsConventions` (from `@derrops-conventions`)
 following an `org → domain → service` nesting pattern. Define names in the package where they're
-used; elevate to `packages/slaops-config/src/` only when shared across multiple packages.
+used; elevate to `packages/derrops-config/src/` only when shared across multiple packages.
 
 IAM policies must also be generated from the same convention — never hardcode ARNs or action lists.
 Use `.staticPolicy()` for explicit declarations or `.dynamicPolicy()` for session-recorded policies.
@@ -140,7 +140,7 @@ See `.claude/rules/resource-naming.md` for the full pattern, decision tree, IAM 
 
 ### TypeScript path mappings
 
-`paths` in `tsconfig.base.json` do **not** merge into child configs — each child must redeclare the paths it needs. See the path mapping convention in individual `tsconfig.json` files. Current cross-module mapping: `@slaops/cloud/*` → `apps/slaops-cloud/src/*`.
+`paths` in `tsconfig.base.json` do **not** merge into child configs — each child must redeclare the paths it needs. See the path mapping convention in individual `tsconfig.json` files. Current cross-module mapping: `@derrops/cloud/*` → `apps/derrops-cloud/src/*`.
 
 ### DynamoDB vs Aurora
 
@@ -154,28 +154,28 @@ When a code file implements a formal design document, add a `@designDoc` tag in 
 
 Follow these steps for any feature, fix, or significant change:
 
-1. **Design** — write a design doc in `apps/slaops-docs/internal/platform/design/`
-2. **Plan** — store the implementation plan in `apps/slaops-docs/plan/` (`.md`, Docusaurus format); cross-reference the design
+1. **Design** — write a design doc in `apps/derrops-docs/internal/platform/design/`
+2. **Plan** — store the implementation plan in `apps/derrops-docs/plan/` (`.md`, Docusaurus format); cross-reference the design
 3. **Implement** — follow the plan; add `@designDoc` tags to implementing files and `implements:` frontmatter to the design doc (see `.claude/rules/design-sync.md`); set `status: implemented` once shipped
-4. **Document** — add/update public docs in `apps/slaops-docs/public/docs/`
+4. **Document** — add/update public docs in `apps/derrops-docs/public/docs/`
 5. **Commit** — Conventional Commits format (see [CONVENTIONS.md](CONVENTIONS.md))
-6. **Release** — tag `vX.Y.Z`, add `apps/slaops-docs/changelog/source/X.Y.Z.md`
+6. **Release** — tag `vX.Y.Z`, add `apps/derrops-docs/changelog/source/X.Y.Z.md`
 
 ### Documentation locations
 
 | Location                                     | Access  | Purpose                                 |
 | -------------------------------------------- | ------- | --------------------------------------- |
-| `apps/slaops-docs/public/docs/`              | Public  | User-facing platform docs               |
-| `apps/slaops-docs/public/security/`          | Public  | Customer security / compliance overview |
-| `apps/slaops-docs/internal/platform/design/` | Private | ADRs, design docs                       |
-| `apps/slaops-docs/internal/platform/drafts/` | Private | WIP ideas, research notes               |
-| `apps/slaops-docs/internal/developer/code/`  | Private | Auto-copied monorepo READMEs            |
-| `apps/slaops-docs/internal/devops/`          | Private | Sprint planning, user stories           |
-| `apps/slaops-docs/internal/security/`        | Private | Full security KB                        |
-| `apps/slaops-docs/internal/testing/`         | Private | Test reports                            |
-| `apps/slaops-docs/changelog/source/`         | Public  | Release changelog entries               |
+| `apps/derrops-docs/public/docs/`              | Public  | User-facing platform docs               |
+| `apps/derrops-docs/public/security/`          | Public  | Customer security / compliance overview |
+| `apps/derrops-docs/internal/platform/design/` | Private | ADRs, design docs                       |
+| `apps/derrops-docs/internal/platform/drafts/` | Private | WIP ideas, research notes               |
+| `apps/derrops-docs/internal/developer/code/`  | Private | Auto-copied monorepo READMEs            |
+| `apps/derrops-docs/internal/devops/`          | Private | Sprint planning, user stories           |
+| `apps/derrops-docs/internal/security/`        | Private | Full security KB                        |
+| `apps/derrops-docs/internal/testing/`         | Private | Test reports                            |
+| `apps/derrops-docs/changelog/source/`         | Public  | Release changelog entries               |
 
-`/internal/*` is protected by Cognito at the Amplify Hosting layer. Consult `apps/slaops-docs/public/docs/glossary.md` for domain terminology (OASpec, OASpecDoc, TopOp, APIUser, etc.).
+`/internal/*` is protected by Cognito at the Amplify Hosting layer. Consult `apps/derrops-docs/public/docs/glossary.md` for domain terminology (OASpec, OASpecDoc, TopOp, APIUser, etc.).
 
 ### Claude Code doc tooling
 
@@ -195,7 +195,7 @@ Active rules during any doc session:
 - Branch: `main` (primary development)
 - Commits: Conventional Commits — `feat(scope): ...`, `fix(scope): ...`, etc.
 - Full type→label mapping and recognised scopes: [CONVENTIONS.md](CONVENTIONS.md)
-- Release process and checklist: [apps/slaops-docs/changelog/CLAUDE.md](apps/slaops-docs/changelog/CLAUDE.md)
+- Release process and checklist: [apps/derrops-docs/changelog/CLAUDE.md](apps/derrops-docs/changelog/CLAUDE.md)
 
 ## Test Resources
 
@@ -205,7 +205,7 @@ OpenAPI specs from [APIs-guru/openapi-directory](https://github.com/APIs-guru/op
 pnpm run setup:test-resources   # Manual refresh
 ```
 
-See [test-resources/README.md](test-resources/README.md) and [packages/slaops-private/CLAUDE.md](packages/slaops-private/CLAUDE.md) for the loader API.
+See [test-resources/README.md](test-resources/README.md) and [packages/derrops-private/CLAUDE.md](packages/derrops-private/CLAUDE.md) for the loader API.
 
 ## Conventions
 

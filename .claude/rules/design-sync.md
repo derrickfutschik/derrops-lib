@@ -10,7 +10,7 @@ Add a `@designDoc` tag in the file-level JSDoc block of any TypeScript file that
 /**
  * Brief description of this file.
  *
- * @designDoc apps/slaops-docs/internal/platform/design/{subdirectory}/{filename}.md
+ * @designDoc apps/derrops-docs/internal/platform/design/{subdirectory}/{filename}.md
  */
 ```
 
@@ -58,8 +58,8 @@ When a design doc has a known implementation, add an `implements:` YAML array to
 
 ```yaml
 implements:
-  - apps/slaops-cloud/src/openapi-indexer/openapi-indexer.service.ts
-  - apps/slaops-cloud/src/openapi-indexer/openapi-indexer.controller.ts
+  - apps/derrops-cloud/src/openapi-indexer/openapi-indexer.service.ts
+  - apps/derrops-cloud/src/openapi-indexer/openapi-indexer.controller.ts
 ```
 
 Docusaurus ignores unknown frontmatter fields — this is safe to add at any time. Add it alongside `implemented_at` when marking a design as `implemented`.

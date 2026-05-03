@@ -1,6 +1,6 @@
-# SLAOps Platform - Quick Start Guide
+# Derrops Platform - Quick Start Guide
 
-This guide helps you quickly get started with the SLAOps platform development environment and common workflows.
+This guide helps you quickly get started with the Derrops platform development environment and common workflows.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ This guide helps you quickly get started with the SLAOps platform development en
 ```bash
 # Clone and install dependencies
 git clone <repository-url>
-cd slaops-platform
+cd derrops-platform
 pnpm install --frozen-lockfile
 
 # Build all packages
@@ -49,9 +49,9 @@ Open all useful development URLs in Safari:
 This opens:
 
 - **OpenSearch Dashboards**: http://192.168.7.233:5601
-- **SLAOps Portal**: http://localhost:8080
-- **SLAOps Docs**: http://localhost:8081
-- **SLAOps Cloud API**: http://localhost:3001/api
+- **Derrops Portal**: http://localhost:8080
+- **Derrops Docs**: http://localhost:8081
+- **Derrops Cloud API**: http://localhost:3001/api
 - **Syncthing Server**: http://192.168.7.233:8384/#
 - **Syncthing Localhost**: http://localhost:8384/#
 - **PGAdmin**: http://192.168.7.233:5050
@@ -94,11 +94,11 @@ pnpm run commit
 
 ### Working with the Portal (Loveable Integration)
 
-The SLAOps Portal (`apps/slaops-portal`) is also maintained as a separate repository for deployment on Loveable. Use these scripts to sync changes:
+The Derrops Portal (`apps/derrops-portal`) is also maintained as a separate repository for deployment on Loveable. Use these scripts to sync changes:
 
 #### Pushing Portal Changes to Loveable
 
-After making changes to `apps/slaops-portal`, push them to the Loveable repository:
+After making changes to `apps/derrops-portal`, push them to the Loveable repository:
 
 ```bash
 ./scripts/push-portal.sh
@@ -106,8 +106,8 @@ After making changes to `apps/slaops-portal`, push them to the Loveable reposito
 
 This command:
 
-- Uses git subtree to push only the `apps/slaops-portal` directory
-- Pushes to: `git@github.com:derrickfutschik/slaops-portal.git` (main branch)
+- Uses git subtree to push only the `apps/derrops-portal` directory
+- Pushes to: `git@github.com:derrickfutschik/derrops-portal.git` (main branch)
 - Preserves the portal's independent git history
 
 #### Pulling Portal Changes from Loveable
@@ -121,14 +121,14 @@ Pull changes made in the Loveable environment back to the monorepo:
 This command:
 
 - Uses git subtree to pull changes from the Loveable repository
-- Pulls from: `git@github.com:derrickfutschik/slaops-portal.git` (main branch)
+- Pulls from: `git@github.com:derrickfutschik/derrops-portal.git` (main branch)
 - Squashes commits to keep monorepo history clean
 
 **Workflow example:**
 
 ```bash
-# 1. Make changes to apps/slaops-portal
-cd apps/slaops-portal
+# 1. Make changes to apps/derrops-portal
+cd apps/derrops-portal
 # ... edit files ...
 
 # 2. Commit changes using AI
@@ -180,11 +180,11 @@ pnpm amplify:deploy    # Deploy to AWS
 
 ```bash
 # Documentation site (port 3000)
-cd apps/slaops-docs
+cd apps/derrops-docs
 pnpm start
 
 # Web portal (port 8080)
-cd apps/slaops-portal
+cd apps/derrops-portal
 pnpm run dev
 ```
 
@@ -219,10 +219,10 @@ All utility scripts are located in the `scripts/` directory:
 Create these `.env` files as needed:
 
 ```bash
-# apps/slaops-portal/.env
+# apps/derrops-portal/.env
 # (Add portal-specific environment variables)
 
-# packages/slaops-backend/.env
+# packages/derrops-backend/.env
 # (Add backend-specific environment variables)
 ```
 
@@ -242,8 +242,8 @@ docker ps
 
 ```bash
 # If pull conflicts occur, you may need to force
-git subtree pull --prefix=apps/slaops-portal \
-  git@github.com:derrickfutschik/slaops-portal.git main \
+git subtree pull --prefix=apps/derrops-portal \
+  git@github.com:derrickfutschik/derrops-portal.git main \
   --squash --force
 ```
 
@@ -268,8 +268,8 @@ kill -9 <PID>
 
 - Read the full documentation in [CLAUDE.md](./CLAUDE.md)
 - Review package-specific guides:
-  - [Documentation Site](./apps/slaops-docs/CLAUDE.md)
-  - [Web Portal](./apps/slaops-portal/CLAUDE.md)
+  - [Documentation Site](./apps/derrops-docs/CLAUDE.md)
+  - [Web Portal](./apps/derrops-portal/CLAUDE.md)
 - Check out [scripts/README.md](./scripts/README.md) for detailed script documentation
 
 ## Tips

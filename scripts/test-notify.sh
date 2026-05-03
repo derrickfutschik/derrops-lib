@@ -3,7 +3,7 @@
 # Script to run tests with desktop notifications
 # Usage: ./scripts/test-notify.sh [turbo test args...]
 # Example: ./scripts/test-notify.sh
-#          ./scripts/test-notify.sh --filter @slaops/private
+#          ./scripts/test-notify.sh --filter @derrops/private
 
 set +e  # Don't exit on test failures
 

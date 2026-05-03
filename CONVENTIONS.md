@@ -55,16 +55,16 @@ Use the package or app name as the scope. Recognised scopes:
 
 | Scope     | Maps to                               |
 | --------- | ------------------------------------- |
-| `portal`  | `apps/slaops-portal`                  |
-| `docs`    | `apps/slaops-docs`                    |
+| `portal`  | `apps/derrops-portal`                  |
+| `docs`    | `apps/derrops-docs`                    |
 | `relay`   | relay feature area                    |
-| `client`  | `packages/slaops-client`              |
-| `axios`   | `packages/slaops-client-nodejs-axios` |
-| `config`  | `packages/slaops-config`              |
-| `infra`   | `packages/slaops-infra`               |
-| `backend` | `packages/slaops-backend`             |
-| `private` | `packages/slaops-private`             |
-| `public`  | `packages/slaops-public`              |
+| `client`  | `packages/derrops-client`              |
+| `axios`   | `packages/derrops-client-nodejs-axios` |
+| `config`  | `packages/derrops-config`              |
+| `infra`   | `packages/derrops-infra`               |
+| `backend` | `packages/derrops-backend`             |
+| `private` | `packages/derrops-private`             |
+| `public`  | `packages/derrops-public`              |
 | `ci`      | `.github/` or build tooling           |
 | `deps`    | dependency updates                    |
 
@@ -93,59 +93,59 @@ Individual commits on a feature branch do not need to be perfect — they are sq
 
 ## AWS CDK Naming and Tagging
 
-See full reference: [`apps/slaops-docs/design/infrastructure/tagging-conventions.md`](apps/slaops-docs/design/infrastructure/tagging-conventions.md)
+See full reference: [`apps/derrops-docs/design/infrastructure/tagging-conventions.md`](apps/derrops-docs/design/infrastructure/tagging-conventions.md)
 
 ### CloudFormation stack registry
 
-**Every CloudFormation stack must be documented in [`apps/slaops-docs/design/infrastructure/cloudformation-stacks.md`](apps/slaops-docs/design/infrastructure/cloudformation-stacks.md).**
+**Every CloudFormation stack must be documented in [`apps/derrops-docs/design/infrastructure/cloudformation-stacks.md`](apps/derrops-docs/design/infrastructure/cloudformation-stacks.md).**
 
-This applies to stacks in both `packages/slaops-infra` (CDK) and `packages/slaops-backend` (Amplify). When you add, rename, or remove a stack, update the registry in the same commit. Each entry must include: stack name, logical ID, class/file, domain/service tags, dependencies, resources summary, and all CloudFormation exports.
+This applies to stacks in both `packages/derrops-infra` (CDK) and `packages/derrops-backend` (Amplify). When you add, rename, or remove a stack, update the registry in the same commit. Each entry must include: stack name, logical ID, class/file, domain/service tags, dependencies, resources summary, and all CloudFormation exports.
 
 ### Resource naming — compound kebab-case
 
 All physical resource names and CloudFormation export names use `--` as the segment delimiter and `-` as the word delimiter within a segment:
 
 ```
-slaops--{domain}--{service}--{key}
+derrops--{domain}--{service}--{key}
 ```
 
 For globally-unique resources (S3 buckets) prefix with region and environment:
 
 ```
-{region}--{env}--slaops--{tenantId}--{domain}--{service}--{key}
+{region}--{env}--derrops--{tenantId}--{domain}--{service}--{key}
 ```
 
 Examples:
 
-- Lambda function name: `slaops--auth--cognito--pre-token-generation`
-- IAM role name: `slaops--platform--auth--sqs-publish-role`
-- CloudFormation export: `slaops--platform--vpc--id`
-- S3 bucket: `ap-southeast-2--prod--slaops--slaops--oaspec--source--specs`
+- Lambda function name: `derrops--auth--cognito--pre-token-generation`
+- IAM role name: `derrops--platform--auth--sqs-publish-role`
+- CloudFormation export: `derrops--platform--vpc--id`
+- S3 bucket: `ap-southeast-2--prod--derrops--derrops--oaspec--source--specs`
 
 **CloudFormation stack names** follow the same pattern without a `--stack` suffix (that is redundant):
 
 ```
-slaops--{domain}--{service}
+derrops--{domain}--{service}
 ```
 
 ### Required tags
 
-Every CDK resource must carry these tags. Apply common tags once via `cdk.Tags.of(app)` in `bin/cdk.ts`; apply `slaops:domain` and `slaops:service` inside each stack constructor via `Tags.of(this)`.
+Every CDK resource must carry these tags. Apply common tags once via `cdk.Tags.of(app)` in `bin/cdk.ts`; apply `derrops:domain` and `derrops:service` inside each stack constructor via `Tags.of(this)`.
 
 | Tag key             | Where set                           | Example                        |
 | ------------------- | ----------------------------------- | ------------------------------ |
-| `slaops:org`        | `bin/cdk.ts` — `Tags.of(app)`       | `slaops`                       |
-| `slaops:env`        | `bin/cdk.ts` — `Tags.of(app)`       | `prod`                         |
-| `slaops:managed-by` | `bin/cdk.ts` — `Tags.of(app)`       | `cdk`                          |
-| `slaops:domain`     | stack constructor — `Tags.of(this)` | `platform`, `auth`, `oaspec`   |
-| `slaops:service`    | stack constructor — `Tags.of(this)` | `vpc`, `cognito`, `opensearch` |
-| `slaops:tenant-id`  | per-tenant resources only           | `t-a3f8b2`, `slaops`           |
+| `derrops:org`        | `bin/cdk.ts` — `Tags.of(app)`       | `derrops`                       |
+| `derrops:env`        | `bin/cdk.ts` — `Tags.of(app)`       | `prod`                         |
+| `derrops:managed-by` | `bin/cdk.ts` — `Tags.of(app)`       | `cdk`                          |
+| `derrops:domain`     | stack constructor — `Tags.of(this)` | `platform`, `auth`, `oaspec`   |
+| `derrops:service`    | stack constructor — `Tags.of(this)` | `vpc`, `cognito`, `opensearch` |
+| `derrops:tenant-id`  | per-tenant resources only           | `t-a3f8b2`, `derrops`           |
 
 **Caveat**: `CfnCollection` (OpenSearch Serverless) does not inherit CDK stack-level tags. Use `this.collection.tags.setTag()` directly.
 
 ### CloudFormation export names
 
-Use the same compound kebab-case pattern: `slaops--{domain}--{service}--{key}`. Never use PascalCase (`SlaOpsUserPoolId`) or single-hyphen (`slaops-vpc-id`) formats.
+Use the same compound kebab-case pattern: `derrops--{domain}--{service}--{key}`. Never use PascalCase (`DerropsUserPoolId`) or single-hyphen (`derrops-vpc-id`) formats.
 
 ## Mermaid Diagrams
 

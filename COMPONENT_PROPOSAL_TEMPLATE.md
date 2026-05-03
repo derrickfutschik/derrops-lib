@@ -151,10 +151,10 @@ sequenceDiagram
 
 | Integration Point | Component         | Direction     | Protocol       |
 | ----------------- | ----------------- | ------------- | -------------- |
-| Input             | `@slaops/client`  | Inbound       | Function call  |
-| Output            | `@slaops/public`  | Outbound      | Event emission |
+| Input             | `@derrops/client`  | Inbound       | Function call  |
+| Output            | `@derrops/public`  | Outbound      | Event emission |
 | Storage           | External DB       | Bidirectional | HTTP/REST      |
-| Logging           | `@slaops/private` | Outbound      | Internal API   |
+| Logging           | `@derrops/private` | Outbound      | Internal API   |
 
 ## API Specification
 
@@ -212,7 +212,7 @@ export function transformData(input: InputType, options?: TransformOptions): Out
 #### Basic Usage
 
 ```typescript
-import { createComponent } from '@slaops/new-component'
+import { createComponent } from '@derrops/new-component'
 
 // Create and initialize
 const component = createComponent({
@@ -236,7 +236,7 @@ console.log(result.success) // true
 #### Advanced Usage with Handlers
 
 ```typescript
-import { ComponentName } from '@slaops/new-component'
+import { ComponentName } from '@derrops/new-component'
 
 const component = new ComponentName({
   id: 'advanced-component',
@@ -316,9 +316,9 @@ await component.shutdown()
 
 | Package           | Version | Purpose                  | Required |
 | ----------------- | ------- | ------------------------ | -------- |
-| `@slaops/private` | `*`     | Core types and utilities | Yes      |
-| `@slaops/public`  | `*`     | Shared utilities         | Yes      |
-| `@slaops/client`  | `*`     | Client integration       | No       |
+| `@derrops/private` | `*`     | Core types and utilities | Yes      |
+| `@derrops/public`  | `*`     | Shared utilities         | Yes      |
+| `@derrops/client`  | `*`     | Client integration       | No       |
 
 ### External Dependencies
 
@@ -332,9 +332,9 @@ await component.shutdown()
 
 ```mermaid
 graph TD
-    Core[@slaops/private] --> NewComponent[@slaops/new-component]
-    Lib[@slaops/public] --> NewComponent
-    Client[@slaops/client] -.optional.-> NewComponent
+    Core[@derrops/private] --> NewComponent[@derrops/new-component]
+    Lib[@derrops/public] --> NewComponent
+    Client[@derrops/client] -.optional.-> NewComponent
 
     Axios[axios] --> NewComponent
     Zod[zod] --> NewComponent
@@ -426,13 +426,13 @@ export const ErrorCodes = {
 
 ```bash
 # Using pnpm (recommended)
-pnpm add @slaops/new-component
+pnpm add @derrops/new-component
 
 # Using npm
-npm install @slaops/new-component
+npm install @derrops/new-component
 
 # Using yarn
-yarn add @slaops/new-component
+yarn add @derrops/new-component
 ```
 
 ### Configuration Options
@@ -460,11 +460,11 @@ If replacing an existing component:
 
 ```typescript
 // OLD APPROACH
-import { OldComponent } from '@slaops/old'
+import { OldComponent } from '@derrops/old'
 const old = new OldComponent(config)
 
 // NEW APPROACH
-import { createComponent } from '@slaops/new-component'
+import { createComponent } from '@derrops/new-component'
 const component = createComponent({
   id: config.id,
   settings: {
@@ -491,7 +491,7 @@ const component = createComponent({
 
 ### Integration Tests
 
-- Test with `@slaops/client` integration
+- Test with `@derrops/client` integration
 - Test with external API endpoint
 - Test error recovery scenarios
 - Test concurrent requests handling
@@ -515,7 +515,7 @@ const component = createComponent({
 
 ```json
 {
-  "name": "@slaops/new-component",
+  "name": "@derrops/new-component",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -544,8 +544,8 @@ If this component depends on other workspace packages:
 
 ```mermaid
 graph LR
-    A[@slaops/private] --> B[@slaops/public]
-    B --> C[@slaops/new-component]
+    A[@derrops/private] --> B[@derrops/public]
+    B --> C[@derrops/new-component]
 ```
 
 Build order: `core` → `lib` → `new-component`

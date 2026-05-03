@@ -1,8 +1,8 @@
-# SLAOps Platform - tmuxinator configuration
+# Derrops Platform - tmuxinator configuration
 # Before starting, source the env file:
 #   source .tmuxinator.env && tmuxinator start -p .tmuxinator.yml
 
-name: slaops-apps
+name: derrops-apps
 root: <%= ENV["PWD"] || Dir.pwd %>
 
 # Set startup window
@@ -22,29 +22,29 @@ windows:
       panes:
         - echo "Root directory - use this for git, builds, etc."
 
-  - slaops-docs:
-      root: apps/slaops-docs
+  - derrops-docs:
+      root: apps/derrops-docs
       layout: even-vertical
       panes:
         - PORT=<%= ENV["DOCS_PORT"] %> NODE_ENV=dev pnpm start
 
-  - slaops-portal:
-      root: apps/slaops-portal
+  - derrops-portal:
+      root: apps/derrops-portal
       layout: even-vertical
       panes:
         - PORT=<%= ENV["PORTAL_PORT"] %> NODE_ENV=dev pnpm run dev
 
-  - slaops-cloud:
-      root: apps/slaops-cloud
+  - derrops-cloud:
+      root: apps/derrops-cloud
       layout: even-vertical
       panes:
         - >-
           echo "Building workspace dependencies..." &&
-          pnpm turbo run build --filter="@slaops/cloud^..." &&
+          pnpm turbo run build --filter="@derrops/cloud^..." &&
           echo "Migrating OpenSearch indices" &&
-          NODE_ENV=dev pnpm --filter @slaops/cloud run opensearch:migrate:dev &&
-          echo "Starting SLAOps Cloud" &&
-          PORT=<%= ENV["CLOUD_PORT"] %> NODE_ENV=dev pnpm --filter @slaops/cloud run start:dev
+          NODE_ENV=dev pnpm --filter @derrops/cloud run opensearch:migrate:dev &&
+          echo "Starting Derrops Cloud" &&
+          PORT=<%= ENV["CLOUD_PORT"] %> NODE_ENV=dev pnpm --filter @derrops/cloud run start:dev
 
   - cloudflared:
       root: .
@@ -56,8 +56,8 @@ windows:
           cloudflared tunnel route dns <%= ENV["CF_TUNNEL_DEV"] %> <%= ENV["CF_DNS_DEV"] %> &&
           cloudflared tunnel run <%= ENV["CF_TUNNEL_DEV"] %>
 
-  - slaops-relay:
-      root: apps/slaops-relay
+  - derrops-relay:
+      root: apps/derrops-relay
       layout: even-vertical
       panes:
         - >-
@@ -74,8 +74,8 @@ windows:
 
           pnpm run dev
 
-  - slaops-aegis:
-      root: apps/slaops-aegis
+  - derrops-aegis:
+      root: apps/derrops-aegis
       layout: even-vertical
       panes:
         - >-
@@ -133,7 +133,7 @@ windows:
           echo "    Relay  → <%= ENV["RELAY_URL"] %>  (Swagger: /api)"
           echo "    Aegis  → <%= ENV["AEGIS_ISSUER"] %>  (Swagger: /api)"
 
-  - slaops-tests:
+  - derrops-tests:
       root: .
       layout: even-vertical
       panes:

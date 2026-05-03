@@ -25,7 +25,7 @@ services:
       - 0.0.0.0:9200:9200
       - 0.0.0.0:9600:9600
     networks:
-      - slaops-network
+      - derrops-network
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:latest
@@ -41,7 +41,7 @@ services:
     depends_on:
       - opensearch
     networks:
-      - slaops-network
+      - derrops-network
 
   localstack:
     image: localstack/localstack:latest
@@ -70,20 +70,20 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=slaops
+      - POSTGRES_DB=derrops
       - PGDATA=/data/postgres
     volumes:
       - postgres-data:/data/postgres
     ports:
       - 0.0.0.0:5432:5432
     networks:
-      - slaops-network
+      - derrops-network
 
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@slaops.com
+      - PGADMIN_DEFAULT_EMAIL=admin@derrops.com
       - PGADMIN_DEFAULT_PASSWORD=postgres
       - PGADMIN_DEFAULT_USER=postgres
       - PGADMIN_CONFIG_SERVER_MODE=False
@@ -94,7 +94,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - slaops-network
+      - derrops-network
     user: root
 
 volumes:
@@ -104,5 +104,5 @@ volumes:
   pgadmin-data:
 
 networks:
-  slaops-network:
+  derrops-network:
     driver: bridge

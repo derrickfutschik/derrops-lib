@@ -1,6 +1,6 @@
 # /design — Create a Design Document
 
-Creates a formal design document in `apps/slaops-docs/internal/platform/design/` with full lifecycle-tracked frontmatter. Always searches for related ideas first.
+Creates a formal design document in `apps/derrops-docs/internal/platform/design/` with full lifecycle-tracked frontmatter. Always searches for related ideas first.
 
 ## When to use
 
@@ -18,7 +18,7 @@ Collect (from arguments or by asking):
 
 ### 2. Search for related ideas
 
-Before creating the file, search `apps/slaops-docs/internal/platform/drafts/` for idea docs related to this topic.
+Before creating the file, search `apps/derrops-docs/internal/platform/drafts/` for idea docs related to this topic.
 
 If matches are found: present them to the user and ask — "Should I absorb [filename] into this design and delete the idea file?"
 
@@ -83,11 +83,11 @@ Tell the user: "Check `sidebar_position` relative to neighbouring files in the s
 
 ## Validating tags
 
-Before finishing, verify tags against `apps/slaops-docs/internal/platform/design/tags.yml`. Tags must be lowercase-hyphenated and present in that file. If a new tag is genuinely needed, add it to `tags.yml` first.
+Before finishing, verify tags against `apps/derrops-docs/internal/platform/design/tags.yml`. Tags must be lowercase-hyphenated and present in that file. If a new tag is genuinely needed, add it to `tags.yml` first.
 
 ## Reference
 
-- Tag list: `apps/slaops-docs/internal/platform/design/tags.yml`
+- Tag list: `apps/derrops-docs/internal/platform/design/tags.yml`
 - Subdirectory format: `_category_.json` + `index.md` required for any new subdirectory
 - Full tagging rules: `.claude/rules/doc-tagging.md`
 - Lifecycle rules: `.claude/rules/doc-workflow.md`

@@ -1,0 +1,55 @@
+{
+  "name": "@derrops/client",
+  "version": "0.1.0",
+  "description": "Base HTTP client for Derrops - can be extended for specific HTTP clients",
+  "private": false,
+  "keywords": [
+    "derrops",
+    "observability",
+    "logging",
+    "metrics",
+    "client"
+  ],
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/derrops-client-nodejs-axios.git",
+    "directory": "packages/derrops-client"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsc -w",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+  },
+  "dependencies": {
+    "@derrops/public": "*"
+  },
+  "devDependencies": {
+    "@jest/globals": "*",
+    "@types/jest": "*",
+    "jest-md-dashboard": "^0.8.1",
+    "@types/node": "^22.7.8",
+    "jest": "*",
+    "ts-jest": "*",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,6 +1,6 @@
 # Documentation Tagging Rules
 
-Apply these rules whenever creating or editing any `.md` file under `apps/slaops-docs/`.
+Apply these rules whenever creating or editing any `.md` file under `apps/derrops-docs/`.
 
 ## Tag format
 
@@ -20,7 +20,7 @@ Do **not** add a `draft` tag to idea docs — the file's location in `drafts/` a
 
 Every design document must carry:
 
-1. At least one **topic tag** from `apps/slaops-docs/internal/platform/design/tags.yml`
+1. At least one **topic tag** from `apps/derrops-docs/internal/platform/design/tags.yml`
 2. Exactly one **domain tag** — the primary domain the document belongs to:
    - `platform` — core shared infra (VPC, DB, OpenSearch, API Gateway)
    - `auth` — identity, Cognito, IAM, token issuance
@@ -46,9 +46,9 @@ Every public doc must carry:
 
 ## Separation from AWS CDK tags
 
-Doc tags and AWS resource tags (`slaops:domain`, `slaops:service`, etc.) are **different systems**. The domain names overlap by convention, but doc tags are plain lowercase strings in YAML frontmatter — never use the `slaops:key` colon-separated format in a doc file.
+Doc tags and AWS resource tags (`derrops:domain`, `derrops:service`, etc.) are **different systems**. The domain names overlap by convention, but doc tags are plain lowercase strings in YAML frontmatter — never use the `derrops:key` colon-separated format in a doc file.
 
 See:
 
-- `apps/slaops-docs/internal/platform/design/tags.yml` — authoritative doc tag list
-- `apps/slaops-docs/internal/platform/design/infrastructure/tagging-conventions.md` — AWS resource tags (separate system)
+- `apps/derrops-docs/internal/platform/design/tags.yml` — authoritative doc tag list
+- `apps/derrops-docs/internal/platform/design/infrastructure/tagging-conventions.md` — AWS resource tags (separate system)

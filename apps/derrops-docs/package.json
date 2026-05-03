@@ -1,0 +1,50 @@
+{
+  "name": "@derrops/docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "docs:prepare": "node scripts/copy-code-readmes.mjs",
+    "prestart": "git diff --quiet HEAD -- blog || docusaurus clear",
+    "start": "pnpm docs:prepare && docusaurus clear && node scripts/copy-code-readmes.mjs --watch & docusaurus start --host 0.0.0.0 --port $PORT",
+    "start:watch": "nodemon --watch docs --watch notes --watch blog --watch code --ext md,mdx -x 'pnpm docs:prepare && docusaurus clear && docusaurus start --host 0.0.0.0 --port $PORT'",
+    "build": "pnpm docs:prepare && docusaurus build",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "write-translations": "docusaurus write-translations",
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.0",
+    "@docusaurus/faster": "3.10.0",
+    "@docusaurus/plugin-content-blog": "^3.10.0",
+    "@docusaurus/preset-classic": "3.10.0",
+    "@docusaurus/theme-common": "^3.10.0",
+    "@docusaurus/theme-mermaid": "^3.10.0",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.0.0",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "@iconify-json/logos": "^1.2.10",
+    "mermaid": ">=11.6.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.0",
+    "@docusaurus/tsconfig": "3.10.0",
+    "@docusaurus/types": "3.10.0",
+    "nodemon": "^3.1.11",
+    "remark-code-import": "^1.2.0",
+    "typescript": "~5.6.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "author": "Derrops@Derrops.com",
+  "license": "(ISC OR GPL-3.0)"
+}

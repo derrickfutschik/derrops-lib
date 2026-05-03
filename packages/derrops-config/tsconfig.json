@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@derrops/config/*": ["./src/*"],
+      "@derrops/cloud/*": ["../../apps/derrops-cloud/src/*"],
+      "@derrops-conventions": ["../derrops-conventions/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

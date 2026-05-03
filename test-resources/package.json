@@ -1,7 +1,7 @@
 {
-  "name": "@slaops/test-resources",
+  "name": "@derrops/test-resources",
   "version": "0.0.0",
-  "description": "Test resources and utilities for SLAOps platform tests",
+  "description": "Test resources and utilities for Derrops platform tests",
   "private": true,
   "type": "module",
   "exports": {

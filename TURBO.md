@@ -135,11 +135,11 @@ pnpm run clean
 Run tasks for specific packages using `--filter`:
 
 ```bash
-# Build only @slaops/private
-pnpm exec turbo run build --filter=@slaops/private
+# Build only @derrops/private
+pnpm exec turbo run build --filter=@derrops/private
 
 # Build multiple packages
-pnpm exec turbo run build --filter=@slaops/private --filter=@slaops/public
+pnpm exec turbo run build --filter=@derrops/private --filter=@derrops/public
 
 # Build everything in packages/ directory
 pnpm exec turbo run build --filter=./packages/*
@@ -152,10 +152,10 @@ pnpm exec turbo run build --filter=./apps/*
 
 ```bash
 # Build a package and its dependencies
-pnpm exec turbo run build --filter=...@slaops/client
+pnpm exec turbo run build --filter=...@derrops/client
 
 # Build a package and its dependents
-pnpm exec turbo run build --filter=@slaops/private...
+pnpm exec turbo run build --filter=@derrops/private...
 
 # Build changed packages since last commit
 pnpm exec turbo run build --filter=[HEAD^1]
@@ -194,22 +194,22 @@ rm -rf .turbo
 Turbo respects the dependency graph:
 
 ```
-@slaops/private (no dependencies)
+@derrops/private (no dependencies)
     ↓
-@slaops/public (depends on core)
+@derrops/public (depends on core)
     ↓
-@slaops/client (depends on core)
+@derrops/client (depends on core)
     ↓
-slaops-client-nodejs-axios (depends on core, client, lib)
+derrops-client-nodejs-axios (depends on core, client, lib)
 ```
 
 When you run `pnpm run build`, Turbo:
 
 1. Analyzes `package.json` dependencies
-2. Builds `@slaops/private` first
-3. Builds `@slaops/public` and `@slaops/client` in parallel (both only depend on core)
-4. Builds `slaops-client-nodejs-axios` last (depends on all others)
-5. Builds apps (`slaops-docs`, `slaops-portal`) after packages
+2. Builds `@derrops/private` first
+3. Builds `@derrops/public` and `@derrops/client` in parallel (both only depend on core)
+4. Builds `derrops-client-nodejs-axios` last (depends on all others)
+5. Builds apps (`derrops-docs`, `derrops-portal`) after packages
 
 ## Caching Explained
 
@@ -244,21 +244,21 @@ On subsequent runs, if the cache key matches:
 ```bash
 # First run - builds everything
 $ pnpm exec turbo run build
-@slaops/private:build: cache miss, executing...
-@slaops/public:build: cache miss, executing...
+@derrops/private:build: cache miss, executing...
+@derrops/public:build: cache miss, executing...
 # ... builds run
 
 # Second run - uses cache
 $ pnpm exec turbo run build
-@slaops/private:build: cache hit, replaying logs...
-@slaops/public:build: cache hit, replaying logs...
+@derrops/private:build: cache hit, replaying logs...
+@derrops/public:build: cache hit, replaying logs...
 # ... instant results
 
 # After changing core/src/index.ts
 $ pnpm exec turbo run build
-@slaops/private:build: cache miss, executing...      # Rebuilds (changed)
-@slaops/public:build: cache miss, executing...       # Rebuilds (dependency changed)
-@slaops/client:build: cache miss, executing...    # Rebuilds (dependency changed)
+@derrops/private:build: cache miss, executing...      # Rebuilds (changed)
+@derrops/public:build: cache miss, executing...       # Rebuilds (dependency changed)
+@derrops/client:build: cache miss, executing...    # Rebuilds (dependency changed)
 # ... only affected packages rebuild
 ```
 
@@ -348,7 +348,7 @@ Ensure dependencies are declared in `package.json`:
 ```json
 {
   "dependencies": {
-    "@slaops/private": "*"
+    "@derrops/private": "*"
   }
 }
 ```
@@ -390,7 +390,7 @@ Before Turbo, the root `package.json` had:
 ```json
 {
   "scripts": {
-    "build": "pnpm -r --filter @slaops/private run build && pnpm -r --filter @slaops/public run build && ..."
+    "build": "pnpm -r --filter @derrops/private run build && pnpm -r --filter @derrops/public run build && ..."
   }
 }
 ```

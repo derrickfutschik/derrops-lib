@@ -1,0 +1,51 @@
+{
+  "name": "@derrops/public",
+  "version": "0.1.0",
+  "description": "Shared utilities for Derrops",
+  "private": false,
+  "keywords": [
+    "derrops",
+    "observability",
+    "utilities"
+  ],
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/derrops-client-nodejs-axios.git",
+    "directory": "packages/derrops-public"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsc -w",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@jest/globals": "*",
+    "@types/jest": "*",
+    "@types/node": "^22.7.8",
+    "jest": "*",
+    "ts-jest": "*",
+    "tsup": "^8.3.0",
+    "jest-md-dashboard": "^0.8.1",
+    "typescript": "^5.6.3"
+  }
+}

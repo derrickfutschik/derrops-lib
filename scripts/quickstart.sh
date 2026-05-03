@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start the SLAOps dev environment via tmuxinator.
+# Start the Derrops dev environment via tmuxinator.
 # Run from the repo root: ./scripts/quickstart.sh
 
 set -e

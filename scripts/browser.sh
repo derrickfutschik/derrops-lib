@@ -7,7 +7,7 @@ open -a Safari http://localhost:8080
 # Open the Docs
 open -a Safari http://localhost:8081
 
-# Open the SLAOPs Cloud
+# Open the Derrops Cloud
 open -a Safari http://localhost:3001/api
 
 # Open Syncthing Server

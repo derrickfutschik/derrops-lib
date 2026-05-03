@@ -1,0 +1,42 @@
+{
+  "name": "@derrops/config",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./dev-env": {
+      "types": "./dist/dev-env.d.ts",
+      "import": "./dist/dev-env.js",
+      "require": "./dist/dev-env.cjs"
+    },
+    "./local-env": {
+      "types": "./dist/local-env.d.ts",
+      "import": "./dist/local-env.js",
+      "require": "./dist/local-env.cjs"
+    },
+    "./test-env": {
+      "types": "./dist/test-env.d.ts",
+      "import": "./dist/test-env.js",
+      "require": "./dist/test-env.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/dev-env.ts src/local-env.ts src/test-env.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts src/dev-env.ts src/local-env.ts src/test-env.ts --format esm,cjs --dts --watch"
+  },
+  "dependencies": {
+    "zod": "^3.23.0",
+    "@derrops-conventions": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.3"
+  }
+}

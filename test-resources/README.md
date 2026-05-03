@@ -1,8 +1,8 @@
 # Test Resources
 
-This directory contains test resources used across the SLAOps monorepo, including OpenAPI specifications from the [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory).
-They are not part of the SLAOps platform and are not used in the production environment.
-They are used for testing the SLAOps platform and are not part of the SLAOps platform.
+This directory contains test resources used across the Derrops monorepo, including OpenAPI specifications from the [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory).
+They are not part of the Derrops platform and are not used in the production environment.
+They are used for testing the Derrops platform and are not part of the Derrops platform.
 
 ## Directory Structure
 
@@ -99,7 +99,7 @@ if (randomSpec) {
 
 ## Example Test
 
-Here's a complete example from [packages/slaops-private/test/openapi/parser.test.ts](../packages/slaops-private/test/openapi/parser.test.ts):
+Here's a complete example from [packages/Derrops-private/test/openapi/parser.test.ts](../packages/Derrops-private/test/openapi/parser.test.ts):
 
 ```typescript
 import { test, expect } from '@jest/globals'
@@ -330,7 +330,7 @@ pnpm run setup:test-resources --force
 Ensure you're using the correct relative path from your test file:
 
 ```typescript
-// From packages/slaops-private/test/
+// From packages/Derrops-private/test/
 import { ... } from '../../../../test-resources/loader';
 ```
 

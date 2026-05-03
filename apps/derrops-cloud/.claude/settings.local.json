@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/dfutschik/derrops/derrops-platform/**)",
+      "Bash(pnpm --filter @derrops/config run build)"
+    ]
+  }
+}

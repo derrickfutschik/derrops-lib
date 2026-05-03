@@ -1,6 +1,6 @@
 # Documentation Workflow Rules
 
-Apply these rules when creating, editing, or deciding where to place documentation under `apps/slaops-docs/`.
+Apply these rules when creating, editing, or deciding where to place documentation under `apps/derrops-docs/`.
 
 ## Three-tier doc hierarchy
 
@@ -46,14 +46,14 @@ This prevents `drafts/` from accumulating stale ideas that have been silently su
 
 When any change affects a user-visible portal flow (login, relay setup, Aegis configuration, API tester, dashboard):
 
-1. Identify the affected guide in `apps/slaops-docs/public/docs/quickstart/`
+1. Identify the affected guide in `apps/derrops-docs/public/docs/quickstart/`
 2. Update step numbering, command examples, and any screenshot references
 3. If a new top-level UI feature is added, create a new quickstart guide and register it in the quickstart index
 
 ## Changelog / release
 
-When tagging a release, follow the full checklist in `apps/slaops-docs/changelog/CLAUDE.md`. Use the `/release` skill for a guided walkthrough.
+When tagging a release, follow the full checklist in `apps/derrops-docs/changelog/CLAUDE.md`. Use the `/release` skill for a guided walkthrough.
 
 ## Note on `design/CLAUDE.md` line 132
 
-That file currently references `apps/slaops-docs/notes/` for speculative ideas — this location does not exist. The correct location is `internal/platform/drafts/`. This rule takes precedence.
+That file currently references `apps/derrops-docs/notes/` for speculative ideas — this location does not exist. The correct location is `internal/platform/drafts/`. This rule takes precedence.

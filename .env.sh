@@ -19,7 +19,7 @@ export DB_USER=postgres
 export DB_USERNAME=postgres
 
 export DB_PASSWORD=postgres
-export DB_NAME=slaops
+export DB_NAME=derrops
 export DB_SSL=false
 export DB_LOGGING=false
 

@@ -7,7 +7,7 @@
           {
             "type": "command",
             "if": "Bash(git add*)",
-            "command": "jq -r '.tool_input.command' | grep -q '^git add' && cd /Users/dfutschik/slaops/slaops-platform && pnpm run format:changed 2>/dev/null || true",
+            "command": "jq -r '.tool_input.command' | grep -q '^git add' && cd /Users/dfutschik/derrops/derrops-platform && pnpm run format:changed 2>/dev/null || true",
             "timeout": 60,
             "statusMessage": "Formatting changed files..."
           }

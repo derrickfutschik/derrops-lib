@@ -24,7 +24,10 @@
       "Bash(wc -l *)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(awk -F: '{print $1}')"
+      "Bash(awk -F: '{print $1}')",
+      "Bash(xargs sed *)",
+      "Bash(cat)",
+      "Read(//tmp/**)"
     ]
   }
 }

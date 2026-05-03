@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run:*)",
+      "Bash(pnpm exec:*)",
+      "Read(//Users/dfutschik/derrops/derrops-platform/**)",
+      "Bash(pnpm --filter @derrops/portal add @reduxjs/toolkit react-redux)",
+      "Bash(cd:*)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm add:*)"
+    ]
+  }
+}

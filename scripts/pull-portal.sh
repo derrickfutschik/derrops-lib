@@ -1,1 +1,1 @@
-git subtree pull --prefix=apps/slaops-portal git@github.com:derrickfutschik/slaops-portal.git main --squash
+git subtree pull --prefix=apps/derrops-portal git@github.com:derrickfutschik/derrops-portal.git main --squash

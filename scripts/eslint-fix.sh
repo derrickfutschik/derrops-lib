@@ -1,1 +1,1 @@
-pnpm --filter @slaops/portal exec eslint . --fix
+pnpm --filter @derrops/portal exec eslint . --fix
