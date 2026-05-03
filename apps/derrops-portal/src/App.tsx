@@ -12,11 +12,11 @@ import { Provider } from 'react-redux'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import AddService from './pages/AddService'
 import ApiDetail from './pages/ApiDetail'
-import DerropsClient from './pages/DerropsClient'
 import Apis from './pages/Apis'
 import ApisNew from './pages/ApisNew'
 import Connections from './pages/Connections'
 import Dashboard from './pages/Dashboard'
+import DerropsClient from './pages/DerropsClient'
 import Landing from './pages/Landing'
 import NotFound from './pages/NotFound'
 import ServiceDetails from './pages/service-details'
@@ -93,7 +93,7 @@ const AuthPage = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">
-            SLA<span className="text-primary">Ops</span>
+            Derr<span className="text-primary">Ops</span>
           </h1>
           <p className="text-muted-foreground">Monitor Your SaaS Stack</p>
         </div>

@@ -17,7 +17,7 @@ const DashboardHeader = ({ user, onSignOut }: DashboardHeaderProps) => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              SLA<span className="text-primary">Ops</span>
+              Derr<span className="text-primary">Ops</span>
             </h1>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
           </div>

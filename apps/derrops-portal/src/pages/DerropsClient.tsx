@@ -28,7 +28,10 @@ import { toast } from 'sonner'
 import { OpenAPIOperationPanel } from './derrops-client/openapi/OpenAPIOperationPanel'
 import { OpenAPIParametersPanel } from './derrops-client/openapi/OpenAPIParametersPanel'
 import { RequestResponseTab } from './derrops-client/RequestResponseTab'
-import { extractValidationErrors, getResponseSchemaForStatus } from './derrops-client/response-utils'
+import {
+  extractValidationErrors,
+  getResponseSchemaForStatus,
+} from './derrops-client/response-utils'
 import { StandardOperationPanel } from './derrops-client/standard/StandardOperationPanel'
 import { StandardParamsPanel } from './derrops-client/standard/StandardParamsPanel'
 import { useAnalyzeRequest } from './derrops-client/useAnalyzeRequest'
@@ -716,10 +719,9 @@ const DerropsClient = () => {
                 Back
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Derrops Client</h1>
-                <p className="text-sm text-muted-foreground">
-                  Build and send requests against your APIs
-                </p>
+                <h1 className="text-xl font-bold text-foreground mb-2">
+                  Derr<span className="text-primary">Ops</span> Client
+                </h1>
               </div>
             </div>
             <RelaySelector

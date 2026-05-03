@@ -16,7 +16,7 @@ const Landing = () => {
           <div className="text-center space-y-8">
             <div className="inline-block">
               <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-2">
-                SLA<span className="text-primary">Ops</span>
+                Derr<span className="text-primary">Ops</span>
               </h1>
               <p className="text-xl text-muted-foreground">
                 Monitor Your SaaS Stack with Confidence
