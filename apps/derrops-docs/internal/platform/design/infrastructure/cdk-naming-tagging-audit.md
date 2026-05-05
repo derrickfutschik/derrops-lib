@@ -12,7 +12,7 @@ tags:
 
 > **Last verified**: 2026-03-30
 > **Scope**: All stacks in `packages/derrops-infra/lib/stack/` and `packages/derrops-backend/amplify/backend.ts`
-> **Standards applied**: [Tagging Conventions](./tagging-conventions) · [Platform Domains](./platform-domains) · [Derrops Naming Conventions](/blog/derrops-conventions) · [AWS Resource Naming Cheatsheet](/blog/derrops-naming-sheet)
+> **Standards applied**: [Conventions](./conventions) · [Derrops Naming Conventions](/blog/derrops-conventions) · [AWS Resource Naming Cheatsheet](/blog/derrops-naming-sheet)
 
 All stacks pass naming and tagging conventions. This document serves as the verified reference for current resource names, export names, and applied tags.
 
@@ -22,30 +22,30 @@ All stacks pass naming and tagging conventions. This document serves as the veri
 
 Common tags are applied via `cdk.Tags.of(app)` in `bin/cdk.ts`. Domain and service tags are applied via `Tags.of(this)` in each stack constructor.
 
-| Tag key             | Set in                    | Value                            |
-| ------------------- | ------------------------- | -------------------------------- |
-| `derrops:org`        | `bin/cdk.ts`              | `derrops`                         |
+| Tag key              | Set in                    | Value                            |
+| -------------------- | ------------------------- | -------------------------------- |
+| `derrops:org`        | `bin/cdk.ts`              | `derrops`                        |
 | `derrops:env`        | `bin/cdk.ts`              | `$ENVIRONMENT` (default: `prod`) |
 | `derrops:managed-by` | `bin/cdk.ts`              | `cdk`                            |
 | `derrops:domain`     | each stack constructor    | see per-stack table below        |
 | `derrops:service`    | each stack constructor    | see per-stack table below        |
-| `derrops:tenant-id`  | `OpenApiBucketStack` only | `derrops`                         |
+| `derrops:tenant-id`  | `OpenApiBucketStack` only | `derrops`                        |
 
 ### Per-stack domain and service tags
 
-| Stack class          | `derrops:domain` | `derrops:service`  |
-| -------------------- | --------------- | ----------------- |
-| `VpcStack`           | `platform`      | `vpc`             |
-| `SecurityGroupStack` | `platform`      | `security-groups` |
-| `HostedZoneStack`    | `platform`      | `dns`             |
-| `AppDatabaseStack`   | `platform`      | `app-database`    |
-| `OpenSearchStack`    | `platform`      | `opensearch`      |
-| `OpenApiBucketStack` | `oaspec`        | `source`          |
-| `AuthStack`          | `auth`          | `cognito`         |
-| `ApiStack`           | `platform`      | `api-gateway`     |
+| Stack class          | `derrops:domain` | `derrops:service` |
+| -------------------- | ---------------- | ----------------- |
+| `VpcStack`           | `platform`       | `vpc`             |
+| `SecurityGroupStack` | `platform`       | `security-groups` |
+| `HostedZoneStack`    | `platform`       | `dns`             |
+| `AppDatabaseStack`   | `platform`       | `app-database`    |
+| `OpenSearchStack`    | `platform`       | `opensearch`      |
+| `OpenApiBucketStack` | `oaspec`         | `source`          |
+| `AuthStack`          | `auth`           | `cognito`         |
+| `ApiStack`           | `platform`       | `api-gateway`     |
 
 :::note CfnCollection tag caveat
-`CfnCollection` (OpenSearch Serverless) does not inherit CDK stack-level tags. Tags are applied directly via `this.collection.tags.setTag()` inside `OpenSearchStack`. See [Tagging Conventions — Tag propagation caveat](./tagging-conventions#tag-propagation-caveat).
+`CfnCollection` (OpenSearch Serverless) does not inherit CDK stack-level tags. Tags are applied directly via `this.collection.tags.setTag()` inside `OpenSearchStack`. See [Conventions — Tag propagation caveat](./conventions#tag-propagation-caveat).
 :::
 
 ---
@@ -54,8 +54,8 @@ Common tags are applied via `cdk.Tags.of(app)` in `bin/cdk.ts`. Domain and servi
 
 Stack names follow `derrops--{domain}--{service}` — no `--stack` suffix.
 
-| Logical ID                 | Stack name                          |
-| -------------------------- | ----------------------------------- |
+| Logical ID                  | Stack name                           |
+| --------------------------- | ------------------------------------ |
 | `DerropsVpcStack`           | `derrops--platform--vpc`             |
 | `DerropsAuthStack`          | `derrops--auth--cognito`             |
 | `DerropsDatabaseStack`      | `derrops--platform--app-database`    |
@@ -69,26 +69,26 @@ Stack names follow `derrops--{domain}--{service}` — no `--stack` suffix.
 
 ## Physical resource names
 
-| Stack                | Resource type                   | Physical name                                              |
-| -------------------- | ------------------------------- | ---------------------------------------------------------- |
-| `AuthStack`          | Lambda function                 | `derrops--auth--cognito--pre-token-generation`              |
-| `AuthStack`          | Cognito User Pool               | `derrops--auth--cognito--users`                             |
-| `AuthStack`          | Cognito Identity Pool           | `derrops--auth--cognito--relay-identity-pool`               |
-| `AuthStack`          | IAM Role                        | `derrops--platform--auth--sqs-publish-role`                 |
-| `AuthStack`          | IAM Role                        | `derrops--platform--auth--identity-pool-auth-role`          |
-| `SecurityGroupStack` | Security Group                  | `derrops--platform--opensearch--sg`                         |
-| `SecurityGroupStack` | Security Group                  | `derrops--platform--app-database--sg`                       |
-| `SecurityGroupStack` | Security Group                  | `derrops--platform--backend--sg`                            |
-| `SecurityGroupStack` | Security Group                  | `derrops--platform--cloud--sg`                              |
-| `AppDatabaseStack`   | Secrets Manager                 | `derrops/platform/app-database/credentials` ¹               |
-| `AppDatabaseStack`   | EC2 Bastion                     | `derrops--platform--app-database--bastion`                  |
+| Stack                | Resource type                   | Physical name                                                |
+| -------------------- | ------------------------------- | ------------------------------------------------------------ |
+| `AuthStack`          | Lambda function                 | `derrops--auth--cognito--pre-token-generation`               |
+| `AuthStack`          | Cognito User Pool               | `derrops--auth--cognito--users`                              |
+| `AuthStack`          | Cognito Identity Pool           | `derrops--auth--cognito--relay-identity-pool`                |
+| `AuthStack`          | IAM Role                        | `derrops--platform--auth--sqs-publish-role`                  |
+| `AuthStack`          | IAM Role                        | `derrops--platform--auth--identity-pool-auth-role`           |
+| `SecurityGroupStack` | Security Group                  | `derrops--platform--opensearch--sg`                          |
+| `SecurityGroupStack` | Security Group                  | `derrops--platform--app-database--sg`                        |
+| `SecurityGroupStack` | Security Group                  | `derrops--platform--backend--sg`                             |
+| `SecurityGroupStack` | Security Group                  | `derrops--platform--cloud--sg`                               |
+| `AppDatabaseStack`   | Secrets Manager                 | `derrops/platform/app-database/credentials` ¹                |
+| `AppDatabaseStack`   | EC2 Bastion                     | `derrops--platform--app-database--bastion`                   |
 | `OpenApiBucketStack` | S3 Bucket                       | `{region}--{env}--derrops--derrops--oaspec--source--specs` ² |
-| `OpenSearchStack`    | CfnCollection                   | `derrops--opensearch` ³                                     |
-| `OpenSearchStack`    | CfnVpcEndpoint                  | `derrops--opensearch--vpc-ep` ³                             |
-| `OpenSearchStack`    | CfnSecurityPolicy (network)     | `derrops--opensearch--net-policy` ³                         |
-| `OpenSearchStack`    | CfnSecurityPolicy (data access) | `derrops--opensearch--data-access` ³                        |
-| `ApiStack`           | API Gateway REST API            | `derrops--platform--api-gateway`                            |
-| `VpcStack`           | VPC Flow Log                    | `derrops--platform--vpc--flow-log`                          |
+| `OpenSearchStack`    | CfnCollection                   | `derrops--opensearch` ³                                      |
+| `OpenSearchStack`    | CfnVpcEndpoint                  | `derrops--opensearch--vpc-ep` ³                              |
+| `OpenSearchStack`    | CfnSecurityPolicy (network)     | `derrops--opensearch--net-policy` ³                          |
+| `OpenSearchStack`    | CfnSecurityPolicy (data access) | `derrops--opensearch--data-access` ³                         |
+| `ApiStack`           | API Gateway REST API            | `derrops--platform--api-gateway`                             |
+| `VpcStack`           | VPC Flow Log                    | `derrops--platform--vpc--flow-log`                           |
 
 ¹ Secrets Manager uses `/` as the path delimiter. Segments still follow `{org}/{domain}/{service}/{key}`.
 
@@ -104,8 +104,8 @@ All exports follow `derrops--{domain}--{service}--{key}`.
 
 ### `packages/derrops-infra` exports
 
-| Stack                | Export name                                             |
-| -------------------- | ------------------------------------------------------- |
+| Stack                | Export name                                              |
+| -------------------- | -------------------------------------------------------- |
 | `VpcStack`           | `derrops--platform--vpc--id`                             |
 | `VpcStack`           | `derrops--platform--vpc--cidr-block`                     |
 | `VpcStack`           | `derrops--platform--vpc--subnet-public-{a,b,c}`          |
@@ -146,8 +146,8 @@ All exports follow `derrops--{domain}--{service}--{key}`.
 
 ### `packages/derrops-backend` exports
 
-| Stack                        | Export name                            |
-| ---------------------------- | -------------------------------------- |
+| Stack                        | Export name                             |
+| ---------------------------- | --------------------------------------- |
 | Amplify API Lambda stack     | `derrops--platform--api--lambda-arn`    |
 | Amplify API Lambda stack     | `derrops--platform--api--lambda-name`   |
 | Amplify Indexer Lambda stack | `derrops--oaspec--indexer--lambda-arn`  |
@@ -158,8 +158,7 @@ All exports follow `derrops--{domain}--{service}--{key}`.
 
 ## Related Documents
 
-- [Platform Domains](./platform-domains) — domain registry with CDK tag values and service ownership
-- [Tagging Conventions](./tagging-conventions) — required tag specification and CDK enforcement patterns
+- [Conventions](./conventions) — domain registry, required tag specification, and CDK enforcement patterns
 - [Multi-Tenancy](./multi-tenancy) — per-tenant tagging (`derrops:tenant-id`)
 - [Derrops Naming Conventions](/blog/derrops-conventions) — naming principles
 - [AWS Resource Naming Cheatsheet](/blog/derrops-naming-sheet) — per-service naming reference

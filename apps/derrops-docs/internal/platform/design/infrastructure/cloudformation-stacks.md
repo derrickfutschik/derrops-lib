@@ -46,13 +46,13 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--platform--vpc`
 
-| Field                | Value                                    |
-| -------------------- | ---------------------------------------- |
+| Field                | Value                                     |
+| -------------------- | ----------------------------------------- |
 | **Logical ID**       | `DerropsVpcStack`                         |
-| **Class**            | `VpcStack`                               |
+| **Class**            | `VpcStack`                                |
 | **File**             | `packages/derrops-infra/lib/stack/vpc.ts` |
-| **Domain / Service** | `platform` / `vpc`                       |
-| **Dependencies**     | none                                     |
+| **Domain / Service** | `platform` / `vpc`                        |
+| **Dependencies**     | none                                      |
 
 **Resources**: VPC, public/private/isolated subnets across 3 AZs, NAT Gateways, Internet Gateway, optional VPC Flow Log.
 
@@ -68,12 +68,12 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--platform--security-groups`
 
-| Field                | Value                                               |
-| -------------------- | --------------------------------------------------- |
+| Field                | Value                                                |
+| -------------------- | ---------------------------------------------------- |
 | **Logical ID**       | `DerropsSecurityGroupStack`                          |
-| **Class**            | `SecurityGroupStack`                                |
+| **Class**            | `SecurityGroupStack`                                 |
 | **File**             | `packages/derrops-infra/lib/stack/security-group.ts` |
-| **Domain / Service** | `platform` / `security-groups`                      |
+| **Domain / Service** | `platform` / `security-groups`                       |
 | **Dependencies**     | `derrops--platform--vpc`                             |
 
 **Resources**: Security groups for OpenSearch, Aurora, backend Lambda, and Cloud Lambda.
@@ -89,12 +89,12 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--platform--dns`
 
-| Field                | Value                                                    |
-| -------------------- | -------------------------------------------------------- |
+| Field                | Value                                                     |
+| -------------------- | --------------------------------------------------------- |
 | **Logical ID**       | `DerropsHostedZoneStack`                                  |
-| **Class**            | `HostedZoneStack`                                        |
+| **Class**            | `HostedZoneStack`                                         |
 | **File**             | `packages/derrops-infra/lib/stack/private-hosted-zone.ts` |
-| **Domain / Service** | `platform` / `dns`                                       |
+| **Domain / Service** | `platform` / `dns`                                        |
 | **Dependencies**     | `derrops--platform--vpc`                                  |
 
 **Resources**: Route 53 private hosted zone associated with the VPC.
@@ -108,12 +108,12 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--platform--app-database`
 
-| Field                | Value                                             |
-| -------------------- | ------------------------------------------------- |
+| Field                | Value                                              |
+| -------------------- | -------------------------------------------------- |
 | **Logical ID**       | `DerropsDatabaseStack`                             |
-| **Class**            | `AppDatabaseStack`                                |
+| **Class**            | `AppDatabaseStack`                                 |
 | **File**             | `packages/derrops-infra/lib/stack/app-database.ts` |
-| **Domain / Service** | `platform` / `app-database`                       |
+| **Domain / Service** | `platform` / `app-database`                        |
 | **Dependencies**     | `derrops--platform--vpc`                           |
 
 **Resources**: Aurora Serverless v2 PostgreSQL cluster (writer + reader), Secrets Manager credentials, EC2 bastion host.
@@ -131,12 +131,12 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--platform--opensearch`
 
-| Field                | Value                                                        |
-| -------------------- | ------------------------------------------------------------ |
-| **Logical ID**       | `DerropsOpenSearchStack`                                      |
-| **Class**            | `OpenSearchStack`                                            |
-| **File**             | `packages/derrops-infra/lib/stack/app-opensearch.ts`          |
-| **Domain / Service** | `platform` / `opensearch`                                    |
+| Field                | Value                                                          |
+| -------------------- | -------------------------------------------------------------- |
+| **Logical ID**       | `DerropsOpenSearchStack`                                       |
+| **Class**            | `OpenSearchStack`                                              |
+| **File**             | `packages/derrops-infra/lib/stack/app-opensearch.ts`           |
+| **Domain / Service** | `platform` / `opensearch`                                      |
 | **Dependencies**     | `derrops--platform--vpc`, `derrops--platform--security-groups` |
 
 **Resources**: OpenSearch Serverless collection (`derrops--opensearch`), VPC endpoint, network security policy, data access policy.
@@ -154,13 +154,13 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--auth--cognito`
 
-| Field                | Value                                         |
-| -------------------- | --------------------------------------------- |
+| Field                | Value                                          |
+| -------------------- | ---------------------------------------------- |
 | **Logical ID**       | `DerropsAuthStack`                             |
-| **Class**            | `AuthStack`                                   |
+| **Class**            | `AuthStack`                                    |
 | **File**             | `packages/derrops-infra/lib/stack/userpool.ts` |
-| **Domain / Service** | `auth` / `cognito`                            |
-| **Dependencies**     | none                                          |
+| **Domain / Service** | `auth` / `cognito`                             |
+| **Dependencies**     | none                                           |
 
 **Resources**: Cognito User Pool, User Pool Client, Identity Pool, pre-token-generation Lambda, SQS publish IAM role, identity pool authenticated IAM role.
 
@@ -179,14 +179,14 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 ### `derrops--oaspec--source`
 
-| Field                | Value                                                   |
-| -------------------- | ------------------------------------------------------- |
+| Field                | Value                                                    |
+| -------------------- | -------------------------------------------------------- |
 | **Logical ID**       | `DerropsOpenApiBucketStack`                              |
-| **Class**            | `OpenApiBucketStack`                                    |
+| **Class**            | `OpenApiBucketStack`                                     |
 | **File**             | `packages/derrops-infra/lib/stack/app-openapi-bucket.ts` |
-| **Domain / Service** | `oaspec` / `source`                                     |
-| **Dependencies**     | none                                                    |
-| **Extra tag**        | `derrops:tenant-id: derrops`                              |
+| **Domain / Service** | `oaspec` / `source`                                      |
+| **Dependencies**     | none                                                     |
+| **Extra tag**        | `derrops:tenant-id: derrops`                             |
 
 **Resources**: S3 bucket for Derrops-managed OpenAPI specifications (`{region}--{env}--derrops--derrops--oaspec--source--specs`). This is the platform's own OASpec catalogue sourced from APIs-guru and other curated collections.
 
@@ -201,9 +201,9 @@ derrops--platform--api-gateway  (imports Lambda ARN from Amplify — deploy last
 
 | Field                | Value                                                               |
 | -------------------- | ------------------------------------------------------------------- |
-| **Logical ID**       | `DerropsApiStack`                                                    |
+| **Logical ID**       | `DerropsApiStack`                                                   |
 | **Class**            | `ApiStack`                                                          |
-| **File**             | `packages/derrops-infra/lib/stack/apigateway.ts`                     |
+| **File**             | `packages/derrops-infra/lib/stack/apigateway.ts`                    |
 | **Domain / Service** | `platform` / `api-gateway`                                          |
 | **Dependencies**     | Amplify API Lambda stack (Lambda ARN passed via env or CDK context) |
 
@@ -271,7 +271,6 @@ Amplify Gen 2 auto-generates CloudFormation stack names at deploy time. The logi
 
 ## Related documents
 
-- [Platform Domains](./platform-domains) — domain registry and CDK tag values
-- [Tagging Conventions](./tagging-conventions) — required tags and CDK enforcement
+- [Conventions](./conventions) — domain registry, required tags, and CDK enforcement
 - [CDK Naming & Tagging Audit](./cdk-naming-tagging-audit) — verified current names and exports
 - [Multi-Tenancy](./multi-tenancy) — per-tenant stacks (future)

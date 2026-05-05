@@ -4,6 +4,11 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as path from 'path'
 import { Construct } from 'constructs'
+import { config } from '@derrops/config'
+
+const conv = config.convention
+  .with({ domain: 'auth', service: 'userpool' })
+  .name({ type: 'cognitoUserPool' })
 
 /**
  * Infrastructure stack for Derrops authentication resources.
@@ -67,7 +72,9 @@ export class AuthStack extends Stack {
     // Cognito User Pool
     // -------------------------------------------------------------------------
     this.userPool = new cognito.UserPool(this, 'DerropsUserPool', {
-      userPoolName: 'derrops--auth--cognito--users',
+      userPoolName: config.convention
+        .with({ domain: 'auth', service: 'userpool' })
+        .name({ type: 'cognitoUserPool' }),
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,

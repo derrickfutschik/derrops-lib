@@ -82,21 +82,21 @@ Use tags defined in `design/tags.yml`. Common ones:
 
 ### Domain tag
 
-Every document must also carry the domain tag for the area it covers. Domains are defined in [`infrastructure/platform-domains.md`](./infrastructure/platform-domains.md). Add **one** domain tag per document (the primary domain the document belongs to):
+Every document must also carry the domain tag for the area it covers. Domains are defined in [`infrastructure/conventions.md`](./infrastructure/conventions.md). Add **one** domain tag per document (the primary domain the document belongs to):
 
-| Domain          | Tag               | When to use                                                        |
-| --------------- | ----------------- | ------------------------------------------------------------------ |
-| Platform        | `platform`        | Core shared infra (VPC, DB, OpenSearch, API Gateway)               |
-| User Management | `user-management` | User identity, Cognito, identity pool, JWT customisation           |
-| Security        | `security`        | Encryption keys, certificates, WAF, Secrets Manager, compliance    |
-| OASpec          | `oaspec`          | OpenAPI spec management, indexing, storage, search                 |
-| Relay           | `relay`           | Cloud Relay, local relay, Aegis Token Broker                       |
-| Logging         | `logging`         | Log ingestion, enrichment, storage                                 |
-| Portal          | `portal`          | Web portal, dashboards, metrics UI                                 |
+| Domain          | Tag               | When to use                                                     |
+| --------------- | ----------------- | --------------------------------------------------------------- |
+| Platform        | `platform`        | Core shared infra (VPC, DB, OpenSearch, API Gateway)            |
+| User Management | `user-management` | User identity, Cognito, identity pool, JWT customisation        |
+| Security        | `security`        | Encryption keys, certificates, WAF, Secrets Manager, compliance |
+| OASpec          | `oaspec`          | OpenAPI spec management, indexing, storage, search              |
+| Relay           | `relay`           | Cloud Relay, local relay, Aegis Token Broker                    |
+| Observability   | `obs`             | Log ingestion, enrichment, storage, and query                   |
+| Portal          | `portal`          | Web portal, dashboards, metrics UI                              |
 
 If a document genuinely spans two domains, list both. Avoid adding a third — that is usually a sign the doc should be split.
 
-When adding a new domain, update both `design/tags.yml` and `design/infrastructure/platform-domains.md`.
+When adding a new domain, update both `design/tags.yml` and `design/infrastructure/conventions.md`.
 
 ### Example frontmatter
 
@@ -130,7 +130,7 @@ author: { GitHub handle or name }
 status: draft # draft | proposed | accepted | implemented | superseded
 tags:
   - { topic-tag from tags.yml }
-  - { domain-tag: platform|user-management|security|oaspec|relay|logging|portal }
+  - { domain-tag: platform|user-management|security|oaspec|relay|obs|portal }
 ---
 ```
 

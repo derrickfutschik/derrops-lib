@@ -91,9 +91,9 @@ relay:
   label: Domain — Relay
   description: Cloud Relay domain — HTTP proxy, local relay, Aegis Token Broker
 
-logging:
-  label: Domain — Logging
-  description: HTTP log ingestion and enrichment domain
+obs:
+  label: Domain — Observability
+  description: Observability domain — HTTP log ingestion, enrichment, storage, and query
 
 portal:
   label: Domain — Portal

@@ -13,9 +13,8 @@ These documents are for platform engineers. They describe how Derrops provisions
 
 ## Documents
 
-- [CloudFormation Stacks](./cloudformation-stacks) — authoritative registry of every CDK and Amplify CloudFormation stack: stack names, dependencies, resources, and all exports. **Update this whenever a stack is added, renamed, or removed.**
-- [Platform Domains](./platform-domains) — authoritative domain registry: domain names, CDK tag values, responsibilities, and the services each domain owns. Start here when adding a new stack or writing documentation.
-- [Multi-Tenancy](./multi-tenancy) — per-tenant resource catalogue, TenantConstruct, access control layers, lifecycle management
-- [Tagging Conventions](./tagging-conventions) — required AWS tags, CDK enforcement, cost allocation, and IAM condition key patterns
+- [Conventions](./conventions) — domain registry, required AWS tags, CDK enforcement patterns, cost allocation, and IAM condition key patterns. Start here when adding a new stack or writing documentation.
 - [Domain & Service Registry](./service-registry) — authoritative registry of every `derrops:domain` + `derrops:service` combination: active services, planned services, generated name patterns, and `DerropsConventions` instantiation examples. Start here when naming a new resource.
+- [CloudFormation Stacks](./cloudformation-stacks) — authoritative registry of every CDK and Amplify CloudFormation stack: stack names, dependencies, resources, and all exports. **Update this whenever a stack is added, renamed, or removed.**
+- [Multi-Tenancy](./multi-tenancy) — per-tenant resource catalogue, TenantConstruct, access control layers, lifecycle management
 - [CDK Naming & Tagging Audit](./cdk-naming-tagging-audit) — verified current-state reference: all resource names, export names, and applied tags

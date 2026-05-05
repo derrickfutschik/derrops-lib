@@ -75,14 +75,14 @@ graph TB
 
 ### Tier 1 — Derrops Managed Index (`derrops--t-glbl0000--oaspec--spec` and siblings)
 
-| Property         | Value                                                        |
-| ---------------- | ------------------------------------------------------------ |
+| Property         | Value                                                         |
+| ---------------- | ------------------------------------------------------------- |
 | Index name       | `derrops--t-glbl0000--oaspec--{entity}` (one per entity type) |
-| Owner `tenantId` | `t-glbl0000` (the platform's global tenant)                  |
+| Owner `tenantId` | `t-glbl0000` (the platform's global tenant)                   |
 | Write access     | Derrops internal pipeline only                                |
-| Read access      | All authenticated tenants                                    |
-| Primary source   | APIs-guru/openapi-directory + curated additions              |
-| Update cadence   | Nightly sync + on-demand trigger                             |
+| Read access      | All authenticated tenants                                     |
+| Primary source   | APIs-guru/openapi-directory + curated additions               |
+| Update cadence   | Nightly sync + on-demand trigger                              |
 
 The Derrops platform is itself modelled as a tenant (`tenantId = "t-glbl0000"`). This means:
 
@@ -92,14 +92,14 @@ The Derrops platform is itself modelled as a tenant (`tenantId = "t-glbl0000"`).
 
 ### Tier 2 — Tenant Private Index (`derrops--{tenantId}--oaspec--{entity}`)
 
-| Property         | Value                                                        |
-| ---------------- | ------------------------------------------------------------ |
+| Property         | Value                                                         |
+| ---------------- | ------------------------------------------------------------- |
 | Index name       | `derrops--{tenantId}--oaspec--{entity}` (one per entity type) |
-| Owner `tenantId` | The specific tenant                                          |
-| Write access     | That tenant only                                             |
-| Read access      | That tenant only                                             |
-| Primary source   | Tenant-uploaded OASpecs                                      |
-| Provisioning     | Created on first tenant upload (lazy)                        |
+| Owner `tenantId` | The specific tenant                                           |
+| Write access     | That tenant only                                              |
+| Read access      | That tenant only                                              |
+| Primary source   | Tenant-uploaded OASpecs                                       |
+| Provisioning     | Created on first tenant upload (lazy)                         |
 
 Tenant private indices are optional. A tenant with no private index falls back entirely to Tier 1.
 
@@ -135,8 +135,8 @@ derrops--{tenantId}--oaspec--{entity}--search
 
 The five aliases for tenant `t-acme0001`:
 
-| Alias                                           | Initial backing indices                 | After first private upload                |
-| ----------------------------------------------- | --------------------------------------- | ----------------------------------------- |
+| Alias                                            | Initial backing indices                  | After first private upload                 |
+| ------------------------------------------------ | ---------------------------------------- | ------------------------------------------ |
 | `derrops--t-acme0001--oaspec--spec--search`      | `derrops--t-glbl0000--oaspec--spec`      | + `derrops--t-acme0001--oaspec--spec`      |
 | `derrops--t-acme0001--oaspec--server--search`    | `derrops--t-glbl0000--oaspec--server`    | + `derrops--t-acme0001--oaspec--server`    |
 | `derrops--t-acme0001--oaspec--operation--search` | `derrops--t-glbl0000--oaspec--operation` | + `derrops--t-acme0001--oaspec--operation` |
@@ -216,7 +216,7 @@ There is no `visibility` field. Access control is enforced at the index level (I
 | ----------------------------------------------------------------------------- | -------------------------------- | ------------- |
 | [APIs-guru/openapi-directory](https://github.com/APIs-guru/openapi-directory) | Structured directory (YAML/JSON) | Primary       |
 | Official provider portals (Stripe, Twilio, AWS, etc.)                         | Provider-published specs         | Secondary     |
-| Curated internal additions                                                    | Manual upload by Derrops team     | Supplementary |
+| Curated internal additions                                                    | Manual upload by Derrops team    | Supplementary |
 
 ### Ingestion Pipeline
 
@@ -340,12 +340,12 @@ Removes from both S3 and OpenSearch. The S3 delete triggers an indexer event tha
 
 The table below uses `{entity}` as shorthand for any of the five entity types (`spec`, `server`, `operation`, `param`, `model`).
 
-| Actor                                 | `derrops--t-glbl0000--oaspec--{entity}` | `derrops--{tenantId}--oaspec--{entity}` | `derrops--{tenantId}--oaspec--{entity}--search` (alias) |
-| ------------------------------------- | -------------------------------------- | -------------------------------------- | ------------------------------------------------------ |
-| Derrops ingestion pipeline             | Read + Write                           | —                                      | —                                                      |
-| Tenant (own)                          | Read-only                              | Read + Write                           | Read (resolves to both)                                |
-| Tenant (other)                        | Read-only                              | No access                              | No access                                              |
-| Derrops platform services (enrichment) | Read                                   | Read                                   | Read (global search)                                   |
+| Actor                                  | `derrops--t-glbl0000--oaspec--{entity}` | `derrops--{tenantId}--oaspec--{entity}` | `derrops--{tenantId}--oaspec--{entity}--search` (alias) |
+| -------------------------------------- | --------------------------------------- | --------------------------------------- | ------------------------------------------------------- |
+| Derrops ingestion pipeline             | Read + Write                            | —                                       | —                                                       |
+| Tenant (own)                           | Read-only                               | Read + Write                            | Read (resolves to both)                                 |
+| Tenant (other)                         | Read-only                               | No access                               | No access                                               |
+| Derrops platform services (enrichment) | Read                                    | Read                                    | Read (global search)                                    |
 
 OpenSearch index-level permissions are enforced via AWS IAM data access policies on the OpenSearch Serverless collection. Each tenant's Lambda execution role is granted:
 
@@ -420,7 +420,7 @@ function oaspecSearchAlias(tenantId: string, entity: string): string {
 
 - [OpenAPI Directory Indexer](./openapi-directory-indexer) — The existing single-index indexer this design extends
 - [Multi-Tenancy (Infrastructure Design)](../infrastructure/multi-tenancy) — TenantConstruct, dedicated S3 buckets, IAM scoping, tenant lifecycle
-- [Tagging Conventions](../infrastructure/tagging-conventions) — Required AWS tags for all tenant resources
+- [Conventions](../infrastructure/conventions) — Required AWS tags for all tenant resources
 - [Multi-Tenancy (Docs)](/docs/multi-tenancy) — Customer-facing overview of data isolation and dedicated resources
 - [OASpec Bucket (Docs)](/docs/oaspec-bucket) — Bucket naming reference
 - DynamoDB cache rationale: use DynamoDB only for ultra-fast, latency-sensitive lookups in the enrichment hot path (sub-millisecond repeat host→specId lookups)

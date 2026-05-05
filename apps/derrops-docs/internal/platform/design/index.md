@@ -44,9 +44,9 @@ Design for the OASpec domain: API and OpenAPI spec management, five-index OpenSe
 
 Platform-wide infrastructure design: tenancy model, per-tenant resource catalogue, IaC provisioning via CDK, AWS resource tagging, and access control.
 
-- [Platform Domains](./infrastructure/platform-domains) — authoritative registry of all platform domains (`platform`, `auth`, `oaspec`, `relay`, `logging`, `portal`), with CDK tag values and the services each domain owns
+- [Conventions](./infrastructure/conventions) — domain registry, required tags, CDK `Tags.of()` enforcement, cost allocation, IAM condition key patterns
+- [Domain & Service Registry](./infrastructure/service-registry) — every `derrops:domain` + `derrops:service` combination, per-domain convention instantiation, and `DerropsConventions` examples
 - [Multi-Tenancy](./infrastructure/multi-tenancy) — TenantConstruct, dedicated S3 buckets, OpenSearch index/alias lifecycle, IAM scoping, tenant lifecycle management
-- [Tagging Conventions](./infrastructure/tagging-conventions) — required tags, CDK `Tags.of()` enforcement, cost allocation, IAM condition key patterns
 - [CDK Naming & Tagging Audit](./infrastructure/cdk-naming-tagging-audit) — current-state violations table and remediation priority (P0: tags, P1–P2: export renames, P3: physical resource renames)
 
 ### [Component Proposal Process](./process/component-proposal-standard)
@@ -70,7 +70,7 @@ Documents are tagged for cross-cutting navigation. Browse by tag at [/internal/p
 | `security`         | Security model and trust boundaries                               |
 | `networking`       | Network topology and delivery modes                               |
 | `data-pipeline`    | Data ingestion, indexing, and search                              |
-| `cli`              | derrops-cli tooling                                                |
+| `cli`              | derrops-cli tooling                                               |
 | `component-design` | Component proposals and design specs                              |
 | `architecture`     | System architecture and ADRs                                      |
 | `implemented`      | Designs for features that have been built                         |

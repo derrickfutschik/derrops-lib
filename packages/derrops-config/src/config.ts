@@ -46,6 +46,46 @@ export function mapKeysToLastSegment<T extends Record<string, any>>(input: T): R
   return result
 }
 
+export const createConvention = ({
+  accountId,
+  env,
+  region,
+  org,
+}: {
+  accountId: string
+  env: string
+  region: string
+  org: string
+}) => {
+  return new DerropsConventions({
+    org: 'derrops',
+    env,
+    region,
+  })
+    .domains({
+      platform: [
+        'vpc',
+        'app-database',
+        'opensearch',
+        'api-gateway',
+        'security-groups',
+        'dns',
+        'api',
+        'cdn',
+        'tenant-registry',
+        'monitoring',
+      ] as const,
+      'user-management': ['cognito', 'identity-pool', 'jwt-lambda', 'users'] as const,
+      security: ['certificates', 'kms', 'secrets', 'waf', 'compliance'] as const,
+      oaspec: ['source', 'storage', 'staging', 'indexer', 'dynamodb-cache', 'search'] as const,
+      relay: ['cloud-relay', 'local-relay', 'aegis', 'relay-registry'] as const,
+      obs: ['ingestion', 'enrichment', 'storage', 'query', 'alerts'] as const,
+      portal: ['frontend', 'analytics', 'notifications'] as const,
+    })
+    .arnContext({ accountId })
+    .tagPrefix(org + ':')
+}
+
 export const makeConfig = (cfg?: ConfigInput) => {
   const input = cfg ?? getConfigInputOverride() ?? getDefaultConfigInput()
 
@@ -59,22 +99,16 @@ export const makeConfig = (cfg?: ConfigInput) => {
   const opensearchPrefix = input.OPENSEARCH_INDEX_PREFIX ?? `${env}--${app}`.toLowerCase()
   const opensearchSuffix = input.OPENSEARCH_INDEX_SUFFIX ?? `${env}`.toLowerCase()
 
-  const conventions = new DerropsConventions({
-    region: input.AWS_REGION,
+  const convention = createConvention({
+    accountId: input.AWS_ACCOUNT_ID,
     env,
-    org: app, // TODO - introduce an org variable
+    region: input.AWS_REGION,
+    org: app,
   })
-    .domain(['oaspec', 'auth'])
-    .service(['userpool', 'app-client', 'dynamodb-cache'])
-
-  const oaspec = conventions.with({
-    domain: 'oaspec',
-    type: 'openSearchIndex',
-  })
-
-  const oaspecCache = conventions.with({ domain: 'oaspec', service: 'dynamodb-cache' })
 
   return {
+    convention,
+
     /** Whether to enable mock authentication, note that this is very dangerous and should not be enabled in production */
     'app.auth.mock.enabled': !isProd && input.VITE_APP_AUTH_MOCK_ENABLED,
 
@@ -132,10 +166,10 @@ export const makeConfig = (cfg?: ConfigInput) => {
 
     /** TTL in seconds for DynamoDB host→specId enrichment cache entries */
     // [oaspecCache.cfgKey('ttl-seconds')]: 300,
-    // [conventions.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgKey('ttl-seconds')]: 300,
-    // conventions.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgProp(300, 'ttl-seconds')
+    // [convention.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgKey('ttl-seconds')]: 300,
+    // convention.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgProp(300, 'ttl-seconds')
 
-    ...oaspecCache.cfgProp(300, 'ttl-seconds'),
+    ...convention.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgProp(300, 'ttl-seconds'),
 
     /** Global Tenant ID */
     'tenant.global.id': globalTenantId,
@@ -226,34 +260,46 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'opensearch.suffix': opensearchSuffix,
 
     /** Index of the OpenAPI APIs */
-    'opensearch.index.openapi.apis': oaspec.name({ entity: 'openapi-apis' }),
+    'opensearch.index.openapi.apis': convention
+      .with({ domain: 'oaspec', type: 'openSearchIndex' })
+      .name({ entity: 'openapi-apis' }),
 
     /** Index of the OpenAPI Operations */
-    'opensearch.index.openapi.operations': oaspec.name({ entity: 'openapi-operations' }),
+    'opensearch.index.openapi.operations': convention
+      .with({ domain: 'oaspec', type: 'openSearchIndex' })
+      .name({ entity: 'openapi-operations' }),
 
     /** Template of the OpenAPI APIs */
-    'opensearch.template.openapi.apis': oaspec.name({ entity: 'openapi-apis' }),
+    'opensearch.template.openapi.apis': convention
+      .with({ domain: 'oaspec', type: 'openSearchIndex' })
+      .name({ entity: 'openapi-apis' }),
 
     /** Template of the OpenAPI Operations */
-    'opensearch.template.openapi.operations': oaspec.name({ entity: 'openapi-operations' }),
+    'opensearch.template.openapi.operations': convention
+      .with({ domain: 'oaspec', type: 'openSearchIndex' })
+      .name({ entity: 'openapi-operations' }),
 
     /** Pipeline of the OpenAPI APIs */
-    'opensearch.pipeline.openapi.apis': oaspec.name({ entity: 'openapi-apis' }),
+    'opensearch.pipeline.openapi.apis': convention
+      .with({ domain: 'oaspec', type: 'openSearchIndex' })
+      .name({ entity: 'openapi-apis' }),
 
     /** Pipeline of the OpenAPI Operations */
-    'opensearch.pipeline.openapi.operations': oaspec.name({ entity: 'openapi-operations' }),
+    'opensearch.pipeline.openapi.operations': convention
+      .with({ domain: 'oaspec', type: 'openSearchIndex' })
+      .name({ entity: 'openapi-operations' }),
 
     /** Returns the OASpec index name for a given tenant and entity type.
      *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}
      *  Example: derrops--dev--t-abc123--oaspec--spec */
     'opensearch.oaspec.index': (tenantId: string, entity: string) =>
-      conventions.name({ type: 'openSearchIndex', domain: 'oaspec', entity, tenant: tenantId }),
+      convention.name({ type: 'openSearchIndex', domain: 'oaspec', entity, tenant: tenantId }),
 
     /** Returns the OASpec search alias name for a given tenant and entity type.
      *  Pattern: {prefix}--{env}--{tenantId}--oaspec--{entity}--search
      *  Example: derrops--dev--t-abc123--oaspec--spec--search */
     'opensearch.oaspec.search-alias': (tenantId: string, entity: string) =>
-      conventions.name({
+      convention.name({
         type: 'openSearchIndex',
         domain: 'oaspec',
         entity,
