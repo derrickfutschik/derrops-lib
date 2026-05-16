@@ -3,7 +3,7 @@
   "description": "AWS CDK Infrastructure Stacks for Derrops Platform",
   "private": true,
   "version": "0.1.0",
-  "type": "module",
+  "type": "commonjs",
   "bin": {
     "derrops-infra": "bin/cdk.js"
   },

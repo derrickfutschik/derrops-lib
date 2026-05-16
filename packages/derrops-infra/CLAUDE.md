@@ -6,13 +6,57 @@ AWS CDK infrastructure stacks for the Derrops platform. Contains long-lived reso
 
 ## Stacks
 
-| Stack           | Key resources                                                                                                  |
-| --------------- | -------------------------------------------------------------------------------------------------------------- |
-| `AuthStack`     | Cognito User Pool, User Pool Client, TOTP MFA, advanced security                                               |
-| `DatabaseStack` | VPC (multi-AZ, 3-tier subnets), Aurora Serverless v2 PostgreSQL 15.5, Secrets Manager, Bastion Host            |
-| `ApiStack`      | API Gateway (REST, regional), Lambda proxy integration, rate limiting (50 rps / 100 burst), CloudWatch logging |
+| CDK Stack ID                | Key resources                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| `DerropsUserPoolStack`      | Cognito User Pool, User Pool Client, TOTP MFA, advanced security                         |
+| `DerropsVpcStack`           | VPC (multi-AZ, 3-tier subnets), NAT gateways, VPC endpoints                              |
+| `DerropsDatabaseStack`      | Aurora Serverless v2 PostgreSQL 15.5, Secrets Manager, Bastion Host                      |
+| `DerropsSecurityGroupStack` | Centralised security groups for OpenSearch, RDS, Lambda                                   |
+| `DerropsHostedZoneStack`    | Route53 private hosted zone                                                               |
+| `DerropsOpenSearchStack`    | OpenSearch Serverless collection                                                          |
+| `DerropsOpenApiBucketStack` | S3 bucket for Derrops-managed OpenAPI specifications                                      |
+| `DerropsApiStack`           | API Gateway (REST, regional), Lambda proxy integration, rate limiting, CloudWatch logging |
 
 For each stack there is a corresponding `.md` file in `lib/stack/` with a description and Mermaid infrastructure diagram. See [`lib/stack/CLAUDE.md`](lib/stack/CLAUDE.md) for authoring rules.
+
+## Working with individual stacks
+
+Target a specific stack by passing its **CDK Stack ID** (the string passed to the `Stack` constructor, not the `stackName` prop) as a positional argument. Use the `cdk` passthrough script so CDK flags reach the CLI directly.
+
+```bash
+# Preview changes for one stack
+pnpm --filter @derrops/infra run cdk diff DerropsUserPoolStack
+
+# Deploy one stack (prompts for approval)
+pnpm --filter @derrops/infra run cdk deploy DerropsUserPoolStack
+
+# Deploy without approval prompt (CI / known-safe changes)
+pnpm --filter @derrops/infra run cdk deploy DerropsUserPoolStack --require-approval never
+
+# List all stacks and their synthesis status
+pnpm --filter @derrops/infra run cdk ls
+
+# Synthesise a single stack to inspect the CloudFormation template
+pnpm --filter @derrops/infra run cdk synth DerropsUserPoolStack
+```
+
+### Stack dependencies
+
+Some stacks consume CloudFormation exports from others. Deploy in this order when standing up from scratch:
+
+```
+DerropsVpcStack
+  ├── DerropsDatabaseStack
+  ├── DerropsSecurityGroupStack
+  │     └── DerropsOpenSearchStack
+  └── DerropsHostedZoneStack
+
+DerropsOpenApiBucketStack   (independent)
+DerropsUserPoolStack         (independent)
+DerropsApiStack              (requires Amplify Lambda ARN — deploy last)
+```
+
+`cdk deploy --all` respects `addDependency()` calls and handles ordering automatically.
 
 ## CloudFormation exports
 

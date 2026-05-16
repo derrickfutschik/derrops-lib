@@ -51,11 +51,17 @@ export class AppDatabaseStack extends Stack {
     })
 
     const publicSubnets = publicSubnetIds.map((subnetId, index) =>
-      ec2.Subnet.fromSubnetId(this, `PublicSubnet${index}`, subnetId),
+      ec2.Subnet.fromSubnetAttributes(this, `PublicSubnet${index}`, {
+        subnetId,
+        availabilityZone: Fn.select(index, Fn.getAzs()),
+      }),
     )
 
     const isolatedSubnets = isolatedSubnetIds.map((subnetId, index) =>
-      ec2.Subnet.fromSubnetId(this, `IsolatedSubnet${index}`, subnetId),
+      ec2.Subnet.fromSubnetAttributes(this, `IsolatedSubnet${index}`, {
+        subnetId,
+        availabilityZone: Fn.select(index, Fn.getAzs()),
+      }),
     )
 
     const dbSecurityGroupId = Fn.importValue('derrops--platform--app-database--sg-id')

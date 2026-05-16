@@ -9,18 +9,10 @@ import { HostedZoneStack } from '../lib/stack/private-hosted-zone'
 import { SecurityGroupStack } from '../lib/stack/security-group'
 import { UserPoolStack } from '../lib/stack/userpool'
 import { VpcStack } from '../lib/stack/vpc'
+import { resources } from '../lib/names'
 import { config } from '@derrops/config'
 
 const app = new cdk.App()
-
-const convention = config.convention
-  .with({ domain: 'user-management', service: 'cognito' })
-
-
-export const resources = {
-  userpoolStack: convention.with({ domain: 'user-management', service: 'cognito' }).resource({ type: 'cloudFormationStack' }),
-  userpool: convention.with({ domain: 'user-management', service: 'cognito' }).resource({ type: 'cognitoUserPool' })
-}
 
 
 const env = {
@@ -36,6 +28,17 @@ cdk.Tags.of(app).add('derrops:org', 'derrops')
 cdk.Tags.of(app).add('derrops:env', appEnv)
 cdk.Tags.of(app).add('derrops:managed-by', 'cdk')
 
+
+const userpoolStack = new UserPoolStack(config.convention.with({ domain: 'user-management', key: "userpool" }), app, 'DerropsUserPoolStack', {
+  // stackName: resources.userpoolStack.name,
+  description: 'Derrops User Pool Stack',
+  env,
+})
+
+app.synth()
+
+
+/**
 // VPC infrastructure stack (deployed first, exports used by other stacks)
 // Contains VPC, subnets, NAT gateways, and VPC endpoints
 const vpcStack = new VpcStack(app, 'DerropsVpcStack', {
@@ -44,13 +47,6 @@ const vpcStack = new VpcStack(app, 'DerropsVpcStack', {
   env,
 })
 
-const userpoolStack = new UserPoolStack(app, 'DerropsUserPoolStack', {
-  stackName: resources.userpoolStack.name,
-  description: 'Derrops Authentication Infrastructure - Cognito User Pool',
-  env,
-})
-
-userpoolStack.addMetadata
 
 // Database infrastructure stack
 // Contains Aurora Serverless v2 PostgreSQL cluster (imports VPC from VPC stack)
@@ -131,3 +127,6 @@ if (lambdaFunctionArn) {
 }
 
 app.synth()
+
+
+ */

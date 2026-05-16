@@ -4,11 +4,10 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as path from 'path'
 import { Construct } from 'constructs'
-import { resources } from 'packages/derrops-infra/bin/cdk'
+import { resources } from '../names'
 import { config } from '@derrops/config'
-
-
-export const conv = config.convention.with({ domain: 'user-management' })
+import { DerropsStack } from './derrops-stack'
+import { DerropsConventions } from '@derrops-conventions'
 
 /**
  * Infrastructure stack for Derrops authentication resources.
@@ -37,17 +36,19 @@ export const conv = config.convention.with({ domain: 'user-management' })
  *
  * See userpool.md for the full architecture diagram and flow.
  */
-export class UserPoolStack extends Stack {
+export class UserPoolStack extends DerropsStack {
   public readonly userPool: cognito.UserPool
   public readonly userPoolClient: cognito.UserPoolClient
   public readonly identityPool: cognito.CfnIdentityPool
   /** IAM role derrops-cloud uses to publish to SQS relay queues (both platform-owned and cross-account relay-owned). */
   public readonly sqsPublishRole: iam.Role
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props)
+  // TODO - parse in the convention for naming
+  // TODO - consider extending Stack for a Derrops Stack
+  constructor(conventions: DerropsConventions, scope: Construct, id: string, props?: StackProps) {
+    super(conventions, scope, id, props)
 
-    resources.userpool.applyTags((k, v) => Tags.of(this).add(k, v))
+
 
     // const preTokenGenerationFn = new lambda.Function(this, 'PreTokenGenerationFn', {
     //     functionName: 'derrops--auth--cognito--pre-token-generation',
@@ -64,7 +65,7 @@ export class UserPoolStack extends Stack {
     // Cognito User Pool
     // -------------------------------------------------------------------------
     this.userPool = new cognito.UserPool(this, 'DerropsUserPool', {
-      userPoolName: resources.userpool.name,
+      userPoolName: this.name({ type: "cognitoUserPool" }),
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -103,7 +104,6 @@ export class UserPoolStack extends Stack {
     })
 
 
-
     // -------------------------------------------------------------------------
     // User Pool Client — public PKCE client for the derrops-cli
     // -------------------------------------------------------------------------
@@ -133,7 +133,7 @@ export class UserPoolStack extends Stack {
     // SQS Publish Role
     // -------------------------------------------------------------------------
     this.sqsPublishRole = new iam.Role(this, 'SqsPublishRole', {
-      roleName: conv.with({ service: 'identity-pool' }).name({ type: 'iamRole', key: 'sqs-publish-role' }),
+      roleName: this.name({ type: 'iamRole', key: 'sqs-publish' }),
       description:
         'Used by derrops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -179,7 +179,7 @@ export class UserPoolStack extends Stack {
     // Cognito Identity Pool
     // -------------------------------------------------------------------------
     this.identityPool = new cognito.CfnIdentityPool(this, 'DerropsIdentityPool', {
-      identityPoolName: conv.with({ service: 'identity-pool' }).name({ type: 'cognitoIdentityPool' }),
+      identityPoolName: this.name({ type: 'cognitoIdentityPool' }),
       allowUnauthenticatedIdentities: false,
       cognitoIdentityProviders: [
         {
@@ -204,7 +204,7 @@ export class UserPoolStack extends Stack {
     })
 
     const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
-      roleName: conv.with({ service: 'identity-pool' }).name({ type: 'iamRole', key: 'authenticated-role' }),
+      roleName: conventions.with({ service: 'identity-pool' }).name({ type: 'iamRole', key: 'authenticated-role' }),
       description:
         'Assumed by authenticated Derrops CLI users — ABAC-scoped SQS relay consume access',
       assumedBy: new iam.FederatedPrincipal(
