@@ -15,7 +15,7 @@ export abstract class DerropsStack extends Stack {
 
     constructor(protected conventions: DerropsConventions, scope: Construct, id: string, props?: StackProps) {
         super(scope, id, { ...props, stackName: conventions.name({ type: 'cloudFormationStack' }) })
-        conventions.applyTags((k, v) => this.addStackTag(k, v))
+        conventions.resource({ type: 'cloudFormationStack' }).applyTags((k, v) => this.addStackTag(k, v))
     }
 
     protected resource = this.conventions.resource.bind(this.conventions)

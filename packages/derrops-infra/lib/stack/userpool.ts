@@ -35,6 +35,9 @@ import { DerropsConventions } from '@derrops-conventions'
  * SendMessage permission via a queue resource policy. derrops-cloud then publishes cross-account.
  *
  * See userpool.md for the full architecture diagram and flow.
+ * 
+ * pnpm --filter @derrops/infra run cdk deploy DerropsUserPoolStack
+ * 
  */
 export class UserPoolStack extends DerropsStack {
   public readonly userPool: cognito.UserPool
@@ -61,11 +64,18 @@ export class UserPoolStack extends DerropsStack {
 
 
 
+    const conv = {
+      userpool: this.resource({ type: "cognitoUserPool" }),
+      identityPool: this.resource({ type: 'cognitoIdentityPool' }),
+      sqsPublishRole: this.resource({ type: 'iamRole', purpose: 'sqs-publish' }),
+      sqsPublishPolicy: this.resource({ type: 'iamPolicy', purpose: 'sqs-publish' }),
+      relayConsumePolicy: this.resource({ type: 'iamPolicy', purpose: 'relay-queue-consume' })
+    }
     // -------------------------------------------------------------------------
     // Cognito User Pool
     // -------------------------------------------------------------------------
     this.userPool = new cognito.UserPool(this, 'DerropsUserPool', {
-      userPoolName: this.name({ type: "cognitoUserPool" }),
+      userPoolName: conv.userpool.name,
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -103,6 +113,7 @@ export class UserPoolStack extends DerropsStack {
       // V2 is wired below via the CfnUserPool L1 escape hatch.
     })
 
+    conv.userpool.applyTags((k, v) => Tags.of(this.userPool).add(k, v))
 
     // -------------------------------------------------------------------------
     // User Pool Client — public PKCE client for the derrops-cli
@@ -133,17 +144,18 @@ export class UserPoolStack extends DerropsStack {
     // SQS Publish Role
     // -------------------------------------------------------------------------
     this.sqsPublishRole = new iam.Role(this, 'SqsPublishRole', {
-      roleName: this.name({ type: 'iamRole', purpose: 'sqs-publish' }),
+      roleName: conv.sqsPublishRole.name,
       description:
         'Used by derrops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     })
+    conv.sqsPublishRole.applyTags((k, v) => Tags.of(this.sqsPublishRole).add(k, v))
 
     // Platform-owned queues: full lifecycle management + publish for queues in this account.
     // CreateQueue and DeleteQueue are called by relay-queue.service.ts at relay
     // registration and teardown respectively.
     const sqsPublishPolicy = new iam.Policy(this, 'SqsPublishPolicy', {
-      policyName: this.name({ type: 'iamPolicy', purpose: 'sqs-publish' }),
+      policyName: conv.sqsPublishPolicy.name,
       statements: [
         new iam.PolicyStatement({
           sid: 'ManageAndPublishToPlatformRelayQueues',
@@ -174,13 +186,14 @@ export class UserPoolStack extends DerropsStack {
         }),
       ],
     })
+    conv.sqsPublishPolicy.applyTags((k, v) => Tags.of(sqsPublishPolicy).add(k, v))
     this.sqsPublishRole.attachInlinePolicy(sqsPublishPolicy)
 
     // -------------------------------------------------------------------------
     // Cognito Identity Pool
     // -------------------------------------------------------------------------
     this.identityPool = new cognito.CfnIdentityPool(this, 'DerropsIdentityPool', {
-      identityPoolName: this.name({ type: 'cognitoIdentityPool' }),
+      identityPoolName: conv.identityPool.name,
       allowUnauthenticatedIdentities: false,
       cognitoIdentityProviders: [
         {
@@ -190,6 +203,8 @@ export class UserPoolStack extends DerropsStack {
         },
       ],
     })
+
+    conv.identityPool.applyTags((k, v) => Tags.of(this.identityPool).add(k, v))
 
     // -------------------------------------------------------------------------
     // Principal tag mapping — ABAC for SQS queue isolation
@@ -223,7 +238,7 @@ export class UserPoolStack extends DerropsStack {
     })
 
     const relayConsumePolicy = new iam.Policy(this, 'RelayConsumePolicyForAuthenticatedRole', {
-      policyName: this.name({ type: 'iamPolicy', purpose: 'relay-queue-consume' }),
+      policyName: conv.relayConsumePolicy.name,
       statements: [
         new iam.PolicyStatement({
           sid: 'RelayQueueConsume',
@@ -238,6 +253,7 @@ export class UserPoolStack extends DerropsStack {
       ],
     })
     authenticatedRole.attachInlinePolicy(relayConsumePolicy)
+    conv.relayConsumePolicy.applyTags((k, v) => Tags.of(relayConsumePolicy).add(k, v))
 
     new cognito.CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
       identityPoolId: this.identityPool.ref,
