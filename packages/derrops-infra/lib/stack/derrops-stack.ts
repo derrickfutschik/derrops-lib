@@ -18,7 +18,7 @@ export abstract class DerropsStack extends Stack {
         conventions.applyTags((k, v) => this.addStackTag(k, v))
     }
 
-    protected resource = this.conventions.resource
-    protected name = this.conventions.name
+    protected resource = this.conventions.resource.bind(this.conventions)
+    protected name = this.conventions.name.bind(this.conventions)
 
 }

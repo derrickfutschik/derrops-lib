@@ -133,7 +133,7 @@ export class UserPoolStack extends DerropsStack {
     // SQS Publish Role
     // -------------------------------------------------------------------------
     this.sqsPublishRole = new iam.Role(this, 'SqsPublishRole', {
-      roleName: this.name({ type: 'iamRole', key: 'sqs-publish' }),
+      roleName: this.name({ type: 'iamRole', purpose: 'sqs-publish' }),
       description:
         'Used by derrops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -142,38 +142,39 @@ export class UserPoolStack extends DerropsStack {
     // Platform-owned queues: full lifecycle management + publish for queues in this account.
     // CreateQueue and DeleteQueue are called by relay-queue.service.ts at relay
     // registration and teardown respectively.
-    this.sqsPublishRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'ManageAndPublishToPlatformRelayQueues',
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'sqs:CreateQueue',
-          'sqs:DeleteQueue',
-          'sqs:SendMessage',
-          'sqs:GetQueueAttributes',
-        ],
-        resources: [`arn:aws:sqs:*:${this.account}:derrops-*-local-*.fifo`],
-      }),
-    )
-
-    // Relay-owned queues (cross-account): derrops-cloud publishes to a customer-provisioned
-    // FIFO queue in their AWS account. The customer's queue resource policy authorises this
-    // role via sqs:SendMessage; this IAM statement is the sender-side permission required for
-    // cross-account delivery. No CreateQueue/DeleteQueue — derrops-cloud never manages
-    // customer-owned queues.
-    this.sqsPublishRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'PublishToRelayOwnedQueues',
-        effect: iam.Effect.ALLOW,
-        actions: ['sqs:SendMessage'],
-        resources: ['arn:aws:sqs:*:*:*.fifo'],
-        conditions: {
-          StringNotEquals: {
-            'aws:ResourceAccount': this.account,
+    const sqsPublishPolicy = new iam.Policy(this, 'SqsPublishPolicy', {
+      policyName: this.name({ type: 'iamPolicy', purpose: 'sqs-publish' }),
+      statements: [
+        new iam.PolicyStatement({
+          sid: 'ManageAndPublishToPlatformRelayQueues',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'sqs:CreateQueue',
+            'sqs:DeleteQueue',
+            'sqs:SendMessage',
+            'sqs:GetQueueAttributes',
+          ],
+          resources: [`arn:aws:sqs:*:${this.account}:derrops-*-local-*.fifo`],
+        }),
+        // Relay-owned queues (cross-account): derrops-cloud publishes to a customer-provisioned
+        // FIFO queue in their AWS account. The customer's queue resource policy authorises this
+        // role via sqs:SendMessage; this IAM statement is the sender-side permission required for
+        // cross-account delivery. No CreateQueue/DeleteQueue — derrops-cloud never manages
+        // customer-owned queues.
+        new iam.PolicyStatement({
+          sid: 'PublishToRelayOwnedQueues',
+          effect: iam.Effect.ALLOW,
+          actions: ['sqs:SendMessage'],
+          resources: ['arn:aws:sqs:*:*:*.fifo'],
+          conditions: {
+            StringNotEquals: {
+              'aws:ResourceAccount': this.account,
+            },
           },
-        },
-      }),
-    )
+        }),
+      ],
+    })
+    this.sqsPublishRole.attachInlinePolicy(sqsPublishPolicy)
 
     // -------------------------------------------------------------------------
     // Cognito Identity Pool
@@ -204,7 +205,7 @@ export class UserPoolStack extends DerropsStack {
     })
 
     const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
-      roleName: conventions.with({ service: 'identity-pool' }).name({ type: 'iamRole', key: 'authenticated-role' }),
+      roleName: this.name({ type: 'iamRole', purpose: 'authenticated' }),
       description:
         'Assumed by authenticated Derrops CLI users — ABAC-scoped SQS relay consume access',
       assumedBy: new iam.FederatedPrincipal(
@@ -221,18 +222,22 @@ export class UserPoolStack extends DerropsStack {
       ),
     })
 
-    authenticatedRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'RelayQueueConsume',
-        effect: iam.Effect.ALLOW,
-        actions: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
-        // ${aws:PrincipalTag/tenantId} and ${aws:PrincipalTag/userId} are
-        // substituted at IAM evaluation time from the principal tags above.
-        resources: [
-          `arn:aws:sqs:*:${this.account}:derrops-\${aws:PrincipalTag/tenantId}-local-\${aws:PrincipalTag/userId}-*.fifo`,
-        ],
-      }),
-    )
+    const relayConsumePolicy = new iam.Policy(this, 'RelayConsumePolicyForAuthenticatedRole', {
+      policyName: this.name({ type: 'iamPolicy', purpose: 'relay-queue-consume' }),
+      statements: [
+        new iam.PolicyStatement({
+          sid: 'RelayQueueConsume',
+          effect: iam.Effect.ALLOW,
+          actions: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
+          // ${aws:PrincipalTag/tenantId} and ${aws:PrincipalTag/userId} are
+          // substituted at IAM evaluation time from the principal tags above.
+          resources: [
+            `arn:aws:sqs:*:${this.account}:derrops-\${aws:PrincipalTag/tenantId}-local-\${aws:PrincipalTag/userId}-*.fifo`,
+          ],
+        }),
+      ],
+    })
+    authenticatedRole.attachInlinePolicy(relayConsumePolicy)
 
     new cognito.CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
       identityPoolId: this.identityPool.ref,

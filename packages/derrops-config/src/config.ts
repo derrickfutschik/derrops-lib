@@ -75,7 +75,7 @@ export const createConvention = ({
         'tenant-registry',
         'monitoring',
       ] as const,
-      'user-management': ['cognito', 'identity-pool', 'jwt-lambda', 'users'] as const,
+      'user-management': ['cognito', 'identity-pool', 'jwt-lambda', 'users', 'userpool'] as const,
       security: ['certificates', 'kms', 'secrets', 'waf', 'compliance'] as const,
       oaspec: ['source', 'storage', 'staging', 'indexer', 'dynamodb-cache', 'search'] as const,
       relay: ['cloud-relay', 'local-relay', 'aegis', 'relay-registry'] as const,

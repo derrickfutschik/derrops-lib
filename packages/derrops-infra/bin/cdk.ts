@@ -29,8 +29,7 @@ cdk.Tags.of(app).add('derrops:env', appEnv)
 cdk.Tags.of(app).add('derrops:managed-by', 'cdk')
 
 
-const userpoolStack = new UserPoolStack(config.convention.with({ domain: 'user-management', key: "userpool" }), app, 'DerropsUserPoolStack', {
-  // stackName: resources.userpoolStack.name,
+const userpoolStack = new UserPoolStack(config.convention.with({ domain: 'user-management', service: "userpool" }), app, 'DerropsUserPoolStack', {
   description: 'Derrops User Pool Stack',
   env,
 })
