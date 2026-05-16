@@ -6,9 +6,13 @@ import * as path from 'path'
 import { Construct } from 'constructs'
 import { config } from '@derrops/config'
 
-const conv = config.convention
-  .with({ domain: 'auth', service: 'userpool' })
-  .name({ type: 'cognitoUserPool' })
+const convention = config.convention
+  .with({ domain: 'user-management', service: 'cognito' })
+
+
+const resources = {
+  userpool: convention.resource({ type: 'cognitoUserPool' })
+}
 
 /**
  * Infrastructure stack for Derrops authentication resources.
@@ -47,34 +51,26 @@ export class AuthStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props)
 
-    Tags.of(this).add('derrops:domain', 'auth')
-    Tags.of(this).add('derrops:service', 'cognito')
 
-    // -------------------------------------------------------------------------
-    // Pre-Token Generation Lambda (V2)
-    //
-    // Reads the user's Cognito Groups from the trigger event — no external calls.
-    // Injects tenantId (= group name) into both access token and id_token.
-    //
-    // V2 trigger is set via the CfnUserPool L1 escape hatch because CDK's L2
-    // UserPool currently only exposes the V1 preTokenGeneration trigger key.
-    // -------------------------------------------------------------------------
-    const preTokenGenerationFn = new lambda.Function(this, 'PreTokenGenerationFn', {
-      functionName: 'derrops--auth--cognito--pre-token-generation',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '..', 'functions', 'pre-token-generation')),
-      description:
-        "V2 Pre-Token Generation trigger. Reads tenantId from the user's Cognito Group and injects it into the access token and id_token. No external calls — groups arrive in the trigger event.",
-    })
+
+    resources.userpool.applyTags((k, v) => Tags.of(this).add(k, v))
+
+    // const preTokenGenerationFn = new lambda.Function(this, 'PreTokenGenerationFn', {
+    //     functionName: 'derrops--auth--cognito--pre-token-generation',
+    //     runtime: lambda.Runtime.NODEJS_22_X,
+    //     handler: 'index.handler',
+    //     code: lambda.Code.fromAsset(path.join(__dirname, '..', 'functions', 'pre-token-generation')),
+    //     description:
+    //       "V2 Pre-Token Generation trigger. Reads tenantId from the user's Cognito Group and injects it into the access token and id_token. No external calls — groups arrive in the trigger event.",
+    //   })
+
+
 
     // -------------------------------------------------------------------------
     // Cognito User Pool
     // -------------------------------------------------------------------------
     this.userPool = new cognito.UserPool(this, 'DerropsUserPool', {
-      userPoolName: config.convention
-        .with({ domain: 'auth', service: 'userpool' })
-        .name({ type: 'cognitoUserPool' }),
+      userPoolName: resources.userpool.name,
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -112,18 +108,7 @@ export class AuthStack extends Stack {
       // V2 is wired below via the CfnUserPool L1 escape hatch.
     })
 
-    // Wire the V2 Pre-Token Generation trigger via L1 escape hatch.
-    const cfnUserPool = this.userPool.node.defaultChild as cognito.CfnUserPool
-    cfnUserPool.addPropertyOverride('LambdaConfig.PreTokenGenerationConfig', {
-      LambdaArn: preTokenGenerationFn.functionArn,
-      LambdaVersion: 'V2_0',
-    })
 
-    preTokenGenerationFn.addPermission('CognitoInvoke', {
-      principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
-      sourceArn: this.userPool.userPoolArn,
-      action: 'lambda:InvokeFunction',
-    })
 
     // -------------------------------------------------------------------------
     // User Pool Client — public PKCE client for the derrops-cli
@@ -262,58 +247,5 @@ export class AuthStack extends Stack {
       },
     })
 
-    // -------------------------------------------------------------------------
-    // CloudFormation outputs
-    // -------------------------------------------------------------------------
-    new CfnOutput(this, 'UserPoolId', {
-      value: this.userPool.userPoolId,
-      description: 'Cognito User Pool ID',
-      exportName: 'derrops--auth--cognito--user-pool-id',
-    })
-
-    new CfnOutput(this, 'UserPoolArn', {
-      value: this.userPool.userPoolArn,
-      description: 'Cognito User Pool ARN',
-      exportName: 'derrops--auth--cognito--user-pool-arn',
-    })
-
-    new CfnOutput(this, 'UserPoolClientId', {
-      value: this.userPoolClient.userPoolClientId,
-      description: 'Cognito User Pool Client ID (public PKCE client for derrops-cli)',
-      exportName: 'derrops--auth--cognito--user-pool-client-id',
-    })
-
-    new CfnOutput(this, 'UserPoolProviderName', {
-      value: this.userPool.userPoolProviderName,
-      description: 'Cognito User Pool Provider Name',
-      exportName: 'derrops--auth--cognito--user-pool-provider-name',
-    })
-
-    new CfnOutput(this, 'UserPoolProviderUrl', {
-      value: this.userPool.userPoolProviderUrl,
-      description: 'Cognito User Pool Provider URL',
-      exportName: 'derrops--auth--cognito--user-pool-provider-url',
-    })
-
-    new CfnOutput(this, 'IdentityPoolId', {
-      value: this.identityPool.ref,
-      description:
-        'Cognito Identity Pool ID — used by derrops-cli to exchange tokens for AWS credentials',
-      exportName: 'derrops--auth--cognito--identity-pool-id',
-    })
-
-    new CfnOutput(this, 'IdentityPoolAuthRoleArn', {
-      value: authenticatedRole.roleArn,
-      description: 'IAM role ARN for authenticated Identity Pool users (relay SQS consume)',
-      exportName: 'derrops--auth--cognito--identity-pool-auth-role-arn',
-    })
-
-    new CfnOutput(this, 'SqsPublishRoleArn', {
-      value: this.sqsPublishRole.roleArn,
-      description:
-        'IAM role ARN derrops-cloud uses to publish relay jobs to SQS. ' +
-        'Enterprise customers using relay-owned queues must grant this role sqs:SendMessage on their queue.',
-      exportName: 'derrops--auth--cognito--sqs-publish-role-arn',
-    })
   }
 }
