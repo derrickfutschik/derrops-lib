@@ -4,15 +4,11 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as path from 'path'
 import { Construct } from 'constructs'
+import { resources } from 'packages/derrops-infra/bin/cdk'
 import { config } from '@derrops/config'
 
-const convention = config.convention
-  .with({ domain: 'user-management', service: 'cognito' })
 
-
-const resources = {
-  userpool: convention.resource({ type: 'cognitoUserPool' })
-}
+export const conv = config.convention.with({ domain: 'user-management' })
 
 /**
  * Infrastructure stack for Derrops authentication resources.
@@ -41,7 +37,7 @@ const resources = {
  *
  * See userpool.md for the full architecture diagram and flow.
  */
-export class AuthStack extends Stack {
+export class UserPoolStack extends Stack {
   public readonly userPool: cognito.UserPool
   public readonly userPoolClient: cognito.UserPoolClient
   public readonly identityPool: cognito.CfnIdentityPool
@@ -50,8 +46,6 @@ export class AuthStack extends Stack {
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props)
-
-
 
     resources.userpool.applyTags((k, v) => Tags.of(this).add(k, v))
 
@@ -139,7 +133,7 @@ export class AuthStack extends Stack {
     // SQS Publish Role
     // -------------------------------------------------------------------------
     this.sqsPublishRole = new iam.Role(this, 'SqsPublishRole', {
-      roleName: 'derrops--platform--auth--sqs-publish-role',
+      roleName: conv.with({ service: 'identity-pool' }).name({ type: 'iamRole', key: 'sqs-publish-role' }),
       description:
         'Used by derrops-cloud to publish relay jobs to SQS FIFO queues (platform-owned and cross-account relay-owned)',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -185,7 +179,7 @@ export class AuthStack extends Stack {
     // Cognito Identity Pool
     // -------------------------------------------------------------------------
     this.identityPool = new cognito.CfnIdentityPool(this, 'DerropsIdentityPool', {
-      identityPoolName: 'derrops--auth--cognito--relay-identity-pool',
+      identityPoolName: conv.with({ service: 'identity-pool' }).name({ type: 'cognitoIdentityPool' }),
       allowUnauthenticatedIdentities: false,
       cognitoIdentityProviders: [
         {
@@ -210,7 +204,7 @@ export class AuthStack extends Stack {
     })
 
     const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
-      roleName: 'derrops--platform--auth--identity-pool-auth-role',
+      roleName: conv.with({ service: 'identity-pool' }).name({ type: 'iamRole', key: 'authenticated-role' }),
       description:
         'Assumed by authenticated Derrops CLI users — ABAC-scoped SQS relay consume access',
       assumedBy: new iam.FederatedPrincipal(

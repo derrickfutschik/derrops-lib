@@ -1,12 +1,15 @@
 {
-  // This file is not used in compilation. It is here just for a nice editor experience.
-  "extends": "@docusaurus/tsconfig",
+  // Editor-focused config (see package scripts); navigation shares repo-wide workspace paths.
+  "extends": "../../tsconfig.library.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@derrops/docs/*": ["./src/*"],
-      "@derrops/cloud/*": ["../derrops-cloud/src/*"]
-    }
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "baseUrl": "../../",
+    "skipLibCheck": true,
+    "strict": false
   },
   "exclude": [".docusaurus", "build"]
 }

@@ -1,14 +1,11 @@
 {
+  "extends": "../../tsconfig.library.json",
   "compilerOptions": {
     "allowJs": true,
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "paths": {
-      "@/*": ["./src/*"],
-      "@derrops/cloud/*": ["../derrops-cloud/src/*"],
-      "@derrops/portal/*": ["./src/*"]
-    },
+    "baseUrl": "../../",
     "skipLibCheck": true,
     "strictNullChecks": false
   },

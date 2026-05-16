@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.library.json",
   "compilerOptions": {
     "outDir": "./dist",
     "module": "ESNext",
@@ -9,11 +9,7 @@
     "declaration": false,
     "declarationMap": false,
     "isolatedModules": false,
-    "baseUrl": "./",
-    "paths": {
-      "@derrops/backend/*": ["./amplify/*"],
-      "@derrops/cloud/*": ["../../apps/derrops-cloud/src/*"]
-    }
+    "baseUrl": "../../"
   },
   "include": ["amplify/**/*"],
   "exclude": ["node_modules", "dist", ".amplify"]

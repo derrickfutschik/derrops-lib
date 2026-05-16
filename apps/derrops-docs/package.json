@@ -24,15 +24,16 @@
     "@docusaurus/preset-classic": "3.10.0",
     "@docusaurus/theme-common": "^3.10.0",
     "@docusaurus/theme-mermaid": "^3.10.0",
+    "@iconify-json/logos": "^1.2.10",
     "@mdx-js/react": "^3.0.0",
+    "@mermaid-js/layout-elk": "^0.1.9",
     "clsx": "^2.0.0",
+    "mermaid": ">=11.6.0",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "rehype-katex": "^7.0.1",
-    "remark-math": "^6.0.0",
-    "@iconify-json/logos": "^1.2.10",
-    "mermaid": ">=11.6.0"
+    "remark-math": "^6.0.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.0",

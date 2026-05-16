@@ -13,14 +13,14 @@
     "opensearch:migrate:dev": "nest start -- opensearch:migrate",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/apps/derrops-cloud/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "generate:openapi": "node dist/openapi.js",
+    "generate:openapi": "node dist/apps/derrops-cloud/src/openapi.js",
     "generate:client": "pnpm exec openapi-generator-cli generate -i dist/openapi.json -g typescript-axios -o ../derrops-portal/src/client/derrops-cloud --additional-properties=withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models"
   },
   "dependencies": {

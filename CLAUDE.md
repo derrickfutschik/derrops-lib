@@ -69,6 +69,7 @@ pnpm run dev          # Watch mode across all packages
 pnpm run test         # Run all tests
 pnpm run clean        # Remove all build artefacts and node_modules
 pnpm run commit       # AI-powered git commit
+pnpm sync:ts-paths    # Regenerate workspace TS `paths` for editor navigation (see below)
 
 # CDK infrastructure
 pnpm infra:deploy     # Deploy all CDK stacks
@@ -138,9 +139,32 @@ CDK tags are applied via `applyTags((k, v) => Tags.of(this).add(k, v))`.
 
 See `.claude/rules/resource-naming.md` for the full pattern, decision tree, IAM policy generation rules, and examples.
 
-### TypeScript path mappings
+### TypeScript path mappings (workspace packages → source)
 
-`paths` in `tsconfig.base.json` do **not** merge into child configs — each child must redeclare the paths it needs. See the path mapping convention in individual `tsconfig.json` files. Current cross-module mapping: `@derrops/cloud/*` → `apps/derrops-cloud/src/*`.
+Workspace libraries are built with **tsup**, which bundles `.d.ts` **without declaration maps**, so the IDE cannot reliably jump from `dist/*.d.ts` to `src/*.ts` unless TypeScript resolves imports via **`compilerOptions.paths`** aimed at source.
+
+**Central files (regenerated):**
+
+| File | Purpose |
+| ---- | ------- |
+| [`tsconfig.library.json`](tsconfig.library.json) | Extends [`tsconfig.base.json`](tsconfig.base.json) and defines **all** workspace `paths` (repo-root `baseUrl: "."`). Default for packages and apps: extend this and set **`"baseUrl": "../../"`** from `packages/<pkg>/` or `apps/<app>/`. |
+| [`tsconfig.workspace-paths.json`](tsconfig.workspace-paths.json) | Same `paths`, **no** `extends` — use when a project cannot inherit `tsconfig.base.json` defaults (e.g. [`packages/derrops-infra/tsconfig.json`](packages/derrops-infra/tsconfig.json) / CDK-style **CommonJS**). |
+
+**Maintain:**
+
+```bash
+pnpm sync:ts-paths   # runs scripts/generate-workspace-ts-paths.mjs
+```
+
+Run **`pnpm sync:ts-paths`** whenever you add or rename a **`packages/*`** workspace package, a **`test-resources`**-style root listed in [`pnpm-workspace.yaml`](pnpm-workspace.yaml), or an **`apps/*`** app whose [`package.json`](package.json) **`name`** is scoped **`@derrops/…`**. Commit the updated `tsconfig.library.json` and `tsconfig.workspace-paths.json`.
+
+The generator encodes a few layout exceptions: **`derrops-backend`** → `amplify/*`, **`derrops-infra`** → `lib/*`, **`test-resources`** → `loader.ts`. Apps without `src/index.ts` but with **`src/main.ts`** (Nest) get a bare package entry for **`main.ts`**. Unscoped app names (e.g. `derrops-cli`) are skipped until they use **`@derrops/…`** or you add a dedicated `tsconfig` extend.
+
+Do **not** hand-maintain duplicate `paths` blocks per package unless you have an unusual layout; prefer extending **`tsconfig.library.json`** (or **`tsconfig.workspace-paths.json`** for infra). Nested configs under an app (e.g. `apps/*/test/`) may need an explicit **`baseUrl`** so inherited paths stay relative to the **monorepo root** — follow existing **`apps/derrops-cloud`** examples.
+
+**IDE:** `.vscode/settings.json` / [`derrops-platform.code-workspace`](derrops-platform.code-workspace) include `js/ts.preferGoToSourceDefinition` and the workspace TypeScript SDK; they complement `paths` but do not replace them.
+
+Legacy note: `paths` in `tsconfig.base.json` still do **not** merge into arbitrary children — shared mappings live in the generated files above, not in `tsconfig.base.json`.
 
 ### DynamoDB vs Aurora
 

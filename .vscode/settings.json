@@ -1,0 +1,16 @@
+{
+  // Used when this repo is opened as a single folder (Open Folder).
+  // Multi-root: prefer opening derrops-platform.code-workspace — TS/Jest lives there too.
+
+  // Prefer implementation/source for Go to Definition (⌘+click / F12).
+  // https://github.com/microsoft/vscode/pull/178840
+  "js/ts.preferGoToSourceDefinition": true,
+
+  // pnpm hoists `typescript` at the repo root (package.json devDependencies).
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "cSpell.words": [
+    "conv",
+    "userpool"
+  ]
+}

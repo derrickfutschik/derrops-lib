@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.library.json",
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
@@ -11,11 +11,7 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
-    "paths": {
-      "@derrops/cloud/*": ["./src/*"],
-      "@derrops/config/*": ["../../packages/derrops-config/*"]
-    },
+    "baseUrl": "../../",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,

@@ -46,6 +46,13 @@
     },
   ],
   "settings": {
+    // Go to Definition (⌘+click) prefers implementation/source when available.
+    // Unified JS/TS preference — applies to all roots (folder-level .vscode does not).
+    "js/ts.preferGoToSourceDefinition": true,
+    // Always resolve TS SDK from the monorepo root (pnpm hoists `typescript` there).
+    "typescript.tsdk": "${workspaceFolder:Root}/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+
     "terminal.integrated.env.osx": {
       "PATH": "/Users/dfutschik/.nvm/versions/node/v22.21.1/bin:${env:PATH}",
     },

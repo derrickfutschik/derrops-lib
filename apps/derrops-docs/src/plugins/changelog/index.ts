@@ -72,11 +72,14 @@ const ChangelogPlugin: typeof pluginContentBlog = async function ChangelogPlugin
 
     configureWebpack(...args) {
       const config = blogPlugin.configureWebpack?.(...args)
+      if (!config) return {}
       const pluginDataDirRoot = path.join(context.generatedFilesDir, 'changelog-plugin', 'default')
-      const mdxLoader = config.module.rules[0].use[0]
-      mdxLoader.options.metadataPath = (mdxPath: string) => {
-        const aliasedPath = aliasedSitePath(mdxPath, context.siteDir)
-        return path.join(pluginDataDirRoot, `${docuHash(aliasedPath)}.json`)
+      const mdxLoader = config.module?.rules?.[0]?.use?.[0]
+      if (mdxLoader) {
+        mdxLoader.options.metadataPath = (mdxPath: string) => {
+          const aliasedPath = aliasedSitePath(mdxPath, context.siteDir)
+          return path.join(pluginDataDirRoot, `${docuHash(aliasedPath)}.json`)
+        }
       }
       return config
     },

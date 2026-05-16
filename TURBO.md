@@ -18,7 +18,7 @@ Turbo is already installed as a dev dependency in this monorepo:
 ```json
 {
   "devDependencies": {
-    "turbo": "^2.6.1"
+    "turbo": "^2.9.14"
   }
 }
 ```
@@ -27,6 +27,16 @@ No additional installation is needed.
 
 ## Configuration
 
+### UI mode (`stream` vs `tui`)
+
+[`turbo.json`](turbo.json) sets **`"ui": "stream"`** so `pnpm run build` prints **continuous task logs** (classic Turborepo behaviour). The **`tui`** mode shows an interactive split pane; during **remote cache replay** or while **slow tasks** (e.g. Vite) run in parallel, that UI can look **stuck** even though work is still progressing.
+
+To use the interactive UI for one run:
+
+```bash
+pnpm exec turbo run build --ui tui
+```
+
 ### turbo.json
 
 The main configuration file at the root defines task pipelines:
@@ -34,7 +44,7 @@ The main configuration file at the root defines task pipelines:
 ```json
 {
   "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
+  "ui": "stream",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -340,6 +350,12 @@ rm -rf .turbo
 # Force rebuild
 pnpm exec turbo run build --force
 ```
+
+### Vite / Docusaurus: stale `baseline-browser-mapping` or Browserslist / `caniuse-lite`
+
+If **`pnpm run build`** prints warnings about **`baseline-browser-mapping`** data age or **Browserslist / caniuse-lite** being months old (often from **`@derrops/portal`** or **`@derrops/docs`**), the repo pins fresher versions via root **`package.json` → `pnpm.overrides`**.
+
+After those overrides change, run **`pnpm install`** and commit the updated **`pnpm-lock.yaml`**.
 
 ### Build Order Issues
 

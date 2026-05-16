@@ -19,6 +19,7 @@
     "test:changed": "turbo run test:changed",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "sync:ts-paths": "node scripts/generate-workspace-ts-paths.mjs",
     "clean": "turbo run clean && rm -rf packages/*/dist packages/*/node_modules node_modules",
     "clean:modules": "rm -rf node_modules packages/*/node_modules apps/*/node_modules test-resources/node_modules",
     "format": "prettier --write .",
@@ -61,7 +62,9 @@
     "overrides": {
       "esbuild@<=0.24.2": ">=0.25.0",
       "js-yaml@<4.1.1": ">=4.1.1",
-      "gray-matter>js-yaml": "3.14.1"
+      "gray-matter>js-yaml": "3.14.1",
+      "baseline-browser-mapping": "2.10.29",
+      "caniuse-lite": "1.0.30001792"
     }
   }
 }

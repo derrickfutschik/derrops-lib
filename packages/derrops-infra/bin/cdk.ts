@@ -7,10 +7,21 @@ import { OpenApiBucketStack } from '../lib/stack/app-openapi-bucket'
 import { OpenSearchStack } from '../lib/stack/app-opensearch'
 import { HostedZoneStack } from '../lib/stack/private-hosted-zone'
 import { SecurityGroupStack } from '../lib/stack/security-group'
-import { AuthStack } from '../lib/stack/userpool'
+import { UserPoolStack } from '../lib/stack/userpool'
 import { VpcStack } from '../lib/stack/vpc'
+import { config } from '@derrops/config'
 
 const app = new cdk.App()
+
+const convention = config.convention
+  .with({ domain: 'user-management', service: 'cognito' })
+
+
+export const resources = {
+  userpoolStack: convention.with({ domain: 'user-management', service: 'cognito' }).resource({ type: 'cloudFormationStack' }),
+  userpool: convention.with({ domain: 'user-management', service: 'cognito' }).resource({ type: 'cognitoUserPool' })
+}
+
 
 const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -33,13 +44,13 @@ const vpcStack = new VpcStack(app, 'DerropsVpcStack', {
   env,
 })
 
-// Authentication infrastructure stack
-// Contains Cognito User Pool and related auth resources
-new AuthStack(app, 'DerropsAuthStack', {
-  stackName: 'derrops--auth--cognito',
+const userpoolStack = new UserPoolStack(app, 'DerropsUserPoolStack', {
+  stackName: resources.userpoolStack.name,
   description: 'Derrops Authentication Infrastructure - Cognito User Pool',
   env,
 })
+
+userpoolStack.addMetadata
 
 // Database infrastructure stack
 // Contains Aurora Serverless v2 PostgreSQL cluster (imports VPC from VPC stack)
@@ -111,11 +122,11 @@ if (lambdaFunctionArn) {
 } else {
   console.warn(
     '\n⚠️  WARNING: Lambda function ARN not provided. Skipping API stack deployment.\n' +
-      '   To deploy the API stack:\n' +
-      '   1. Deploy Amplify backend first: pnpm amplify:deploy\n' +
-      '   2. Get Lambda ARN from Amplify outputs\n' +
-      '   3. Deploy with: LAMBDA_FUNCTION_ARN=<arn> pnpm infra:deploy\n' +
-      '   Or use: pnpm run cdk deploy --context lambdaFunctionArn=<arn>\n',
+    '   To deploy the API stack:\n' +
+    '   1. Deploy Amplify backend first: pnpm amplify:deploy\n' +
+    '   2. Get Lambda ARN from Amplify outputs\n' +
+    '   3. Deploy with: LAMBDA_FUNCTION_ARN=<arn> pnpm infra:deploy\n' +
+    '   Or use: pnpm run cdk deploy --context lambdaFunctionArn=<arn>\n',
   )
 }
 
