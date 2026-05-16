@@ -43,7 +43,7 @@ AWS Resource        Naming layer   Example name                        What it c
 ──────────────────  ─────────────  ──────────────────────────────────  ─────────────────────────────
 VPC                 Org            acme                                 Inter-org isolation
 Subnet              Domain         acme--payments--private--1a          Intra-org domain segmentation
-Network ACL         Domain         acme--payments--nacl                 Inter-domain traffic rules
+Network ACL         Domain         acme--payments                 Inter-domain traffic rules
 Security Group      Service        acme--payments--checkout-api--web    Inter-service access rules
 ```
 
@@ -166,7 +166,7 @@ domainLayer.subnets['private']!.forEach((name, i) => {
 // NACL — inter-domain boundary control
 new ec2.CfnNetworkAcl(this, 'DomainNacl', {
   vpcId: vpc.ref,
-  tags: [{ key: 'Name', value: domainLayer.nacl }],  // 'acme--payments--nacl'
+  tags: [{ key: 'Name', value: domainLayer.nacl }],  // 'acme--payments'
 })
 
 // TGW attachment — connects domain VPC to org hub
@@ -174,7 +174,7 @@ new ec2.CfnTransitGatewayAttachment(this, 'TgwAttach', {
   transitGatewayId: tgw.ref,
   vpcId: vpc.ref,
   subnetIds: privateCidrs.map((_, i) => /* private subnet IDs */),
-  tags: [{ key: 'Name', value: domainLayer.tgwAttachment }],  // 'acme--payments--tgw-attach'
+  tags: [{ key: 'Name', value: domainLayer.tgwAttachment }],  // 'acme--payments'
 })
 ```
 

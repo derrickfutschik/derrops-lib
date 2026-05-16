@@ -86,7 +86,7 @@ The library also enforces the tagging strategy with a composable pipeline:
 
 ```typescript
 const naming = new DerropsConventions({ org: 'acme' })
-  .tagKeys('org', 'domain', 'service', 'environment')
+  .tagKeys('org', 'domain', 'service', 'env')
   .tagPrefix('derrops:')
   .tagRule((segments) => ({
     'cost-center': getCostCenter(segments.domain),
@@ -101,7 +101,7 @@ naming.tags({ domain: 'payments', service: 'checkout-api', env: 'prod' })
 //     'derrops:org': 'acme',
 //     'derrops:domain': 'payments',
 //     'derrops:service': 'checkout-api',
-//     'derrops:environment': 'prod',
+//     'derrops:env': 'prod',
 //     'cost-center': 'payments-team',
 //     'last-deployed': '2026-04-21T...',
 //   }
@@ -533,7 +533,7 @@ The `@derrops-conventions` library turns this advisory table into enforced behav
 ```typescript
 // Enforce that every resource carries a cost-center tag
 conventions
-  .tagKeys('org', 'domain', 'service', 'environment')
+  .tagKeys('org', 'domain', 'service', 'env')
   .tagRule((segs) => ({ 'cost-center': costCenterMap[segs.domain ?? ''] }))
   .policy(
     (tags) => Boolean(tags['cost-center']),

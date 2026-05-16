@@ -873,7 +873,7 @@ naming.tags()
 // → { domain: 'payments', service: 'checkout-api' }
 
 // Expand to all four canonical tags
-naming.tagKeys('org', 'domain', 'service', 'environment').tags({ env: 'prod' })
+naming.tagKeys('org', 'domain', 'service', 'env').tags({ env: 'prod' })
 // → { org: 'acme', domain: 'payments', service: 'checkout-api', environment: 'prod' }
 ```
 

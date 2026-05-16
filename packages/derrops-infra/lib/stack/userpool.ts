@@ -207,7 +207,7 @@ export class UserPoolStack extends DerropsStack {
     const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
       roleName: this.name({ type: 'iamRole', purpose: 'authenticated' }),
       description:
-        'Assumed by authenticated Derrops CLI users — ABAC-scoped SQS relay consume access',
+        'Assumed by authenticated Derrops CLI users - ABAC-scoped SQS relay consume access',
       assumedBy: new iam.FederatedPrincipal(
         'cognito-identity.amazonaws.com',
         {

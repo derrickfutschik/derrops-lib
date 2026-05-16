@@ -24,8 +24,7 @@ const appEnv = process.env.ENVIRONMENT || 'prod'
 
 // Apply common tags to every resource in the entire app.
 // derrops:domain and derrops:service are stack-specific — set inside each constructor.
-cdk.Tags.of(app).add('derrops:org', 'derrops')
-cdk.Tags.of(app).add('derrops:env', appEnv)
+
 cdk.Tags.of(app).add('derrops:managed-by', 'cdk')
 
 
