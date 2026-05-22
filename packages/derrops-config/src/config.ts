@@ -2,6 +2,8 @@ import { DerropsConventions } from '@derrops-conventions'
 
 import { configFromEnv, getConfigInputOverride, setOnCacheReset } from './from-env'
 import { ConfigInput } from './schema'
+import { flattenDomainConfig } from './flatten'
+import { makeTenantConfig } from './domains/tenant'
 
 import local from './local-env'
 import test from './test-env'
@@ -81,6 +83,7 @@ export const createConvention = ({
       relay: ['cloud-relay', 'local-relay', 'aegis', 'relay-registry'] as const,
       obs: ['ingestion', 'enrichment', 'storage', 'query', 'alerts'] as const,
       portal: ['frontend', 'analytics', 'notifications'] as const,
+      tenant: ['infra']
     })
     .arnContext({ accountId })
     .tagPrefix(org + ':')
@@ -128,6 +131,10 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'app.auth.mock.payload.custom:tenant_id': 't-test0000',
     'app.auth.mock.payload.custom:customer_id': 'c-bank0000',
 
+
+    'oaspec.storage.global-tenant-id': globalTenantId,
+
+
     /** Single shared bucket for all tenant OASpec raw files. Object keys are prefixed with {tenantId}/.
      *  Per-tenant dedicated buckets are a future infrastructure task. */
     'derrops.oaspec.storage.bucket': `${input.AWS_REGION}--${env}--${app}--${globalTenantId}--oaspec--storage`,
@@ -171,18 +178,7 @@ export const makeConfig = (cfg?: ConfigInput) => {
 
     ...convention.with({ domain: 'oaspec', service: 'dynamodb-cache' }).cfgProp(300, 'ttl-seconds'),
 
-    /** Global Tenant ID */
-    'tenant.global.id': globalTenantId,
-
-    /** Global Tenant Name */
-    'tenant.global.name': 'Derrops Global Tenant',
-
-    /** Allowed characters for the tenant ID */
-    'tenant.id.chars': 'abcdefghjkmnpqrstuvwxyz23456789',
-    /** Number of characters for the tenant ID */
-    'tenant.id.no': 8,
-    /** Prefix for the tenant ID */
-    'tenant.id.prefix': 't-',
+    ...flattenDomainConfig('tenant', makeTenantConfig(input)),
 
     /** The version of NodeJS the application uses*/
     'node.version': input.NODE_VERSION ?? 22,

@@ -7,6 +7,7 @@ import { OpenApiBucketStack } from '../lib/stack/app-openapi-bucket'
 import { OpenSearchStack } from '../lib/stack/app-opensearch'
 import { HostedZoneStack } from '../lib/stack/private-hosted-zone'
 import { SecurityGroupStack } from '../lib/stack/security-group'
+import { TenantStack } from '../lib/stack/tenant'
 import { UserPoolStack } from '../lib/stack/userpool'
 import { VpcStack } from '../lib/stack/vpc'
 import { resources } from '../lib/names'
@@ -30,6 +31,11 @@ cdk.Tags.of(app).add('derrops:managed-by', 'cdk')
 
 const userpoolStack = new UserPoolStack(config.convention.with({ domain: 'user-management', service: "userpool" }), app, 'DerropsUserPoolStack', {
   description: 'Derrops User Pool Stack',
+  env,
+})
+
+const globalTenantStack = new TenantStack(config.convention.with({ domain: 'tenant', service: 'infra', tenant: config['oaspec.storage.global-tenant-id'] }), app, `DerropsTenantStack-${config['oaspec.storage.global-tenant-id']}`, {
+  description: 'Derrops Global Tenant Infrastructure Stack',
   env,
 })
 
