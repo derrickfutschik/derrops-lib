@@ -1534,7 +1534,7 @@ Existing session delegation JWTs are not revoked when policies change — they r
 | **Explicit deny wins**        | A `forbid` policy always overrides any `permit` on the same resource, regardless of evaluation order.                                                                        |
 | **Stable principal identity** | Principals are keyed by Cognito `sub` (UUID), not email or username, so renames and IdP migrations do not accidentally grant or revoke access.                               |
 | **Scope binding**             | The Relay enforces the session delegation JWT scope on every execution. Cedar's decision at session grant time is the source of truth for that scope.                        |
-| **No vendor bypass**          | The Derrops control plane cannot expand or forge session delegation JWTs — it holds whatever Aegis issued, and the Relay validates the Aegis signature independently.         |
+| **No vendor bypass**          | The Derrops control plane cannot expand or forge session delegation JWTs — it holds whatever Aegis issued, and the Relay validates the Aegis signature independently.        |
 | **Auditability**              | Every `permit` or `forbid` decision identifies the determining Cedar policy by ID. Aegis logs include policy IDs alongside session grant decisions, enabling forensic audit. |
 | **Schema safety**             | Cedar validates policies against the schema before any traffic is served. Type errors in policies are caught at deploy time, not runtime.                                    |
 

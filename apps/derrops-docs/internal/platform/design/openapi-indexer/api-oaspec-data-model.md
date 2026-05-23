@@ -93,7 +93,7 @@ One PostgreSQL table stores all three domain objects. Columns are annotated with
 
 | Column                      | Type           | Constraints           | Description                                                        |
 | --------------------------- | -------------- | --------------------- | ------------------------------------------------------------------ |
-| `spec_global_opensearch_id` | `varchar(500)` | nullable              | Platform mode: doc ID in `derrops--t-glbl0000--oaspec--spec`        |
+| `spec_global_opensearch_id` | `varchar(500)` | nullable              | Platform mode: doc ID in `derrops--t-glbl0000--oaspec--spec`       |
 | `spec_latest_version`       | `varchar(100)` | nullable              | Version string of the latest indexed spec (e.g. `"2.1.0"`)         |
 | `spec_latest_opensearch_id` | `varchar(500)` | nullable              | Doc ID in the tenant's or global spec index for the latest version |
 | `spec_operation_count`      | `integer`      | NOT NULL, default `0` | Total operations in the latest version                             |
@@ -123,10 +123,10 @@ One PostgreSQL table stores all three domain objects. Columns are annotated with
 
 Every `api` row has a `management_mode` that controls who delivers spec versions, and (for private mode) a `version_strategy` that controls how.
 
-| `management_mode` | Spec source                                     | `version_strategy` applies? |
-| ----------------- | ----------------------------------------------- | --------------------------- |
+| `management_mode` | Spec source                                      | `version_strategy` applies? |
+| ----------------- | ------------------------------------------------ | --------------------------- |
 | `platform`        | Global index (`t-glbl0000`) — managed by Derrops | No                          |
-| `private`         | Tenant's private index — tenant is responsible  | Yes                         |
+| `private`         | Tenant's private index — tenant is responsible   | Yes                         |
 
 A tenant adopts a platform-managed API by selecting it from the catalogue in the wizard. This creates an `api` row with `management_mode: 'platform'` and `oaSpec.globalOpensearchId` (`spec_global_opensearch_id` in SQL) pointing at the global spec document. No private index is provisioned; aggregate stats are refreshed nightly from the global index.
 
@@ -205,8 +205,8 @@ The Derrops-managed public catalogue uses the reserved global tenant `t-glbl0000
 
 The full spec file (YAML or JSON) is stored permanently in the tenant's dedicated OASpec S3 bucket. See [OASpec Bucket](/docs/oaspec-bucket) for bucket naming conventions.
 
-| Tenancy          | Bucket name pattern                                           | Example                                                       |
-| ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| Tenancy          | Bucket name pattern                                            | Example                                                        |
+| ---------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
 | Tenant-private   | `{region}--{env}--derrops--{tenantId}--oaspec--storage--specs` | `us-east-1--prod--derrops--t-acme0001--oaspec--storage--specs` |
 | Platform-managed | `{region}--{env}--derrops--t-glbl0000--oaspec--storage--specs` | `us-east-1--prod--derrops--t-glbl0000--oaspec--storage--specs` |
 

@@ -134,7 +134,7 @@ docker run -d \
 
 | Variable                 | Required | Description                                                       |
 | ------------------------ | -------- | ----------------------------------------------------------------- |
-| `AEGIS_PLATFORM_API_KEY` | Yes      | Your Derrops API key — used to verify vendor JWTs                  |
+| `AEGIS_PLATFORM_API_KEY` | Yes      | Your Derrops API key — used to verify vendor JWTs                 |
 | `AEGIS_SIGNING_KEY_PATH` | Yes      | Path to the private key PEM file (inside the container)           |
 | `AEGIS_IDP_ISSUER`       | Yes      | OIDC issuer URL for your identity provider                        |
 | `AEGIS_IDP_AUDIENCE`     | Yes      | Expected `aud` claim in user tokens                               |

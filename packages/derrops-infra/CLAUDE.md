@@ -8,9 +8,9 @@ AWS CDK infrastructure stacks for the Derrops platform. Contains long-lived reso
 
 | CDK Stack ID                | Key resources                                                                             |
 | --------------------------- | ----------------------------------------------------------------------------------------- |
-| `DerropsUserPoolStack`      | Cognito User Pool, User Pool Client, TOTP MFA, advanced security                         |
-| `DerropsVpcStack`           | VPC (multi-AZ, 3-tier subnets), NAT gateways, VPC endpoints                              |
-| `DerropsDatabaseStack`      | Aurora Serverless v2 PostgreSQL 15.5, Secrets Manager, Bastion Host                      |
+| `DerropsUserPoolStack`      | Cognito User Pool, User Pool Client, TOTP MFA, advanced security                          |
+| `DerropsVpcStack`           | VPC (multi-AZ, 3-tier subnets), NAT gateways, VPC endpoints                               |
+| `DerropsDatabaseStack`      | Aurora Serverless v2 PostgreSQL 15.5, Secrets Manager, Bastion Host                       |
 | `DerropsSecurityGroupStack` | Centralised security groups for OpenSearch, RDS, Lambda                                   |
 | `DerropsHostedZoneStack`    | Route53 private hosted zone                                                               |
 | `DerropsOpenSearchStack`    | OpenSearch Serverless collection                                                          |
@@ -62,8 +62,8 @@ DerropsApiStack              (requires Amplify Lambda ARN — deploy last)
 
 **AuthStack**
 
-| Export                       | Value                  |
-| ---------------------------- | ---------------------- |
+| Export                        | Value                  |
+| ----------------------------- | ---------------------- |
 | `DerropsUserPoolId`           | Cognito User Pool ID   |
 | `DerropsUserPoolArn`          | User Pool ARN          |
 | `DerropsUserPoolClientId`     | Client ID for web apps |
@@ -72,11 +72,11 @@ DerropsApiStack              (requires Amplify Lambda ARN — deploy last)
 
 **DatabaseStack**
 
-| Export                        | Value                             |
-| ----------------------------- | --------------------------------- |
+| Export                         | Value                             |
+| ------------------------------ | --------------------------------- |
 | `DerropsDbClusterEndpoint`     | Writer endpoint                   |
 | `DerropsDbClusterReadEndpoint` | Reader endpoint                   |
-| `DerropsDbName`                | Database name (`derrops`)          |
+| `DerropsDbName`                | Database name (`derrops`)         |
 | `DerropsDbSecretArn`           | Credentials ARN (Secrets Manager) |
 | `DerropsDbPort`                | Port (`5432`)                     |
 | `DerropsBastionHostId`         | Bastion EC2 instance ID           |
@@ -84,8 +84,8 @@ DerropsApiStack              (requires Amplify Lambda ARN — deploy last)
 
 **ApiStack**
 
-| Export              | Value                             |
-| ------------------- | --------------------------------- |
+| Export               | Value                             |
+| -------------------- | --------------------------------- |
 | `DerropsApiUrl`      | API Gateway base URL              |
 | `DerropsApiId`       | API Gateway ID                    |
 | `DerropsApiArn`      | API Gateway ARN                   |

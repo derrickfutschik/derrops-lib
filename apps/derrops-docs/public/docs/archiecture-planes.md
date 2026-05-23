@@ -208,13 +208,13 @@ Target APIs
 
 | Plane               | Component               | Owner    |
 | ------------------- | ----------------------- | -------- |
-| Control Plane       | Derrops Portal           | Derrops   |
+| Control Plane       | Derrops Portal          | Derrops  |
 | Data Plane          | SAAS API                | Vendor   |
 | Policy Plane        | Aegis Policy Engine     | Customer |
 | Identity Plane      | Customer IdP            | Customer |
-| Security Plane      | Token signing / Secrets | Derrops   |
-| Observability Plane | Logs & Audit            | Derrops   |
-| Management Plane    | Aegis/Derrops Portal     | Derrops   |
+| Security Plane      | Token signing / Secrets | Derrops  |
+| Observability Plane | Logs & Audit            | Derrops  |
+| Management Plane    | Aegis/Derrops Portal    | Derrops  |
 | Network Plane       | Customer VPC            | Customer |
 
 ---

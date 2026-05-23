@@ -83,7 +83,7 @@ export const createConvention = ({
       relay: ['cloud-relay', 'local-relay', 'aegis', 'relay-registry'] as const,
       obs: ['ingestion', 'enrichment', 'storage', 'query', 'alerts'] as const,
       portal: ['frontend', 'analytics', 'notifications'] as const,
-      tenant: ['infra']
+      tenant: ['infra'],
     })
     .arnContext({ accountId })
     .tagPrefix(org + ':')
@@ -131,9 +131,7 @@ export const makeConfig = (cfg?: ConfigInput) => {
     'app.auth.mock.payload.custom:tenant_id': 't-test0000',
     'app.auth.mock.payload.custom:customer_id': 'c-bank0000',
 
-
     'oaspec.storage.global-tenant-id': globalTenantId,
-
 
     /** Single shared bucket for all tenant OASpec raw files. Object keys are prefixed with {tenantId}/.
      *  Per-tenant dedicated buckets are a future infrastructure task. */

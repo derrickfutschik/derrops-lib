@@ -254,9 +254,9 @@ const component = new ComponentName({
 
 **Example table:**
 
-| Package           | Version  | Purpose     | License |
-| ----------------- | -------- | ----------- | ------- |
-| `axios`           | `^1.6.0` | HTTP client | MIT     |
+| Package            | Version  | Purpose     | License |
+| ------------------ | -------- | ----------- | ------- |
+| `axios`            | `^1.6.0` | HTTP client | MIT     |
 | `@derrops/private` | `*`      | Core types  | MIT     |
 
 ### 7. Implementation Details

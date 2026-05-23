@@ -189,15 +189,15 @@ This is distinct from the per-API Operations tab — it searches across all APIs
 
 ## Component Summary
 
-| Component          | Backed By                                                                | Location in Portal             |
-| ------------------ | ------------------------------------------------------------------------ | ------------------------------ |
-| API List           | PostgreSQL `api`                                                         | APIs tab — main view           |
-| Version Browser    | `derrops--{tenantId}--oaspec--spec` (OpenSearch)                          | API detail → Versions tab      |
-| Operations tab     | `derrops--{tenantId}--oaspec--operation` (OpenSearch)                     | API detail → Operations tab    |
-| Spec Viewer        | S3 (raw spec) / OpenSearch                                               | API detail → Spec tab          |
-| Upload Wizard      | `POST /openapi/index` pipeline                                           | Modal / wizard flow            |
-| Diff View          | `derrops--{tenantId}--oaspec--operation` comparison                       | Step 5 of Upload Wizard        |
-| Operation Explorer | `derrops--{tenantId}--oaspec--operation` (OpenSearch)                     | APIs tab → Operations sub-page |
+| Component          | Backed By                                                                  | Location in Portal             |
+| ------------------ | -------------------------------------------------------------------------- | ------------------------------ |
+| API List           | PostgreSQL `api`                                                           | APIs tab — main view           |
+| Version Browser    | `derrops--{tenantId}--oaspec--spec` (OpenSearch)                           | API detail → Versions tab      |
+| Operations tab     | `derrops--{tenantId}--oaspec--operation` (OpenSearch)                      | API detail → Operations tab    |
+| Spec Viewer        | S3 (raw spec) / OpenSearch                                                 | API detail → Spec tab          |
+| Upload Wizard      | `POST /openapi/index` pipeline                                             | Modal / wizard flow            |
+| Diff View          | `derrops--{tenantId}--oaspec--operation` comparison                        | Step 5 of Upload Wizard        |
+| Operation Explorer | `derrops--{tenantId}--oaspec--operation` (OpenSearch)                      | APIs tab → Operations sub-page |
 | Operation Detail   | `derrops--{tenantId}--oaspec--param`, `derrops--{tenantId}--oaspec--model` | Slide-out panel                |
 
 ---

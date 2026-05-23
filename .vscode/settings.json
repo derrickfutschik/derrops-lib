@@ -9,8 +9,5 @@
   // pnpm hoists `typescript` at the repo root (package.json devDependencies).
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "cSpell.words": [
-    "conv",
-    "userpool"
-  ]
+  "cSpell.words": ["conv", "userpool"]
 }

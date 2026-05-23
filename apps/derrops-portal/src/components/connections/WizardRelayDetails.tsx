@@ -14,7 +14,11 @@ const RELAY_TYPES: { id: RelayType; label: string; description: string }[] = [
     description: 'Customer-deployed relay on your own infrastructure.',
   },
   { id: 'managed', label: 'Managed', description: 'Derrops-hosted relay managed by Derrops.' },
-  { id: 'local-dev', label: 'Local', description: "Developer's local machine via the derrops CLI." },
+  {
+    id: 'local-dev',
+    label: 'Local',
+    description: "Developer's local machine via the derrops CLI.",
+  },
 ]
 
 interface WizardRelayDetailsProps {

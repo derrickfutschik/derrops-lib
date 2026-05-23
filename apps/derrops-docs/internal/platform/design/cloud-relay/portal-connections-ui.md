@@ -57,7 +57,7 @@ Before the wizard steps: a quick reference of which paths are implemented vs not
 | ------------------------------------------------- | ------------------------------------------------ |
 | Direct HTTP — create, edit, delete                | ✅ Implemented                                   |
 | Direct HTTP — test connection (HTTP health check) | ✅ Implemented                                   |
-| SQS — Derrops-managed queue creation               | ✅ Implemented                                   |
+| SQS — Derrops-managed queue creation              | ✅ Implemented                                   |
 | SQS — IAM user + access key generation            | ❌ Not yet implemented                           |
 | SQS — BYO (customer-provided) queue               | ⚠️ Backend supported, no portal flow yet         |
 | SQS — test SQS connectivity (canary message)      | ❌ Not yet implemented                           |
@@ -251,14 +251,14 @@ When an Aegis is linked, a note appears:
 
 Summary card before submission:
 
-| Setting         | Value                                    |
-| --------------- | ---------------------------------------- |
-| Connection name | _(entered value)_                        |
-| Connectivity    | _(Direct HTTP / SQS / SQS + HTTP)_       |
-| Relay URL       | _(entered or `—`)_                       |
+| Setting         | Value                                     |
+| --------------- | ----------------------------------------- |
+| Connection name | _(entered value)_                         |
+| Connectivity    | _(Direct HTTP / SQS / SQS + HTTP)_        |
+| Relay URL       | _(entered or `—`)_                        |
 | SQS queue       | _(Derrops-managed / `<queue-url>` / `—`)_ |
-| Relay type      | _(Self-hosted / Managed / Local)_        |
-| Aegis           | _(name or `None`)_                       |
+| Relay type      | _(Self-hosted / Managed / Local)_         |
+| Aegis           | _(name or `None`)_                        |
 
 If any selected path is not yet implemented, a banner summarises the limitations:
 

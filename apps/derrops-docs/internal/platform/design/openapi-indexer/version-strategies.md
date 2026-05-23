@@ -26,10 +26,10 @@ This document covers how the platform manages OpenAPI spec versions for a tenant
 
 Every `api` row carries a `management_mode` that determines who is responsible for delivering spec versions.
 
-| Mode       | Who manages versions     | Spec data lives in                                     |
-| ---------- | ------------------------ | ------------------------------------------------------ |
+| Mode       | Who manages versions      | Spec data lives in                                      |
+| ---------- | ------------------------- | ------------------------------------------------------- |
 | `platform` | Derrops platform pipeline | Global index (`derrops--t-glbl0000--oaspec--*`)         |
-| `private`  | The tenant               | Tenant private index (`derrops--{tenantId}--oaspec--*`) |
+| `private`  | The tenant                | Tenant private index (`derrops--{tenantId}--oaspec--*`) |
 
 In both modes the tenant has a row in the `api` table — representing their interest in that API — and the search alias transparently resolves spec data from whichever index holds it. No global rows are written to RDS.
 

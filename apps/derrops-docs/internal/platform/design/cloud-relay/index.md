@@ -19,10 +19,10 @@ The Cloud Relay is a customer-deployed HTTP proxy that sits between the Derrops 
 | [Relay Connection Design](./relay-connection)                        | How connections and trust are established between runtime components                                                             |
 | [Aegis Token Broker](./aegis-token-broker-design)                    | Customer-controlled credential injection and session delegation                                                                  |
 | [Local Relay](./local-relay)                                         | Local development relay for reaching `localhost` services                                                                        |
-| [Security](./cloud-relay-security)                                   | Authentication methods between Relay and Derrops control plane                                                                    |
+| [Security](./cloud-relay-security)                                   | Authentication methods between Relay and Derrops control plane                                                                   |
 | [Portal UI — Connection Management](./portal-connections-ui)         | UI design brief for managing relay and Aegis connections in the portal                                                           |
 | [Aegis — Cedar Policy Authorization](./aegis-cedar-policy)           | Cedar Policy engine integration: entity model, schema, example policies, and session grant flow                                  |
-| [API Tester — Relay Execution](./api-tester-relay-execution)         | End-to-end job execution flow: portal → derrops-cloud → SQS → relay → result                                                      |
+| [API Tester — Relay Execution](./api-tester-relay-execution)         | End-to-end job execution flow: portal → derrops-cloud → SQS → relay → result                                                     |
 | [API Tester — Connection Switcher](./api-tester-connection-switcher) | UX design for switching between relay connections and browser-direct mode in the API Tester                                      |
 | [Secret Injection](./relay-secret-injection)                         | URI-based secret injection at request execution time — AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, HashiCorp Vault |
 
@@ -30,16 +30,16 @@ The Cloud Relay is a customer-deployed HTTP proxy that sits between the Derrops 
 
 The Derrops edge consists of three runtime components:
 
-| Component                          | Deployed By          | Purpose                                     |
-| ---------------------------------- | -------------------- | ------------------------------------------- |
+| Component                           | Deployed By           | Purpose                                     |
+| ----------------------------------- | --------------------- | ------------------------------------------- |
 | `derrops-cloud`                     | Derrops (vendor SaaS) | Control plane, job scheduling, portal       |
-| Cloud Relay (`apps/derrops-relay`)  | Customer             | HTTP proxy, job execution, network boundary |
-| Aegis Broker (`apps/derrops-aegis`) | Customer (optional)  | Credential injection, session delegation    |
+| Cloud Relay (`apps/derrops-relay`)  | Customer              | HTTP proxy, job execution, network boundary |
+| Aegis Broker (`apps/derrops-aegis`) | Customer (optional)   | Credential injection, session delegation    |
 
 ## Delivery Modes
 
-| Mode             | Description                                | Relay Network Requirement                 |
-| ---------------- | ------------------------------------------ | ----------------------------------------- |
+| Mode             | Description                                 | Relay Network Requirement                 |
+| ---------------- | ------------------------------------------- | ----------------------------------------- |
 | `direct`         | Derrops calls relay synchronously           | Relay must accept inbound connections     |
 | `relay-queue`    | Derrops enqueues job, relay processes async | Relay must accept inbound connections     |
-| `platform-queue` | Relay polls for jobs                       | Outbound-only — works behind NAT/firewall |
+| `platform-queue` | Relay polls for jobs                        | Outbound-only — works behind NAT/firewall |

@@ -515,7 +515,7 @@ sequenceDiagram
 
 | Integration Point       | Component                                         | Direction  | Protocol                              |
 | ----------------------- | ------------------------------------------------- | ---------- | ------------------------------------- |
-| Proxy endpoint          | `CloudRelayController` in derrops-cloud            | Inbound    | HTTPS POST (JSON) via API Gateway     |
+| Proxy endpoint          | `CloudRelayController` in derrops-cloud           | Inbound    | HTTPS POST (JSON) via API Gateway     |
 | Target API              | Any external HTTP endpoint                        | Outbound   | HTTP/HTTPS                            |
 | Connection storage      | PostgreSQL (via existing TypeORM)                 | Read/Write | SQL                                   |
 | Portal client           | Generated Axios client (from OpenAPI spec)        | Inbound    | HTTPS                                 |
@@ -1050,25 +1050,25 @@ Additionally, do not forward `Host` (the target URL determines the host).
 
 ### Edge Cases
 
-| Case                                  | Condition                                  | Handling                                                                   | Expected Outcome                 |
-| ------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------- |
-| Target returns non-2xx                | status 4xx / 5xx                           | Forward normally — these are valid responses                               | `CloudProxyResponse` with status |
-| Target returns binary body            | image, PDF, etc.                           | Return as base64-encoded string in `body`                                  | Display raw in portal            |
-| Request body on GET                   | `postData` set + `method: GET`             | Strip body, log warning                                                    | Request forwarded without body   |
+| Case                                  | Condition                                  | Handling                                                                    | Expected Outcome                 |
+| ------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------- |
+| Target returns non-2xx                | status 4xx / 5xx                           | Forward normally — these are valid responses                                | `CloudProxyResponse` with status |
+| Target returns binary body            | image, PDF, etc.                           | Return as base64-encoded string in `body`                                   | Display raw in portal            |
+| Request body on GET                   | `postData` set + `method: GET`             | Strip body, log warning                                                     | Request forwarded without body   |
 | Very large response                   | response body > 10 MB                      | Truncate to 10 MB, add `X-Derrops-Truncated: true` header in proxy response | Partial body shown               |
-| Private IP destination                | Hostname resolves to RFC 1918 address      | Hard-deny rule triggers before fetch; `POLICY_DENIED` returned             | 403 Policy Denied                |
-| Metadata endpoint                     | URL is `http://169.254.169.254/*`          | Hard-deny rule triggers; cloud metadata blocked unconditionally            | 403 Policy Denied                |
-| Destination not in tenant allowlist   | Host not in tenant's allowlist             | No allow rule matches in deny-by-default mode; `POLICY_DENIED`             | 403 Policy Denied                |
-| Redirect to private IP                | Target redirects to internal host          | Redirect target re-checked against policy before following                 | 403 Policy Denied                |
-| Self-request (portal → cloud → cloud) | URL resolves back to derrops-cloud          | Blocked by URL validation / allowlist                                      | 400 Bad Request                  |
-| Missing connection URL in portal      | User selects connection with deleted entry | Fallback to browser mode with toast warning                                | Graceful degradation             |
-| Lambda cold start                     | First request after idle                   | Normal — latency included in `durationMs`                                  | Accurate Lambda timing           |
-| Unknown secret ID in expression       | `{{secret:NO_SUCH_KEY}}` not in store      | Request rejected with `TEMPLATE_ERROR` before making any outbound call     | 422 Unprocessable Entity         |
-| Unknown `{{var:NAME}}` expression     | Name not in `templateContext.variables`    | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
-| Invalid expression syntax             | `{{bad}}` — no recognised type prefix      | Request rejected with `TEMPLATE_ERROR`                                     | 422 Unprocessable Entity         |
-| Secret shorter than 8 chars           | Resolved secret value is very short        | Secret fetched and injected; masking skipped; warning logged               | Request proceeds, no masking     |
-| Secret value in response body         | Response echoes back a secret value        | Value replaced with `[REDACTED:SECRET_ID]`; `masking` field populated      | Masked `CloudProxyResponse`      |
-| Secret value in response header       | Response header contains a secret value    | Header value replaced with `[REDACTED:SECRET_ID]`                          | Masked `CloudProxyResponse`      |
+| Private IP destination                | Hostname resolves to RFC 1918 address      | Hard-deny rule triggers before fetch; `POLICY_DENIED` returned              | 403 Policy Denied                |
+| Metadata endpoint                     | URL is `http://169.254.169.254/*`          | Hard-deny rule triggers; cloud metadata blocked unconditionally             | 403 Policy Denied                |
+| Destination not in tenant allowlist   | Host not in tenant's allowlist             | No allow rule matches in deny-by-default mode; `POLICY_DENIED`              | 403 Policy Denied                |
+| Redirect to private IP                | Target redirects to internal host          | Redirect target re-checked against policy before following                  | 403 Policy Denied                |
+| Self-request (portal → cloud → cloud) | URL resolves back to derrops-cloud         | Blocked by URL validation / allowlist                                       | 400 Bad Request                  |
+| Missing connection URL in portal      | User selects connection with deleted entry | Fallback to browser mode with toast warning                                 | Graceful degradation             |
+| Lambda cold start                     | First request after idle                   | Normal — latency included in `durationMs`                                   | Accurate Lambda timing           |
+| Unknown secret ID in expression       | `{{secret:NO_SUCH_KEY}}` not in store      | Request rejected with `TEMPLATE_ERROR` before making any outbound call      | 422 Unprocessable Entity         |
+| Unknown `{{var:NAME}}` expression     | Name not in `templateContext.variables`    | Request rejected with `TEMPLATE_ERROR`                                      | 422 Unprocessable Entity         |
+| Invalid expression syntax             | `{{bad}}` — no recognised type prefix      | Request rejected with `TEMPLATE_ERROR`                                      | 422 Unprocessable Entity         |
+| Secret shorter than 8 chars           | Resolved secret value is very short        | Secret fetched and injected; masking skipped; warning logged                | Request proceeds, no masking     |
+| Secret value in response body         | Response echoes back a secret value        | Value replaced with `[REDACTED:SECRET_ID]`; `masking` field populated       | Masked `CloudProxyResponse`      |
+| Secret value in response header       | Response header contains a secret value    | Header value replaced with `[REDACTED:SECRET_ID]`                           | Masked `CloudProxyResponse`      |
 
 ### Security Considerations
 
@@ -1610,8 +1610,8 @@ The Cloud Relay has two distinct deployment models with separate infrastructure 
 
 ### Iteration 1 — Derrops-managed deployment (platform internal)
 
-| Concern                                              | Package                   | Mechanism                                      | Rationale                                                                                                        |
-| ---------------------------------------------------- | ------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Concern                                              | Package                    | Mechanism                                      | Rationale                                                                                                        |
+| ---------------------------------------------------- | -------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | API Gateway REST API (Cloud Relay routes)            | `packages/derrops-infra`   | AWS CDK (`CloudRelayApiStack`)                 | Long-lived infrastructure; shared entry point for all Cloud Relay traffic                                        |
 | Cognito User Pool                                    | `packages/derrops-infra`   | AWS CDK (`userpool.ts` — existing or extended) | Already provisioned; referenced by the authorizer                                                                |
 | Usage Plans + API Keys                               | `packages/derrops-infra`   | AWS CDK (within `CloudRelayApiStack`)          | Tied to API Gateway lifecycle; managed alongside the gateway                                                     |
@@ -1660,13 +1660,13 @@ The authorizer function **code** lives in `apps/derrops-cloud/src/authorizer.ts`
 
 Customers deploying their own Relay use only `apps/derrops-cloud-relay`. The `infra/` directory at the root of that package is **fully self-contained** — it has no dependency on `packages/derrops-infra` or any other private Derrops package.
 
-| Concern                          | Package / Path                         | Mechanism                                                               |
-| -------------------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
+| Concern                          | Package / Path                          | Mechanism                                                                |
+| -------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
 | API Gateway + Lambda authorizer  | `apps/derrops-cloud-relay/infra/aws/`   | AWS CDK stack (`RelayStack`) — standalone, no imports from derrops-infra |
-| Usage plans + API keys (AWS)     | `apps/derrops-cloud-relay/infra/aws/`   | CDK within `RelayStack`                                                 |
-| Azure API Management + Functions | `apps/derrops-cloud-relay/infra/azure/` | Bicep / ARM template                                                    |
-| GCP Cloud Endpoints + Cloud Run  | `apps/derrops-cloud-relay/infra/gcp/`   | Deployment Manager / Terraform                                          |
-| Docker (cloud-agnostic)          | `apps/derrops-cloud-relay/` (root)      | `Dockerfile` + `docker-compose.yml`                                     |
+| Usage plans + API keys (AWS)     | `apps/derrops-cloud-relay/infra/aws/`   | CDK within `RelayStack`                                                  |
+| Azure API Management + Functions | `apps/derrops-cloud-relay/infra/azure/` | Bicep / ARM template                                                     |
+| GCP Cloud Endpoints + Cloud Run  | `apps/derrops-cloud-relay/infra/gcp/`   | Deployment Manager / Terraform                                           |
+| Docker (cloud-agnostic)          | `apps/derrops-cloud-relay/` (root)      | `Dockerfile` + `docker-compose.yml`                                      |
 
 Customers configure via environment variables only — no `@derrops/config` or any Derrops private package is required. A customer self-hosting on AWS runs:
 

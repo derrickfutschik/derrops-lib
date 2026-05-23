@@ -6,7 +6,12 @@ Each file is a CDK stack that extends `DerropsStack`. The convention instance is
 
 ```typescript
 export abstract class DerropsStack extends Stack {
-  constructor(protected conventions: DerropsConventions, scope: Construct, id: string, props?: StackProps) {
+  constructor(
+    protected conventions: DerropsConventions,
+    scope: Construct,
+    id: string,
+    props?: StackProps,
+  ) {
     super(scope, id, { ...props, stackName: conventions.name({ type: 'cloudFormationStack' }) })
     conventions.applyTags((k, v) => this.addStackTag(k, v))
   }
@@ -60,12 +65,12 @@ const authenticatedRole = new iam.Role(this, 'IdentityPoolAuthenticatedRole', {
 
 **Segment guidance:**
 
-| Segment | When to use |
-|---|---|
-| _(none)_ | One resource of this type in the stack — the convention scope is already specific enough |
-| `purpose` | Multiple resources of the same type with different intents — `sqs-publish`, `authenticated`, `dlq-retry` |
-| `kind` | Multiple resources of the same type with different structural categories — `http`, `stream`, `private`, `public` |
-| `key` | Sub-resource of a named entity — prefer setting this on the convention passed from `bin/cdk.ts` rather than per-call |
+| Segment   | When to use                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------- |
+| _(none)_  | One resource of this type in the stack — the convention scope is already specific enough                             |
+| `purpose` | Multiple resources of the same type with different intents — `sqs-publish`, `authenticated`, `dlq-retry`             |
+| `kind`    | Multiple resources of the same type with different structural categories — `http`, `stream`, `private`, `public`     |
+| `key`     | Sub-resource of a named entity — prefer setting this on the convention passed from `bin/cdk.ts` rather than per-call |
 
 ## Creating a new stack
 

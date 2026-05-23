@@ -15,7 +15,6 @@ import { config } from '@derrops/config'
 
 const app = new cdk.App()
 
-
 const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-2',
@@ -28,19 +27,31 @@ const appEnv = process.env.ENVIRONMENT || 'prod'
 
 cdk.Tags.of(app).add('derrops:managed-by', 'cdk')
 
+const userpoolStack = new UserPoolStack(
+  config.convention.with({ domain: 'user-management', service: 'userpool' }),
+  app,
+  'DerropsUserPoolStack',
+  {
+    description: 'Derrops User Pool Stack',
+    env,
+  },
+)
 
-const userpoolStack = new UserPoolStack(config.convention.with({ domain: 'user-management', service: "userpool" }), app, 'DerropsUserPoolStack', {
-  description: 'Derrops User Pool Stack',
-  env,
-})
-
-const globalTenantStack = new TenantStack(config.convention.with({ domain: 'tenant', service: 'infra', tenant: config['oaspec.storage.global-tenant-id'] }), app, `DerropsTenantStack-${config['oaspec.storage.global-tenant-id']}`, {
-  description: 'Derrops Global Tenant Infrastructure Stack',
-  env,
-})
+const globalTenantStack = new TenantStack(
+  config.convention.with({
+    domain: 'tenant',
+    service: 'infra',
+    tenant: config['oaspec.storage.global-tenant-id'],
+  }),
+  app,
+  `DerropsTenantStack-${config['oaspec.storage.global-tenant-id']}`,
+  {
+    description: 'Derrops Global Tenant Infrastructure Stack',
+    env,
+  },
+)
 
 app.synth()
-
 
 /**
 // VPC infrastructure stack (deployed first, exports used by other stacks)

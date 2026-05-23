@@ -158,8 +158,8 @@ Profiles are stored in separate sections of `~/.derrops/config` and `~/.derrops/
 
 ## Configuration files
 
-| File                    | Contents                                                | Permissions |
-| ----------------------- | ------------------------------------------------------- | ----------- |
+| File                     | Contents                                                | Permissions |
+| ------------------------ | ------------------------------------------------------- | ----------- |
 | `~/.derrops/config`      | Platform URL, relay ID, SQS queue URL, Cognito settings | `0644`      |
 | `~/.derrops/credentials` | Short-lived Cognito tokens                              | `0600`      |
 

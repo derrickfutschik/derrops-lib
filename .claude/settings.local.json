@@ -28,7 +28,9 @@
       "Bash(xargs sed *)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(git log *)",
+      "Bash(chmod +x /Users/dfutschik/slaops/slaops-platform/scripts/subtree.mjs)"
     ]
   }
 }

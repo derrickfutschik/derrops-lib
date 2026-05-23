@@ -528,8 +528,8 @@ console.log(`P99 latency: ${p99}ms`)
 
 ### Internal Dependencies
 
-| Package           | Version | Purpose          | Required |
-| ----------------- | ------- | ---------------- | -------- |
+| Package            | Version | Purpose          | Required |
+| ------------------ | ------- | ---------------- | -------- |
 | `@derrops/private` | `*`     | Core types       | Yes      |
 | `@derrops/public`  | `*`     | Shared utilities | Yes      |
 

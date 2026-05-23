@@ -25,8 +25,8 @@ This document covers the five search use-cases across the OASpec domain — how 
 
 Three named search modes are used throughout this document. See [OpenAPI Index Access Pattern](./openapi-index-access-pattern#search-modes) for the full definition.
 
-| Mode               | Target                                                 | When to use                                             |
-| ------------------ | ------------------------------------------------------ | ------------------------------------------------------- |
+| Mode               | Target                                                  | When to use                                             |
+| ------------------ | ------------------------------------------------------- | ------------------------------------------------------- |
 | **Global Search**  | `derrops--{tenantId}--oaspec--{entity}--search` (alias) | Tenant + platform data — discovery, enrichment          |
 | **Tenant Search**  | `derrops--{tenantId}--oaspec--{entity}` (direct)        | Tenant-only data — version management, listing own APIs |
 | **Managed Search** | `derrops--t-glbl0000--oaspec--{entity}` (direct)        | Platform catalogue only — wizard browse, stats sync     |

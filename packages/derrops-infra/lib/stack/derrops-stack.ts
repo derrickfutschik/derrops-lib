@@ -9,16 +9,19 @@ import { config } from '@derrops/config'
 import { DerropsConventions } from '@derrops-conventions/DerropsConventions'
 import { ResourceType } from '@derrops-conventions'
 
-
-
 export abstract class DerropsStack extends Stack {
+  constructor(
+    protected conventions: DerropsConventions,
+    scope: Construct,
+    id: string,
+    props?: StackProps,
+  ) {
+    super(scope, id, { ...props, stackName: conventions.name({ type: 'cloudFormationStack' }) })
+    conventions
+      .resource({ type: 'cloudFormationStack' })
+      .applyTags((k, v) => this.addStackTag(k, v))
+  }
 
-    constructor(protected conventions: DerropsConventions, scope: Construct, id: string, props?: StackProps) {
-        super(scope, id, { ...props, stackName: conventions.name({ type: 'cloudFormationStack' }) })
-        conventions.resource({ type: 'cloudFormationStack' }).applyTags((k, v) => this.addStackTag(k, v))
-    }
-
-    protected resource = this.conventions.resource.bind(this.conventions)
-    protected name = this.conventions.name.bind(this.conventions)
-
+  protected resource = this.conventions.resource.bind(this.conventions)
+  protected name = this.conventions.name.bind(this.conventions)
 }

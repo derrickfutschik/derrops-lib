@@ -97,7 +97,7 @@ Relay connections in derrops-cloud carry a `type` discriminator:
 
 | Value         | Description                                     |
 | ------------- | ----------------------------------------------- |
-| `managed`     | Derrops-hosted Lambda behind API Gateway         |
+| `managed`     | Derrops-hosted Lambda behind API Gateway        |
 | `self-hosted` | Customer-deployed on their own infrastructure   |
 | `local-dev`   | Developer's local machine — platform-queue only |
 

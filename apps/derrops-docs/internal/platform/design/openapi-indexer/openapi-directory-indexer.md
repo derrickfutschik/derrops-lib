@@ -304,8 +304,8 @@ export interface OpenApiSearchResponse {
 
 ### Input/Output Types
 
-| Type                    | Purpose                    | Location                                                     |
-| ----------------------- | -------------------------- | ------------------------------------------------------------ |
+| Type                    | Purpose                    | Location                                                      |
+| ----------------------- | -------------------------- | ------------------------------------------------------------- |
 | `OpenApiIndexDocument`  | OpenSearch document schema | `apps/derrops-cloud/src/openapi-search/types/`                |
 | `IndexerConfig`         | Lambda configuration       | `packages/derrops-backend/amplify/functions/openapi-indexer/` |
 | `S3EventRecord`         | S3 event input             | `packages/derrops-backend/amplify/functions/openapi-indexer/` |
@@ -408,12 +408,12 @@ sequenceDiagram
 
 ### Integration Points
 
-| Integration Point | Component               | Direction | Protocol              |
-| ----------------- | ----------------------- | --------- | --------------------- |
-| S3 Events         | S3 → Lambda             | Inbound   | S3 Event Notification |
-| Spec Files        | S3                      | Inbound   | AWS SDK GetObject     |
-| Index Documents   | OpenSearch Serverless   | Outbound  | HTTPS (AWS SigV4)     |
-| Search Queries    | OpenSearch Serverless   | Inbound   | HTTPS (AWS SigV4)     |
+| Integration Point | Component                | Direction | Protocol              |
+| ----------------- | ------------------------ | --------- | --------------------- |
+| S3 Events         | S3 → Lambda              | Inbound   | S3 Event Notification |
+| Spec Files        | S3                       | Inbound   | AWS SDK GetObject     |
+| Index Documents   | OpenSearch Serverless    | Outbound  | HTTPS (AWS SigV4)     |
+| Search Queries    | OpenSearch Serverless    | Inbound   | HTTPS (AWS SigV4)     |
 | REST API          | derrops-cloud Controller | Inbound   | HTTP/REST             |
 | Infrastructure    | @derrops/infra exports   | Reference | CloudFormation        |
 
@@ -752,8 +752,8 @@ s3://derrops-openapi-specs/
 
 ### Infrastructure Dependencies
 
-| Resource              | Source                   | Purpose                  |
-| --------------------- | ------------------------ | ------------------------ |
+| Resource              | Source                    | Purpose                  |
+| --------------------- | ------------------------- | ------------------------ |
 | OpenSearch Serverless | `@derrops/infra`          | Index storage and search |
 | VPC                   | `@derrops/infra`          | Network isolation        |
 | S3 Bucket             | New (in `@derrops/infra`) | OpenAPI spec storage     |

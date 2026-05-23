@@ -15,11 +15,11 @@ tags: [cloud-relay, authentication, security, architecture, implemented]
 
 This document describes how connections and trust are established between the three runtime components:
 
-| Component                            | Hosted by                  |
-| ------------------------------------ | -------------------------- |
+| Component                              | Hosted by                   |
+| -------------------------------------- | --------------------------- |
 | **Derrops Platform** (`derrops-cloud`) | Derrops (vendor)            |
-| **Cloud Relay** (`derrops-relay`)     | Customer or Derrops-managed |
-| **Aegis Broker**                     | Customer                   |
+| **Cloud Relay** (`derrops-relay`)      | Customer or Derrops-managed |
+| **Aegis Broker**                       | Customer                    |
 
 A working deployment requires all three components to know where each other lives and to mutually trust each other's signatures. This document covers:
 
@@ -71,13 +71,13 @@ Each pair of components needs a distinct trust mechanism:
 
 | Direction                     | Mechanism                                                                                                                                                                      | Stage 1     |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| Derrops Platform → Relay       | **Private JWT** — platform mints a short-lived, relay-scoped JWT signed with the vendor private key; relay validates against vendor JWKS                                       | ✅          |
-| Relay → Derrops Platform       | Vendor JWKS (relay validates vendor job envelope signatures)                                                                                                                   | ✅          |
+| Derrops Platform → Relay      | **Private JWT** — platform mints a short-lived, relay-scoped JWT signed with the vendor private key; relay validates against vendor JWKS                                       | ✅          |
+| Relay → Derrops Platform      | Vendor JWKS (relay validates vendor job envelope signatures)                                                                                                                   | ✅          |
 | Browser → Aegis               | Customer SSO IdP token                                                                                                                                                         | ✅          |
 | Aegis → Relay (scope binding) | Delegation JWT `scopes[].relayIds` — Aegis only issues JWTs scoped to relay IDs in its configured allowlist; relay rejects JWTs whose scopes do not include its own `RELAY_ID` | ✅          |
-| Aegis → Derrops Platform       | Aegis pushes session delegation JWT to platform                                                                                                                                | ✅          |
+| Aegis → Derrops Platform      | Aegis pushes session delegation JWT to platform                                                                                                                                | ✅          |
 | Relay → Aegis                 | JWKS endpoint (relay validates delegation JWT signature against Aegis JWKS)                                                                                                    | ✅          |
-| Derrops Platform → Aegis       | No direct call in hot path (Aegis calls platform at session registration)                                                                                                      | ✅          |
+| Derrops Platform → Aegis      | No direct call in hot path (Aegis calls platform at session registration)                                                                                                      | ✅          |
 | Platform → Relay (mutual TLS) | mTLS certificate                                                                                                                                                               | ❌ deferred |
 
 The dual-authorization model is preserved: **neither the Derrops platform nor Aegis alone can cause the relay to execute a job**. The relay requires a valid vendor-signed job envelope AND a valid customer-signed session delegation JWT whose scopes include the relay's own ID.
@@ -96,13 +96,13 @@ Authorization: Bearer <platform-jwt>
 
 ### JWT claims
 
-| Claim | Value                    | Purpose                                                                             |
-| ----- | ------------------------ | ----------------------------------------------------------------------------------- |
-| `iss` | `https://api.derrops.com` | Identifies the Derrops platform                                                      |
-| `aud` | `<relay-id>` (UUID)      | Scopes the token to one specific relay — tokens for relay A are rejected by relay B |
-| `iat` | now                      | Issued-at timestamp                                                                 |
-| `exp` | now + 5 min              | Short TTL — automatic rotation, no long-lived secret                                |
-| `jti` | random UUID              | Prevents token reuse within the TTL window                                          |
+| Claim | Value                     | Purpose                                                                             |
+| ----- | ------------------------- | ----------------------------------------------------------------------------------- |
+| `iss` | `https://api.derrops.com` | Identifies the Derrops platform                                                     |
+| `aud` | `<relay-id>` (UUID)       | Scopes the token to one specific relay — tokens for relay A are rejected by relay B |
+| `iat` | now                       | Issued-at timestamp                                                                 |
+| `exp` | now + 5 min               | Short TTL — automatic rotation, no long-lived secret                                |
+| `jti` | random UUID               | Prevents token reuse within the TTL window                                          |
 
 ### Relay validation steps
 
@@ -131,12 +131,12 @@ Exposes:
 
 Environment variables required at deployment:
 
-| Variable                 | Description                                                                                                                                                                               |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RELAY_ID`               | UUID assigned by the Derrops platform at registration. Used to validate the `aud` claim on every inbound platform JWT.                                                                     |
+| Variable                  | Description                                                                                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RELAY_ID`                | UUID assigned by the Derrops platform at registration. Used to validate the `aud` claim on every inbound platform JWT.                                                                     |
 | `DERROPS_VENDOR_JWKS_URL` | URL of the platform's JWKS endpoint. Used to validate both relay-scoped auth JWTs and vendor job envelope signatures. Example: `https://api.derrops.com/cloud-relay/.well-known/jwks.json` |
-| `AEGIS_JWKS_URL`         | URL of the linked Aegis instance's JWKS endpoint. Used to validate session delegation JWT signatures. Example: `https://aegis.customer.example.com/.well-known/jwks.json`                 |
-| `AEGIS_REQUIRED`         | `true` / `false`. When `true`, any job without a valid session delegation JWT is rejected. Default: `false` in stage 1 (Aegis optional per relay).                                        |
+| `AEGIS_JWKS_URL`          | URL of the linked Aegis instance's JWKS endpoint. Used to validate session delegation JWT signatures. Example: `https://aegis.customer.example.com/.well-known/jwks.json`                  |
+| `AEGIS_REQUIRED`          | `true` / `false`. When `true`, any job without a valid session delegation JWT is rejected. Default: `false` in stage 1 (Aegis optional per relay).                                         |
 
 No API keys. No secrets generated or distributed at registration time.
 
@@ -144,13 +144,13 @@ No API keys. No secrets generated or distributed at registration time.
 
 Environment variables required at deployment:
 
-| Variable                    | Description                                                                                                                                                                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DERROPS_PLATFORM_URL`       | Base URL of the Derrops platform. Used to push session delegation JWTs at session start. Example: `https://api.derrops.com`                                                              |
+| Variable                     | Description                                                                                                                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DERROPS_PLATFORM_URL`       | Base URL of the Derrops platform. Used to push session delegation JWTs at session start. Example: `https://api.derrops.com`                                                            |
 | `DERROPS_REGISTRATION_TOKEN` | Short-lived token used to complete the Aegis registration handshake with the platform (generated in the portal during registration). Cleared from Aegis after the handshake completes. |
-| `AEGIS_SIGNING_KEY_ID`      | Key ID (`kid`) of the active signing key. Must match the entry Aegis publishes in its own JWKS.                                                                                        |
-| `AEGIS_SIGNING_KEY`         | Private key (RSA or EC) used to sign session delegation JWTs. Customer-generated and customer-held.                                                                                    |
-| `CUSTOMER_IDP_JWKS_URL`     | JWKS of the customer SSO IdP. Used to validate user tokens at session start.                                                                                                           |
+| `AEGIS_SIGNING_KEY_ID`       | Key ID (`kid`) of the active signing key. Must match the entry Aegis publishes in its own JWKS.                                                                                        |
+| `AEGIS_SIGNING_KEY`          | Private key (RSA or EC) used to sign session delegation JWTs. Customer-generated and customer-held.                                                                                    |
+| `CUSTOMER_IDP_JWKS_URL`      | JWKS of the customer SSO IdP. Used to validate user tokens at session start.                                                                                                           |
 
 ---
 

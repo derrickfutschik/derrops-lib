@@ -19,9 +19,9 @@ These guides take you from a fresh account to a fully running Derrops setup as q
 
 | Guide                                   | What you will have at the end                                      |
 | --------------------------------------- | ------------------------------------------------------------------ |
-| [1. Sign up and log in](./portal-login) | An Derrops account and access to the Portal                         |
+| [1. Sign up and log in](./portal-login) | An Derrops account and access to the Portal                        |
 | [2. Local relay](./local-relay)         | A relay running on your machine for testing `localhost` services   |
-| [3. Cloud relay](./cloud-relay)         | A relay deployed in your cloud environment or Derrops-managed       |
+| [3. Cloud relay](./cloud-relay)         | A relay deployed in your cloud environment or Derrops-managed      |
 | [4. Aegis](./aegis)                     | Customer-controlled credential injection and request authorisation |
 | [5. API Tester](./api-tester)           | Sending requests through a relay and reading results               |
 

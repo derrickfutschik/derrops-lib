@@ -29,12 +29,12 @@ This document describes how the API Tester executes HTTP requests through a rela
 
 ## Components Involved
 
-| Component                    | Role                                                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Portal** (`derrops-portal`) | Builds the request payload, submits the job to derrops-cloud, polls for the result                    |
+| Component                     | Role                                                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Portal** (`derrops-portal`) | Builds the request payload, submits the job to derrops-cloud, polls for the result                   |
 | **derrops-cloud**             | Receives the job, routes it via the connection's delivery mode, stores job state, exposes the result |
-| **SQS FIFO queue**           | Durable work channel between derrops-cloud and the relay (platform-queue mode only)                   |
-| **Relay** (`derrops-relay`)   | Polls SQS (or receives a direct call), executes the HTTP request, posts the result to derrops-cloud   |
+| **SQS FIFO queue**            | Durable work channel between derrops-cloud and the relay (platform-queue mode only)                  |
+| **Relay** (`derrops-relay`)   | Polls SQS (or receives a direct call), executes the HTTP request, posts the result to derrops-cloud  |
 
 ---
 
@@ -94,8 +94,8 @@ The hook:
 
 ### localStorage persistence
 
-| Key                                 | Value                          | Scope      |
-| ----------------------------------- | ------------------------------ | ---------- |
+| Key                                  | Value                          | Scope      |
+| ------------------------------------ | ------------------------------ | ---------- |
 | `derrops_apitester_relay_<tenantId>` | `connectionId: string \| null` | Per-tenant |
 
 On page load, `useRelaySelector` reads the stored `connectionId` and cross-checks it against the current connections list:
@@ -460,13 +460,13 @@ To avoid double-execution on retried jobs, the relay should check whether a resu
 
 ## Trust Boundary
 
-| Direction                          | Mechanism                                                                                                                                                                                                                                            |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Direction                           | Mechanism                                                                                                                                                                                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Portal → derrops-cloud              | Cognito JWT (existing portal session auth)                                                                                                                                                                                                           |
 | derrops-cloud → Relay (direct mode) | Relay-scoped vendor JWT (`aud = connectionId`)                                                                                                                                                                                                       |
 | Relay → derrops-cloud (`/result`)   | Relay-scoped vendor JWT — relay proves identity before posting results                                                                                                                                                                               |
-| Relay → SQS                        | IAM credentials (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) provisioned at connection creation time; scoped to `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueAttributes`, `sqs:ChangeMessageVisibility` on the connection's queue only |
-| derrops-cloud → SQS                 | Derrops platform IAM role; scoped to `sqs:SendMessage`                                                                                                                                                                                                |
+| Relay → SQS                         | IAM credentials (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) provisioned at connection creation time; scoped to `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueAttributes`, `sqs:ChangeMessageVisibility` on the connection's queue only |
+| derrops-cloud → SQS                 | Derrops platform IAM role; scoped to `sqs:SendMessage`                                                                                                                                                                                               |
 
 The relay validates the SQS job message's envelope signature (vendor JWKS) before executing any request. This prevents a compromised SQS queue from being used to make the relay execute arbitrary requests.
 
@@ -478,13 +478,13 @@ The relay validates the SQS job message's envelope signature (vendor JWKS) befor
 | ---------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Relay offline (SQS mode)                       | Job stays `pending` past 120 s of accumulated portal wait                               | Portal renders "Relay did not respond within 120 s"; background timeout scanner flips job to `timed_out`                 |
 | Relay crashes mid-execution                    | SQS visibility timeout expires                                                          | Message re-queued; healthy relay picks it up. Idempotency guard prevents double-execution if a result was already posted |
-| SQS unreachable (send)                         | `SendMessage` throws                                                                    | derrops-cloud returns 503 to portal with `error.code: sqs_unavailable`; `/wait` connection is never opened                |
+| SQS unreachable (send)                         | `SendMessage` throws                                                                    | derrops-cloud returns 503 to portal with `error.code: sqs_unavailable`; `/wait` connection is never opened               |
 | `/wait` connection dropped by network          | Client sees connection reset                                                            | Portal detects the drop, re-issues `/wait` up to 3 times before surfacing a network error                                |
 | API Gateway 29-second hard timeout             | `/wait?timeout=25` returns `{ status: pending }` before the gateway cuts the connection | Portal re-issues `/wait` immediately; this is expected behaviour, not an error                                           |
 | Target unreachable                             | Relay TCP/HTTP error                                                                    | Relay posts error result; `/wait` wakes and portal shows connection-level error                                          |
 | Target slow                                    | Relay-side timeout per `timeoutMs` in job message                                       | Relay posts `error.code: target_timeout`; portal shows timeout with the relay-measured duration                          |
-| Invalid vendor JWT on relay result             | 401 from derrops-cloud                                                                   | Relay logs the rejection; job stays `pending`; portal eventually times out after 120 s                                   |
-| Job not found (result POST)                    | 404 from derrops-cloud                                                                   | Relay logs and deletes the SQS message; stale job — no user impact                                                       |
+| Invalid vendor JWT on relay result             | 401 from derrops-cloud                                                                  | Relay logs the rejection; job stays `pending`; portal eventually times out after 120 s                                   |
+| Job not found (result POST)                    | 404 from derrops-cloud                                                                  | Relay logs and deletes the SQS message; stale job — no user impact                                                       |
 | No `/wait` connection open when result arrives | Subject lookup returns nothing                                                          | Result is written to DB; portal picks it up on next `/wait` cycle or page-load status check                              |
 
 ---

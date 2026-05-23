@@ -155,7 +155,8 @@ export function ConnectionsTab({ connections, aegisInstances, isLoading }: Conne
           <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
           <h3 className="font-semibold mb-1">No connections yet</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Create a connection to start routing Derrops Client requests through your infrastructure.
+            Create a connection to start routing Derrops Client requests through your
+            infrastructure.
           </p>
           <Button size="sm" onClick={() => setWizardOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />

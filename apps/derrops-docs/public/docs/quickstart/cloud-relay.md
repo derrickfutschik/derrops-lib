@@ -26,8 +26,8 @@ A cloud relay runs in your infrastructure and lets the Derrops Portal reach serv
 
 Before deploying, choose the delivery mode that fits your network:
 
-| Mode               | How it works                                     | Use when                               |
-| ------------------ | ------------------------------------------------ | -------------------------------------- |
+| Mode               | How it works                                      | Use when                               |
+| ------------------ | ------------------------------------------------- | -------------------------------------- |
 | **Managed**        | Derrops-hosted Lambda, no infrastructure required | You want zero-ops setup                |
 | **Direct**         | Derrops calls your relay synchronously over HTTPS | Your relay is publicly reachable       |
 | **Platform-queue** | Your relay polls Derrops for jobs (outbound-only) | Your relay is behind a NAT or firewall |
@@ -85,9 +85,9 @@ docker run -d \
 
 | Variable               | Required | Description                                                        |
 | ---------------------- | -------- | ------------------------------------------------------------------ |
-| `RELAY_API_KEY`        | Yes      | Validates inbound calls from Derrops (direct mode only)             |
-| `RELAY_PLATFORM_TOKEN` | Yes      | Bearer token for outbound calls to Derrops                          |
-| `RELAY_PLATFORM_URL`   | Yes      | Derrops control plane URL                                           |
+| `RELAY_API_KEY`        | Yes      | Validates inbound calls from Derrops (direct mode only)            |
+| `RELAY_PLATFORM_TOKEN` | Yes      | Bearer token for outbound calls to Derrops                         |
+| `RELAY_PLATFORM_URL`   | Yes      | Derrops control plane URL                                          |
 | `RELAY_DELIVERY_MODE`  | Yes      | `direct`, `relay-queue`, or `platform-queue`                       |
 | `RELAY_PORT`           | No       | Port to listen on (default: `3100`)                                |
 | `AEGIS_URL`            | No       | URL of your Aegis instance (if using Aegis)                        |

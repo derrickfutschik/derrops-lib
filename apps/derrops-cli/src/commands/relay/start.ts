@@ -18,7 +18,8 @@ export default class RelayStart extends Command {
 
   static flags = {
     profile: Flags.string({
-      description: 'Profile name — matches a profile in ~/.derrops/config and ~/.derrops/credentials',
+      description:
+        'Profile name — matches a profile in ~/.derrops/config and ~/.derrops/credentials',
       default: 'default',
     }),
   }

@@ -14,11 +14,11 @@ Derrops monitors and tests HTTP APIs across your applications. This guide takes 
 
 Derrops uses a plane-based architecture. Understanding the three main components will help you know what to install and why.
 
-| Component         | What it does                                             | Where it runs                                |
-| ----------------- | -------------------------------------------------------- | -------------------------------------------- |
-| **Derrops Portal** | Dashboard, API tester, alerting, cost analysis           | Derrops cloud                                 |
-| **Relay**         | Executes HTTP requests and forwards results back         | Your infrastructure or local machine         |
-| **Aegis**         | Policy engine that authorises what the relay can execute | Your infrastructure (optional for local dev) |
+| Component          | What it does                                             | Where it runs                                |
+| ------------------ | -------------------------------------------------------- | -------------------------------------------- |
+| **Derrops Portal** | Dashboard, API tester, alerting, cost analysis           | Derrops cloud                                |
+| **Relay**          | Executes HTTP requests and forwards results back         | Your infrastructure or local machine         |
+| **Aegis**          | Policy engine that authorises what the relay can execute | Your infrastructure (optional for local dev) |
 
 When you run an API test in the Portal, Derrops sends the job to your relay. The relay makes the real HTTP request to your target service and returns the result. This design means:
 

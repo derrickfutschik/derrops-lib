@@ -149,11 +149,11 @@ sequenceDiagram
 
 ### Integration Points
 
-| Integration Point | Component         | Direction     | Protocol       |
-| ----------------- | ----------------- | ------------- | -------------- |
+| Integration Point | Component          | Direction     | Protocol       |
+| ----------------- | ------------------ | ------------- | -------------- |
 | Input             | `@derrops/client`  | Inbound       | Function call  |
 | Output            | `@derrops/public`  | Outbound      | Event emission |
-| Storage           | External DB       | Bidirectional | HTTP/REST      |
+| Storage           | External DB        | Bidirectional | HTTP/REST      |
 | Logging           | `@derrops/private` | Outbound      | Internal API   |
 
 ## API Specification
@@ -314,8 +314,8 @@ await component.shutdown()
 
 ### Internal Dependencies
 
-| Package           | Version | Purpose                  | Required |
-| ----------------- | ------- | ------------------------ | -------- |
+| Package            | Version | Purpose                  | Required |
+| ------------------ | ------- | ------------------------ | -------- |
 | `@derrops/private` | `*`     | Core types and utilities | Yes      |
 | `@derrops/public`  | `*`     | Shared utilities         | Yes      |
 | `@derrops/client`  | `*`     | Client integration       | No       |

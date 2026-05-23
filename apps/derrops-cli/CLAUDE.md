@@ -32,13 +32,13 @@ Authenticates via Cognito browser PKCE, registers a `local-dev` relay with `derr
 
 **Flags**:
 
-| Flag                | Default    | Description                                                                    |
-| ------------------- | ---------- | ------------------------------------------------------------------------------ |
+| Flag                | Default    | Description                                                                     |
+| ------------------- | ---------- | ------------------------------------------------------------------------------- |
 | `--platform-url`    | prompted   | derrops-cloud base URL                                                          |
-| `--profile` / `-p`  | `default`  | Profile name in `~/.derrops/config` and `~/.derrops/credentials`                 |
-| `--force` / `-f`    | `false`    | Re-authenticate and overwrite existing credentials                             |
+| `--profile` / `-p`  | `default`  | Profile name in `~/.derrops/config` and `~/.derrops/credentials`                |
+| `--force` / `-f`    | `false`    | Re-authenticate and overwrite existing credentials                              |
 | `--queue-mode`      | `platform` | `platform` — Derrops provisions the SQS queue; `relay` — customer provisions it |
-| `--relay-queue-url` | —          | Required when `--queue-mode=relay`; must be an SQS FIFO URL ending in `.fifo`  |
+| `--relay-queue-url` | —          | Required when `--queue-mode=relay`; must be an SQS FIFO URL ending in `.fifo`   |
 
 **What it does**:
 
@@ -57,8 +57,8 @@ Exchanges stored Cognito tokens for temporary AWS credentials, then delegates to
 
 **Flags**:
 
-| Flag        | Default   | Description                                                            |
-| ----------- | --------- | ---------------------------------------------------------------------- |
+| Flag        | Default   | Description                                                              |
+| ----------- | --------- | ------------------------------------------------------------------------ |
 | `--profile` | `default` | Must match a profile in `~/.derrops/config` and `~/.derrops/credentials` |
 
 **What it does**:
@@ -90,8 +90,8 @@ Exchanges stored Cognito tokens for temporary AWS credentials, then delegates to
 
 ## Configuration files
 
-| File                    | Mode | Contents                                                                                                                                            |
-| ----------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                     | Mode | Contents                                                                                                                                            |
+| ------------------------ | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `~/.derrops/config`      | 0644 | `platform_url`, `relay_id`, `relay_sqs_queue_url`, `relay_sqs_region`, `relay_sqs_queue_mode`, `identity_pool_id`, `cognito_region`, `user_pool_id` |
 | `~/.derrops/credentials` | 0600 | `access_token`, `id_token`, `refresh_token`, `expires_at`                                                                                           |
 
@@ -111,9 +111,9 @@ Three exports used by the commands:
 
 Cognito config defaults (overridable via env):
 
-| Env var                       | Default                           |
-| ----------------------------- | --------------------------------- |
-| `DERROPS_COGNITO_DOMAIN`       | `https://auth.derrops.com`         |
+| Env var                        | Default                           |
+| ------------------------------ | --------------------------------- |
+| `DERROPS_COGNITO_DOMAIN`       | `https://auth.derrops.com`        |
 | `DERROPS_COGNITO_CLIENT_ID`    | _(must be set in release builds)_ |
 | `DERROPS_COGNITO_REGION`       | `ap-southeast-2`                  |
 | `DERROPS_COGNITO_USER_POOL_ID` | _(must be set in release builds)_ |

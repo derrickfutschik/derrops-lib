@@ -4,81 +4,31 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "apps/derrops-portal/src/*"
-      ],
-      "@derrops-conventions": [
-        "packages/derrops-conventions/src/index.ts"
-      ],
-      "@derrops-conventions/*": [
-        "packages/derrops-conventions/src/*"
-      ],
-      "@derrops/backend/*": [
-        "packages/derrops-backend/amplify/*"
-      ],
-      "@derrops/client": [
-        "packages/derrops-client/src/index.ts"
-      ],
-      "@derrops/client-nodejs-axios": [
-        "packages/derrops-client-nodejs-axios/src/index.ts"
-      ],
-      "@derrops/client-nodejs-axios/*": [
-        "packages/derrops-client-nodejs-axios/src/*"
-      ],
-      "@derrops/client/*": [
-        "packages/derrops-client/src/*"
-      ],
-      "@derrops/cloud": [
-        "apps/derrops-cloud/src/main.ts"
-      ],
-      "@derrops/cloud/*": [
-        "apps/derrops-cloud/src/*"
-      ],
-      "@derrops/config": [
-        "packages/derrops-config/src/index.ts"
-      ],
-      "@derrops/config-nestjs": [
-        "packages/derrops-config-nestjs/src/index.ts"
-      ],
-      "@derrops/config-nestjs/*": [
-        "packages/derrops-config-nestjs/src/*"
-      ],
-      "@derrops/config/*": [
-        "packages/derrops-config/src/*"
-      ],
-      "@derrops/docs/*": [
-        "apps/derrops-docs/src/*"
-      ],
-      "@derrops/infra/*": [
-        "packages/derrops-infra/lib/*"
-      ],
-      "@derrops/portal/*": [
-        "apps/derrops-portal/src/*"
-      ],
-      "@derrops/private": [
-        "packages/derrops-private/src/index.ts"
-      ],
-      "@derrops/private/*": [
-        "packages/derrops-private/src/*"
-      ],
-      "@derrops/public": [
-        "packages/derrops-public/src/index.ts"
-      ],
-      "@derrops/public/*": [
-        "packages/derrops-public/src/*"
-      ],
-      "@derrops/test": [
-        "packages/derrops-test/src/index.ts"
-      ],
-      "@derrops/test-resources": [
-        "test-resources/loader.ts"
-      ],
-      "@derrops/test-resources/*": [
-        "test-resources/*"
-      ],
-      "@derrops/test/*": [
-        "packages/derrops-test/src/*"
-      ]
+      "@/*": ["apps/derrops-portal/src/*"],
+      "@derrops-conventions": ["packages/derrops-conventions/src/index.ts"],
+      "@derrops-conventions/*": ["packages/derrops-conventions/src/*"],
+      "@derrops/backend/*": ["packages/derrops-backend/amplify/*"],
+      "@derrops/client": ["packages/derrops-client/src/index.ts"],
+      "@derrops/client-nodejs-axios": ["packages/derrops-client-nodejs-axios/src/index.ts"],
+      "@derrops/client-nodejs-axios/*": ["packages/derrops-client-nodejs-axios/src/*"],
+      "@derrops/client/*": ["packages/derrops-client/src/*"],
+      "@derrops/cloud": ["apps/derrops-cloud/src/main.ts"],
+      "@derrops/cloud/*": ["apps/derrops-cloud/src/*"],
+      "@derrops/config": ["packages/derrops-config/src/index.ts"],
+      "@derrops/config-nestjs": ["packages/derrops-config-nestjs/src/index.ts"],
+      "@derrops/config-nestjs/*": ["packages/derrops-config-nestjs/src/*"],
+      "@derrops/config/*": ["packages/derrops-config/src/*"],
+      "@derrops/docs/*": ["apps/derrops-docs/src/*"],
+      "@derrops/infra/*": ["packages/derrops-infra/lib/*"],
+      "@derrops/portal/*": ["apps/derrops-portal/src/*"],
+      "@derrops/private": ["packages/derrops-private/src/index.ts"],
+      "@derrops/private/*": ["packages/derrops-private/src/*"],
+      "@derrops/public": ["packages/derrops-public/src/index.ts"],
+      "@derrops/public/*": ["packages/derrops-public/src/*"],
+      "@derrops/test": ["packages/derrops-test/src/index.ts"],
+      "@derrops/test-resources": ["test-resources/loader.ts"],
+      "@derrops/test-resources/*": ["test-resources/*"],
+      "@derrops/test/*": ["packages/derrops-test/src/*"]
     }
   }
 }

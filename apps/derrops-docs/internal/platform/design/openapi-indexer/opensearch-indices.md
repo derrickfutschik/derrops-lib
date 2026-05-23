@@ -44,8 +44,8 @@ Following the [Derrops naming conventions](/blog/derrops-naming-sheet), OpenSear
 derrops--{tenantId}--oaspec--{entity}
 ```
 
-| Index                                   | Example (tenant: `t-acme0001`)          |
-| --------------------------------------- | --------------------------------------- |
+| Index                                    | Example (tenant: `t-acme0001`)           |
+| ---------------------------------------- | ---------------------------------------- |
 | `derrops--{tenantId}--oaspec--spec`      | `derrops--t-acme0001--oaspec--spec`      |
 | `derrops--{tenantId}--oaspec--server`    | `derrops--t-acme0001--oaspec--server`    |
 | `derrops--{tenantId}--oaspec--operation` | `derrops--t-acme0001--oaspec--operation` |

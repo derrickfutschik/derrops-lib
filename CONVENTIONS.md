@@ -53,11 +53,11 @@ This maps to the `pr: breaking change` label and the Breaking Changes section.
 
 Use the package or app name as the scope. Recognised scopes:
 
-| Scope     | Maps to                               |
-| --------- | ------------------------------------- |
+| Scope     | Maps to                                |
+| --------- | -------------------------------------- |
 | `portal`  | `apps/derrops-portal`                  |
 | `docs`    | `apps/derrops-docs`                    |
-| `relay`   | relay feature area                    |
+| `relay`   | relay feature area                     |
 | `client`  | `packages/derrops-client`              |
 | `axios`   | `packages/derrops-client-nodejs-axios` |
 | `config`  | `packages/derrops-config`              |
@@ -65,8 +65,8 @@ Use the package or app name as the scope. Recognised scopes:
 | `backend` | `packages/derrops-backend`             |
 | `private` | `packages/derrops-private`             |
 | `public`  | `packages/derrops-public`              |
-| `ci`      | `.github/` or build tooling           |
-| `deps`    | dependency updates                    |
+| `ci`      | `.github/` or build tooling            |
+| `deps`    | dependency updates                     |
 
 Scope is optional when the change genuinely spans multiple areas with no clear owner.
 
@@ -132,14 +132,14 @@ derrops--{domain}--{service}
 
 Every CDK resource must carry these tags. Apply common tags once via `cdk.Tags.of(app)` in `bin/cdk.ts`; apply `derrops:domain` and `derrops:service` inside each stack constructor via `Tags.of(this)`.
 
-| Tag key             | Where set                           | Example                        |
-| ------------------- | ----------------------------------- | ------------------------------ |
-| `derrops:org`        | `bin/cdk.ts` — `Tags.of(app)`       | `derrops`                       |
+| Tag key              | Where set                           | Example                        |
+| -------------------- | ----------------------------------- | ------------------------------ |
+| `derrops:org`        | `bin/cdk.ts` — `Tags.of(app)`       | `derrops`                      |
 | `derrops:env`        | `bin/cdk.ts` — `Tags.of(app)`       | `prod`                         |
 | `derrops:managed-by` | `bin/cdk.ts` — `Tags.of(app)`       | `cdk`                          |
 | `derrops:domain`     | stack constructor — `Tags.of(this)` | `platform`, `auth`, `oaspec`   |
 | `derrops:service`    | stack constructor — `Tags.of(this)` | `vpc`, `cognito`, `opensearch` |
-| `derrops:tenant-id`  | per-tenant resources only           | `t-a3f8b2`, `derrops`           |
+| `derrops:tenant-id`  | per-tenant resources only           | `t-a3f8b2`, `derrops`          |
 
 **Caveat**: `CfnCollection` (OpenSearch Serverless) does not inherit CDK stack-level tags. Use `this.collection.tags.setTag()` directly.
 

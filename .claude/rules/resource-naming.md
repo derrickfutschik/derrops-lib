@@ -8,11 +8,11 @@ All AWS resource names in this monorepo must be generated via `DerropsConvention
 Define a name **as close to where it's used as possible**. Only elevate it when it needs to
 be referenced across package boundaries:
 
-| Scope                                                      | Where to define                                                      |
-| ---------------------------------------------------------- | -------------------------------------------------------------------- |
-| Used only within one package (e.g. only in `derrops-infra`) | A constants file in that package (e.g. `lib/names.ts`)               |
-| Shared across two or more packages/apps                    | `packages/derrops-config/src/` — add to `config.ts` or a sibling file |
-| Runtime-dynamic (varies per tenant/env/request)            | `config.ts` as a function property: `config['key'](tenantId, ...)`   |
+| Scope                                                       | Where to define                                                       |
+| ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| Used only within one package (e.g. only in `derrops-infra`) | A constants file in that package (e.g. `lib/names.ts`)                |
+| Shared across two or more packages/apps                     | `packages/derrops-config/src/` — add to `config.ts` or a sibling file |
+| Runtime-dynamic (varies per tenant/env/request)             | `config.ts` as a function property: `config['key'](tenantId, ...)`    |
 
 Before adding anything to `derrops-config`, ask: is this name actually consumed outside the
 package where it's defined? If no, keep it local.

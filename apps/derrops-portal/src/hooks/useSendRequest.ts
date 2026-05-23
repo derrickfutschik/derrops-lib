@@ -1,5 +1,9 @@
 import type { OpenAPIFormValues } from '@/components/derrops-client/OpenAPIParameterForm'
-import type { BodyType, FormDataEntry, RawType } from '@/components/derrops-client/RequestBodyEditor'
+import type {
+  BodyType,
+  FormDataEntry,
+  RawType,
+} from '@/components/derrops-client/RequestBodyEditor'
 import { setIsSendingRequest, setRequestResponse } from '@/store/apiRequestSlice'
 import { useAppDispatch } from '@/store/hooks'
 import { useCallback, useEffect } from 'react'

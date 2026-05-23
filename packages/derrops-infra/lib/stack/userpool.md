@@ -19,10 +19,10 @@ Groups beginning with `derrops-internal-` are reserved for platform use and skip
 
 When a `local-dev` relay connection is registered, the queue can be owned in two ways:
 
-| Mode                 | Who creates the queue        | Who can consume                    | Use case                                                                  |
-| -------------------- | ---------------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
-| `platform` (default) | Derrops (`RelayQueueService`) | Relay via Identity Pool → STS      | Standard developer workflow                                               |
-| `relay`              | Customer (manually)          | Relay via customer IAM credentials | Enterprise networks that cannot reach SQS endpoints in the Derrops account |
+| Mode                 | Who creates the queue         | Who can consume                    | Use case                                                                   |
+| -------------------- | ----------------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `platform` (default) | Derrops (`RelayQueueService`) | Relay via Identity Pool → STS      | Standard developer workflow                                                |
+| `relay`              | Customer (manually)           | Relay via customer IAM credentials | Enterprise networks that cannot reach SQS endpoints in the Derrops account |
 
 For `relay` mode, the customer must:
 
@@ -69,13 +69,13 @@ sequenceDiagram
 
 ## Credential Lifecycle
 
-| Credential                     | TTL         | Stored at rest                 | Refreshed by                          |
-| ------------------------------ | ----------- | ------------------------------ | ------------------------------------- |
-| Cognito access_token           | 1 hour      | `~/.derrops/credentials` (0600) | `relay start` on launch               |
-| Cognito id_token               | 1 hour      | `~/.derrops/credentials` (0600) | relay process (in memory)             |
+| Credential                     | TTL         | Stored at rest                  | Refreshed by                           |
+| ------------------------------ | ----------- | ------------------------------- | -------------------------------------- |
+| Cognito access_token           | 1 hour      | `~/.derrops/credentials` (0600) | `relay start` on launch                |
+| Cognito id_token               | 1 hour      | `~/.derrops/credentials` (0600) | relay process (in memory)              |
 | Cognito refresh_token          | **30 days** | `~/.derrops/credentials` (0600) | Developer re-runs `derrops relay init` |
-| AWS temp credentials           | 1 hour      | **In-memory only**             | relay process, automatically          |
-| Relay config (URLs, IDs, mode) | Permanent   | `~/.derrops/config` (0644)      | `relay init` re-registration          |
+| AWS temp credentials           | 1 hour      | **In-memory only**              | relay process, automatically           |
+| Relay config (URLs, IDs, mode) | Permanent   | `~/.derrops/config` (0644)      | `relay init` re-registration           |
 
 ## SQS Queue Naming and ABAC Isolation
 
@@ -98,15 +98,15 @@ arn:aws:sqs:*:*:derrops-${aws:PrincipalTag/tenantId}-local-${aws:PrincipalTag/us
 
 ## CloudFormation Exports
 
-| Export                          | Description                                                                                                                                                    |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DerropsUserPoolId`              | Cognito User Pool ID                                                                                                                                           |
-| `DerropsUserPoolArn`             | User Pool ARN                                                                                                                                                  |
+| Export                           | Description                                                                                                                                                     |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DerropsUserPoolId`              | Cognito User Pool ID                                                                                                                                            |
+| `DerropsUserPoolArn`             | User Pool ARN                                                                                                                                                   |
 | `DerropsUserPoolClientId`        | PKCE client ID for derrops-cli                                                                                                                                  |
-| `DerropsUserPoolProviderName`    | Cognito provider name                                                                                                                                          |
-| `DerropsUserPoolProviderUrl`     | Cognito provider URL (Identity Pool login key)                                                                                                                 |
-| `DerropsIdentityPoolId`          | Identity Pool ID — for credential exchange in CLI                                                                                                              |
-| `DerropsIdentityPoolAuthRoleArn` | IAM role ARN for authenticated identities (relay SQS consume)                                                                                                  |
+| `DerropsUserPoolProviderName`    | Cognito provider name                                                                                                                                           |
+| `DerropsUserPoolProviderUrl`     | Cognito provider URL (Identity Pool login key)                                                                                                                  |
+| `DerropsIdentityPoolId`          | Identity Pool ID — for credential exchange in CLI                                                                                                               |
+| `DerropsIdentityPoolAuthRoleArn` | IAM role ARN for authenticated identities (relay SQS consume)                                                                                                   |
 | `DerropsSqsPublishRoleArn`       | IAM role ARN derrops-cloud uses to publish to relay queues. Enterprise customers with relay-owned queues must grant this role `sqs:SendMessage` on their queue. |
 
 ## Infrastructure Diagram

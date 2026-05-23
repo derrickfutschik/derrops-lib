@@ -25,8 +25,8 @@ These three concepts are distinct:
 
 | Concept      | Description                                                                                                 |
 | ------------ | ----------------------------------------------------------------------------------------------------------- |
-| **Customer** | An organisation or individual with a Derrops account.                                                        |
-| **User**     | A person who authenticates with Derrops. Every user belongs to exactly one customer.                         |
+| **Customer** | An organisation or individual with a Derrops account.                                                       |
+| **User**     | A person who authenticates with Derrops. Every user belongs to exactly one customer.                        |
 | **Tenant**   | An isolated data environment. A customer may own many tenants (e.g., one per environment or business unit). |
 
 A user's session is always scoped to a single tenant — not to the customer as a whole. A user can access any of their customer's tenants, but must sign in to each one separately; a single session cannot span multiple tenants.
@@ -51,8 +51,8 @@ Tenant IDs are assigned at provisioning time and never change. They appear in ac
 
 You get two dedicated, private S3 buckets — one for your OpenAPI specifications and one for your log archive. No other tenant has access to these buckets.
 
-| Bucket                 | Purpose                                                                                                   |
-| ---------------------- | --------------------------------------------------------------------------------------------------------- |
+| Bucket                 | Purpose                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
 | **OASpec bucket**      | Stores the OpenAPI specifications you upload to Derrops. See [OASpec Bucket](./oaspec-bucket) for details. |
 | **Log archive bucket** | Long-term storage for your HTTP request logs captured by the Derrops relay.                                |
 
@@ -117,8 +117,8 @@ custom:tenant_id = "t-acme0001"
 
 ### Subdomains
 
-| URL                                        | Purpose                                                                                      |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| URL                                         | Purpose                                                                                      |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `{tenantKey}.{customerKey}.app.derrops.com` | Sign in directly to a specific tenant — the typical flow.                                    |
 | `{customerKey}.app.derrops.com`             | Sign in at the customer level to see which tenants you have access to, then navigate to one. |
 
@@ -151,7 +151,7 @@ Derrops enforces tenant isolation at multiple independent levels:
 | **Storage**        | Your S3 buckets and OpenSearch index are dedicated to your tenant. Access policies permit only your tenant's credentials.                                                                                   |
 | **Network**        | All traffic flows through a private VPC. Resources are not publicly accessible.                                                                                                                             |
 | **Authentication** | Every API request is authenticated and your tenant identity is verified before any data is read or written.                                                                                                 |
-| **Query scoping**  | All database and search queries are automatically scoped to your tenant. There is no way to query another tenant's data through the Derrops API.                                                             |
+| **Query scoping**  | All database and search queries are automatically scoped to your tenant. There is no way to query another tenant's data through the Derrops API.                                                            |
 | **AWS tagging**    | All tenant-specific AWS resources are tagged with both `tenantId` and `customerId`, making it straightforward to filter costs, audit access, and manage resources by tenant or customer in the AWS console. |
 
 ---

@@ -35,9 +35,9 @@ import { DerropsConventions } from '@derrops-conventions'
  * SendMessage permission via a queue resource policy. derrops-cloud then publishes cross-account.
  *
  * See userpool.md for the full architecture diagram and flow.
- * 
+ *
  * pnpm --filter @derrops/infra run cdk deploy DerropsUserPoolStack
- * 
+ *
  */
 export class UserPoolStack extends DerropsStack {
   public readonly userPool: cognito.UserPool
@@ -51,8 +51,6 @@ export class UserPoolStack extends DerropsStack {
   constructor(conventions: DerropsConventions, scope: Construct, id: string, props?: StackProps) {
     super(conventions, scope, id, props)
 
-
-
     // const preTokenGenerationFn = new lambda.Function(this, 'PreTokenGenerationFn', {
     //     functionName: 'derrops--auth--cognito--pre-token-generation',
     //     runtime: lambda.Runtime.NODEJS_22_X,
@@ -62,14 +60,12 @@ export class UserPoolStack extends DerropsStack {
     //       "V2 Pre-Token Generation trigger. Reads tenantId from the user's Cognito Group and injects it into the access token and id_token. No external calls — groups arrive in the trigger event.",
     //   })
 
-
-
     const conv = {
-      userpool: this.resource({ type: "cognitoUserPool" }),
+      userpool: this.resource({ type: 'cognitoUserPool' }),
       identityPool: this.resource({ type: 'cognitoIdentityPool' }),
       sqsPublishRole: this.resource({ type: 'iamRole', purpose: 'sqs-publish' }),
       sqsPublishPolicy: this.resource({ type: 'iamPolicy', purpose: 'sqs-publish' }),
-      relayConsumePolicy: this.resource({ type: 'iamPolicy', purpose: 'relay-queue-consume' })
+      relayConsumePolicy: this.resource({ type: 'iamPolicy', purpose: 'relay-queue-consume' }),
     }
     // -------------------------------------------------------------------------
     // Cognito User Pool
@@ -261,6 +257,5 @@ export class UserPoolStack extends DerropsStack {
         authenticated: authenticatedRole.roleArn,
       },
     })
-
   }
 }

@@ -19,11 +19,11 @@ The Derrops edge consists of three runtime components: **derrops-cloud** (vendor
 
 ## The three components
 
-| Component        | Hosted by                    | Browser-reachable  | Holds secrets                    | Inbound required              |
-| ---------------- | ---------------------------- | ------------------ | -------------------------------- | ----------------------------- |
+| Component         | Hosted by                     | Browser-reachable  | Holds secrets                    | Inbound required              |
+| ----------------- | ----------------------------- | ------------------ | -------------------------------- | ----------------------------- |
 | **derrops-cloud** | Derrops (vendor SaaS)         | Yes (API)          | Vendor signing key only          | Yes                           |
-| **Cloud Relay**  | Customer (or Derrops-managed) | No (by design)     | Customer API credentials         | Optional — see delivery modes |
-| **Aegis**        | Customer                     | Yes (from browser) | Customer IdP config, signing key | Yes — browser must reach it   |
+| **Cloud Relay**   | Customer (or Derrops-managed) | No (by design)     | Customer API credentials         | Optional — see delivery modes |
+| **Aegis**         | Customer                      | Yes (from browser) | Customer IdP config, signing key | Yes — browser must reach it   |
 
 The critical asymmetry: **Aegis must accept inbound connections from the browser. The relay does not have to.**
 
