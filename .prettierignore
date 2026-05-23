@@ -12,4 +12,4 @@ amplify_outputs.json
 .turbo
 test-resources
 .docusaurus
-apps/derrops-portal/src/client/derrops-cloud
+apps/derrops-portal/src/client
