@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import { createFlow, AnalyticsCollector } from '../index'
+import { createPipeline, AnalyticsCollector } from '../index'
 
 type ProjectConfig = {
   projectName: string
@@ -18,8 +18,8 @@ function makeAnalytics(): jest.Mocked<AnalyticsCollector> {
     onStepStart: jest.fn(),
     onStepComplete: jest.fn(),
     onStepSkipped: jest.fn(),
-    onFlowComplete: jest.fn(),
-    onFlowError: jest.fn(),
+    onPipelineComplete: jest.fn(),
+    onPipelineError: jest.fn(),
   }
 }
 
@@ -29,10 +29,10 @@ const defaultInput: ProjectConfig = {
   environment: 'prod',
 }
 
-describe('build pipeline flow', () => {
+describe('build pipeline', () => {
   describe('full successful run', () => {
     it('accumulates all step outputs', async () => {
-      const flow = createFlow<ProjectConfig>({ name: 'Build Pipeline' })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Build Pipeline' })
         .step<LintOutput>({
           name: 'Lint',
           execute: async (_data) => ({
@@ -74,7 +74,7 @@ describe('build pipeline flow', () => {
           }),
         })
 
-      const result = await flow.execute(defaultInput)
+      const result = await pipeline.execute(defaultInput)
 
       expect(result.success).toBe(true)
       if (!result.success) return
@@ -102,7 +102,7 @@ describe('build pipeline flow', () => {
         typeErrors: 0,
       })
 
-      const flow = createFlow<ProjectConfig>({ name: 'Lint-Gate', analytics })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Lint-Gate', analytics })
         .step<LintOutput>({
           name: 'Lint',
           execute: async () => ({
@@ -117,7 +117,7 @@ describe('build pipeline flow', () => {
           shouldRun: (ctx) => ctx.data.lintErrors === 0,
         })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(compileExecute).not.toHaveBeenCalled()
       expect(analytics.onStepSkipped).toHaveBeenCalledWith('Compile', 'Condition not met')
@@ -130,7 +130,7 @@ describe('build pipeline flow', () => {
         typeErrors: 0,
       })
 
-      const flow = createFlow<ProjectConfig>({ name: 'Lint-Pass' })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Lint-Pass' })
         .step<LintOutput>({
           name: 'Lint',
           execute: async () => ({ lintErrors: 0, lintWarnings: 0, filesLinted: ['index.ts'] }),
@@ -141,7 +141,7 @@ describe('build pipeline flow', () => {
           shouldRun: (ctx) => ctx.data.lintErrors === 0,
         })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(compileExecute).toHaveBeenCalledTimes(1)
     })
@@ -154,7 +154,7 @@ describe('build pipeline flow', () => {
         deployedAt: new Date(),
       })
 
-      const flow = createFlow<ProjectConfig>({ name: 'Deploy-Gate', analytics })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Deploy-Gate', analytics })
         .step<TestOutput>({
           name: 'Test',
           execute: async () => ({ testsPassed: 10, testsFailed: 5, coverage: 90 }),
@@ -165,7 +165,7 @@ describe('build pipeline flow', () => {
           shouldRun: (ctx) => ctx.data.testsFailed === 0 && ctx.data.coverage >= 80,
         })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(deployExecute).not.toHaveBeenCalled()
       expect(analytics.onStepSkipped).toHaveBeenCalledWith('Deploy', 'Condition not met')
@@ -179,7 +179,7 @@ describe('build pipeline flow', () => {
         deployedAt: new Date(),
       })
 
-      const flow = createFlow<ProjectConfig>({ name: 'Coverage-Gate', analytics })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Coverage-Gate', analytics })
         .step<TestOutput>({
           name: 'Test',
           execute: async () => ({ testsPassed: 48, testsFailed: 0, coverage: 60 }),
@@ -190,7 +190,7 @@ describe('build pipeline flow', () => {
           shouldRun: (ctx) => ctx.data.testsFailed === 0 && ctx.data.coverage >= 80,
         })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(deployExecute).not.toHaveBeenCalled()
     })
@@ -200,7 +200,7 @@ describe('build pipeline flow', () => {
     it('calls onSuccess with step output and accumulated data', async () => {
       const onSuccess = jest.fn<() => void>()
 
-      const flow = createFlow<ProjectConfig>({ name: 'Success-CB' }).step<LintOutput>({
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Success-CB' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => ({
           lintErrors: 0,
@@ -210,7 +210,7 @@ describe('build pipeline flow', () => {
         onSuccess,
       })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(onSuccess).toHaveBeenCalledWith(
         expect.objectContaining({ lintErrors: 0, lintWarnings: 1 }),
@@ -223,7 +223,7 @@ describe('build pipeline flow', () => {
     it('calls onFailure when a step throws', async () => {
       const onFailure = jest.fn<() => void>()
 
-      const flow = createFlow<ProjectConfig>({ name: 'Failure-CB' }).step<LintOutput>({
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Failure-CB' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           throw new Error('lint crashed')
@@ -231,7 +231,7 @@ describe('build pipeline flow', () => {
         onFailure,
       })
 
-      const result = await flow.execute(defaultInput)
+      const result = await pipeline.execute(defaultInput)
 
       expect(result.success).toBe(false)
       expect(onFailure).toHaveBeenCalledWith(
@@ -244,7 +244,7 @@ describe('build pipeline flow', () => {
   describe('retries', () => {
     it('retries on failure and succeeds on second attempt', async () => {
       let attempts = 0
-      const flow = createFlow<ProjectConfig>({ name: 'Retry Test' }).step<LintOutput>({
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Retry Test' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           attempts++
@@ -254,7 +254,7 @@ describe('build pipeline flow', () => {
         retries: 1,
       })
 
-      const result = await flow.execute(defaultInput)
+      const result = await pipeline.execute(defaultInput)
 
       expect(result.success).toBe(true)
       expect(attempts).toBe(2)
@@ -262,7 +262,7 @@ describe('build pipeline flow', () => {
 
     it('fails after exhausting all retries', async () => {
       let attempts = 0
-      const flow = createFlow<ProjectConfig>({ name: 'Exhaust Retries' }).step<LintOutput>({
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Exhaust Retries' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           attempts++
@@ -271,7 +271,7 @@ describe('build pipeline flow', () => {
         retries: 2,
       })
 
-      const result = await flow.execute(defaultInput)
+      const result = await pipeline.execute(defaultInput)
 
       expect(result.success).toBe(false)
       expect(attempts).toBe(3)
@@ -280,7 +280,7 @@ describe('build pipeline flow', () => {
 
   describe('timeout', () => {
     it('fails with timeout error when step exceeds limit', async () => {
-      const flow = createFlow<ProjectConfig>({ name: 'Timeout Test' }).step<LintOutput>({
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Timeout Test' }).step<LintOutput>({
         name: 'Slow Lint',
         execute: () =>
           new Promise((resolve) =>
@@ -289,7 +289,7 @@ describe('build pipeline flow', () => {
         timeout: 50,
       })
 
-      const result = await flow.execute(defaultInput)
+      const result = await pipeline.execute(defaultInput)
 
       expect(result.success).toBe(false)
       if (result.success) return
@@ -298,17 +298,17 @@ describe('build pipeline flow', () => {
   })
 
   describe('analytics', () => {
-    it('calls all analytics hooks in order for a successful flow', async () => {
+    it('calls all analytics hooks in order for a successful pipeline', async () => {
       const calls: string[] = []
       const analytics: AnalyticsCollector = {
         onStepStart: (name) => calls.push(`start:${name}`),
         onStepComplete: (name, result) => calls.push(`complete:${name}:${result.success}`),
         onStepSkipped: (name) => calls.push(`skip:${name}`),
-        onFlowComplete: (name) => calls.push(`flowDone:${name}`),
-        onFlowError: (name) => calls.push(`flowError:${name}`),
+        onPipelineComplete: (name) => calls.push(`pipelineDone:${name}`),
+        onPipelineError: (name) => calls.push(`pipelineError:${name}`),
       }
 
-      const flow = createFlow<ProjectConfig>({ name: 'Analytics Order', analytics })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Analytics Order', analytics })
         .step<LintOutput>({
           name: 'Lint',
           execute: async () => ({ lintErrors: 0, lintWarnings: 0, filesLinted: [] }),
@@ -318,31 +318,34 @@ describe('build pipeline flow', () => {
           execute: async () => ({ compiledFiles: [], compileDuration: 0, typeErrors: 0 }),
         })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(calls).toEqual([
         'start:Lint',
         'complete:Lint:true',
         'start:Compile',
         'complete:Compile:true',
-        'flowDone:Analytics Order',
+        'pipelineDone:Analytics Order',
       ])
     })
 
-    it('calls onFlowError when a step throws unexpectedly', async () => {
+    it('calls onPipelineError when a step throws unexpectedly', async () => {
       const analytics = makeAnalytics()
 
-      const flow = createFlow<ProjectConfig>({ name: 'Error Flow', analytics }).step<LintOutput>({
+      const pipeline = createPipeline<ProjectConfig>({
+        name: 'Error Pipeline',
+        analytics,
+      }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           throw new Error('boom')
         },
       })
 
-      const result = await flow.execute(defaultInput)
+      const result = await pipeline.execute(defaultInput)
 
       expect(result.success).toBe(false)
-      expect(analytics.onFlowError).not.toHaveBeenCalled()
+      expect(analytics.onPipelineError).not.toHaveBeenCalled()
       expect(analytics.onStepComplete).toHaveBeenCalledWith(
         'Lint',
         expect.objectContaining({ success: false }),
@@ -359,7 +362,10 @@ describe('build pipeline flow', () => {
         typeErrors: 0,
       })
 
-      const flow = createFlow<ProjectConfig>({ name: 'Continue On Error', continueOnError: true })
+      const pipeline = createPipeline<ProjectConfig>({
+        name: 'Continue On Error',
+        continueOnError: true,
+      })
         .step<LintOutput>({
           name: 'Lint',
           execute: async () => {
@@ -371,7 +377,7 @@ describe('build pipeline flow', () => {
           execute: secondExecute,
         })
 
-      await flow.execute(defaultInput)
+      await pipeline.execute(defaultInput)
 
       expect(secondExecute).toHaveBeenCalledTimes(1)
     })

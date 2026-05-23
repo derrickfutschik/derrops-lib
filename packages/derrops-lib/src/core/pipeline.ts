@@ -1,8 +1,8 @@
 import { Step } from './step'
 import {
   CheckFn,
-  FlowConfig,
-  FlowResult,
+  PipelineConfig,
+  PipelineResult,
   StepConfig,
   StepContext,
   StepRecord,
@@ -11,12 +11,12 @@ import {
 } from './types'
 
 /**
- * A sequential, type-safe flow that enriches a shared data object as execution
+ * A sequential, type-safe pipeline that enriches a shared data object as execution
  * passes through each step.
  *
  * Each call to `.step()` widens the `TAccumulated` type parameter so that every
  * subsequent step and check has full type-safe access to all data produced so
- * far. The flow is immutable — `.step()` and `.check()` always return a new
+ * far. The pipeline is immutable — `.step()` and `.check()` always return a new
  * instance rather than modifying the existing one.
  *
  * ### Execution model
@@ -26,10 +26,10 @@ import {
  *    checks are recorded as `NONE`.
  * 2. `execute` runs (with optional retries and timeout).
  * 3. If execute succeeds, all attached checks run in order.
- * 4. If any check sets `shouldStop`, the flow halts after finishing the
+ * 4. If any check sets `shouldStop`, the pipeline halts after finishing the
  *    remaining checks on that step — subsequent steps do not run.
  *
- * `data` is always present in `FlowResult`, even when `success` is `false`,
+ * `data` is always present in `PipelineResult`, even when `success` is `false`,
  * so callers can inspect the full enriched context for logging and diagnostics.
  *
  * @template TInitial     - The shape of the value passed to `execute()`
@@ -37,19 +37,19 @@ import {
  *
  * @example
  * ```typescript
- * const result = await createFlow<{ userId: string }>({ name: 'Onboarding' })
+ * const result = await createPipeline<{ userId: string }>({ name: 'Onboarding' })
  *   .step({ name: 'Fetch User', execute: async (ctx) => ({ userName: 'Alice' }) })
  *   .check('User active', (ctx) => ({ success: ctx.userName !== '', continue: false }))
  *   .step({ name: 'Send Welcome', execute: async (ctx) => ({ sent: true }) })
  *   .execute({ userId: 'u-1' })
  * ```
  */
-export class SequentialFlow<TInitial, TAccumulated = TInitial> {
+export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
   private steps: Array<Step<any, any>> = []
   private analytics: AnalyticsCollector
-  private config: FlowConfig
+  private config: PipelineConfig
 
-  constructor(config: FlowConfig) {
+  constructor(config: PipelineConfig) {
     this.config = config
     this.analytics = config.analytics || this.createDefaultAnalytics()
   }
@@ -78,13 +78,13 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
     stepConfig:
       | StepConfig<TAccumulated, TOutput>
       | ((input: TAccumulated) => Promise<TOutput> | TOutput),
-  ): SequentialFlow<TInitial, Enrich<TAccumulated, TOutput>> {
+  ): SequentialPipeline<TInitial, Enrich<TAccumulated, TOutput>> {
     const config: StepConfig<TAccumulated, TOutput> =
       typeof stepConfig === 'function' ? { execute: stepConfig } : stepConfig
-    const newFlow = new SequentialFlow<TInitial, Enrich<TAccumulated, TOutput>>(this.config)
-    newFlow.steps = [...this.steps, new Step(config, this.steps.length)]
-    newFlow.analytics = this.analytics
-    return newFlow
+    const newPipeline = new SequentialPipeline<TInitial, Enrich<TAccumulated, TOutput>>(this.config)
+    newPipeline.steps = [...this.steps, new Step(config, this.steps.length)]
+    newPipeline.analytics = this.analytics
+    return newPipeline
   }
 
   /**
@@ -99,11 +99,11 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
    * returns `continue: false`. The pipeline halts *after* all checks on the
    * step have been recorded — never mid-step.
    *
-   * **Returning `{ success: false, continue: true }`** marks the overall flow
+   * **Returning `{ success: false, continue: true }`** marks the overall pipeline
    * as failed but lets subsequent steps keep running. Use this to gather as
    * much diagnostic context as possible before a final denial decision.
    *
-   * **Returning `{ success: false, continue: false }`** also marks the flow as
+   * **Returning `{ success: false, continue: false }`** also marks the pipeline as
    * failed and stops the pipeline before the next step begins.
    *
    * @throws {Error} If called before any `.step()` has been added.
@@ -115,43 +115,43 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
    * // Named check — name appears in CheckRecord for easier log inspection
    * .check('Score positive', (ctx) => ({ success: ctx.score > 0, continue: true }))
    */
-  check(fn: CheckFn<TAccumulated>): SequentialFlow<TInitial, TAccumulated>
-  check(name: string, fn: CheckFn<TAccumulated>): SequentialFlow<TInitial, TAccumulated>
+  check(fn: CheckFn<TAccumulated>): SequentialPipeline<TInitial, TAccumulated>
+  check(name: string, fn: CheckFn<TAccumulated>): SequentialPipeline<TInitial, TAccumulated>
   check(
     nameOrFn: string | CheckFn<TAccumulated>,
     maybeFn?: CheckFn<TAccumulated>,
-  ): SequentialFlow<TInitial, TAccumulated> {
+  ): SequentialPipeline<TInitial, TAccumulated> {
     if (this.steps.length === 0) throw new Error('No step to attach a check to')
     const name = typeof nameOrFn === 'string' ? nameOrFn : undefined
     const fn = typeof nameOrFn === 'function' ? nameOrFn : maybeFn!
-    const newFlow = new SequentialFlow<TInitial, TAccumulated>(this.config)
+    const newPipeline = new SequentialPipeline<TInitial, TAccumulated>(this.config)
     const steps = [...this.steps]
     steps[steps.length - 1] = steps[steps.length - 1].withCheck(name, fn)
-    newFlow.steps = steps
-    newFlow.analytics = this.analytics
-    return newFlow
+    newPipeline.steps = steps
+    newPipeline.analytics = this.analytics
+    return newPipeline
   }
 
   /**
-   * Runs all steps in order and returns a `FlowResult`.
+   * Runs all steps in order and returns a `PipelineResult`.
    *
    * `data` is always populated in the result — even on failure — so callers
    * can always read the enriched context. Narrow on `result.success` to access
    * `result.error` in the failure branch.
    *
-   * The overall flow `success` is `true` only when every step's `execute`
+   * The overall pipeline `success` is `true` only when every step's `execute`
    * succeeded and every check returned `PASS`. A single `FAIL` or `ERROR`
-   * check anywhere in the flow sets `success` to `false`, even if all
+   * check anywhere in the pipeline sets `success` to `false`, even if all
    * subsequent steps ran and passed.
    *
    * @param initialInput - The starting value passed as `data` to the first step.
    */
-  async execute(initialInput: TInitial): Promise<FlowResult<TAccumulated>> {
-    const flowStartTime = Date.now()
+  async execute(initialInput: TInitial): Promise<PipelineResult<TAccumulated>> {
+    const pipelineStartTime = Date.now()
     let currentData: any = initialInput
     const executedSteps: string[] = []
     const stepRecords: StepRecord[] = []
-    let flowSuccess = true
+    let pipelineSuccess = true
 
     try {
       for (const step of this.steps) {
@@ -167,12 +167,14 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
         const result = await step.execute(context, this.analytics)
 
         if (!result.success) {
-          // execute threw — stop unless the flow was configured to continue on errors
+          // execute threw — stop unless the pipeline was configured to continue on errors
           stepRecords.push({ name: step.name, skipped: false, checks: [] })
+          executedSteps.push(step.name)
           if (!this.config.continueOnError) {
+            this.analytics.onPipelineComplete(this.config.name, Date.now() - pipelineStartTime)
             return { success: false, data: currentData, error: result.error, steps: stepRecords }
           }
-          flowSuccess = false
+          pipelineSuccess = false
         } else {
           const skipped = result.analytics?.skipped === true
           stepRecords.push({ name: step.name, skipped, checks: result.checks })
@@ -182,7 +184,7 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
           currentData = result.data
 
           if (!result.allChecksPassed) {
-            flowSuccess = false
+            pipelineSuccess = false
           }
 
           if (result.shouldStop) {
@@ -194,6 +196,7 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
             const message =
               blockingCheck?.result.message ??
               (blockingCheck?.name ? `Check "${blockingCheck.name}" failed` : `Check failed`)
+            this.analytics.onPipelineComplete(this.config.name, Date.now() - pipelineStartTime)
             return {
               success: false,
               data: currentData,
@@ -206,10 +209,10 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
         }
       }
 
-      const totalDuration = Date.now() - flowStartTime
-      this.analytics.onFlowComplete(this.config.name, totalDuration)
+      const totalDuration = Date.now() - pipelineStartTime
+      this.analytics.onPipelineComplete(this.config.name, totalDuration)
 
-      if (flowSuccess) {
+      if (pipelineSuccess) {
         return { success: true, data: currentData, steps: stepRecords }
       }
 
@@ -220,45 +223,46 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
         steps: stepRecords,
       }
     } catch (error) {
-      const flowError = error instanceof Error ? error : new Error(String(error))
-      this.analytics.onFlowError(this.config.name, flowError)
-      return { success: false, data: currentData, error: flowError, steps: stepRecords }
+      const pipelineError = error instanceof Error ? error : new Error(String(error))
+      this.analytics.onPipelineError(this.config.name, pipelineError)
+      return { success: false, data: currentData, error: pipelineError, steps: stepRecords }
     }
   }
 
-  /** Default analytics implementation that logs to the console. */
+  /** Default no-op analytics — silent unless the caller provides a collector. */
   private createDefaultAnalytics(): AnalyticsCollector {
     return {
-      onStepStart: (name) => console.log(`[${name}] Starting...`),
-      onStepComplete: (name, result, duration) =>
-        console.log(`[${name}] Completed in ${duration}ms - Success: ${result.success}`),
-      onStepSkipped: (name, reason) => console.log(`[${name}] Skipped - ${reason}`),
-      onFlowComplete: (name, duration) => console.log(`[Flow: ${name}] Completed in ${duration}ms`),
-      onFlowError: (name, error) => console.error(`[Flow: ${name}] Failed:`, error),
+      onStepStart: () => {},
+      onStepComplete: () => {},
+      onStepSkipped: () => {},
+      onPipelineComplete: () => {},
+      onPipelineError: () => {},
     }
   }
 }
 
 /**
- * Creates a new `SequentialFlow` with the given configuration.
+ * Creates a new `SequentialPipeline` with the given configuration.
  *
  * The generic type parameter `TInitial` defines the shape of the value passed
- * to `flow.execute()`. Subsequent `.step()` calls widen the accumulated type
+ * to `pipeline.execute()`. Subsequent `.step()` calls widen the accumulated type
  * automatically via inference.
  *
- * @param config - Flow name, optional analytics collector, and error-continuation flag.
+ * @param config - Pipeline name, optional analytics collector, and error-continuation flag.
  *
  * @example
  * ```typescript
- * const flow = createFlow<{ projectName: string }>({ name: 'Build Pipeline' })
+ * const pipeline = createPipeline<{ projectName: string }>({ name: 'Build Pipeline' })
  *   .step({ name: 'Lint', execute: async (ctx) => ({ lintErrors: 0 }) })
  *   .check('No lint errors', (ctx) => ({ success: ctx.lintErrors === 0, continue: false }))
  *   .step({ name: 'Compile', execute: async (ctx) => ({ compiledFiles: ['index.js'] }) })
  *
- * const result = await flow.execute({ projectName: 'my-app' })
+ * const result = await pipeline.execute({ projectName: 'my-app' })
  * // result.data → { projectName, lintErrors, compiledFiles }
  * ```
  */
-export function createFlow<TInitial = {}>(config: FlowConfig): SequentialFlow<TInitial> {
-  return new SequentialFlow<TInitial>(config)
+export function createPipeline<TInitial = {}>(
+  config: PipelineConfig,
+): SequentialPipeline<TInitial> {
+  return new SequentialPipeline<TInitial>(config)
 }

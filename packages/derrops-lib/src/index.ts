@@ -10,12 +10,12 @@ export {
   CheckFn,
   CheckRecord,
   StepRecord,
-  FlowResult,
+  PipelineResult,
   AnalyticsCollector,
   StepConfig,
-  FlowConfig,
+  PipelineConfig,
 } from './core/types'
 
 // Core classes
 export { Step } from './core/step'
-export { SequentialFlow, createFlow } from './core/flow'
+export { SequentialPipeline, createPipeline } from './core/pipeline'

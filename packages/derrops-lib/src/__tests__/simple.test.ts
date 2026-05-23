@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import { createFlow } from '../index'
+import { createPipeline } from '../index'
 
 type UserInput = { userId: string }
 type UserData = { userName: string; email: string }
@@ -7,7 +7,7 @@ type Preferences = { theme: 'light' | 'dark'; language: string }
 type WelcomeMessage = { message: string }
 
 function buildUserOnboardingFlow() {
-  return createFlow<UserInput>({ name: 'User Onboarding' })
+  return createPipeline<UserInput>({ name: 'User Onboarding' })
     .step<UserData>({
       name: 'Fetch User',
       execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
@@ -24,16 +24,16 @@ function buildUserOnboardingFlow() {
     })
 }
 
-describe('simple user onboarding flow', () => {
+describe('simple user onboarding pipeline', () => {
   it('executes successfully', async () => {
-    const flow = buildUserOnboardingFlow()
-    const result = await flow.execute({ userId: 'user-123' })
+    const pipeline = buildUserOnboardingFlow()
+    const result = await pipeline.execute({ userId: 'user-123' })
     expect(result.success).toBe(true)
   })
 
   it('accumulates all fields from every step', async () => {
-    const flow = buildUserOnboardingFlow()
-    const result = await flow.execute({ userId: 'user-123' })
+    const pipeline = buildUserOnboardingFlow()
+    const result = await pipeline.execute({ userId: 'user-123' })
 
     expect(result.success).toBe(true)
     if (!result.success) return
@@ -47,7 +47,7 @@ describe('simple user onboarding flow', () => {
   })
 
   it('generates the welcome message from accumulated data', async () => {
-    const flow = createFlow<UserInput>({ name: 'Welcome Test' })
+    const pipeline = createPipeline<UserInput>({ name: 'Welcome Test' })
       .step<UserData>({
         name: 'Fetch User',
         execute: async (_input) => ({ userName: 'Bob', email: 'bob@example.com' }),
@@ -63,21 +63,21 @@ describe('simple user onboarding flow', () => {
         }),
       })
 
-    const result = await flow.execute({ userId: 'user-456' })
+    const result = await pipeline.execute({ userId: 'user-456' })
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.message).toBe('Welcome back, Bob! Your light theme is ready.')
   })
 
   it('returns failure when a step throws', async () => {
-    const flow = createFlow<UserInput>({ name: 'Failing Flow' }).step<UserData>({
+    const pipeline = createPipeline<UserInput>({ name: 'Failing Pipeline' }).step<UserData>({
       name: 'Fetch User',
       execute: async () => {
         throw new Error('Network error')
       },
     })
 
-    const result = await flow.execute({ userId: 'user-999' })
+    const result = await pipeline.execute({ userId: 'user-999' })
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error.message).toBe('Network error')
@@ -86,14 +86,14 @@ describe('simple user onboarding flow', () => {
   it('uses default step names (Step 0, Step 1, ...) when name is omitted', async () => {
     const onStepStart = jest.fn()
 
-    const flow = createFlow<UserInput>({
+    const pipeline = createPipeline<UserInput>({
       name: 'Default Names Test',
       analytics: {
         onStepStart,
         onStepComplete: jest.fn(),
         onStepSkipped: jest.fn(),
-        onFlowComplete: jest.fn(),
-        onFlowError: jest.fn(),
+        onPipelineComplete: jest.fn(),
+        onPipelineError: jest.fn(),
       },
     })
       .step<UserData>({
@@ -106,7 +106,7 @@ describe('simple user onboarding flow', () => {
         execute: async (input) => ({ message: `Welcome, ${input.userName}!` }),
       })
 
-    await flow.execute({ userId: 'user-123' })
+    await pipeline.execute({ userId: 'user-123' })
 
     expect(onStepStart).toHaveBeenNthCalledWith(1, 'Step 0', expect.anything())
     expect(onStepStart).toHaveBeenNthCalledWith(2, 'Step 1', expect.anything())
@@ -114,14 +114,14 @@ describe('simple user onboarding flow', () => {
   })
 
   it('accepts sync step functions (no async)', async () => {
-    const flow = createFlow<UserInput>({ name: 'Sync Test' })
+    const pipeline = createPipeline<UserInput>({ name: 'Sync Test' })
       .step((_input) => ({ userName: 'Alice', email: 'alice@example.com' }))
       .step((_input) => ({ theme: 'dark' as const, language: 'en' }))
       .step((input) => ({
         message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
       }))
 
-    const result = await flow.execute({ userId: 'user-123' })
+    const result = await pipeline.execute({ userId: 'user-123' })
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.userName).toBe('Alice')
@@ -129,14 +129,14 @@ describe('simple user onboarding flow', () => {
   })
 
   it('nested accepts sync step functions (no async)', async () => {
-    const flow = createFlow<UserInput>({ name: 'Sync Test' })
+    const pipeline = createPipeline<UserInput>({ name: 'Sync Test' })
       .step((_input) => ({ details: { userName: 'Alice', email: 'alice@example.com' } }))
       .step((_input) => ({ preferences: { theme: 'dark' as const, language: 'en' } }))
       .step((input) => ({
         message: `Welcome back, ${input.details.userName}! Your ${input.preferences.theme} theme is ready.`,
       }))
 
-    const result = await flow.execute({ userId: 'user-123' })
+    const result = await pipeline.execute({ userId: 'user-123' })
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.details.userName).toBe('Alice')
@@ -144,14 +144,14 @@ describe('simple user onboarding flow', () => {
   })
 
   it('accepts sync steps in config form (no async)', async () => {
-    const flow = createFlow<UserInput>({ name: 'Sync Config Test' })
+    const pipeline = createPipeline<UserInput>({ name: 'Sync Config Test' })
       .step({
         name: 'Fetch User',
         execute: (_input) => ({ userName: 'Bob', email: 'bob@example.com' }),
       })
       .step({ name: 'Load Preferences', execute: (_input) => ({ theme: 'light' as const }) })
 
-    const result = await flow.execute({ userId: 'user-456' })
+    const result = await pipeline.execute({ userId: 'user-456' })
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.userName).toBe('Bob')
@@ -159,14 +159,14 @@ describe('simple user onboarding flow', () => {
   })
 
   it('accepts a bare function as a step shorthand', async () => {
-    const flow = createFlow<UserInput>({ name: 'Shorthand Test' })
+    const pipeline = createPipeline<UserInput>({ name: 'Shorthand Test' })
       .step(async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }))
       .step(async (_input) => ({ theme: 'dark' as const, language: 'en' }))
       .step(async (input) => ({
         message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
       }))
 
-    const result = await flow.execute({ userId: 'user-123' })
+    const result = await pipeline.execute({ userId: 'user-123' })
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.userName).toBe('Alice')
@@ -175,7 +175,7 @@ describe('simple user onboarding flow', () => {
   })
 
   it('infers step output types without explicit type parameters', async () => {
-    const flow = createFlow<UserInput>({ name: 'Inferred Types Test' })
+    const pipeline = createPipeline<UserInput>({ name: 'Inferred Types Test' })
       .step({
         name: 'Fetch User',
         execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
@@ -191,7 +191,7 @@ describe('simple user onboarding flow', () => {
         }),
       })
 
-    const result = await flow.execute({ userId: 'user-123' })
+    const result = await pipeline.execute({ userId: 'user-123' })
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.userName).toBe('Alice')
@@ -202,23 +202,23 @@ describe('simple user onboarding flow', () => {
   it('calls analytics hooks during execution', async () => {
     const onStepStart = jest.fn()
     const onStepComplete = jest.fn()
-    const onFlowComplete = jest.fn()
+    const onPipelineComplete = jest.fn()
 
-    const flow = createFlow<UserInput>({
+    const pipeline = createPipeline<UserInput>({
       name: 'Analytics Test',
       analytics: {
         onStepStart,
         onStepComplete,
         onStepSkipped: jest.fn(),
-        onFlowComplete,
-        onFlowError: jest.fn(),
+        onPipelineComplete,
+        onPipelineError: jest.fn(),
       },
     }).step<UserData>({
       name: 'Fetch User',
       execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
     })
 
-    await flow.execute({ userId: 'user-123' })
+    await pipeline.execute({ userId: 'user-123' })
 
     expect(onStepStart).toHaveBeenCalledWith(
       'Fetch User',
@@ -229,6 +229,6 @@ describe('simple user onboarding flow', () => {
       expect.objectContaining({ success: true }),
       expect.any(Number),
     )
-    expect(onFlowComplete).toHaveBeenCalledWith('Analytics Test', expect.any(Number))
+    expect(onPipelineComplete).toHaveBeenCalledWith('Analytics Test', expect.any(Number))
   })
 })

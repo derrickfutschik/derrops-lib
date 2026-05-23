@@ -1,7 +1,7 @@
 {
-  "name": "flow-builder",
+  "name": "@derrops-lib",
   "version": "1.0.0",
-  "description": "A type-safe library for building sequential flows with data enrichment, conditional execution, and analytics",
+  "description": "A type-safe library for building sequential pipelines with data enrichment, conditional execution, and analytics",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -12,9 +12,9 @@
     "test:coverage": "jest --coverage"
   },
   "keywords": [
-    "workflow",
+    "workpipeline",
     "pipeline",
-    "flow",
+    "pipeline",
     "typescript",
     "type-safe",
     "orchestration",

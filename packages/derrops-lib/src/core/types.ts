@@ -2,7 +2,7 @@
  * Merges accumulated step data with a new step's output into a single flat type.
  *
  * Used internally to widen the `TAccumulated` type parameter as each step is
- * added to a flow. Consumers rarely need to reference this directly.
+ * added to a pipeline. Consumers rarely need to reference this directly.
  *
  * @template TAccumulated - Data collected from all steps so far
  * @template TNew - Data produced by the next step
@@ -18,7 +18,7 @@ export type Enrich<TAccumulated, TNew> = TAccumulated & TNew
  *
  * `data` holds everything accumulated from the initial input plus all
  * previously completed steps. `metadata` carries bookkeeping about where
- * in the pipeline execution currently is.
+ * in the pipeline execution is currently.
  *
  * @template TData - The accumulated data type at the point this context is created
  */
@@ -44,10 +44,10 @@ export type StepContext<TData = unknown> = {
  *
  * @property success  - Whether the business-logic assertion passed.
  * @property message  - Optional human-readable reason, surfaced in `CheckResult.message`
- *                      and used as the flow error message when `continue` is false.
- * @property continue - When `false` and `success` is `false`, the flow stops after
+ *                      and used as the pipeline error message when `continue` is false.
+ * @property continue - When `false` and `success` is `false`, the pipeline stops after
  *                      all remaining checks on the current step have run. When `true`
- *                      the flow keeps going even though this check failed, allowing
+ *                      the pipeline keeps going even though this check failed, allowing
  *                      subsequent steps to enrich the context for logging.
  */
 export type CheckFnResult = {
@@ -118,9 +118,9 @@ export type CheckRecord = {
 }
 
 /**
- * Summary of a single step's execution, included in `FlowResult.steps`.
+ * Summary of a single step's execution, included in `PipelineResult.steps`.
  *
- * Every step that was visited during a flow run — including skipped and
+ * Every step that was visited during a pipeline run — including skipped and
  * failed ones — produces a `StepRecord`. Steps where `execute` threw will
  * have an empty `checks` array because checks only run after a successful
  * execute.
@@ -137,12 +137,12 @@ export type StepRecord = {
 }
 
 /**
- * Internal result produced by `Step.execute()` and consumed by `SequentialFlow`.
+ * Internal result produced by `Step.execute()` and consumed by `SequentialPipeline`.
  *
- * Not part of the public API — use `FlowResult` for the value returned by
- * `flow.execute()`.
+ * Not part of the public API — use `PipelineResult` for the value returned by
+ * `pipeline.execute()`.
  *
- * The discriminated union lets the flow distinguish between an unhandled
+ * The discriminated union lets the pipeline distinguish between an unhandled
  * execute error (`success: false`) and a successful execute where checks may
  * still have failed (`success: true` with `allChecksPassed: false`).
  *
@@ -160,7 +160,7 @@ export type StepResult<TOutput = unknown> =
       allChecksPassed: boolean
       /**
        * `true` when any check returned `continue: false` with a non-PASS status.
-       * Signals the flow to halt before processing the next step.
+       * Signals the pipeline to halt before processing the next step.
        */
       shouldStop: boolean
     }
@@ -172,15 +172,15 @@ export type StepResult<TOutput = unknown> =
     }
 
 /**
- * The value returned by `flow.execute()`.
+ * The value returned by `pipeline.execute()`.
  *
  * `data` is always present — even when `success` is `false` — so callers can
  * inspect the fully enriched context regardless of outcome. This is intentional:
- * flows used for access control or audit logging need the enriched data to
+ * pipelines used for access control or audit logging need the enriched data to
  * record what was learned before a denial decision was made.
  *
  * ```typescript
- * const result = await flow.execute(input)
+ * const result = await pipeline.execute(input)
  *
  * // Always safe to read enriched data:
  * console.log(result.data)
@@ -193,7 +193,7 @@ export type StepResult<TOutput = unknown> =
  *
  * @template TData - The fully accumulated data type after all steps
  */
-export type FlowResult<TData = unknown> =
+export type PipelineResult<TData = unknown> =
   | { success: true; data: TData; steps: StepRecord[] }
   | {
       success: false
@@ -221,11 +221,11 @@ export type StepCondition<TInput = unknown> = (
 ) => boolean | Promise<boolean>
 
 /**
- * Observer interface for step and flow lifecycle events.
+ * Observer interface for step and pipeline lifecycle events.
  *
- * Pass an implementation via `FlowConfig.analytics` to collect timing,
+ * Pass an implementation via `PipelineConfig.analytics` to collect timing,
  * trace steps, or integrate with external monitoring. All methods are
- * called synchronously from within `Step.execute()` and `SequentialFlow.execute()`.
+ * called synchronously from within `Step.execute()` and `SequentialPipeline.execute()`.
  *
  * A default console-logging implementation is used when no analytics are provided.
  */
@@ -236,10 +236,10 @@ export type AnalyticsCollector = {
   onStepComplete: (stepName: string, result: StepResult, duration: number) => void
   /** Fired when `shouldRun` returned `false` and the step was bypassed. */
   onStepSkipped: (stepName: string, reason: string) => void
-  /** Fired after all steps complete and the flow is about to return its result. */
-  onFlowComplete: (flowName: string, totalDuration: number) => void
-  /** Fired when an unexpected error escapes the flow's own error handling. */
-  onFlowError: (flowName: string, error: Error) => void
+  /** Fired after all steps complete and the pipeline is about to return its result. */
+  onPipelineComplete: (pipelineName: string, totalDuration: number) => void
+  /** Fired when an unexpected error escapes the pipeline's own error handling. */
+  onPipelineError: (pipelineName: string, error: Error) => void
 }
 
 /**
@@ -274,16 +274,16 @@ export type StepConfig<TAccumulated, TOutput> = {
 }
 
 /**
- * Top-level configuration for a flow, passed to `createFlow()`.
+ * Top-level configuration for a pipeline, passed to `createPipeline()`.
  *
  * @property name           - Human-readable name used in analytics events and error messages.
- * @property analytics      - Optional observer for step/flow lifecycle events.
+ * @property analytics      - Optional observer for step/pipeline lifecycle events.
  *                            Defaults to a console-logging implementation.
  * @property continueOnError - When `true`, a step whose `execute` throws does not halt the
- *                             flow — subsequent steps still run with the data accumulated
+ *                             pipeline — subsequent steps still run with the data accumulated
  *                             before the failure. Defaults to `false`.
  */
-export type FlowConfig = {
+export type PipelineConfig = {
   name: string
   analytics?: AnalyticsCollector
   continueOnError?: boolean
