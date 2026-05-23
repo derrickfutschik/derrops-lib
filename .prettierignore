@@ -4,3 +4,10 @@ coverage
 node_modules
 *.log
 */openapi.json
+pnpm-lock.yaml
+
+cdk.out
+amplify_outputs.json
+*.tsbuildinfo
+.turbo
+test-resources
