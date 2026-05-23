@@ -32,10 +32,14 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
    * @returns A new flow with the enriched type
    */
   step<TOutput>(
-    stepConfig: StepConfig<TAccumulated, TOutput>,
+    stepConfig:
+      | StepConfig<TAccumulated, TOutput>
+      | ((input: TAccumulated) => Promise<TOutput> | TOutput),
   ): SequentialFlow<TInitial, Enrich<TAccumulated, TOutput>> {
+    const config: StepConfig<TAccumulated, TOutput> =
+      typeof stepConfig === 'function' ? { execute: stepConfig } : stepConfig
     const newFlow = new SequentialFlow<TInitial, Enrich<TAccumulated, TOutput>>(this.config)
-    newFlow.steps = [...this.steps, new Step(stepConfig, this.steps.length)]
+    newFlow.steps = [...this.steps, new Step(config, this.steps.length)]
     newFlow.analytics = this.analytics
     return newFlow
   }
