@@ -8,15 +8,15 @@ type WelcomeMessage = { message: string }
 
 function buildUserOnboardingFlow() {
   return createFlow<UserInput>({ name: 'User Onboarding' })
-    .addStep<UserData>({
+    .step<UserData>({
       name: 'Fetch User',
       execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
     })
-    .addStep<Preferences>({
+    .step<Preferences>({
       name: 'Load Preferences',
       execute: async (_input) => ({ theme: 'dark', language: 'en' }),
     })
-    .addStep<WelcomeMessage>({
+    .step<WelcomeMessage>({
       name: 'Generate Welcome',
       execute: async (input) => ({
         message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
@@ -48,15 +48,15 @@ describe('simple user onboarding flow', () => {
 
   it('generates the welcome message from accumulated data', async () => {
     const flow = createFlow<UserInput>({ name: 'Welcome Test' })
-      .addStep<UserData>({
+      .step<UserData>({
         name: 'Fetch User',
         execute: async (_input) => ({ userName: 'Bob', email: 'bob@example.com' }),
       })
-      .addStep<Preferences>({
+      .step<Preferences>({
         name: 'Load Preferences',
         execute: async (_input) => ({ theme: 'light', language: 'fr' }),
       })
-      .addStep<WelcomeMessage>({
+      .step<WelcomeMessage>({
         name: 'Generate Welcome',
         execute: async (input) => ({
           message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
@@ -70,7 +70,7 @@ describe('simple user onboarding flow', () => {
   })
 
   it('returns failure when a step throws', async () => {
-    const flow = createFlow<UserInput>({ name: 'Failing Flow' }).addStep<UserData>({
+    const flow = createFlow<UserInput>({ name: 'Failing Flow' }).step<UserData>({
       name: 'Fetch User',
       execute: async () => {
         throw new Error('Network error')
@@ -81,6 +81,36 @@ describe('simple user onboarding flow', () => {
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error.message).toBe('Network error')
+  })
+
+  it('uses default step names (Step 0, Step 1, ...) when name is omitted', async () => {
+    const onStepStart = jest.fn()
+
+    const flow = createFlow<UserInput>({
+      name: 'Default Names Test',
+      analytics: {
+        onStepStart,
+        onStepComplete: jest.fn(),
+        onStepSkipped: jest.fn(),
+        onFlowComplete: jest.fn(),
+        onFlowError: jest.fn(),
+      },
+    })
+      .step<UserData>({
+        execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
+      })
+      .step<Preferences>({
+        execute: async (_input) => ({ theme: 'dark', language: 'en' }),
+      })
+      .step<WelcomeMessage>({
+        execute: async (input) => ({ message: `Welcome, ${input.userName}!` }),
+      })
+
+    await flow.execute({ userId: 'user-123' })
+
+    expect(onStepStart).toHaveBeenNthCalledWith(1, 'Step 0', expect.anything())
+    expect(onStepStart).toHaveBeenNthCalledWith(2, 'Step 1', expect.anything())
+    expect(onStepStart).toHaveBeenNthCalledWith(3, 'Step 2', expect.anything())
   })
 
   it('calls analytics hooks during execution', async () => {
@@ -97,7 +127,7 @@ describe('simple user onboarding flow', () => {
         onFlowComplete,
         onFlowError: jest.fn(),
       },
-    }).addStep<UserData>({
+    }).step<UserData>({
       name: 'Fetch User',
       execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
     })

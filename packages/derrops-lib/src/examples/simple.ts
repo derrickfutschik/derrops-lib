@@ -15,7 +15,7 @@ type WelcomeMessage = { message: string }
 // Create the flow
 const userOnboardingFlow = createFlow<UserInput>({ name: 'User Onboarding' })
   // Step 1: Fetch user data
-  .addStep<UserData>({
+  .step<UserData>({
     name: 'Fetch User',
     execute: async (input) => {
       // input is: { userId: string }
@@ -28,7 +28,7 @@ const userOnboardingFlow = createFlow<UserInput>({ name: 'User Onboarding' })
   })
 
   // Step 2: Load preferences
-  .addStep<Preferences>({
+  .step<Preferences>({
     name: 'Load Preferences',
     execute: async (input) => {
       // input is: { userId, userName, email }
@@ -41,7 +41,7 @@ const userOnboardingFlow = createFlow<UserInput>({ name: 'User Onboarding' })
   })
 
   // Step 3: Generate welcome message
-  .addStep<WelcomeMessage>({
+  .step<WelcomeMessage>({
     name: 'Generate Welcome',
     execute: async (input) => {
       // input is: { userId, userName, email, theme, language }
@@ -57,6 +57,7 @@ async function main() {
   const result = await userOnboardingFlow.execute({ userId: 'user-123' })
 
   if (result.success) {
+    result.analytics[0].duration
     // result.data has ALL fields from ALL steps:
     // userId, userName, email, theme, language, message
     console.log('\nFinal data:', result.data)
