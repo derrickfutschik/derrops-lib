@@ -24,6 +24,7 @@
     "clean:modules": "rm -rf node_modules packages/*/node_modules apps/*/node_modules test-resources/node_modules",
     "format": "prettier --write .",
     "format:changed": "bash -c 'CHANGED=$(git diff --name-only --diff-filter=ACMR HEAD; git ls-files --others --exclude-standard); [ -n \"$CHANGED\" ] && echo \"$CHANGED\" | xargs prettier --write --ignore-unknown || true'",
+    "format:staged": "bash -c 'STAGED=$(git diff --name-only --cached --diff-filter=ACMR); [ -n \"$STAGED\" ] && echo \"$STAGED\" | xargs prettier --write --ignore-unknown || true'",
     "format:organize": "prettier --write --plugin prettier-plugin-organize-imports .",
     "commit": "bash scripts/ai-commit.sh",
     "commit:ai": "bash scripts/ai-commit.sh",
