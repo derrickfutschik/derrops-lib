@@ -9,7 +9,9 @@
     "dev": "tsc --watch",
     "example:simple": "npx ts-node src/examples/simple.ts",
     "example:pipeline": "npx ts-node src/examples/build-pipeline.ts",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "workflow",
@@ -24,7 +26,11 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@jest/globals": "*",
+    "@types/jest": "*",
     "@types/node": "^20.0.0",
+    "jest": "*",
+    "ts-jest": "*",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   },
