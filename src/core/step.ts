@@ -13,11 +13,11 @@ import {
 type NormalizedCheck<TData> = { name?: string; fn: CheckFn<TData> }
 
 /**
- * Represents a single step in a flow.
+ * Represents a single step in a pipeline.
  *
  * A step holds its `StepConfig` (execute function, shouldRun guard, callbacks,
  * retries, timeout) plus an ordered list of checks added via the builder's
- * `.check()` method. Instances are created by `SequentialFlow.step()` and are
+ * `.check()` method. Instances are created by `SequentialPipeline.step()` and are
  * immutable after construction — `withCheck()` returns a new `Step` rather than
  * mutating the existing one.
  *
@@ -44,7 +44,7 @@ export class Step<TAccumulated, TOutput> {
    * Returns a new `Step` with the given check appended to the end of the
    * check list. The original step is not modified.
    *
-   * Called by `SequentialFlow.check()` — not part of the public consumer API.
+   * Called by `SequentialPipeline.check()` — not part of the public consumer API.
    *
    * @param name - Optional display name for the check, shown in `CheckRecord`.
    * @param fn   - The check function to append.
@@ -74,7 +74,7 @@ export class Step<TAccumulated, TOutput> {
    * The `analytics` collector is notified at the start, on completion, and on skip.
    *
    * @param context   - The accumulated data and metadata for this execution pass.
-   * @param analytics - Lifecycle event observer provided by the parent flow.
+   * @param analytics - Lifecycle event observer provided by the parent pipeline.
    */
   async execute(
     context: StepContext<TAccumulated>,
@@ -122,7 +122,7 @@ export class Step<TAccumulated, TOutput> {
         await onSuccess?.(result, context.data)
 
         // All checks for this step always run, even if an earlier check sets
-        // shouldStop. This ensures every check is recorded before the flow halts,
+        // shouldStop. This ensures every check is recorded before the pipeline halts,
         // giving callers the full picture for diagnostics and audit logging.
         const checkRecords: CheckRecord[] = []
         let allChecksPassed = true
@@ -139,7 +139,7 @@ export class Step<TAccumulated, TOutput> {
             }
           } catch (err) {
             // An unexpected throw in a check fn is recorded as ERROR with
-            // continue: false so the flow stops rather than silently proceeding
+            // continue: false so the pipeline stops rather than silently proceeding
             // with an unknown check outcome.
             const checkError = err instanceof Error ? err : new Error(String(err))
             checkResult = {

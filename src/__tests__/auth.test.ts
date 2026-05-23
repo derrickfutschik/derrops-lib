@@ -1,4 +1,4 @@
-import { createFlow } from '../core/flow'
+import { createPipeline } from '../index'
 
 type UserAuthContext = {
   domain: string
@@ -10,10 +10,10 @@ type UserAuthContext = {
   method: string
 }
 
-describe('user authentication and access flow', () => {
+describe('user authentication and access pipeline', () => {
   function buildAuthFlow(authContext: UserAuthContext) {
-    return createFlow<{ authContext: UserAuthContext }>({
-      name: 'User Authentication and Access Flow',
+    return createPipeline<{ authContext: UserAuthContext }>({
+      name: 'User Authentication and Access Pipeline',
     })
       .step({
         name: 'Malicious IP Check',
@@ -100,10 +100,10 @@ describe('user authentication and access flow', () => {
 })
 
 describe('multiple checks per step — all run even when continue: false', () => {
-  it('runs all checks on the step before stopping the flow', async () => {
+  it('runs all checks on the step before stopping the pipeline', async () => {
     const checkOrder: string[] = []
 
-    const result = await createFlow<{ value: number }>({ name: 'Multi-Check Stop Test' })
+    const result = await createPipeline<{ value: number }>({ name: 'Multi-Check Stop Test' })
       .step({
         name: 'Compute',
         execute: async (input) => ({ doubled: input.value * 2 }),
@@ -112,7 +112,7 @@ describe('multiple checks per step — all run even when continue: false', () =>
         checkOrder.push('always-passes')
         return { success: true, continue: true }
       })
-      .check('Fails — stop flow', (_ctx) => {
+      .check('Fails — stop pipeline', (_ctx) => {
         checkOrder.push('fails-stop')
         return { success: false, message: 'Value too large', continue: false }
       })
@@ -137,7 +137,7 @@ describe('multiple checks per step — all run even when continue: false', () =>
       result: { status: 'PASS' },
     })
     expect(result.steps[0].checks[1]).toMatchObject({
-      name: 'Fails — stop flow',
+      name: 'Fails — stop pipeline',
       result: { status: 'FAIL', continue: false },
     })
     expect(result.steps[0].checks[2]).toMatchObject({
@@ -152,8 +152,8 @@ describe('multiple checks per step — all run even when continue: false', () =>
 })
 
 describe('check ERROR status', () => {
-  it('records ERROR when a check fn throws and stops the flow', async () => {
-    const result = await createFlow<{ x: number }>({ name: 'Error Check Test' })
+  it('records ERROR when a check fn throws and stops the pipeline', async () => {
+    const result = await createPipeline<{ x: number }>({ name: 'Error Check Test' })
       .step({
         name: 'Step A',
         execute: async (input) => ({ y: input.x + 1 }),

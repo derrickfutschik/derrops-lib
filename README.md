@@ -1,4 +1,4 @@
-# Flow Builder
+# Pipeline Builder
 
 A type-safe TypeScript library for building sequential data-enrichment pipelines. Each step receives everything accumulated so far, adds its own output, and passes the merged result to the next step. Checks can be attached to any step to assert business-logic conditions — with fine-grained control over whether a failing check stops the pipeline or lets it keep running.
 
@@ -6,21 +6,21 @@ A type-safe TypeScript library for building sequential data-enrichment pipelines
 
 - **Type-safe enrichment** — each step's output is merged into the accumulated type; TypeScript tracks the shape automatically so every subsequent step and check is fully typed
 - **Chainable checks** — attach multiple named checks to any step via `.check(name, fn)`; checks run after execute and produce a rich `PASS | FAIL | ERROR | NONE` status
-- **Granular flow control** — checks with `continue: true` mark the flow as failed but let subsequent steps keep running (useful for audit/logging flows that need to gather all context before making a decision)
+- **Granular pipeline control** — checks with `continue: true` mark the pipeline as failed but let subsequent steps keep running (useful for audit/logging pipelines that need to gather all context before making a decision)
 - **Conditional execution** — `shouldRun` predicates skip a step; its checks are recorded as `NONE`
 - **Retries & timeouts** — configurable per step
 - **Lifecycle callbacks** — `onSuccess` / `onFailure` hooks per step
-- **Analytics** — pluggable observer for step and flow events
-- **Immutable builder** — `.step()` and `.check()` return a new flow instance; original is unchanged
+- **Analytics** — pluggable observer for step and pipeline events
+- **Immutable builder** — `.step()` and `.check()` return a new pipeline instance; original is unchanged
 
 ## Quick Start
 
 ```typescript
-import { createFlow } from 'flow-builder'
+import { createPipeline } from 'pipeline-builder'
 
 type UserInput = { userId: string }
 
-const flow = createFlow<UserInput>({ name: 'User Onboarding' })
+const pipeline = createPipeline<UserInput>({ name: 'User Onboarding' })
   .step({
     name: 'Fetch User',
     execute: async (ctx) => ({ userName: 'Alice', email: 'alice@example.com' }),
@@ -30,7 +30,7 @@ const flow = createFlow<UserInput>({ name: 'User Onboarding' })
     execute: async (ctx) => ({ theme: 'dark' as const }),
   })
 
-const result = await flow.execute({ userId: 'u-1' })
+const result = await pipeline.execute({ userId: 'u-1' })
 
 if (result.success) {
   console.log(result.data.userName) // 'Alice'
@@ -40,13 +40,13 @@ if (result.success) {
 
 ## API
 
-### `createFlow<TInitial>(config)`
+### `createPipeline<TInitial>(config)`
 
-Creates a new flow. `TInitial` is the shape passed to `.execute()`.
+Creates a new pipeline. `TInitial` is the shape passed to `.execute()`.
 
 ```typescript
-const flow = createFlow<{ userId: string }>({
-  name: 'My Flow',
+const pipeline = createPipeline<{ userId: string }>({
+  name: 'My Pipeline',
   analytics: myAnalytics, // optional — see Analytics section
   continueOnError: false, // optional, default: false
 })
@@ -56,10 +56,10 @@ const flow = createFlow<{ userId: string }>({
 
 ### `.step(config | fn)`
 
-Appends a step. Returns a new flow whose accumulated type includes this step's output.
+Appends a step. Returns a new pipeline whose accumulated type includes this step's output.
 
 ```typescript
-flow.step({
+pipeline.step({
   name: 'Step Name', // optional — defaults to 'Step 0', 'Step 1', …
   execute: async (ctx) => ({ result: 42 }),
 
@@ -81,7 +81,7 @@ flow.step({
 Bare function shorthand (equivalent to `{ execute: fn }`):
 
 ```typescript
-flow.step(async (ctx) => ({ processed: true }))
+pipeline.step(async (ctx) => ({ processed: true }))
 ```
 
 ---
@@ -91,7 +91,7 @@ flow.step(async (ctx) => ({ processed: true }))
 Attaches a check to the most recently added step. Multiple `.check()` calls stack onto the same step and run in order after `execute` succeeds.
 
 ```typescript
-flow
+pipeline
   .step({ name: 'Validate', execute: async (ctx) => ({ score: computeScore(ctx) }) })
   .check('Score positive', (ctx) => ({
     success: ctx.score > 0,
@@ -112,7 +112,7 @@ The check function receives the fully enriched data object — every field from 
 | Field      | Type      | Description                                                                                        |
 | ---------- | --------- | -------------------------------------------------------------------------------------------------- |
 | `success`  | `boolean` | Whether the assertion passed                                                                       |
-| `message`  | `string?` | Human-readable reason; used as the flow error message when `continue` is `false`                   |
+| `message`  | `string?` | Human-readable reason; used as the pipeline error message when `continue` is `false`               |
 | `continue` | `boolean` | `false` → stop pipeline after all checks on this step finish; `true` → keep running even if failed |
 
 > All checks on a step always run to completion, even when an earlier check sets `continue: false`. The pipeline halts _after_ the step, never mid-step.
@@ -121,10 +121,10 @@ The check function receives the fully enriched data object — every field from 
 
 ### `.execute(initialInput)`
 
-Runs the flow and returns a `FlowResult`.
+Runs the pipeline and returns a `FlowResult`.
 
 ```typescript
-const result = await flow.execute({ userId: 'u-1' })
+const result = await pipeline.execute({ userId: 'u-1' })
 
 // `data` is always present — even on failure
 console.log(result.data)
@@ -137,12 +137,12 @@ if (!result.success) {
 **`FlowResult<TData>`:**
 
 ```typescript
-type FlowResult<TData> =
+type PipelineResult<TData> =
   | { success: true; data: TData; steps: StepRecord[] }
   | { success: false; data: TData; error: Error; steps: StepRecord[] }
 ```
 
-`data` is present in both branches so callers can inspect the fully enriched context even when the flow fails — important for access-control and audit flows that need to log what was learned before denying a request.
+`data` is present in both branches so callers can inspect the fully enriched context even when the pipeline fails — important for access-control and audit pipelines that need to log what was learned before denying a request.
 
 ---
 
@@ -170,7 +170,7 @@ for (const step of result.steps) {
 
 ---
 
-## Flow Success Rules
+## Pipeline Success Rules
 
 `result.success` is `true` only when:
 
@@ -199,12 +199,12 @@ TypeScript tracks this at compile time — every step and check has full autocom
 
 ## Access Control Example
 
-The check system is particularly useful for flows that need to collect as much diagnostic context as possible before making an access decision, even when individual checks fail:
+The check system is particularly useful for pipelines that need to collect as much diagnostic context as possible before making an access decision, even when individual checks fail:
 
 ```typescript
 type AuthCtx = { authContext: { domain: string; ipAddress: string } }
 
-const flow = createFlow<AuthCtx>({ name: 'Auth Flow' })
+const pipeline = createPipeline<AuthCtx>({ name: 'Auth Pipeline' })
   .step({
     name: 'IP Lookup',
     execute: async (ctx) => ({ ipCheck: await lookupIp(ctx.authContext.ipAddress) }),
@@ -228,7 +228,9 @@ const flow = createFlow<AuthCtx>({ name: 'Auth Flow' })
     continue: true,
   }))
 
-const result = await flow.execute({ authContext: { domain: 'example.com', ipAddress: '1.2.3.4' } })
+const result = await pipeline.execute({
+  authContext: { domain: 'example.com', ipAddress: '1.2.3.4' },
+})
 
 // result.success → false if any check failed
 // result.data    → fully enriched, always available for logging
@@ -240,7 +242,7 @@ const result = await flow.execute({ authContext: { domain: 'example.com', ipAddr
 ## Conditional Steps (`shouldRun`)
 
 ```typescript
-flow
+pipeline
   .step({
     name: 'Lint',
     execute: async (ctx) => ({ lintErrors: runLint(ctx.sourceDir) }),
@@ -259,7 +261,7 @@ flow
 ## Retries & Timeouts
 
 ```typescript
-flow.step({
+pipeline.step({
   name: 'Flaky API Call',
   execute: async (ctx) => fetchWithRetry(ctx.url),
   retries: 3, // up to 4 total attempts
@@ -273,17 +275,17 @@ flow.step({
 ## Analytics
 
 ```typescript
-import { AnalyticsCollector } from 'flow-builder'
+import { AnalyticsCollector } from 'pipeline-builder'
 
 const analytics: AnalyticsCollector = {
   onStepStart: (name, input) => trace.start(name),
   onStepComplete: (name, result, ms) => metrics.record(name, ms, result.success),
   onStepSkipped: (name, reason) => logger.info(`${name} skipped: ${reason}`),
-  onFlowComplete: (name, totalMs) => metrics.flowDuration(name, totalMs),
-  onFlowError: (name, error) => logger.error(`${name} crashed`, error),
+  onPipelineComplete: (name, totalMs) => metrics.pipelineDuration(name, totalMs),
+  onPipelineError: (name, error) => logger.error(`${name} crashed`, error),
 }
 
-const flow = createFlow<Input>({ name: 'My Flow', analytics })
+const pipeline = createPipeline<Input>({ name: 'My Pipeline', analytics })
 ```
 
 ## License
