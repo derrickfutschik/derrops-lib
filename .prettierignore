@@ -11,3 +11,5 @@ amplify_outputs.json
 *.tsbuildinfo
 .turbo
 test-resources
+.docusaurus
+apps/derrops-portal/src/client/derrops-cloud
