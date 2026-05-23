@@ -31,11 +31,11 @@ export class SequentialFlow<TInitial, TAccumulated = TInitial> {
    * @template TOutput - The new data this step produces
    * @returns A new flow with the enriched type
    */
-  addStep<TOutput>(
+  step<TOutput>(
     stepConfig: StepConfig<TAccumulated, TOutput>,
   ): SequentialFlow<TInitial, Enrich<TAccumulated, TOutput>> {
     const newFlow = new SequentialFlow<TInitial, Enrich<TAccumulated, TOutput>>(this.config)
-    newFlow.steps = [...this.steps, new Step(stepConfig)]
+    newFlow.steps = [...this.steps, new Step(stepConfig, this.steps.length)]
     newFlow.analytics = this.analytics
     return newFlow
   }

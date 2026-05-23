@@ -44,7 +44,7 @@ export type AnalyticsCollector = {
  * Configuration for a single step
  */
 export type StepConfig<TAccumulated, TOutput> = {
-  name: string
+  name?: string
   execute: (input: TAccumulated) => Promise<TOutput> | TOutput
   shouldRun?: StepCondition<TAccumulated>
   onSuccess?: (output: TOutput, accumulated: TAccumulated) => void | Promise<void>

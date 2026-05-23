@@ -33,7 +33,7 @@ describe('build pipeline flow', () => {
   describe('full successful run', () => {
     it('accumulates all step outputs', async () => {
       const flow = createFlow<ProjectConfig>({ name: 'Build Pipeline' })
-        .addStep<LintOutput>({
+        .step<LintOutput>({
           name: 'Lint',
           execute: async (_data) => ({
             lintErrors: 0,
@@ -41,7 +41,7 @@ describe('build pipeline flow', () => {
             filesLinted: ['index.ts', 'utils.ts', 'types.ts'],
           }),
         })
-        .addStep<CompileOutput>({
+        .step<CompileOutput>({
           name: 'Compile',
           execute: async (data) => ({
             compiledFiles: data.filesLinted.map((f) => f.replace('.ts', '.js')),
@@ -49,7 +49,7 @@ describe('build pipeline flow', () => {
             typeErrors: 0,
           }),
         })
-        .addStep<BundleOutput>({
+        .step<BundleOutput>({
           name: 'Bundle',
           execute: async (data) => ({
             bundlePath: `dist/${data.projectName}.bundle.js`,
@@ -57,7 +57,7 @@ describe('build pipeline flow', () => {
             chunks: ['main', 'vendor'],
           }),
         })
-        .addStep<TestOutput>({
+        .step<TestOutput>({
           name: 'Test',
           execute: async (_data) => ({
             testsPassed: 48,
@@ -65,7 +65,7 @@ describe('build pipeline flow', () => {
             coverage: 87.5,
           }),
         })
-        .addStep<DeployOutput>({
+        .step<DeployOutput>({
           name: 'Deploy',
           execute: async (data) => ({
             deploymentUrl: `https://${data.environment}.${data.projectName}.com`,
@@ -103,7 +103,7 @@ describe('build pipeline flow', () => {
       })
 
       const flow = createFlow<ProjectConfig>({ name: 'Lint-Gate', analytics })
-        .addStep<LintOutput>({
+        .step<LintOutput>({
           name: 'Lint',
           execute: async () => ({
             lintErrors: 3,
@@ -111,7 +111,7 @@ describe('build pipeline flow', () => {
             filesLinted: ['index.ts'],
           }),
         })
-        .addStep<CompileOutput>({
+        .step<CompileOutput>({
           name: 'Compile',
           execute: compileExecute,
           shouldRun: (ctx) => ctx.data.lintErrors === 0,
@@ -131,11 +131,11 @@ describe('build pipeline flow', () => {
       })
 
       const flow = createFlow<ProjectConfig>({ name: 'Lint-Pass' })
-        .addStep<LintOutput>({
+        .step<LintOutput>({
           name: 'Lint',
           execute: async () => ({ lintErrors: 0, lintWarnings: 0, filesLinted: ['index.ts'] }),
         })
-        .addStep<CompileOutput>({
+        .step<CompileOutput>({
           name: 'Compile',
           execute: compileExecute,
           shouldRun: (ctx) => ctx.data.lintErrors === 0,
@@ -155,11 +155,11 @@ describe('build pipeline flow', () => {
       })
 
       const flow = createFlow<ProjectConfig>({ name: 'Deploy-Gate', analytics })
-        .addStep<TestOutput>({
+        .step<TestOutput>({
           name: 'Test',
           execute: async () => ({ testsPassed: 10, testsFailed: 5, coverage: 90 }),
         })
-        .addStep<DeployOutput>({
+        .step<DeployOutput>({
           name: 'Deploy',
           execute: deployExecute,
           shouldRun: (ctx) => ctx.data.testsFailed === 0 && ctx.data.coverage >= 80,
@@ -180,11 +180,11 @@ describe('build pipeline flow', () => {
       })
 
       const flow = createFlow<ProjectConfig>({ name: 'Coverage-Gate', analytics })
-        .addStep<TestOutput>({
+        .step<TestOutput>({
           name: 'Test',
           execute: async () => ({ testsPassed: 48, testsFailed: 0, coverage: 60 }),
         })
-        .addStep<DeployOutput>({
+        .step<DeployOutput>({
           name: 'Deploy',
           execute: deployExecute,
           shouldRun: (ctx) => ctx.data.testsFailed === 0 && ctx.data.coverage >= 80,
@@ -200,7 +200,7 @@ describe('build pipeline flow', () => {
     it('calls onSuccess with step output and accumulated data', async () => {
       const onSuccess = jest.fn<() => void>()
 
-      const flow = createFlow<ProjectConfig>({ name: 'Success-CB' }).addStep<LintOutput>({
+      const flow = createFlow<ProjectConfig>({ name: 'Success-CB' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => ({
           lintErrors: 0,
@@ -223,7 +223,7 @@ describe('build pipeline flow', () => {
     it('calls onFailure when a step throws', async () => {
       const onFailure = jest.fn<() => void>()
 
-      const flow = createFlow<ProjectConfig>({ name: 'Failure-CB' }).addStep<LintOutput>({
+      const flow = createFlow<ProjectConfig>({ name: 'Failure-CB' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           throw new Error('lint crashed')
@@ -244,7 +244,7 @@ describe('build pipeline flow', () => {
   describe('retries', () => {
     it('retries on failure and succeeds on second attempt', async () => {
       let attempts = 0
-      const flow = createFlow<ProjectConfig>({ name: 'Retry Test' }).addStep<LintOutput>({
+      const flow = createFlow<ProjectConfig>({ name: 'Retry Test' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           attempts++
@@ -262,7 +262,7 @@ describe('build pipeline flow', () => {
 
     it('fails after exhausting all retries', async () => {
       let attempts = 0
-      const flow = createFlow<ProjectConfig>({ name: 'Exhaust Retries' }).addStep<LintOutput>({
+      const flow = createFlow<ProjectConfig>({ name: 'Exhaust Retries' }).step<LintOutput>({
         name: 'Lint',
         execute: async () => {
           attempts++
@@ -280,7 +280,7 @@ describe('build pipeline flow', () => {
 
   describe('timeout', () => {
     it('fails with timeout error when step exceeds limit', async () => {
-      const flow = createFlow<ProjectConfig>({ name: 'Timeout Test' }).addStep<LintOutput>({
+      const flow = createFlow<ProjectConfig>({ name: 'Timeout Test' }).step<LintOutput>({
         name: 'Slow Lint',
         execute: () =>
           new Promise((resolve) =>
@@ -309,11 +309,11 @@ describe('build pipeline flow', () => {
       }
 
       const flow = createFlow<ProjectConfig>({ name: 'Analytics Order', analytics })
-        .addStep<LintOutput>({
+        .step<LintOutput>({
           name: 'Lint',
           execute: async () => ({ lintErrors: 0, lintWarnings: 0, filesLinted: [] }),
         })
-        .addStep<CompileOutput>({
+        .step<CompileOutput>({
           name: 'Compile',
           execute: async () => ({ compiledFiles: [], compileDuration: 0, typeErrors: 0 }),
         })
@@ -332,14 +332,12 @@ describe('build pipeline flow', () => {
     it('calls onFlowError when a step throws unexpectedly', async () => {
       const analytics = makeAnalytics()
 
-      const flow = createFlow<ProjectConfig>({ name: 'Error Flow', analytics }).addStep<LintOutput>(
-        {
-          name: 'Lint',
-          execute: async () => {
-            throw new Error('boom')
-          },
+      const flow = createFlow<ProjectConfig>({ name: 'Error Flow', analytics }).step<LintOutput>({
+        name: 'Lint',
+        execute: async () => {
+          throw new Error('boom')
         },
-      )
+      })
 
       const result = await flow.execute(defaultInput)
 
@@ -362,13 +360,13 @@ describe('build pipeline flow', () => {
       })
 
       const flow = createFlow<ProjectConfig>({ name: 'Continue On Error', continueOnError: true })
-        .addStep<LintOutput>({
+        .step<LintOutput>({
           name: 'Lint',
           execute: async () => {
             throw new Error('lint failed')
           },
         })
-        .addStep<CompileOutput>({
+        .step<CompileOutput>({
           name: 'Compile',
           execute: secondExecute,
         })

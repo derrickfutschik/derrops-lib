@@ -5,13 +5,16 @@ import { StepConfig, StepContext, StepResult, Enrich, AnalyticsCollector } from 
  * Each step receives accumulated data and produces new data that gets merged.
  */
 export class Step<TAccumulated, TOutput> {
-  constructor(private config: StepConfig<TAccumulated, TOutput>) {}
+  constructor(
+    private config: StepConfig<TAccumulated, TOutput>,
+    private index: number = 0,
+  ) {}
 
   /**
    * Get the name of this step
    */
   get name(): string {
-    return this.config.name
+    return this.config.name ?? `Step ${this.index}`
   }
 
   /**
@@ -22,7 +25,8 @@ export class Step<TAccumulated, TOutput> {
     context: StepContext<TAccumulated>,
     analytics: AnalyticsCollector,
   ): Promise<StepResult<Enrich<TAccumulated, TOutput>>> {
-    const { name, execute, shouldRun, onSuccess, onFailure, retries = 0, timeout } = this.config
+    const name = this.name
+    const { execute, shouldRun, onSuccess, onFailure, retries = 0, timeout } = this.config
 
     // Check if step should run
     if (shouldRun) {

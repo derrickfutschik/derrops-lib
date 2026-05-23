@@ -149,7 +149,7 @@ const buildPipeline = createFlow<ProjectConfig>({ name: 'Build Pipeline', analyt
   // Step 1: Lint
   // Input: ProjectConfig
   // Output: ProjectConfig & LintOutput
-  .addStep<LintOutput>({
+  .step<LintOutput>({
     name: 'Lint',
     execute: async (data) => {
       await simulateWork(100)
@@ -168,7 +168,7 @@ const buildPipeline = createFlow<ProjectConfig>({ name: 'Build Pipeline', analyt
   // Step 2: Compile
   // Input: ProjectConfig & LintOutput
   // Output: ProjectConfig & LintOutput & CompileOutput
-  .addStep<CompileOutput>({
+  .step<CompileOutput>({
     name: 'Compile',
     execute: async (data) => {
       await simulateWork(200)
@@ -193,7 +193,7 @@ const buildPipeline = createFlow<ProjectConfig>({ name: 'Build Pipeline', analyt
   // Step 3: Bundle
   // Input: ProjectConfig & LintOutput & CompileOutput
   // Output: + BundleOutput
-  .addStep<BundleOutput>({
+  .step<BundleOutput>({
     name: 'Bundle',
     execute: async (data) => {
       await simulateWork(150)
@@ -214,7 +214,7 @@ const buildPipeline = createFlow<ProjectConfig>({ name: 'Build Pipeline', analyt
   // Step 4: Test
   // Input: all previous outputs
   // Output: + TestOutput
-  .addStep<TestOutput>({
+  .step<TestOutput>({
     name: 'Test',
     execute: async (data) => {
       await simulateWork(300)
@@ -237,7 +237,7 @@ const buildPipeline = createFlow<ProjectConfig>({ name: 'Build Pipeline', analyt
   // Step 5: Deploy
   // Input: everything accumulated
   // Output: + DeployOutput
-  .addStep<DeployOutput>({
+  .step<DeployOutput>({
     name: 'Deploy',
     execute: async (data) => {
       await simulateWork(250)
