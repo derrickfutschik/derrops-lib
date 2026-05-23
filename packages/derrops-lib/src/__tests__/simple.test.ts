@@ -113,6 +113,92 @@ describe('simple user onboarding flow', () => {
     expect(onStepStart).toHaveBeenNthCalledWith(3, 'Step 2', expect.anything())
   })
 
+  it('accepts sync step functions (no async)', async () => {
+    const flow = createFlow<UserInput>({ name: 'Sync Test' })
+      .step((_input) => ({ userName: 'Alice', email: 'alice@example.com' }))
+      .step((_input) => ({ theme: 'dark' as const, language: 'en' }))
+      .step((input) => ({
+        message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
+      }))
+
+    const result = await flow.execute({ userId: 'user-123' })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.userName).toBe('Alice')
+    expect(result.data.message).toBe('Welcome back, Alice! Your dark theme is ready.')
+  })
+
+  it('nested accepts sync step functions (no async)', async () => {
+    const flow = createFlow<UserInput>({ name: 'Sync Test' })
+      .step((_input) => ({ details: { userName: 'Alice', email: 'alice@example.com' } }))
+      .step((_input) => ({ preferences: { theme: 'dark' as const, language: 'en' } }))
+      .step((input) => ({
+        message: `Welcome back, ${input.details.userName}! Your ${input.preferences.theme} theme is ready.`,
+      }))
+
+    const result = await flow.execute({ userId: 'user-123' })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.details.userName).toBe('Alice')
+    expect(result.data.message).toBe('Welcome back, Alice! Your dark theme is ready.')
+  })
+
+  it('accepts sync steps in config form (no async)', async () => {
+    const flow = createFlow<UserInput>({ name: 'Sync Config Test' })
+      .step({
+        name: 'Fetch User',
+        execute: (_input) => ({ userName: 'Bob', email: 'bob@example.com' }),
+      })
+      .step({ name: 'Load Preferences', execute: (_input) => ({ theme: 'light' as const }) })
+
+    const result = await flow.execute({ userId: 'user-456' })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.userName).toBe('Bob')
+    expect(result.data.theme).toBe('light')
+  })
+
+  it('accepts a bare function as a step shorthand', async () => {
+    const flow = createFlow<UserInput>({ name: 'Shorthand Test' })
+      .step(async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }))
+      .step(async (_input) => ({ theme: 'dark' as const, language: 'en' }))
+      .step(async (input) => ({
+        message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
+      }))
+
+    const result = await flow.execute({ userId: 'user-123' })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.userName).toBe('Alice')
+    expect(result.data.theme).toBe('dark')
+    expect(result.data.message).toBe('Welcome back, Alice! Your dark theme is ready.')
+  })
+
+  it('infers step output types without explicit type parameters', async () => {
+    const flow = createFlow<UserInput>({ name: 'Inferred Types Test' })
+      .step({
+        name: 'Fetch User',
+        execute: async (_input) => ({ userName: 'Alice', email: 'alice@example.com' }),
+      })
+      .step({
+        name: 'Load Preferences',
+        execute: async (_input) => ({ theme: 'dark' as const, language: 'en' }),
+      })
+      .step({
+        name: 'Generate Welcome',
+        execute: async (input) => ({
+          message: `Welcome back, ${input.userName}! Your ${input.theme} theme is ready.`,
+        }),
+      })
+
+    const result = await flow.execute({ userId: 'user-123' })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.userName).toBe('Alice')
+    expect(result.data.theme).toBe('dark')
+    expect(result.data.message).toBe('Welcome back, Alice! Your dark theme is ready.')
+  })
+
   it('calls analytics hooks during execution', async () => {
     const onStepStart = jest.fn()
     const onStepComplete = jest.fn()
