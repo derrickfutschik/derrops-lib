@@ -1,0 +1,12 @@
+{
+  "derrops-portal": {
+    "prefix": "apps/derrops-portal",
+    "remote": "git@github.com:derrickfutschik/derrops-portal.git",
+    "branch": "main"
+  },
+  "derrops-lib": {
+    "prefix": "packages/derrops-lib",
+    "remote": "git@github.com:derrickfutschik/derrops-lib.git",
+    "branch": "main"
+  }
+}

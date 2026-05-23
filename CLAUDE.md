@@ -84,12 +84,12 @@ Each package has the standard scripts: `build`, `dev`, `test`, `test:watch`, `cl
 
 ## Packages — quick reference
 
-| Package                      | Purpose                                       | Details                                                    |
-| ---------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| Package                       | Purpose                                       | Details                                                     |
+| ----------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
 | `@derrops/private`            | Core types, interfaces, shared constants      | [CLAUDE.md](packages/derrops-private/CLAUDE.md)             |
 | `@derrops/public`             | Reusable utilities (HTTP helpers, transforms) | [CLAUDE.md](packages/derrops-public/CLAUDE.md)              |
 | `@derrops/config`             | Zod-validated config, dot-notation access     | [CLAUDE.md](packages/derrops-config/CLAUDE.md)              |
-| `@derrops/client`             | Base Derrops HTTP client class                 | [CLAUDE.md](packages/derrops-client/CLAUDE.md)              |
+| `@derrops/client`             | Base Derrops HTTP client class                | [CLAUDE.md](packages/derrops-client/CLAUDE.md)              |
 | `derrops-client-nodejs-axios` | Axios interceptor client for Node.js          | [CLAUDE.md](packages/derrops-client-nodejs-axios/CLAUDE.md) |
 | `@derrops/infra`              | CDK stacks: VPC, Aurora, Cognito, API GW      | [CLAUDE.md](packages/derrops-infra/CLAUDE.md)               |
 | `@derrops/backend`            | Amplify Lambda function deployment            | [CLAUDE.md](packages/derrops-backend/CLAUDE.md)             |
@@ -97,11 +97,66 @@ Each package has the standard scripts: `build`, `dev`, `test`, `test:watch`, `cl
 
 ## Apps — quick reference
 
-| App             | Purpose                                                | Details                                   |
-| --------------- | ------------------------------------------------------ | ----------------------------------------- |
+| App              | Purpose                                                 | Details                                    |
+| ---------------- | ------------------------------------------------------- | ------------------------------------------ |
 | `derrops-docs`   | Docusaurus site at https://blog.Derrops.com (port 3000) | [CLAUDE.md](apps/derrops-docs/CLAUDE.md)   |
-| `derrops-portal` | React monitoring dashboard (port 8080)                 | [CLAUDE.md](apps/derrops-portal/CLAUDE.md) |
-| `derrops-cloud`  | NestJS backend API (deployed as Lambda)                | [CLAUDE.md](apps/derrops-cloud/CLAUDE.md)  |
+| `derrops-portal` | React monitoring dashboard (port 8080)                  | [CLAUDE.md](apps/derrops-portal/CLAUDE.md) |
+| `derrops-cloud`  | NestJS backend API (deployed as Lambda)                 | [CLAUDE.md](apps/derrops-cloud/CLAUDE.md)  |
+
+## Subtree Repos
+
+Some modules are also standalone GitHub repositories, synced via `git subtree`.
+The registry lives in [`scripts/subtrees.json`](scripts/subtrees.json).
+
+| Name             | Monorepo path          | GitHub repo                      | Visibility |
+| ---------------- | ---------------------- | -------------------------------- | ---------- |
+| `derrops-portal` | `apps/derrops-portal`  | `derrickfutschik/derrops-portal` | private    |
+| `derrops-lib`    | `packages/derrops-lib` | `derrickfutschik/derrops-lib`    | public     |
+
+### Sync commands
+
+```bash
+pnpm subtree:list                    # list all registered subtrees
+pnpm subtree:pull <repo>             # pull latest from the remote repo into the monorepo
+pnpm subtree:push <repo>             # push local changes back to the remote repo
+```
+
+Run without a repo argument to see valid options and a list of registered repos.
+
+### Registering a new subtree (existing GitHub repo)
+
+```bash
+# 1. Register it in scripts/subtrees.json
+pnpm subtree:create <name> <local-prefix> <remote-url>
+# Example:
+pnpm subtree:create derrops-hooks packages/derrops-hooks git@github.com:derrickfutschik/derrops-hooks.git
+
+# 2. Commit the registry update
+git add scripts/subtrees.json && git commit -m "chore(subtree): register <name>"
+
+# 3. Add the subtree content to the monorepo
+pnpm subtree:add <name>
+```
+
+### Creating a brand-new module as a subtree
+
+```bash
+# 1. Create the GitHub repo
+gh repo create derrickfutschik/<name> --public
+
+# 2. Push an initial commit so the remote has a base (required by git subtree add)
+git init /tmp/<name> && cd /tmp/<name>
+git commit --allow-empty -m "chore: init"
+git remote add origin git@github.com:derrickfutschik/<name>.git
+git push -u origin main
+
+# 3. Back in the monorepo root — register and add
+pnpm subtree:create <name> packages/<name> git@github.com:derrickfutschik/<name>.git
+git add scripts/subtrees.json && git commit -m "chore(subtree): register <name>"
+pnpm subtree:add <name>
+```
+
+Add a row to the table above and commit it alongside the `subtrees.json` change.
 
 ## Key Conventions
 
@@ -145,10 +200,10 @@ Workspace libraries are built with **tsup**, which bundles `.d.ts` **without dec
 
 **Central files (regenerated):**
 
-| File | Purpose |
-| ---- | ------- |
-| [`tsconfig.library.json`](tsconfig.library.json) | Extends [`tsconfig.base.json`](tsconfig.base.json) and defines **all** workspace `paths` (repo-root `baseUrl: "."`). Default for packages and apps: extend this and set **`"baseUrl": "../../"`** from `packages/<pkg>/` or `apps/<app>/`. |
-| [`tsconfig.workspace-paths.json`](tsconfig.workspace-paths.json) | Same `paths`, **no** `extends` — use when a project cannot inherit `tsconfig.base.json` defaults (e.g. [`packages/derrops-infra/tsconfig.json`](packages/derrops-infra/tsconfig.json) / CDK-style **CommonJS**). |
+| File                                                             | Purpose                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`tsconfig.library.json`](tsconfig.library.json)                 | Extends [`tsconfig.base.json`](tsconfig.base.json) and defines **all** workspace `paths` (repo-root `baseUrl: "."`). Default for packages and apps: extend this and set **`"baseUrl": "../../"`** from `packages/<pkg>/` or `apps/<app>/`. |
+| [`tsconfig.workspace-paths.json`](tsconfig.workspace-paths.json) | Same `paths`, **no** `extends` — use when a project cannot inherit `tsconfig.base.json` defaults (e.g. [`packages/derrops-infra/tsconfig.json`](packages/derrops-infra/tsconfig.json) / CDK-style **CommonJS**).                           |
 
 **Maintain:**
 
@@ -187,8 +242,8 @@ Follow these steps for any feature, fix, or significant change:
 
 ### Documentation locations
 
-| Location                                     | Access  | Purpose                                 |
-| -------------------------------------------- | ------- | --------------------------------------- |
+| Location                                      | Access  | Purpose                                 |
+| --------------------------------------------- | ------- | --------------------------------------- |
 | `apps/derrops-docs/public/docs/`              | Public  | User-facing platform docs               |
 | `apps/derrops-docs/public/security/`          | Public  | Customer security / compliance overview |
 | `apps/derrops-docs/internal/platform/design/` | Private | ADRs, design docs                       |
