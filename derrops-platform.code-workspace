@@ -53,6 +53,27 @@
     "typescript.tsdk": "${workspaceFolder:Root}/node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
 
+    // Align editor formatting with `pnpm exec prettier` (root-hoisted Prettier across multi-root folders).
+    "prettier.prettierPath": "${workspaceFolder:Root}/node_modules/prettier",
+    "prettier.requireConfig": true,
+
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    },
+    "[javascriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    },
+
     "terminal.integrated.env.osx": {
       "PATH": "/Users/dfutschik/.nvm/versions/node/v22.21.1/bin:${env:PATH}",
     },
@@ -74,6 +95,6 @@
     },
   },
   "extensions": {
-    "recommendations": ["orta.vscode-jest"],
+    "recommendations": ["esbenp.prettier-vscode", "orta.vscode-jest"],
   },
 }

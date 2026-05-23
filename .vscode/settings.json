@@ -9,5 +9,26 @@
   // pnpm hoists `typescript` at the repo root (package.json devDependencies).
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "cSpell.words": ["conv", "userpool"]
+  "cSpell.words": ["conv", "userpool"],
+
+  // Match `pnpm exec prettier` — use the workspace Prettier CLI, not the extension's bundled build.
+  "prettier.prettierPath": "./node_modules/prettier",
+  "prettier.requireConfig": true,
+
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  }
 }
