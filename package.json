@@ -1,0 +1,34 @@
+{
+  "name": "flow-builder",
+  "version": "1.0.0",
+  "description": "A type-safe library for building sequential flows with data enrichment, conditional execution, and analytics",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "example:simple": "npx ts-node src/examples/simple.ts",
+    "example:pipeline": "npx ts-node src/examples/build-pipeline.ts",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "workflow",
+    "pipeline",
+    "flow",
+    "typescript",
+    "type-safe",
+    "orchestration",
+    "build",
+    "steps"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
