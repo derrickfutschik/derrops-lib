@@ -102,6 +102,7 @@ export class Step<TAccumulated, TOutput> {
     analytics: AnalyticsCollector,
     previousStepRecords: readonly StepRecord[] = [],
   ): Promise<StepResult<Enrich<TAccumulated, TOutput>>> {
+    const startedAt = Date.now()
     const name = this.name
     const { execute, shouldRun, onSuccess, onFailure, retries = 0, timeout } = this.config
     const policy: ResolvedPolicy = { ...DEFAULT_POLICY, ...this.config.policy }
@@ -114,6 +115,7 @@ export class Step<TAccumulated, TOutput> {
           name: check.name,
           result: { status: 'NONE' as const },
         }))
+        const finishedAt = Date.now()
         return {
           success: true,
           data: context.data as Enrich<TAccumulated, TOutput>,
@@ -121,6 +123,7 @@ export class Step<TAccumulated, TOutput> {
           checks: noneChecks,
           allChecksPassed: true,
           shouldStop: false,
+          timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
         }
       }
     }
@@ -169,6 +172,7 @@ export class Step<TAccumulated, TOutput> {
           if (checkResult.status !== 'PASS') allChecksPassed = false
         }
 
+        const finishedAt = Date.now()
         const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
           success: true,
           data: enrichedData,
@@ -176,6 +180,7 @@ export class Step<TAccumulated, TOutput> {
           checks: checkRecords,
           allChecksPassed,
           shouldStop,
+          timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
         }
 
         analytics.onStepComplete(name, stepResult, duration)
@@ -190,12 +195,14 @@ export class Step<TAccumulated, TOutput> {
 
           const isTimeout = lastError instanceof StepTimeoutError
           const shouldStop = isTimeout ? policy.timeout === 'STOP' : policy.error === 'STOP'
+          const finishedAt = Date.now()
 
           const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
             success: false,
             error: lastError,
             shouldStop,
             analytics: { attempts: attempt + 1, duration },
+            timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
           }
 
           analytics.onStepComplete(name, stepResult, duration)

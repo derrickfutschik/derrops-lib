@@ -142,11 +142,16 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
    * @param initialInput - The starting value passed as `data` to the first step.
    */
   async execute(initialInput: TInitial): Promise<PipelineResult<TAccumulated>> {
-    const pipelineStartTime = Date.now()
+    const pipelineStartedAt = Date.now()
     let currentData: any = initialInput
     const executedSteps: string[] = []
     const stepRecords: StepRecord[] = []
     let pipelineSuccess = true
+
+    const pipelineTiming = () => {
+      const finishedAt = Date.now()
+      return { startedAt: pipelineStartedAt, finishedAt, duration: finishedAt - pipelineStartedAt }
+    }
 
     try {
       for (const step of this.steps) {
@@ -163,15 +168,27 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
         executedSteps.push(step.name)
 
         if (!result.success) {
-          stepRecords.push({ name: step.name, skipped: false, checks: [] })
+          stepRecords.push({ name: step.name, skipped: false, checks: [], timing: result.timing })
           if (result.shouldStop) {
-            this.analytics.onPipelineComplete(this.config.name, Date.now() - pipelineStartTime)
-            return { success: false, data: currentData, error: result.error, steps: stepRecords }
+            const timing = pipelineTiming()
+            this.analytics.onPipelineComplete(this.config.name, timing.duration)
+            return {
+              success: false,
+              data: currentData,
+              error: result.error,
+              steps: stepRecords,
+              timing,
+            }
           }
           pipelineSuccess = false
         } else {
           const skipped = result.analytics?.skipped === true
-          stepRecords.push({ name: step.name, skipped, checks: result.checks })
+          stepRecords.push({
+            name: step.name,
+            skipped,
+            checks: result.checks,
+            timing: result.timing,
+          })
 
           // Always merge enriched data so subsequent steps and checks see the
           // full context, even when this step's checks failed.
@@ -188,22 +205,24 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
             const message =
               stoppingCheck?.result.message ??
               (stoppingCheck?.name ? `Check "${stoppingCheck.name}" failed` : `Check failed`)
-            this.analytics.onPipelineComplete(this.config.name, Date.now() - pipelineStartTime)
+            const timing = pipelineTiming()
+            this.analytics.onPipelineComplete(this.config.name, timing.duration)
             return {
               success: false,
               data: currentData,
               error: new Error(message),
               steps: stepRecords,
+              timing,
             }
           }
         }
       }
 
-      const totalDuration = Date.now() - pipelineStartTime
-      this.analytics.onPipelineComplete(this.config.name, totalDuration)
+      const timing = pipelineTiming()
+      this.analytics.onPipelineComplete(this.config.name, timing.duration)
 
       if (pipelineSuccess) {
-        return { success: true, data: currentData, steps: stepRecords }
+        return { success: true, data: currentData, steps: stepRecords, timing }
       }
 
       return {
@@ -211,11 +230,18 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
         data: currentData,
         error: new Error('One or more step checks failed'),
         steps: stepRecords,
+        timing,
       }
     } catch (error) {
       const pipelineError = error instanceof Error ? error : new Error(String(error))
       this.analytics.onPipelineError(this.config.name, pipelineError)
-      return { success: false, data: currentData, error: pipelineError, steps: stepRecords }
+      return {
+        success: false,
+        data: currentData,
+        error: pipelineError,
+        steps: stepRecords,
+        timing: pipelineTiming(),
+      }
     }
   }
 

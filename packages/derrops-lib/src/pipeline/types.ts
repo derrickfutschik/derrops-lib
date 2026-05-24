@@ -153,6 +153,19 @@ export type CheckRecord = {
 }
 
 /**
+ * Timing metrics captured for a step or the pipeline as a whole.
+ *
+ * @property startedAt  - Unix timestamp (ms) when execution began.
+ * @property finishedAt - Unix timestamp (ms) when execution completed.
+ * @property duration   - Elapsed milliseconds (`finishedAt - startedAt`).
+ */
+export type Timing = {
+  startedAt: number
+  finishedAt: number
+  duration: number
+}
+
+/**
  * Summary of a single step's execution, included in `PipelineResult.steps`.
  *
  * Every step that was visited during a pipeline run — including skipped and
@@ -164,11 +177,13 @@ export type CheckRecord = {
  * @property skipped - `true` when `shouldRun` returned `false` and the step was bypassed.
  * @property checks  - Ordered list of check outcomes. Empty if execute threw or no checks
  *                     were attached. NONE-status records are present for skipped steps.
+ * @property timing  - Wall-clock metrics for this step's execution.
  */
 export type StepRecord = {
   name: string
   skipped: boolean
   checks: CheckRecord[]
+  timing: Timing
 }
 
 /**
@@ -198,6 +213,7 @@ export type StepResult<TOutput = unknown> =
       allChecksPassed: boolean
       /** `true` when the step's policy says to halt the pipeline. */
       shouldStop: boolean
+      timing: Timing
     }
   | {
       success: false
@@ -206,6 +222,7 @@ export type StepResult<TOutput = unknown> =
       analytics?: Record<string, unknown>
       /** `true` when the step's policy says to halt the pipeline. */
       shouldStop: boolean
+      timing: Timing
     }
 
 /**
@@ -231,7 +248,7 @@ export type StepResult<TOutput = unknown> =
  * @template TData - The fully accumulated data type after all steps
  */
 export type PipelineResult<TData = unknown> =
-  | { success: true; data: TData; steps: StepRecord[] }
+  | { success: true; data: TData; steps: StepRecord[]; timing: Timing }
   | {
       success: false
       data: TData
@@ -239,6 +256,7 @@ export type PipelineResult<TData = unknown> =
        *  failing check message on a step whose policy is `failure: 'STOP'`. */
       error: Error
       steps: StepRecord[]
+      timing: Timing
     }
 
 /**
