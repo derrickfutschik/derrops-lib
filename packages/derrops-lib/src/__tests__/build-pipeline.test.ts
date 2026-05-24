@@ -354,23 +354,21 @@ describe('build pipeline', () => {
     })
   })
 
-  describe('continueOnError', () => {
-    it('continues to subsequent steps when continueOnError is true', async () => {
+  describe('policy.error: CONTINUE', () => {
+    it('continues to subsequent steps when the failing step has policy.error CONTINUE', async () => {
       const secondExecute = jest.fn<() => Promise<CompileOutput>>().mockResolvedValue({
         compiledFiles: [],
         compileDuration: 0,
         typeErrors: 0,
       })
 
-      const pipeline = createPipeline<ProjectConfig>({
-        name: 'Continue On Error',
-        continueOnError: true,
-      })
+      const pipeline = createPipeline<ProjectConfig>({ name: 'Continue On Error' })
         .step<LintOutput>({
           name: 'Lint',
           execute: async () => {
             throw new Error('lint failed')
           },
+          policy: { error: 'CONTINUE' },
         })
         .step<CompileOutput>({
           name: 'Compile',

@@ -1,6 +1,8 @@
 // Core types
 export {
   Enrich,
+  ContinuePolicyValue,
+  ContinuePolicy,
   StepContext,
   StepResult,
   StepCondition,
@@ -17,5 +19,5 @@ export {
 } from './core/types'
 
 // Core classes
-export { Step } from './core/step'
+export { Step, StepTimeoutError } from './core/step'
 export { SequentialPipeline, createPipeline } from './core/pipeline'

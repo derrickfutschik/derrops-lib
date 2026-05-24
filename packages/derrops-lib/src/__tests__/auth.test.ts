@@ -20,11 +20,11 @@ describe('user authentication and access pipeline', () => {
         execute: async (input) => ({
           ipCheck: checkIpAddress(input.authContext.ipAddress),
         }),
+        policy: { failure: 'CONTINUE' },
       })
       .check('IP not malicious', (ctx) => ({
         success: ctx.ipCheck.isMalicious === false,
         message: `IP Address ${ctx.authContext.ipAddress} malicious==${ctx.ipCheck.isMalicious}`,
-        continue: true,
       }))
 
       .step({
@@ -32,11 +32,11 @@ describe('user authentication and access pipeline', () => {
         execute: async (input) => ({
           accessedTenant: lookupTenant(input.authContext.domain),
         }),
+        policy: { failure: 'CONTINUE' },
       })
       .check('Tenant exists', (ctx) => ({
         success: ctx.accessedTenant !== undefined,
         message: `Tenant ${ctx.accessedTenant?.tenantName ?? 'NOT FOUND'} found`,
-        continue: true,
       }))
 
       .step({
@@ -48,11 +48,11 @@ describe('user authentication and access pipeline', () => {
             input.authContext.ipAddress,
           ),
         }),
+        policy: { failure: 'CONTINUE' },
       })
       .check('IP whitelisted for tenant', (ctx) => ({
         success: ctx.tenantIPWhitelistCheck.isWhitelisted,
         message: `Tenant ${ctx.accessedTenant?.tenantName ?? 'NOT FOUND'} IP is whitelisted`,
-        continue: true,
       }))
 
       .execute({ authContext })
@@ -99,7 +99,7 @@ describe('user authentication and access pipeline', () => {
   })
 })
 
-describe('multiple checks per step — all run even when continue: false', () => {
+describe('multiple checks per step — all run even when policy stops the pipeline', () => {
   it('runs all checks on the step before stopping the pipeline', async () => {
     const checkOrder: string[] = []
 
@@ -107,18 +107,19 @@ describe('multiple checks per step — all run even when continue: false', () =>
       .step({
         name: 'Compute',
         execute: async (input) => ({ doubled: input.value * 2 }),
+        // default policy: failure: 'STOP'
       })
       .check('Always passes', (_ctx) => {
         checkOrder.push('always-passes')
-        return { success: true, continue: true }
+        return { success: true }
       })
       .check('Fails — stop pipeline', (_ctx) => {
         checkOrder.push('fails-stop')
-        return { success: false, message: 'Value too large', continue: false }
+        return { success: false, message: 'Value too large' }
       })
-      .check('Also fails — continue', (_ctx) => {
-        checkOrder.push('also-fails-continue')
-        return { success: false, message: 'Another issue', continue: true }
+      .check('Also fails', (_ctx) => {
+        checkOrder.push('also-fails')
+        return { success: false, message: 'Another issue' }
       })
       .step({
         name: 'Should not run',
@@ -126,7 +127,7 @@ describe('multiple checks per step — all run even when continue: false', () =>
       })
       .execute({ value: 100 })
 
-    expect(checkOrder).toEqual(['always-passes', 'fails-stop', 'also-fails-continue'])
+    expect(checkOrder).toEqual(['always-passes', 'fails-stop', 'also-fails'])
 
     expect(result.success).toBe(false)
     expect(result.steps).toHaveLength(1)
@@ -138,11 +139,11 @@ describe('multiple checks per step — all run even when continue: false', () =>
     })
     expect(result.steps[0].checks[1]).toMatchObject({
       name: 'Fails — stop pipeline',
-      result: { status: 'FAIL', continue: false },
+      result: { status: 'FAIL' },
     })
     expect(result.steps[0].checks[2]).toMatchObject({
-      name: 'Also fails — continue',
-      result: { status: 'FAIL', continue: true },
+      name: 'Also fails',
+      result: { status: 'FAIL' },
     })
 
     if (!result.success) {
@@ -161,7 +162,7 @@ describe('check ERROR status', () => {
       .check('Throws unexpectedly', (_ctx) => {
         throw new Error('check exploded')
       })
-      .check('Would pass', (_ctx) => ({ success: true, continue: true }))
+      .check('Would pass', (_ctx) => ({ success: true }))
       .step({
         name: 'Step B',
         execute: async (_input) => ({ z: 99 }),
