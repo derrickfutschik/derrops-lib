@@ -116,13 +116,29 @@ export type CheckResult = {
  * current step's output — every field from previous steps and this step is
  * available at the top level.
  *
+ * The optional `steps` argument contains the fully completed `StepRecord` for
+ * every step that finished before the current one. Use it to branch on earlier
+ * outcomes without re-querying data.
+ *
  * @template TData - The enriched data type at the point the check runs
  *
  * @example
  * const isWhitelisted: CheckFn<{ ip: string; whitelist: string[] }> =
  *   (ctx) => ({ success: ctx.whitelist.includes(ctx.ip) })
+ *
+ * @example
+ * // Skip the check when a preceding step was skipped
+ * const onlyIfFetched: CheckFn<{ user?: User }> =
+ *   (ctx, steps) => ({
+ *     success: steps?.find(s => s.name === 'Fetch User')?.skipped
+ *       ? true
+ *       : ctx.user != null,
+ *   })
  */
-export type CheckFn<TData> = (ctx: TData) => CheckFnResult | Promise<CheckFnResult>
+export type CheckFn<TData> = (
+  ctx: TData,
+  steps?: readonly StepRecord[],
+) => CheckFnResult | Promise<CheckFnResult>
 
 /**
  * A single entry in `StepRecord.checks`, pairing an optional display name with
@@ -290,7 +306,7 @@ export type AnalyticsCollector = {
  */
 export type StepConfig<TAccumulated, TOutput> = {
   name?: string
-  execute: (input: TAccumulated) => Promise<TOutput> | TOutput
+  execute: (input: TAccumulated, steps?: readonly StepRecord[]) => Promise<TOutput> | TOutput
   shouldRun?: StepCondition<TAccumulated>
   onSuccess?: (output: TOutput, accumulated: TAccumulated) => void | Promise<void>
   onFailure?: (error: Error, input: TAccumulated) => void | Promise<void>

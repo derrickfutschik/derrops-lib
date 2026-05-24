@@ -159,7 +159,7 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
           },
         }
 
-        const result = await step.execute(context, this.analytics)
+        const result = await step.execute(context, this.analytics, [...stepRecords])
         executedSteps.push(step.name)
 
         if (!result.success) {
