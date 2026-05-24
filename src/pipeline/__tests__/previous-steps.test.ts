@@ -13,7 +13,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Step A',
           execute: (_input, steps) => {
-            capturedSteps.push(steps ?? [])
+            capturedSteps.push(steps)
             return { a: 1 }
           },
         })
@@ -30,7 +30,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Step B',
           execute: (_input, steps) => {
-            capturedSteps.push(steps ?? [])
+            capturedSteps.push(steps)
             return { b: 2 }
           },
         })
@@ -50,7 +50,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Step C',
           execute: (_input, steps) => {
-            capturedSteps.push(steps ?? [])
+            capturedSteps.push(steps)
             return { c: 3 }
           },
         })
@@ -74,7 +74,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Step C',
           execute: (_input, steps) => {
-            capturedSteps.push(steps ?? [])
+            capturedSteps.push(steps)
             return { c: 3 }
           },
         })
@@ -91,7 +91,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Enrich',
           execute: (_input, steps) => {
-            const fetchSkipped = steps?.find((s) => s.name === 'Fetch')?.skipped ?? false
+            const fetchSkipped = steps.find((s) => s.name === 'Fetch')?.skipped ?? false
             return { source: fetchSkipped ? 'cache' : 'remote' }
           },
         })
@@ -109,7 +109,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Decide',
           execute: (_input, steps) => {
-            const validateRecord = steps?.find((s) => s.name === 'Validate')
+            const validateRecord = steps.find((s) => s.name === 'Validate')
             const checkPassed = validateRecord?.checks[0]?.result.status === 'PASS'
             return { approved: checkPassed }
           },
@@ -128,7 +128,7 @@ describe('previous steps parameter', () => {
         .step({
           name: 'Only Step',
           execute: (_input, steps) => {
-            capturedNames.push(...(steps ?? []).map((s) => s.name))
+            capturedNames.push(...steps.map((s) => s.name))
             return {}
           },
         })
@@ -145,7 +145,7 @@ describe('previous steps parameter', () => {
       await createPipeline<Input>({ name: 'P' })
         .step({ name: 'Step A', execute: () => ({ a: 1 }) })
         .check((_ctx, steps) => {
-          capturedSteps.push(steps ?? [])
+          capturedSteps.push(steps)
           return { success: true }
         })
         .execute({ id: 'x' })
@@ -160,7 +160,7 @@ describe('previous steps parameter', () => {
         .step({ name: 'Step A', execute: () => ({ a: 1 }) })
         .step({ name: 'Step B', execute: () => ({ b: 2 }) })
         .check((_ctx, steps) => {
-          capturedSteps.push(steps ?? [])
+          capturedSteps.push(steps)
           return { success: true }
         })
         .execute({ id: 'x' })
@@ -174,7 +174,7 @@ describe('previous steps parameter', () => {
         .step({ name: 'Auth', execute: () => ({ token: '' }), shouldRun: () => false })
         .step({ name: 'Action', execute: () => ({ done: true }) })
         .check('Auth ran', (_ctx, steps) => ({
-          success: steps?.find((s) => s.name === 'Auth')?.skipped === false,
+          success: steps.find((s) => s.name === 'Auth')?.skipped === false,
           message: 'Auth step was skipped',
         }))
         .execute({ id: 'x' })
@@ -191,11 +191,11 @@ describe('previous steps parameter', () => {
         .step({ name: 'Step A', execute: () => ({ a: 1 }) })
         .step({ name: 'Step B', execute: () => ({ b: 2 }) })
         .check((_ctx, steps) => {
-          snapshots.push(steps ?? [])
+          snapshots.push(steps)
           return { success: true }
         })
         .check((_ctx, steps) => {
-          snapshots.push(steps ?? [])
+          snapshots.push(steps)
           return { success: true }
         })
         .execute({ id: 'x' })
