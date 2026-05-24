@@ -137,7 +137,7 @@ export type CheckResult = {
  */
 export type CheckFn<TData> = (
   ctx: TData,
-  steps?: readonly StepRecord[],
+  steps: readonly StepRecord[],
 ) => CheckFnResult | Promise<CheckFnResult>
 
 /**
@@ -324,7 +324,7 @@ export type AnalyticsCollector = {
  */
 export type StepConfig<TAccumulated, TOutput> = {
   name?: string
-  execute: (input: TAccumulated, steps?: readonly StepRecord[]) => Promise<TOutput> | TOutput
+  execute: (input: TAccumulated, steps: readonly StepRecord[]) => Promise<TOutput> | TOutput
   shouldRun?: StepCondition<TAccumulated>
   onSuccess?: (output: TOutput, accumulated: TAccumulated) => void | Promise<void>
   onFailure?: (error: Error, input: TAccumulated) => void | Promise<void>
