@@ -5,6 +5,7 @@ import {
   ContinuePolicy,
   StepConfig,
   StepContext,
+  StepRecord,
   StepResult,
   Enrich,
   AnalyticsCollector,
@@ -99,6 +100,7 @@ export class Step<TAccumulated, TOutput> {
   async execute(
     context: StepContext<TAccumulated>,
     analytics: AnalyticsCollector,
+    previousStepRecords: readonly StepRecord[] = [],
   ): Promise<StepResult<Enrich<TAccumulated, TOutput>>> {
     const name = this.name
     const { execute, shouldRun, onSuccess, onFailure, retries = 0, timeout } = this.config
@@ -131,8 +133,8 @@ export class Step<TAccumulated, TOutput> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const executeWithTimeout = timeout
-          ? this.withTimeout(Promise.resolve(execute(context.data)), timeout)
-          : Promise.resolve(execute(context.data))
+          ? this.withTimeout(Promise.resolve(execute(context.data, previousStepRecords)), timeout)
+          : Promise.resolve(execute(context.data, previousStepRecords))
 
         const result = await executeWithTimeout
         const duration = Date.now() - startTime
@@ -150,7 +152,7 @@ export class Step<TAccumulated, TOutput> {
         for (const check of this.checks) {
           let checkResult: CheckResult
           try {
-            const fnResult = await check.fn(enrichedData)
+            const fnResult = await check.fn(enrichedData, previousStepRecords)
             checkResult = {
               status: fnResult.success ? 'PASS' : 'FAIL',
               message: fnResult.message,
