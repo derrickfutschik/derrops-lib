@@ -1,12 +1,12 @@
 # Pipeline Builder
 
-A type-safe TypeScript library for building sequential data-enrichment pipelines. Each step receives everything accumulated so far, adds its own output, and passes the merged result to the next step. Checks can be attached to any step to assert business-logic conditions — with fine-grained control over whether a failing check stops the pipeline or lets it keep running.
+A type-safe TypeScript library for building sequential data-enrichment pipelines. Each step receives everything accumulated so far, adds its own output, and passes the merged result to the next step. Checks can be attached to any step to assert business-logic conditions — and each step's `ContinuePolicy` controls what happens when something goes wrong.
 
 ## Features
 
 - **Type-safe enrichment** — each step's output is merged into the accumulated type; TypeScript tracks the shape automatically so every subsequent step and check is fully typed
 - **Chainable checks** — attach multiple named checks to any step via `.check(name, fn)`; checks run after execute and produce a rich `PASS | FAIL | ERROR | NONE` status
-- **Granular pipeline control** — checks with `continue: true` mark the pipeline as failed but let subsequent steps keep running (useful for audit/logging pipelines that need to gather all context before making a decision)
+- **`ContinuePolicy` per step** — declare how the pipeline should handle each failure mode (`error`, `failure`, `timeout`) directly on the step; all default to `STOP`
 - **Conditional execution** — `shouldRun` predicates skip a step; its checks are recorded as `NONE`
 - **Retries & timeouts** — configurable per step
 - **Lifecycle callbacks** — `onSuccess` / `onFailure` hooks per step
@@ -48,7 +48,6 @@ Creates a new pipeline. `TInitial` is the shape passed to `.execute()`.
 const pipeline = createPipeline<{ userId: string }>({
   name: 'My Pipeline',
   analytics: myAnalytics, // optional — see Analytics section
-  continueOnError: false, // optional, default: false
 })
 ```
 
@@ -75,6 +74,13 @@ pipeline.step({
 
   retries: 2, // additional attempts on throw (0 = one attempt total)
   timeout: 5000, // ms limit per attempt
+
+  // What to do when this step fails — all default to 'STOP'
+  policy: {
+    error: 'STOP', // execute threw a non-timeout exception
+    failure: 'CONTINUE', // a check returned success: false
+    timeout: 'STOP', // execute exceeded the timeout
+  },
 })
 ```
 
@@ -92,16 +98,18 @@ Attaches a check to the most recently added step. Multiple `.check()` calls stac
 
 ```typescript
 pipeline
-  .step({ name: 'Validate', execute: async (ctx) => ({ score: computeScore(ctx) }) })
+  .step({
+    name: 'Validate',
+    execute: async (ctx) => ({ score: computeScore(ctx) }),
+    policy: { failure: 'STOP' }, // stop on any check failure (this is the default)
+  })
   .check('Score positive', (ctx) => ({
     success: ctx.score > 0,
     message: `Score was ${ctx.score}`,
-    continue: false, // stop the pipeline on failure
   }))
   .check('Score below limit', (ctx) => ({
     success: ctx.score < 1000,
     message: `Score ${ctx.score} exceeds limit`,
-    continue: true, // keep running even if this fails
   }))
 ```
 
@@ -109,19 +117,18 @@ The check function receives the fully enriched data object — every field from 
 
 **`CheckFnResult` fields:**
 
-| Field      | Type      | Description                                                                                        |
-| ---------- | --------- | -------------------------------------------------------------------------------------------------- |
-| `success`  | `boolean` | Whether the assertion passed                                                                       |
-| `message`  | `string?` | Human-readable reason; used as the pipeline error message when `continue` is `false`               |
-| `continue` | `boolean` | `false` → stop pipeline after all checks on this step finish; `true` → keep running even if failed |
+| Field     | Type      | Description                                                       |
+| --------- | --------- | ----------------------------------------------------------------- |
+| `success` | `boolean` | Whether the assertion passed                                      |
+| `message` | `string?` | Human-readable reason; used as the pipeline error message on halt |
 
-> All checks on a step always run to completion, even when an earlier check sets `continue: false`. The pipeline halts _after_ the step, never mid-step.
+> All checks on a step always run to completion before the pipeline evaluates whether to halt — the pipeline never stops mid-step.
 
 ---
 
 ### `.execute(initialInput)`
 
-Runs the pipeline and returns a `FlowResult`.
+Runs the pipeline and returns a `PipelineResult`.
 
 ```typescript
 const result = await pipeline.execute({ userId: 'u-1' })
@@ -134,7 +141,7 @@ if (!result.success) {
 }
 ```
 
-**`FlowResult<TData>`:**
+**`PipelineResult<TData>`:**
 
 ```typescript
 type PipelineResult<TData> =
@@ -150,12 +157,14 @@ type PipelineResult<TData> =
 
 Every check produces a `CheckResult` with a `status` field:
 
-| Status  | Meaning                                                                  |
-| ------- | ------------------------------------------------------------------------ |
-| `PASS`  | Check ran and returned `success: true`                                   |
-| `FAIL`  | Check ran and returned `success: false`                                  |
-| `ERROR` | Check function threw an unexpected error; `continue` defaults to `false` |
-| `NONE`  | Check did not run because its step was skipped via `shouldRun`           |
+| Status  | Meaning                                                        |
+| ------- | -------------------------------------------------------------- |
+| `PASS`  | Check ran and returned `success: true`                         |
+| `FAIL`  | Check ran and returned `success: false`                        |
+| `ERROR` | Check function threw an unexpected error                       |
+| `NONE`  | Check did not run because its step was skipped via `shouldRun` |
+
+Whether a `FAIL` or `ERROR` halts the pipeline is controlled by `policy.failure` and `policy.error` on the step — not by the check result itself.
 
 Inspect check outcomes via `result.steps`:
 
@@ -199,7 +208,7 @@ TypeScript tracks this at compile time — every step and check has full autocom
 
 ## Access Control Example
 
-The check system is particularly useful for pipelines that need to collect as much diagnostic context as possible before making an access decision, even when individual checks fail:
+`policy: { failure: 'CONTINUE' }` lets the pipeline keep running after a check fails, collecting as much context as possible before a final denial decision:
 
 ```typescript
 type AuthCtx = { authContext: { domain: string; ipAddress: string } }
@@ -208,24 +217,23 @@ const pipeline = createPipeline<AuthCtx>({ name: 'Auth Pipeline' })
   .step({
     name: 'IP Lookup',
     execute: async (ctx) => ({ ipCheck: await lookupIp(ctx.authContext.ipAddress) }),
+    policy: { failure: 'CONTINUE' }, // keep going even if IP check fails
   })
   .check('IP not malicious', (ctx) => ({
     success: !ctx.ipCheck.isMalicious,
     message: `IP ${ctx.authContext.ipAddress} flagged as malicious`,
-    continue: true, // keep going to gather more context
   }))
 
   .step({
     name: 'Resolve Tenant',
     execute: async (ctx) => ({ tenant: await findTenant(ctx.authContext.domain) }),
+    policy: { failure: 'CONTINUE' }, // keep going even if tenant lookup fails
   })
   .check('Tenant exists', (ctx) => ({
     success: ctx.tenant !== undefined,
-    continue: true,
   }))
   .check('IP whitelisted', (ctx) => ({
     success: ctx.tenant?.allowedIps.includes(ctx.authContext.ipAddress) ?? false,
-    continue: true,
   }))
 
 const result = await pipeline.execute({
@@ -266,9 +274,12 @@ pipeline.step({
   execute: async (ctx) => fetchWithRetry(ctx.url),
   retries: 3, // up to 4 total attempts
   timeout: 2000, // each attempt must complete within 2 s
+  policy: { timeout: 'CONTINUE' }, // keep going if it times out
   onFailure: (err, ctx) => logger.error('All retries failed', { err, ctx }),
 })
 ```
+
+Timeouts throw a `StepTimeoutError` (a subclass of `Error`), which lets the policy distinguish between a timeout and a regular execute error.
 
 ---
 

@@ -2,6 +2,7 @@ import {
   CheckFn,
   CheckRecord,
   CheckResult,
+  ContinuePolicy,
   StepConfig,
   StepContext,
   StepResult,
@@ -12,14 +13,30 @@ import {
 /** Internal normalized form of a check — name resolved, fn unwrapped. */
 type NormalizedCheck<TData> = { name?: string; fn: CheckFn<TData> }
 
+/** Resolved policy with all fields filled in — no optionals. */
+type ResolvedPolicy = Required<ContinuePolicy>
+
+const DEFAULT_POLICY: ResolvedPolicy = { error: 'STOP', failure: 'STOP', timeout: 'STOP' }
+
+/**
+ * Thrown by `withTimeout` so the step can distinguish a timeout from a regular
+ * execute error when evaluating `policy.timeout` vs `policy.error`.
+ */
+export class StepTimeoutError extends Error {
+  constructor(ms: number) {
+    super(`Timeout after ${ms}ms`)
+    this.name = 'StepTimeoutError'
+  }
+}
+
 /**
  * Represents a single step in a pipeline.
  *
  * A step holds its `StepConfig` (execute function, shouldRun guard, callbacks,
- * retries, timeout) plus an ordered list of checks added via the builder's
- * `.check()` method. Instances are created by `SequentialPipeline.step()` and are
- * immutable after construction — `withCheck()` returns a new `Step` rather than
- * mutating the existing one.
+ * retries, timeout, policy) plus an ordered list of checks added via the
+ * builder's `.check()` method. Instances are created by `SequentialPipeline.step()`
+ * and are immutable after construction — `withCheck()` returns a new `Step`
+ * rather than mutating the existing one.
  *
  * @template TAccumulated - All data present before this step runs
  * @template TOutput      - The new data shape produced by this step's `execute`
@@ -69,7 +86,10 @@ export class Step<TAccumulated, TOutput> {
    *    order. Each check is wrapped in its own try/catch — a throwing check
    *    produces an `ERROR` record rather than aborting the remaining checks.
    * 4. On execute failure (all retries exhausted): call `onFailure` and return
-   *    `{ success: false }`. Checks do not run.
+   *    a result whose `shouldStop` reflects `policy.error` / `policy.timeout`.
+   *
+   * All checks on a step always run to completion regardless of failure — the
+   * step only signals `shouldStop` after every check has been recorded.
    *
    * The `analytics` collector is notified at the start, on completion, and on skip.
    *
@@ -82,15 +102,15 @@ export class Step<TAccumulated, TOutput> {
   ): Promise<StepResult<Enrich<TAccumulated, TOutput>>> {
     const name = this.name
     const { execute, shouldRun, onSuccess, onFailure, retries = 0, timeout } = this.config
+    const policy: ResolvedPolicy = { ...DEFAULT_POLICY, ...this.config.policy }
 
     if (shouldRun) {
       const should = await shouldRun(context)
       if (!should) {
         analytics.onStepSkipped(name, 'Condition not met')
-        // Checks get NONE status when the step is skipped — they didn't run, not failed
         const noneChecks: CheckRecord[] = this.checks.map((check) => ({
           name: check.name,
-          result: { status: 'NONE' as const, continue: true },
+          result: { status: 'NONE' as const },
         }))
         return {
           success: true,
@@ -121,9 +141,8 @@ export class Step<TAccumulated, TOutput> {
 
         await onSuccess?.(result, context.data)
 
-        // All checks for this step always run, even if an earlier check sets
-        // shouldStop. This ensures every check is recorded before the pipeline halts,
-        // giving callers the full picture for diagnostics and audit logging.
+        // All checks always run, even after one fails with policy.failure = 'STOP',
+        // so every check is recorded before the pipeline halts.
         const checkRecords: CheckRecord[] = []
         let allChecksPassed = true
         let shouldStop = false
@@ -135,29 +154,17 @@ export class Step<TAccumulated, TOutput> {
             checkResult = {
               status: fnResult.success ? 'PASS' : 'FAIL',
               message: fnResult.message,
-              continue: fnResult.continue,
             }
           } catch (err) {
-            // An unexpected throw in a check fn is recorded as ERROR with
-            // continue: false so the pipeline stops rather than silently proceeding
-            // with an unknown check outcome.
             const checkError = err instanceof Error ? err : new Error(String(err))
-            checkResult = {
-              status: 'ERROR',
-              message: checkError.message,
-              continue: false,
-              error: checkError,
-            }
+            checkResult = { status: 'ERROR', message: checkError.message, error: checkError }
           }
 
           checkRecords.push({ name: check.name, result: checkResult })
 
-          if (checkResult.status !== 'PASS') {
-            allChecksPassed = false
-            if (!checkResult.continue) {
-              shouldStop = true
-            }
-          }
+          if (checkResult.status === 'FAIL' && policy.failure === 'STOP') shouldStop = true
+          if (checkResult.status === 'ERROR' && policy.error === 'STOP') shouldStop = true
+          if (checkResult.status !== 'PASS') allChecksPassed = false
         }
 
         const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
@@ -179,9 +186,13 @@ export class Step<TAccumulated, TOutput> {
           const duration = Date.now() - startTime
           await onFailure?.(lastError, context.data)
 
+          const isTimeout = lastError instanceof StepTimeoutError
+          const shouldStop = isTimeout ? policy.timeout === 'STOP' : policy.error === 'STOP'
+
           const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
             success: false,
             error: lastError,
+            shouldStop,
             analytics: { attempts: attempt + 1, duration },
           }
 
@@ -195,16 +206,11 @@ export class Step<TAccumulated, TOutput> {
     throw lastError!
   }
 
-  /**
-   * Races `promise` against a rejection timer.
-   * Used to enforce `StepConfig.timeout` on individual execute attempts.
-   */
+  /** Races `promise` against a `StepTimeoutError` so timeouts are distinguishable from errors. */
   private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     return Promise.race([
       promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms),
-      ),
+      new Promise<T>((_, reject) => setTimeout(() => reject(new StepTimeoutError(ms)), ms)),
     ])
   }
 }

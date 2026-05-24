@@ -14,6 +14,29 @@
 export type Enrich<TAccumulated, TNew> = TAccumulated & TNew
 
 /**
+ * Controls what the pipeline does when a specific failure mode occurs on a step.
+ * All fields default to `'STOP'` — omit a field to keep the default.
+ *
+ * @property error   - `execute` threw an exception (non-timeout). Default: `STOP`.
+ * @property failure - A check returned `success: false`. Default: `STOP`.
+ * @property timeout - `execute` exceeded its configured `timeout`. Default: `STOP`.
+ *
+ * @example
+ * // Keep running after check failures so subsequent steps can enrich the context
+ * policy: { failure: 'CONTINUE' }
+ *
+ * // Keep running after any kind of step failure
+ * policy: { error: 'CONTINUE', failure: 'CONTINUE', timeout: 'CONTINUE' }
+ */
+export type ContinuePolicyValue = 'CONTINUE' | 'STOP'
+
+export type ContinuePolicy = {
+  error?: ContinuePolicyValue
+  failure?: ContinuePolicyValue
+  timeout?: ContinuePolicyValue
+}
+
+/**
  * Execution context passed to `shouldRun` predicates.
  *
  * `data` holds everything accumulated from the initial input plus all
@@ -42,28 +65,27 @@ export type StepContext<TData = unknown> = {
  * recording it — callers never interact with `CheckFnResult` directly after the
  * check function returns.
  *
- * @property success  - Whether the business-logic assertion passed.
- * @property message  - Optional human-readable reason, surfaced in `CheckResult.message`
- *                      and used as the pipeline error message when `continue` is false.
- * @property continue - When `false` and `success` is `false`, the pipeline stops after
- *                      all remaining checks on the current step have run. When `true`
- *                      the pipeline keeps going even though this check failed, allowing
- *                      subsequent steps to enrich the context for logging.
+ * Whether a failing check stops the pipeline is controlled by the step's
+ * `policy.failure` setting, not by the check return value itself.
+ *
+ * @property success - Whether the business-logic assertion passed.
+ * @property message - Optional human-readable reason, surfaced in `CheckResult.message`
+ *                     and used as the pipeline error message when the step policy stops
+ *                     the pipeline.
  */
 export type CheckFnResult = {
   success: boolean
   message?: string
-  continue: boolean
 }
 
 /**
  * Rich status recorded for each check after execution.
  *
- * | Status  | Meaning                                                   |
- * |---------|-----------------------------------------------------------|
- * | `PASS`  | Check ran and `success` was `true`                        |
- * | `FAIL`  | Check ran and `success` was `false`                       |
- * | `ERROR` | Check function threw an unexpected error                  |
+ * | Status  | Meaning                                                        |
+ * |---------|----------------------------------------------------------------|
+ * | `PASS`  | Check ran and `success` was `true`                             |
+ * | `FAIL`  | Check ran and `success` was `false`                            |
+ * | `ERROR` | Check function threw an unexpected error                       |
  * | `NONE`  | Check did not run because its step was skipped via `shouldRun` |
  */
 export type CheckStatus = 'PASS' | 'FAIL' | 'ERROR' | 'NONE'
@@ -72,20 +94,17 @@ export type CheckStatus = 'PASS' | 'FAIL' | 'ERROR' | 'NONE'
  * The recorded outcome of a single check, stored in `CheckRecord.result`.
  *
  * Inspect `status` first to understand what happened, then use `message` and
- * `error` for diagnostics.
+ * `error` for diagnostics. Whether the pipeline stopped after this check is
+ * determined by the step's `ContinuePolicy`, not stored here.
  *
- * @property status   - One of `PASS | FAIL | ERROR | NONE` (see `CheckStatus`).
- * @property message  - Human-readable description of the outcome, sourced from
- *                      `CheckFnResult.message` or the thrown error's message.
- * @property continue - Mirrors the value returned by the check function.
- *                      Always `true` for `NONE` checks (step never ran).
- *                      Always `false` for `ERROR` checks (safe default).
- * @property error    - The thrown `Error` object. Present only when `status` is `ERROR`.
+ * @property status  - One of `PASS | FAIL | ERROR | NONE` (see `CheckStatus`).
+ * @property message - Human-readable description of the outcome, sourced from
+ *                     `CheckFnResult.message` or the thrown error's message.
+ * @property error   - The thrown `Error` object. Present only when `status` is `ERROR`.
  */
 export type CheckResult = {
   status: CheckStatus
   message?: string
-  continue: boolean
   error?: Error
 }
 
@@ -101,7 +120,7 @@ export type CheckResult = {
  *
  * @example
  * const isWhitelisted: CheckFn<{ ip: string; whitelist: string[] }> =
- *   (ctx) => ({ success: ctx.whitelist.includes(ctx.ip), continue: true })
+ *   (ctx) => ({ success: ctx.whitelist.includes(ctx.ip) })
  */
 export type CheckFn<TData> = (ctx: TData) => CheckFnResult | Promise<CheckFnResult>
 
@@ -146,6 +165,9 @@ export type StepRecord = {
  * execute error (`success: false`) and a successful execute where checks may
  * still have failed (`success: true` with `allChecksPassed: false`).
  *
+ * `shouldStop` is set on both branches: the step resolves its own `ContinuePolicy`
+ * so the pipeline can remain policy-agnostic and simply read this flag.
+ *
  * @template TOutput - The enriched data type this step produced
  */
 export type StepResult<TOutput = unknown> =
@@ -158,10 +180,7 @@ export type StepResult<TOutput = unknown> =
       checks: CheckRecord[]
       /** `false` if any check has status FAIL or ERROR. */
       allChecksPassed: boolean
-      /**
-       * `true` when any check returned `continue: false` with a non-PASS status.
-       * Signals the pipeline to halt before processing the next step.
-       */
+      /** `true` when the step's policy says to halt the pipeline. */
       shouldStop: boolean
     }
   | {
@@ -169,6 +188,8 @@ export type StepResult<TOutput = unknown> =
       /** The error thrown by `execute` (or the final retry attempt). */
       error: Error
       analytics?: Record<string, unknown>
+      /** `true` when the step's policy says to halt the pipeline. */
+      shouldStop: boolean
     }
 
 /**
@@ -198,8 +219,8 @@ export type PipelineResult<TData = unknown> =
   | {
       success: false
       data: TData
-      /** Describes the first blocking failure: a thrown execute error, or the
-       *  message from the first check with `continue: false`. */
+      /** Describes the first halting failure: a thrown execute error or the first
+       *  failing check message on a step whose policy is `failure: 'STOP'`. */
       error: Error
       steps: StepRecord[]
     }
@@ -227,7 +248,7 @@ export type StepCondition<TInput = unknown> = (
  * trace steps, or integrate with external monitoring. All methods are
  * called synchronously from within `Step.execute()` and `SequentialPipeline.execute()`.
  *
- * A default console-logging implementation is used when no analytics are provided.
+ * A default no-op implementation is used when no analytics are provided.
  */
 export type AnalyticsCollector = {
   /** Fired immediately before a step's `execute` function is called. */
@@ -246,7 +267,8 @@ export type AnalyticsCollector = {
  * Configuration for a single step passed to `.step()`.
  *
  * The only required field is `execute`. All other fields are optional and add
- * conditional execution, lifecycle callbacks, retry logic, and timeouts.
+ * conditional execution, lifecycle callbacks, retry logic, timeouts, and
+ * failure-continuation policy.
  *
  * @template TAccumulated - All data accumulated before this step runs
  * @template TOutput      - The new data shape this step produces
@@ -262,6 +284,9 @@ export type AnalyticsCollector = {
  * @property retries   - Number of additional attempts on failure. `0` means one attempt total.
  * @property timeout   - Maximum milliseconds for a single `execute` attempt. Exceeding it
  *                       counts as a failure and triggers the retry/onFailure path.
+ * @property policy    - Controls what happens when this step fails. All fields default to
+ *                       `'STOP'`. Set individual fields to `'CONTINUE'` to let the pipeline
+ *                       keep running after that failure mode.
  */
 export type StepConfig<TAccumulated, TOutput> = {
   name?: string
@@ -271,20 +296,17 @@ export type StepConfig<TAccumulated, TOutput> = {
   onFailure?: (error: Error, input: TAccumulated) => void | Promise<void>
   retries?: number
   timeout?: number
+  policy?: ContinuePolicy
 }
 
 /**
  * Top-level configuration for a pipeline, passed to `createPipeline()`.
  *
- * @property name           - Human-readable name used in analytics events and error messages.
- * @property analytics      - Optional observer for step/pipeline lifecycle events.
- *                            Defaults to a console-logging implementation.
- * @property continueOnError - When `true`, a step whose `execute` throws does not halt the
- *                             pipeline — subsequent steps still run with the data accumulated
- *                             before the failure. Defaults to `false`.
+ * @property name      - Human-readable name used in analytics events and error messages.
+ * @property analytics - Optional observer for step/pipeline lifecycle events.
+ *                       Defaults to a no-op implementation.
  */
 export type PipelineConfig = {
   name: string
   analytics?: AnalyticsCollector
-  continueOnError?: boolean
 }

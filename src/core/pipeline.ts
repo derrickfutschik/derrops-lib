@@ -26,8 +26,8 @@ import {
  *    checks are recorded as `NONE`.
  * 2. `execute` runs (with optional retries and timeout).
  * 3. If execute succeeds, all attached checks run in order.
- * 4. If any check sets `shouldStop`, the pipeline halts after finishing the
- *    remaining checks on that step — subsequent steps do not run.
+ * 4. After all checks, the step's `ContinuePolicy` determines whether the
+ *    pipeline halts or continues.
  *
  * `data` is always present in `PipelineResult`, even when `success` is `false`,
  * so callers can inspect the full enriched context for logging and diagnostics.
@@ -39,7 +39,7 @@ import {
  * ```typescript
  * const result = await createPipeline<{ userId: string }>({ name: 'Onboarding' })
  *   .step({ name: 'Fetch User', execute: async (ctx) => ({ userName: 'Alice' }) })
- *   .check('User active', (ctx) => ({ success: ctx.userName !== '', continue: false }))
+ *   .check('User active', (ctx) => ({ success: ctx.userName !== '' }))
  *   .step({ name: 'Send Welcome', execute: async (ctx) => ({ sent: true }) })
  *   .execute({ userId: 'u-1' })
  * ```
@@ -95,25 +95,20 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
    * fully enriched data object (accumulated input + this step's output) as
    * its single argument.
    *
-   * All checks on a step always run to completion, even when an earlier check
-   * returns `continue: false`. The pipeline halts *after* all checks on the
-   * step have been recorded — never mid-step.
+   * All checks on a step always run to completion before the pipeline evaluates
+   * whether to halt — the pipeline never stops mid-step.
    *
-   * **Returning `{ success: false, continue: true }`** marks the overall pipeline
-   * as failed but lets subsequent steps keep running. Use this to gather as
-   * much diagnostic context as possible before a final denial decision.
-   *
-   * **Returning `{ success: false, continue: false }`** also marks the pipeline as
-   * failed and stops the pipeline before the next step begins.
+   * Whether a failing check stops the pipeline is controlled by the step's
+   * `policy.failure` setting, not by the check return value.
    *
    * @throws {Error} If called before any `.step()` has been added.
    *
    * @example
    * // Anonymous check
-   * .check((ctx) => ({ success: ctx.score > 0, continue: true }))
+   * .check((ctx) => ({ success: ctx.score > 0 }))
    *
    * // Named check — name appears in CheckRecord for easier log inspection
-   * .check('Score positive', (ctx) => ({ success: ctx.score > 0, continue: true }))
+   * .check('Score positive', (ctx) => ({ success: ctx.score > 0 }))
    */
   check(fn: CheckFn<TAccumulated>): SequentialPipeline<TInitial, TAccumulated>
   check(name: string, fn: CheckFn<TAccumulated>): SequentialPipeline<TInitial, TAccumulated>
@@ -165,12 +160,11 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
         }
 
         const result = await step.execute(context, this.analytics)
+        executedSteps.push(step.name)
 
         if (!result.success) {
-          // execute threw — stop unless the pipeline was configured to continue on errors
           stepRecords.push({ name: step.name, skipped: false, checks: [] })
-          executedSteps.push(step.name)
-          if (!this.config.continueOnError) {
+          if (result.shouldStop) {
             this.analytics.onPipelineComplete(this.config.name, Date.now() - pipelineStartTime)
             return { success: false, data: currentData, error: result.error, steps: stepRecords }
           }
@@ -188,14 +182,12 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
           }
 
           if (result.shouldStop) {
-            // Use the message from the first blocking check as the error description
-            const blockingCheck = result.checks.find(
-              (c) =>
-                (c.result.status === 'FAIL' || c.result.status === 'ERROR') && !c.result.continue,
+            const stoppingCheck = result.checks.find(
+              (c) => c.result.status === 'FAIL' || c.result.status === 'ERROR',
             )
             const message =
-              blockingCheck?.result.message ??
-              (blockingCheck?.name ? `Check "${blockingCheck.name}" failed` : `Check failed`)
+              stoppingCheck?.result.message ??
+              (stoppingCheck?.name ? `Check "${stoppingCheck.name}" failed` : `Check failed`)
             this.analytics.onPipelineComplete(this.config.name, Date.now() - pipelineStartTime)
             return {
               success: false,
@@ -204,8 +196,6 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
               steps: stepRecords,
             }
           }
-
-          executedSteps.push(step.name)
         }
       }
 
@@ -248,13 +238,13 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
  * to `pipeline.execute()`. Subsequent `.step()` calls widen the accumulated type
  * automatically via inference.
  *
- * @param config - Pipeline name, optional analytics collector, and error-continuation flag.
+ * @param config - Pipeline name and optional analytics collector.
  *
  * @example
  * ```typescript
  * const pipeline = createPipeline<{ projectName: string }>({ name: 'Build Pipeline' })
  *   .step({ name: 'Lint', execute: async (ctx) => ({ lintErrors: 0 }) })
- *   .check('No lint errors', (ctx) => ({ success: ctx.lintErrors === 0, continue: false }))
+ *   .check('No lint errors', (ctx) => ({ success: ctx.lintErrors === 0 }))
  *   .step({ name: 'Compile', execute: async (ctx) => ({ compiledFiles: ['index.js'] }) })
  *
  * const result = await pipeline.execute({ projectName: 'my-app' })
