@@ -123,6 +123,7 @@ export class Step<TAccumulated, TOutput> {
           checks: noneChecks,
           allChecksPassed: true,
           shouldStop: false,
+          terminal: false,
           timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
         }
       }
@@ -132,8 +133,10 @@ export class Step<TAccumulated, TOutput> {
     const startTime = Date.now()
 
     let lastError: Error | undefined
+    let lastAttempt = 0
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      lastAttempt = attempt
       try {
         const executeWithTimeout = timeout
           ? this.withTimeout(Promise.resolve(execute(context.data, previousStepRecords)), timeout)
@@ -146,19 +149,25 @@ export class Step<TAccumulated, TOutput> {
 
         await onSuccess?.(result, context.data)
 
-        // All checks always run, even after one fails with policy.failure = 'STOP',
-        // so every check is recorded before the pipeline halts.
+        // All checks run in order. A TERMINAL check stops the loop immediately —
+        // remaining checks are recorded as NONE. Non-terminal checks always run
+        // to completion before the pipeline evaluates whether to halt.
         const checkRecords: CheckRecord[] = []
         let allChecksPassed = true
         let shouldStop = false
+        let terminal = false
 
         for (const check of this.checks) {
           let checkResult: CheckResult
           try {
             const fnResult = await check.fn(enrichedData, previousStepRecords)
-            checkResult = {
-              status: fnResult.success ? 'PASS' : 'FAIL',
-              message: fnResult.message,
+            if (fnResult.terminal) {
+              checkResult = { status: 'TERMINAL', message: fnResult.message }
+            } else {
+              checkResult = {
+                status: fnResult.success ? 'PASS' : 'FAIL',
+                message: fnResult.message,
+              }
             }
           } catch (err) {
             const checkError = err instanceof Error ? err : new Error(String(err))
@@ -166,6 +175,16 @@ export class Step<TAccumulated, TOutput> {
           }
 
           checkRecords.push({ name: check.name, result: checkResult })
+
+          if (checkResult.status === 'TERMINAL') {
+            for (const remaining of this.checks.slice(checkRecords.length)) {
+              checkRecords.push({ name: remaining.name, result: { status: 'NONE' } })
+            }
+            terminal = true
+            allChecksPassed = false
+            shouldStop = true
+            break
+          }
 
           if (checkResult.status === 'FAIL' && policy.failure === 'STOP') shouldStop = true
           if (checkResult.status === 'ERROR' && policy.error === 'STOP') shouldStop = true
@@ -180,6 +199,7 @@ export class Step<TAccumulated, TOutput> {
           checks: checkRecords,
           allChecksPassed,
           shouldStop,
+          terminal,
           timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
         }
 
@@ -188,38 +208,43 @@ export class Step<TAccumulated, TOutput> {
         return stepResult
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
-
-        if (attempt === retries) {
-          const duration = Date.now() - startTime
-          await onFailure?.(lastError, context.data)
-
-          const isTimeout = lastError instanceof StepTimeoutError
-          const shouldStop = isTimeout ? policy.timeout === 'STOP' : policy.error === 'STOP'
-          const finishedAt = Date.now()
-
-          const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
-            success: false,
-            error: lastError,
-            shouldStop,
-            analytics: { attempts: attempt + 1, duration },
-            timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
-          }
-
-          analytics.onStepComplete(name, stepResult, duration)
-
-          return stepResult
-        }
       }
     }
 
-    throw lastError!
+    // All attempts exhausted — build the failure result outside the loop so TypeScript
+    // sees an unconditional return path.
+    const failedError = lastError!
+    const duration = Date.now() - startTime
+    await onFailure?.(failedError, context.data)
+
+    const isTimeout = failedError instanceof StepTimeoutError
+    const shouldStop = isTimeout ? policy.timeout === 'STOP' : policy.error === 'STOP'
+    const finishedAt = Date.now()
+    const noneChecks: CheckRecord[] = this.checks.map((check) => ({
+      name: check.name,
+      result: { status: 'NONE' as const },
+    }))
+
+    const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
+      success: false,
+      error: failedError,
+      shouldStop,
+      checks: noneChecks,
+      analytics: { attempts: lastAttempt + 1, duration },
+      timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
+    }
+
+    analytics.onStepComplete(name, stepResult, duration)
+
+    return stepResult
   }
 
   /** Races `promise` against a `StepTimeoutError` so timeouts are distinguishable from errors. */
   private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => setTimeout(() => reject(new StepTimeoutError(ms)), ms)),
-    ])
+    let timer: ReturnType<typeof setTimeout>
+    const timeout = new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new StepTimeoutError(ms)), ms)
+    })
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer!))
   }
 }

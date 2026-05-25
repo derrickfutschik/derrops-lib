@@ -4,6 +4,10 @@
  * Used internally to widen the `TAccumulated` type parameter as each step is
  * added to a pipeline. Consumers rarely need to reference this directly.
  *
+ * **Key-shadowing warning:** if `TNew` contains a key already present in
+ * `TAccumulated`, TypeScript resolves that key to `never` in the intersection.
+ * This silently breaks downstream type inference. Rename the output key to avoid it.
+ *
  * @template TAccumulated - Data collected from all steps so far
  * @template TNew - Data produced by the next step
  *
@@ -51,8 +55,6 @@ export type StepContext<TData = unknown> = {
   metadata: {
     /** Display name of the step that is about to run. */
     stepName: string
-    /** Unix timestamp (ms) when this step's execution began. */
-    startTime: number
     /** Names of every step that completed before this one. */
     previousSteps: string[]
   }
@@ -75,6 +77,8 @@ export type StepContext<TData = unknown> = {
  */
 export type CheckFnResult = {
   success: boolean
+  /** When `true`, stops all remaining checks and forces pipeline failure regardless of success criteria. */
+  terminal?: true
   message?: string
 }
 
@@ -86,9 +90,10 @@ export type CheckFnResult = {
  * | `PASS`  | Check ran and `success` was `true`                             |
  * | `FAIL`  | Check ran and `success` was `false`                            |
  * | `ERROR` | Check function threw an unexpected error                       |
- * | `NONE`  | Check did not run because its step was skipped via `shouldRun` |
+ * | `NONE`     | Check did not run because its step was skipped via `shouldRun`, or because an earlier check on the same step was `TERMINAL` |
+ * | `TERMINAL` | Check explicitly halted the pipeline — overrides success criteria, remaining checks skipped                          |
  */
-export type CheckStatus = 'PASS' | 'FAIL' | 'ERROR' | 'NONE'
+export type CheckStatus = 'PASS' | 'FAIL' | 'ERROR' | 'NONE' | 'TERMINAL'
 
 /**
  * The recorded outcome of a single check, stored in `CheckRecord.result`.
@@ -166,22 +171,46 @@ export type Timing = {
 }
 
 /**
+ * Configures what counts as a successful pipeline run when some steps fail.
+ *
+ * All specified criteria must pass. Skipped steps are excluded from all counts
+ * and rate calculations. If omitted, the default behaviour applies: every
+ * non-skipped step must succeed.
+ *
+ * @property minStepsSuccessful  - Minimum number of non-skipped steps that must succeed.
+ * @property maxStepsUnsuccessful - Maximum number of non-skipped steps allowed to fail.
+ * @property minSuccessRate      - Minimum ratio (0.0–1.0) of successful to total non-skipped steps.
+ */
+export type PipelineSuccessCriteria = {
+  minStepsSuccessful?: number
+  maxStepsUnsuccessful?: number
+  minSuccessRate?: number
+}
+
+/**
  * Summary of a single step's execution, included in `PipelineResult.steps`.
  *
  * Every step that was visited during a pipeline run — including skipped and
- * failed ones — produces a `StepRecord`. Steps where `execute` threw will
- * have an empty `checks` array because checks only run after a successful
- * execute.
+ * failed ones — produces a `StepRecord`.
  *
- * @property name    - Display name of the step.
- * @property skipped - `true` when `shouldRun` returned `false` and the step was bypassed.
- * @property checks  - Ordered list of check outcomes. Empty if execute threw or no checks
- *                     were attached. NONE-status records are present for skipped steps.
- * @property timing  - Wall-clock metrics for this step's execution.
+ * @property name         - Display name of the step.
+ * @property skipped      - `true` when `shouldRun` returned `false` and the step was bypassed.
+ * @property executeFailed - `true` when `execute` threw (all retries exhausted). `false` when
+ *                          execute succeeded (even if checks subsequently failed) or the step
+ *                          was skipped. Lets callers distinguish an execute failure from a
+ *                          check failure without inspecting `checks`.
+ * @property succeeded    - `true` when the step ran, execute succeeded, and all checks passed.
+ *                          Always `false` for skipped steps. Used by `PipelineSuccessCriteria`.
+ * @property checks       - Ordered list of check outcomes. NONE-status records are present for
+ *                          skipped steps, for steps whose execute threw, and for checks that
+ *                          were not reached after a TERMINAL check.
+ * @property timing       - Wall-clock metrics for this step's execution.
  */
 export type StepRecord = {
   name: string
   skipped: boolean
+  executeFailed: boolean
+  succeeded: boolean
   checks: CheckRecord[]
   timing: Timing
 }
@@ -213,6 +242,8 @@ export type StepResult<TOutput = unknown> =
       allChecksPassed: boolean
       /** `true` when the step's policy says to halt the pipeline. */
       shouldStop: boolean
+      /** `true` when a check returned `terminal: true`, forcing pipeline failure. Always implies `shouldStop`. */
+      terminal: boolean
       timing: Timing
     }
   | {
@@ -222,6 +253,8 @@ export type StepResult<TOutput = unknown> =
       analytics?: Record<string, unknown>
       /** `true` when the step's policy says to halt the pipeline. */
       shouldStop: boolean
+      /** NONE records for every check configured on this step — execute never ran them. */
+      checks: CheckRecord[]
       timing: Timing
     }
 
@@ -252,11 +285,13 @@ export type PipelineResult<TData = unknown> =
   | {
       success: false
       data: TData
-      /** Describes the first halting failure: a thrown execute error or the first
-       *  failing check message on a step whose policy is `failure: 'STOP'`. */
+      /** Describes the first halting failure: a thrown execute error, the first
+       *  failing check message, or a criteria-not-met summary. */
       error: Error
       steps: StepRecord[]
       timing: Timing
+      /** `true` when a TERMINAL check forced failure, overriding any success criteria. */
+      terminated: boolean
     }
 
 /**
@@ -283,6 +318,11 @@ export type StepCondition<TInput = unknown> = (
  * called synchronously from within `Step.execute()` and `SequentialPipeline.execute()`.
  *
  * A default no-op implementation is used when no analytics are provided.
+ *
+ * **Shared reference:** the collector instance is copied by reference to every
+ * pipeline derived via `.step()` or `.check()`. Concurrent `execute()` calls on
+ * sibling pipelines will interleave events into the same collector. This is fine
+ * for serial use; for concurrent use, provide a fresh collector per execution.
  */
 export type AnalyticsCollector = {
   /** Fired immediately before a step's `execute` function is called. */
@@ -343,4 +383,6 @@ export type StepConfig<TAccumulated, TOutput> = {
 export type PipelineConfig = {
   name: string
   analytics?: AnalyticsCollector
+  /** Overrides the default "all steps must succeed" verdict. TERMINAL checks always force failure regardless of criteria. */
+  successCriteria?: PipelineSuccessCriteria
 }
