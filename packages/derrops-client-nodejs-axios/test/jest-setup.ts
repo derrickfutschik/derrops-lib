@@ -1,0 +1,8 @@
+process.env.NODE_ENV = 'test'
+process.env.DB_HOST = 'localhost'
+process.env.DB_USERNAME = 'postgres'
+process.env.DB_PASSWORD = 'postgres'
+process.env.AWS_REGION = 'us-east-1'
+process.env.AWS_ACCOUNT_ID = '123456789012'
+process.env.OPENSEARCH_ENDPOINT = 'http://localhost:9200'
+process.env.DYNAMODB_ENDPOINT = 'http://localhost:4566'

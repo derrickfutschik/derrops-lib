@@ -13,8 +13,9 @@ export default {
       },
     ],
   },
+  setupFiles: ['./test/jest-setup.ts'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
-  testPathIgnorePatterns: ['/node_modules/', '\\.e2e\\.test\\.ts$'],
+  testPathIgnorePatterns: ['/node_modules/', '\\.e2e\\.test\\.ts$', 'aws-smoke\\.test\\.ts$'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.test.ts', '!src/**/*.spec.ts'],
   passWithNoTests: true,
   maxWorkers: 1, // Run tests serially to avoid circular reference serialization issues
