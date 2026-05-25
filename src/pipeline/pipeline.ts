@@ -3,12 +3,64 @@ import {
   CheckFn,
   PipelineConfig,
   PipelineResult,
+  PipelineSuccessCriteria,
   StepConfig,
   StepContext,
   StepRecord,
   Enrich,
   AnalyticsCollector,
 } from './types'
+
+function evaluatePipeline(
+  criteria: PipelineSuccessCriteria | undefined,
+  stepRecords: StepRecord[],
+): { succeeded: boolean; error?: Error } {
+  const ran = stepRecords.filter((r) => !r.skipped)
+
+  // No criteria: vacuously succeed when nothing ran, otherwise require all ran steps to succeed.
+  if (!criteria) {
+    if (ran.length === 0) return { succeeded: true }
+    const failCount = ran.filter((r) => !r.succeeded).length
+    if (failCount === 0) return { succeeded: true }
+    return {
+      succeeded: false,
+      error: new Error(`${failCount} step${failCount !== 1 ? 's' : ''} failed`),
+    }
+  }
+
+  const successCount = ran.filter((r) => r.succeeded).length
+  const failCount = ran.length - successCount
+
+  const violations: string[] = []
+  if (criteria.minStepsSuccessful !== undefined && successCount < criteria.minStepsSuccessful)
+    violations.push(
+      `${successCount} of ${ran.length} steps succeeded (minimum ${criteria.minStepsSuccessful} required)`,
+    )
+  if (criteria.maxStepsUnsuccessful !== undefined && failCount > criteria.maxStepsUnsuccessful)
+    violations.push(`${failCount} steps failed (maximum ${criteria.maxStepsUnsuccessful} allowed)`)
+  if (criteria.minSuccessRate !== undefined && ran.length > 0) {
+    const rate = successCount / ran.length
+    if (rate < criteria.minSuccessRate)
+      violations.push(
+        `${Math.round(rate * 100)}% of steps succeeded (minimum ${Math.round(criteria.minSuccessRate * 100)}% required)`,
+      )
+  }
+
+  if (violations.length === 0) return { succeeded: true }
+  return { succeeded: false, error: new Error(violations.join('; ')) }
+}
+
+function validateCriteria(criteria: PipelineSuccessCriteria): void {
+  if (criteria.minStepsSuccessful !== undefined && criteria.minStepsSuccessful < 0)
+    throw new Error('successCriteria.minStepsSuccessful must be >= 0')
+  if (criteria.maxStepsUnsuccessful !== undefined && criteria.maxStepsUnsuccessful < 0)
+    throw new Error('successCriteria.maxStepsUnsuccessful must be >= 0')
+  if (
+    criteria.minSuccessRate !== undefined &&
+    (criteria.minSuccessRate < 0 || criteria.minSuccessRate > 1)
+  )
+    throw new Error('successCriteria.minSuccessRate must be between 0 and 1 inclusive')
+}
 
 /**
  * A sequential, type-safe pipeline that enriches a shared data object as execution
@@ -144,9 +196,10 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
   async execute(initialInput: TInitial): Promise<PipelineResult<TAccumulated>> {
     const pipelineStartedAt = Date.now()
     let currentData: any = initialInput
-    const executedSteps: string[] = []
     const stepRecords: StepRecord[] = []
-    let pipelineSuccess = true
+    const criteria = this.config.successCriteria
+
+    if (criteria) validateCriteria(criteria)
 
     const pipelineTiming = () => {
       const finishedAt = Date.now()
@@ -159,33 +212,45 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
           data: currentData,
           metadata: {
             stepName: step.name,
-            startTime: Date.now(),
-            previousSteps: [...executedSteps],
+            previousSteps: stepRecords.map((r) => r.name),
           },
         }
 
         const result = await step.execute(context, this.analytics, [...stepRecords])
-        executedSteps.push(step.name)
 
         if (!result.success) {
-          stepRecords.push({ name: step.name, skipped: false, checks: [], timing: result.timing })
+          stepRecords.push({
+            name: step.name,
+            skipped: false,
+            executeFailed: true,
+            succeeded: false,
+            checks: result.checks,
+            timing: result.timing,
+          })
           if (result.shouldStop) {
             const timing = pipelineTiming()
             this.analytics.onPipelineComplete(this.config.name, timing.duration)
+            const verdict = evaluatePipeline(criteria, stepRecords)
+            if (verdict.succeeded) {
+              return { success: true, data: currentData, steps: stepRecords, timing }
+            }
             return {
               success: false,
               data: currentData,
               error: result.error,
               steps: stepRecords,
               timing,
+              terminated: false,
             }
           }
-          pipelineSuccess = false
         } else {
           const skipped = result.analytics?.skipped === true
+          const succeeded = !skipped && result.allChecksPassed
           stepRecords.push({
             name: step.name,
             skipped,
+            executeFailed: false,
+            succeeded,
             checks: result.checks,
             timing: result.timing,
           })
@@ -194,8 +259,23 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
           // full context, even when this step's checks failed.
           currentData = result.data
 
-          if (!result.allChecksPassed) {
-            pipelineSuccess = false
+          if (result.terminal) {
+            const terminalCheck = result.checks.find((c) => c.result.status === 'TERMINAL')
+            const message =
+              terminalCheck?.result.message ??
+              (terminalCheck?.name
+                ? `Check "${terminalCheck.name}" terminated the pipeline`
+                : 'A terminal check stopped the pipeline')
+            const timing = pipelineTiming()
+            this.analytics.onPipelineComplete(this.config.name, timing.duration)
+            return {
+              success: false,
+              data: currentData,
+              error: new Error(message),
+              steps: stepRecords,
+              timing,
+              terminated: true,
+            }
           }
 
           if (result.shouldStop) {
@@ -207,12 +287,17 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
               (stoppingCheck?.name ? `Check "${stoppingCheck.name}" failed` : `Check failed`)
             const timing = pipelineTiming()
             this.analytics.onPipelineComplete(this.config.name, timing.duration)
+            const verdict = evaluatePipeline(criteria, stepRecords)
+            if (verdict.succeeded) {
+              return { success: true, data: currentData, steps: stepRecords, timing }
+            }
             return {
               success: false,
               data: currentData,
               error: new Error(message),
               steps: stepRecords,
               timing,
+              terminated: false,
             }
           }
         }
@@ -221,16 +306,17 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
       const timing = pipelineTiming()
       this.analytics.onPipelineComplete(this.config.name, timing.duration)
 
-      if (pipelineSuccess) {
+      const verdict = evaluatePipeline(criteria, stepRecords)
+      if (verdict.succeeded) {
         return { success: true, data: currentData, steps: stepRecords, timing }
       }
-
       return {
         success: false,
         data: currentData,
-        error: new Error('One or more step checks failed'),
+        error: verdict.error!,
         steps: stepRecords,
         timing,
+        terminated: false,
       }
     } catch (error) {
       const pipelineError = error instanceof Error ? error : new Error(String(error))
@@ -241,6 +327,7 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
         error: pipelineError,
         steps: stepRecords,
         timing: pipelineTiming(),
+        terminated: false,
       }
     }
   }
