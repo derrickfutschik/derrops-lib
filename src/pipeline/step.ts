@@ -1,4 +1,5 @@
 import {
+  AttemptRecord,
   CheckFn,
   CheckRecord,
   CheckResult,
@@ -10,6 +11,7 @@ import {
   Enrich,
   AnalyticsCollector,
 } from './types'
+import { computeDelay, sleep, validateRetryPolicy } from './retry'
 
 /** Internal normalized form of a check — name resolved, fn unwrapped. */
 type NormalizedCheck<TData> = { name?: string; fn: CheckFn<TData> }
@@ -34,7 +36,7 @@ export class StepTimeoutError extends Error {
  * Represents a single step in a pipeline.
  *
  * A step holds its `StepConfig` (execute function, shouldRun guard, callbacks,
- * retries, timeout, policy) plus an ordered list of checks added via the
+ * retry policy, timeout, policy) plus an ordered list of checks added via the
  * builder's `.check()` method. Instances are created by `SequentialPipeline.step()`
  * and are immutable after construction — `withCheck()` returns a new `Step`
  * rather than mutating the existing one.
@@ -56,6 +58,21 @@ export class Step<TAccumulated, TOutput> {
    */
   get name(): string {
     return this.config.name ?? `Step ${this.index}`
+  }
+
+  /** The `restartFromStep` target from `retry`, if configured. */
+  get retryRestartTarget(): string | number | undefined {
+    return this.config.retry?.restartFromStep
+  }
+
+  /** Maximum pipeline restarts allowed for this step's `restartFromStep`. Default: 1. */
+  get maxRestarts(): number {
+    return this.config.retry?.maxRestarts ?? 1
+  }
+
+  /** Validates the `retry` policy if one is configured. Throws on invalid config. */
+  validateRetry(): void {
+    if (this.config.retry) validateRetryPolicy(this.name, this.config.retry)
   }
 
   /**
@@ -82,20 +99,20 @@ export class Step<TAccumulated, TOutput> {
    * Execution order:
    * 1. Evaluate `shouldRun`. If `false`, return immediately with enriched data
    *    unchanged and all checks recorded as `NONE`.
-   * 2. Call `execute` (with optional timeout wrapping and retry loop).
-   * 3. On success: merge output into accumulated data, then run all checks in
-   *    order. Each check is wrapped in its own try/catch — a throwing check
-   *    produces an `ERROR` record rather than aborting the remaining checks.
-   * 4. On execute failure (all retries exhausted): call `onFailure` and return
+   * 2. Call `execute` up to `retry.maxAttempts` times. Between attempts,
+   *    fire `onRetry`, wait for the configured backoff delay, and respect
+   *    `maxDelay` / `maxTotalDelay` caps.
+   * 3. On success: merge output into accumulated data, call `onSuccess`, then
+   *    run all checks in order.
+   * 4. On execute failure (all attempts exhausted): call `onFailure` and return
    *    a result whose `shouldStop` reflects `policy.error` / `policy.timeout`.
    *
-   * All checks on a step always run to completion regardless of failure — the
-   * step only signals `shouldStop` after every check has been recorded.
+   * The `analytics` collector is notified at the start, on each failed attempt
+   * (before the delay), on completion, and on skip.
    *
-   * The `analytics` collector is notified at the start, on completion, and on skip.
-   *
-   * @param context   - The accumulated data and metadata for this execution pass.
-   * @param analytics - Lifecycle event observer provided by the parent pipeline.
+   * @param context              - The accumulated data and metadata for this execution pass.
+   * @param analytics            - Lifecycle event observer provided by the parent pipeline.
+   * @param previousStepRecords  - Records for all steps that ran before this one.
    */
   async execute(
     context: StepContext<TAccumulated>,
@@ -104,9 +121,10 @@ export class Step<TAccumulated, TOutput> {
   ): Promise<StepResult<Enrich<TAccumulated, TOutput>>> {
     const startedAt = Date.now()
     const name = this.name
-    const { execute, shouldRun, onSuccess, onFailure, retries = 0, timeout } = this.config
+    const { execute, shouldRun, onSuccess, onFailure, onRetry, timeout } = this.config
     const policy: ResolvedPolicy = { ...DEFAULT_POLICY, ...this.config.policy }
 
+    // ── shouldRun guard ──────────────────────────────────────────────────────
     if (shouldRun) {
       const should = await shouldRun(context)
       if (!should) {
@@ -118,8 +136,9 @@ export class Step<TAccumulated, TOutput> {
         const finishedAt = Date.now()
         return {
           success: true,
+          skipped: true,
           data: context.data as Enrich<TAccumulated, TOutput>,
-          analytics: { skipped: true },
+          attemptRecords: [],
           checks: noneChecks,
           allChecksPassed: true,
           shouldStop: false,
@@ -130,28 +149,49 @@ export class Step<TAccumulated, TOutput> {
     }
 
     analytics.onStepStart(name, context.data)
-    const startTime = Date.now()
 
+    // ── Resolve retry config ─────────────────────────────────────────────────
+    const retryPolicy = this.config.retry
+
+    const maxAttempts =
+      retryPolicy?.maxAttempts ?? (this.config.retries !== undefined ? this.config.retries + 1 : 1)
+    const backoff = retryPolicy?.backoff ?? { type: 'none' as const }
+    const retryOn = retryPolicy?.on
+
+    // ── Retry loop ───────────────────────────────────────────────────────────
+    const attemptRecords: AttemptRecord[] = []
     let lastError: Error | undefined
-    let lastAttempt = 0
+    let cumulativeDelay = 0
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      lastAttempt = attempt
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const attemptStartedAt = Date.now()
+      let output: TOutput | undefined
+      let attemptError: Error | undefined
+
       try {
-        const executeWithTimeout = timeout
+        const executePromise = timeout
           ? this.withTimeout(Promise.resolve(execute(context.data, previousStepRecords)), timeout)
           : Promise.resolve(execute(context.data, previousStepRecords))
+        output = await executePromise
+      } catch (err) {
+        attemptError = err instanceof Error ? err : new Error(String(err))
+      }
 
-        const result = await executeWithTimeout
-        const duration = Date.now() - startTime
+      const attemptFinishedAt = Date.now()
+      const attemptTiming: import('./types').Timing = {
+        startedAt: attemptStartedAt,
+        finishedAt: attemptFinishedAt,
+        duration: attemptFinishedAt - attemptStartedAt,
+      }
 
-        const enrichedData: Enrich<TAccumulated, TOutput> = { ...context.data, ...result }
+      if (attemptError === undefined) {
+        // ── Execute succeeded ────────────────────────────────────────────────
+        attemptRecords.push({ attempt, timedOut: false, timing: attemptTiming })
 
-        await onSuccess?.(result, context.data)
+        const enrichedData: Enrich<TAccumulated, TOutput> = { ...context.data, ...output! }
+        await onSuccess?.(output!, context.data)
 
-        // All checks run in order. A TERMINAL check stops the loop immediately —
-        // remaining checks are recorded as NONE. Non-terminal checks always run
-        // to completion before the pipeline evaluates whether to halt.
+        // Run checks — a TERMINAL check short-circuits the rest.
         const checkRecords: CheckRecord[] = []
         let allChecksPassed = true
         let shouldStop = false
@@ -194,8 +234,9 @@ export class Step<TAccumulated, TOutput> {
         const finishedAt = Date.now()
         const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
           success: true,
+          skipped: false,
           data: enrichedData,
-          analytics: { attempts: attempt + 1, duration },
+          attemptRecords,
           checks: checkRecords,
           allChecksPassed,
           shouldStop,
@@ -203,39 +244,75 @@ export class Step<TAccumulated, TOutput> {
           timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
         }
 
-        analytics.onStepComplete(name, stepResult, duration)
-
+        analytics.onStepComplete(name, stepResult, finishedAt - startedAt)
         return stepResult
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
+      }
+
+      // ── Attempt failed ───────────────────────────────────────────────────
+      const isTimeout = attemptError instanceof StepTimeoutError
+      attemptRecords.push({
+        attempt,
+        error: attemptError,
+        timedOut: isTimeout,
+        timing: attemptTiming,
+      })
+      lastError = attemptError
+
+      if (attempt < maxAttempts) {
+        // Determine whether this error type should be retried.
+        const shouldRetryOnError = !isTimeout && (retryOn?.onError ?? true)
+        const shouldRetryOnTimeout = isTimeout && (retryOn?.onTimeout ?? true)
+
+        if (!shouldRetryOnError && !shouldRetryOnTimeout) {
+          break // This failure mode is not retried — exhaust immediately.
+        }
+
+        // Compute backoff delay for this attempt.
+        let delay = computeDelay(backoff, attempt - 1)
+        if (retryPolicy?.maxDelay !== undefined) {
+          delay = Math.min(delay, retryPolicy.maxDelay)
+        }
+
+        // Abort retry loop if cumulative delay would exceed the budget.
+        if (
+          retryPolicy?.maxTotalDelay !== undefined &&
+          cumulativeDelay + delay > retryPolicy.maxTotalDelay
+        ) {
+          break
+        }
+        cumulativeDelay += delay
+
+        // Notify before sleeping.
+        await onRetry?.(attemptError, attempt, delay, context.data)
+        analytics.onStepAttempt(name, attempt, attemptError, delay)
+
+        await sleep(delay)
       }
     }
 
-    // All attempts exhausted — build the failure result outside the loop so TypeScript
-    // sees an unconditional return path.
+    // ── All attempts exhausted ───────────────────────────────────────────────
     const failedError = lastError!
-    const duration = Date.now() - startTime
     await onFailure?.(failedError, context.data)
 
     const isTimeout = failedError instanceof StepTimeoutError
     const shouldStop = isTimeout ? policy.timeout === 'STOP' : policy.error === 'STOP'
-    const finishedAt = Date.now()
+
     const noneChecks: CheckRecord[] = this.checks.map((check) => ({
       name: check.name,
       result: { status: 'NONE' as const },
     }))
 
+    const finishedAt = Date.now()
     const stepResult: StepResult<Enrich<TAccumulated, TOutput>> = {
       success: false,
       error: failedError,
+      attemptRecords,
       shouldStop,
       checks: noneChecks,
-      analytics: { attempts: lastAttempt + 1, duration },
       timing: { startedAt, finishedAt, duration: finishedAt - startedAt },
     }
 
-    analytics.onStepComplete(name, stepResult, duration)
-
+    analytics.onStepComplete(name, stepResult, finishedAt - startedAt)
     return stepResult
   }
 

@@ -90,8 +90,10 @@ describe('simple user onboarding pipeline', () => {
       name: 'Default Names Test',
       analytics: {
         onStepStart,
+        onStepAttempt: jest.fn(),
         onStepComplete: jest.fn(),
         onStepSkipped: jest.fn(),
+        onPipelineRestart: jest.fn(),
         onPipelineComplete: jest.fn(),
         onPipelineError: jest.fn(),
       },
@@ -208,8 +210,10 @@ describe('simple user onboarding pipeline', () => {
       name: 'Analytics Test',
       analytics: {
         onStepStart,
+        onStepAttempt: jest.fn(),
         onStepComplete,
         onStepSkipped: jest.fn(),
+        onPipelineRestart: jest.fn(),
         onPipelineComplete,
         onPipelineError: jest.fn(),
       },

@@ -16,8 +16,10 @@ type DeployOutput = { deploymentUrl: string; deployedVersion: string; deployedAt
 function makeAnalytics(): jest.Mocked<AnalyticsCollector> {
   return {
     onStepStart: jest.fn(),
+    onStepAttempt: jest.fn(),
     onStepComplete: jest.fn(),
     onStepSkipped: jest.fn(),
+    onPipelineRestart: jest.fn(),
     onPipelineComplete: jest.fn(),
     onPipelineError: jest.fn(),
   }
@@ -302,8 +304,10 @@ describe('build pipeline', () => {
       const calls: string[] = []
       const analytics: AnalyticsCollector = {
         onStepStart: (name) => calls.push(`start:${name}`),
+        onStepAttempt: () => {},
         onStepComplete: (name, result) => calls.push(`complete:${name}:${result.success}`),
         onStepSkipped: (name) => calls.push(`skip:${name}`),
+        onPipelineRestart: () => {},
         onPipelineComplete: (name) => calls.push(`pipelineDone:${name}`),
         onPipelineError: (name) => calls.push(`pipelineError:${name}`),
       }

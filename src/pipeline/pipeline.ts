@@ -76,10 +76,12 @@ function validateCriteria(criteria: PipelineSuccessCriteria): void {
  * Steps run in the order they were added. For each step:
  * 1. `shouldRun` is evaluated — if `false`, the step is skipped and all its
  *    checks are recorded as `NONE`.
- * 2. `execute` runs (with optional retries and timeout).
+ * 2. `execute` runs, with the step's `RetryPolicy` (if any) controlling how many
+ *    attempts are made and how long to wait between them.
  * 3. If execute succeeds, all attached checks run in order.
  * 4. After all checks, the step's `ContinuePolicy` determines whether the
- *    pipeline halts or continues.
+ *    pipeline halts or continues. If the step has `retry.restartFromStep` and
+ *    `ContinuePolicy` would halt, the pipeline rewinds to the named step instead.
  *
  * `data` is always present in `PipelineResult`, even when `success` is `false`,
  * so callers can inspect the full enriched context for logging and diagnostics.
@@ -200,14 +202,28 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
     const criteria = this.config.successCriteria
 
     if (criteria) validateCriteria(criteria)
+    this.validateRestartTargets()
+    for (const step of this.steps) step.validateRetry()
 
     const pipelineTiming = () => {
       const finishedAt = Date.now()
       return { startedAt: pipelineStartedAt, finishedAt, duration: finishedAt - pipelineStartedAt }
     }
 
+    // Snapshot of currentData before each step runs, used to restore state on restart.
+    const dataSnapshots: unknown[] = []
+    // How many times each step index has been used as a restart target.
+    const restartCounts = new Map<number, number>()
+    let totalRestarts = 0
+
     try {
-      for (const step of this.steps) {
+      let stepIndex = 0
+      while (stepIndex < this.steps.length) {
+        const step = this.steps[stepIndex]
+
+        // Save the data state before this step so we can restore it on restart.
+        dataSnapshots[stepIndex] = currentData
+
         const context: StepContext = {
           data: currentData,
           metadata: {
@@ -224,15 +240,41 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
             skipped: false,
             executeFailed: true,
             succeeded: false,
+            attempts: result.attemptRecords,
             checks: result.checks,
             timing: result.timing,
           })
+
           if (result.shouldStop) {
+            // Check whether this step wants to restart the pipeline from an earlier step.
+            const restartIdx = this.resolveRestartTarget(step)
+            if (restartIdx !== undefined) {
+              const priorCount = restartCounts.get(restartIdx) ?? 0
+              if (priorCount < step.maxRestarts) {
+                restartCounts.set(restartIdx, priorCount + 1)
+                totalRestarts++
+                const fromStep = this.steps[restartIdx]
+                this.analytics.onPipelineRestart(this.config.name, fromStep.name, totalRestarts)
+                // Restore state and rewind.
+                currentData = dataSnapshots[restartIdx]
+                stepRecords.splice(restartIdx)
+                stepIndex = restartIdx
+                continue
+              }
+              // maxRestarts exceeded — fall through to normal stop.
+            }
+
             const timing = pipelineTiming()
             this.analytics.onPipelineComplete(this.config.name, timing.duration)
             const verdict = evaluatePipeline(criteria, stepRecords)
             if (verdict.succeeded) {
-              return { success: true, data: currentData, steps: stepRecords, timing }
+              return {
+                success: true,
+                data: currentData,
+                steps: stepRecords,
+                timing,
+                restarts: totalRestarts,
+              }
             }
             return {
               success: false,
@@ -241,16 +283,18 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
               steps: stepRecords,
               timing,
               terminated: false,
+              restarts: totalRestarts,
             }
           }
         } else {
-          const skipped = result.analytics?.skipped === true
+          const skipped = result.skipped
           const succeeded = !skipped && result.allChecksPassed
           stepRecords.push({
             name: step.name,
             skipped,
             executeFailed: false,
             succeeded,
+            attempts: result.attemptRecords,
             checks: result.checks,
             timing: result.timing,
           })
@@ -275,6 +319,7 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
               steps: stepRecords,
               timing,
               terminated: true,
+              restarts: totalRestarts,
             }
           }
 
@@ -289,7 +334,13 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
             this.analytics.onPipelineComplete(this.config.name, timing.duration)
             const verdict = evaluatePipeline(criteria, stepRecords)
             if (verdict.succeeded) {
-              return { success: true, data: currentData, steps: stepRecords, timing }
+              return {
+                success: true,
+                data: currentData,
+                steps: stepRecords,
+                timing,
+                restarts: totalRestarts,
+              }
             }
             return {
               success: false,
@@ -298,9 +349,12 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
               steps: stepRecords,
               timing,
               terminated: false,
+              restarts: totalRestarts,
             }
           }
         }
+
+        stepIndex++
       }
 
       const timing = pipelineTiming()
@@ -308,7 +362,13 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
 
       const verdict = evaluatePipeline(criteria, stepRecords)
       if (verdict.succeeded) {
-        return { success: true, data: currentData, steps: stepRecords, timing }
+        return {
+          success: true,
+          data: currentData,
+          steps: stepRecords,
+          timing,
+          restarts: totalRestarts,
+        }
       }
       return {
         success: false,
@@ -317,6 +377,7 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
         steps: stepRecords,
         timing,
         terminated: false,
+        restarts: totalRestarts,
       }
     } catch (error) {
       const pipelineError = error instanceof Error ? error : new Error(String(error))
@@ -328,16 +389,64 @@ export class SequentialPipeline<TInitial, TAccumulated = TInitial> {
         steps: stepRecords,
         timing: pipelineTiming(),
         terminated: false,
+        restarts: totalRestarts,
       }
     }
+  }
+
+  /**
+   * Validates that all `retry.restartFromStep` references point to steps that
+   * exist and are earlier than the step that configures them.
+   *
+   * Called once at the start of `execute()` so misconfigurations fail loudly
+   * before any work is done.
+   */
+  private validateRestartTargets(): void {
+    for (let i = 0; i < this.steps.length; i++) {
+      const target = this.steps[i].retryRestartTarget
+      if (target === undefined) continue
+
+      const targetIdx =
+        typeof target === 'number' ? target : this.steps.findIndex((s) => s.name === target)
+
+      if (typeof target === 'string' && targetIdx === -1) {
+        throw new Error(
+          `Step "${this.steps[i].name}": retry.restartFromStep "${target}" does not match any step name`,
+        )
+      }
+      if (typeof target === 'number' && (targetIdx < 0 || targetIdx >= this.steps.length)) {
+        throw new Error(
+          `Step "${this.steps[i].name}": retry.restartFromStep index ${target} is out of range`,
+        )
+      }
+      if (targetIdx >= i) {
+        throw new Error(
+          `Step "${this.steps[i].name}": retry.restartFromStep must point to an earlier step (target index ${targetIdx} >= current index ${i})`,
+        )
+      }
+    }
+  }
+
+  /**
+   * Resolves a step's `restartFromStep` to a step index, or returns `undefined`
+   * if no restart is configured.
+   */
+  private resolveRestartTarget(step: Step<any, any>): number | undefined {
+    const target = step.retryRestartTarget
+    if (target === undefined) return undefined
+    if (typeof target === 'number') return target
+    const idx = this.steps.findIndex((s) => s.name === target)
+    return idx === -1 ? undefined : idx
   }
 
   /** Default no-op analytics — silent unless the caller provides a collector. */
   private createDefaultAnalytics(): AnalyticsCollector {
     return {
       onStepStart: () => {},
+      onStepAttempt: () => {},
       onStepComplete: () => {},
       onStepSkipped: () => {},
+      onPipelineRestart: () => {},
       onPipelineComplete: () => {},
       onPipelineError: () => {},
     }

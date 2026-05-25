@@ -21,6 +21,10 @@ export type Enrich<TAccumulated, TNew> = TAccumulated & TNew
  * Controls what the pipeline does when a specific failure mode occurs on a step.
  * All fields default to `'STOP'` — omit a field to keep the default.
  *
+ * This is evaluated **after all retry attempts are exhausted**. If a step
+ * has a `RetryPolicy`, retries run first; only then does `ContinuePolicy`
+ * decide whether the pipeline halts or proceeds.
+ *
  * @property error   - `execute` threw an exception (non-timeout). Default: `STOP`.
  * @property failure - A check returned `success: false`. Default: `STOP`.
  * @property timeout - `execute` exceeded its configured `timeout`. Default: `STOP`.
@@ -38,6 +42,106 @@ export type ContinuePolicy = {
   error?: ContinuePolicyValue
   failure?: ContinuePolicyValue
   timeout?: ContinuePolicyValue
+}
+
+/**
+ * Delay strategy applied between retry attempts.
+ *
+ * | Type            | Behaviour                                                              |
+ * |-----------------|------------------------------------------------------------------------|
+ * | `none`          | Retry immediately with no delay (default)                              |
+ * | `fixed`         | Same `delay` ms before every attempt                                   |
+ * | `exponential`   | `initialDelay * multiplier^N` where N is the 0-based failure index     |
+ * | `steps`         | Explicit per-attempt delays; last value repeats once exhausted         |
+ *
+ * @example
+ * // Double the wait after each failure, starting at 200 ms, capped at 5 s
+ * backoff: { type: 'exponential', initialDelay: 200 }
+ * // with maxDelay: 5000 on the RetryPolicy
+ *
+ * @example
+ * // Explicit cadence: 1 s, 5 s, 15 s, then 15 s for any further retries
+ * backoff: { type: 'steps', delays: [1000, 5000, 15000] }
+ */
+export type BackoffStrategy =
+  | { type: 'none' }
+  | { type: 'fixed'; delay: number }
+  | { type: 'exponential'; initialDelay: number; multiplier?: number }
+  | { type: 'steps'; delays: number[] }
+
+/**
+ * Controls which failure modes trigger a retry attempt.
+ *
+ * Both fields default to `true` — set a field to `false` to prevent retries
+ * on that failure mode (letting the step fail immediately and deferring to
+ * `ContinuePolicy`).
+ *
+ * @property onError   - Retry when `execute` throws a non-timeout error. Default: `true`.
+ * @property onTimeout - Retry when `execute` exceeds its `timeout`. Default: `true`.
+ */
+export type RetryCondition = {
+  onError?: boolean
+  onTimeout?: boolean
+}
+
+/**
+ * Full retry policy for a step, configured via `StepConfig.retry`.
+ *
+ * Retries run **before** `ContinuePolicy` is evaluated. If all attempts
+ * are exhausted and the step still fails, `ContinuePolicy` then decides
+ * whether the pipeline halts or continues.
+ *
+ * `restartFromStep` is a special escape hatch: instead of halting the
+ * pipeline after all retries, the pipeline rewinds to an earlier step and
+ * re-runs from there. This is useful when a failure at step N means earlier
+ * work (e.g. token refresh at step M) needs to be repeated before step N
+ * can be retried as part of the full sequence.
+ *
+ * @property maxAttempts    - Total execute calls including the first (min 1).
+ *                            `maxAttempts: 1` means no retry; `3` means 2 retries.
+ * @property backoff        - Delay strategy between attempts. Default: `{ type: 'none' }`.
+ * @property on             - Which failure modes are retried. Default: both `onError`
+ *                            and `onTimeout` are `true`.
+ * @property maxDelay       - Clamps any single inter-attempt delay to at most this many ms.
+ *                            Guards against unreasonably large waits from exponential backoff.
+ * @property maxTotalDelay  - Aborts the retry loop if the cumulative delay across all
+ *                            attempts would exceed this value. The failing attempt is not
+ *                            retried; the step fails immediately.
+ * @property restartFromStep - On final execute failure (all attempts exhausted), instead
+ *                             of halting the pipeline, rewind to this step (by name or
+ *                             0-based index) and re-run from there. The target must be
+ *                             an earlier step. Only triggers when `ContinuePolicy.error`
+ *                             would be `STOP`; steps with `policy.error: 'CONTINUE'` skip
+ *                             this and proceed normally.
+ * @property maxRestarts    - Maximum number of pipeline restarts via `restartFromStep`.
+ *                            Default: `1`. Prevents infinite restart loops.
+ *
+ * @example
+ * retry: {
+ *   maxAttempts: 4,
+ *   backoff: { type: 'exponential', initialDelay: 250 },
+ *   maxDelay: 10_000,
+ *   maxTotalDelay: 30_000,
+ *   on: { onError: true, onTimeout: false },
+ * }
+ *
+ * @example
+ * // Restart from 'Authenticate' when 'Call API' exhausts its retries
+ * retry: {
+ *   maxAttempts: 3,
+ *   backoff: { type: 'fixed', delay: 500 },
+ *   restartFromStep: 'Authenticate',
+ *   maxRestarts: 2,
+ * }
+ */
+export type RetryPolicy = {
+  maxAttempts: number
+  backoff?: BackoffStrategy
+  on?: RetryCondition
+  maxDelay?: number
+  maxTotalDelay?: number
+  restartFromStep?: string | number
+  maxRestarts?: number
 }
 
 /**
@@ -171,6 +275,26 @@ export type Timing = {
 }
 
 /**
+ * Timing and outcome for a single execute attempt within a step.
+ *
+ * Steps with a `RetryPolicy` may make multiple attempts. Each attempt produces
+ * one `AttemptRecord`, stored in `StepRecord.attempts`. A step that succeeds
+ * on the first try has exactly one record; a step that retries twice before
+ * succeeding has three records.
+ *
+ * @property attempt  - 1-based attempt number.
+ * @property error    - The error thrown by this attempt. Absent when the attempt succeeded.
+ * @property timedOut - `true` when this attempt was aborted by the step's `timeout` setting.
+ * @property timing   - Wall-clock metrics for this single attempt.
+ */
+export type AttemptRecord = {
+  attempt: number
+  error?: Error
+  timedOut: boolean
+  timing: Timing
+}
+
+/**
  * Configures what counts as a successful pipeline run when some steps fail.
  *
  * All specified criteria must pass. Skipped steps are excluded from all counts
@@ -193,24 +317,28 @@ export type PipelineSuccessCriteria = {
  * Every step that was visited during a pipeline run — including skipped and
  * failed ones — produces a `StepRecord`.
  *
- * @property name         - Display name of the step.
- * @property skipped      - `true` when `shouldRun` returned `false` and the step was bypassed.
+ * @property name          - Display name of the step.
+ * @property skipped       - `true` when `shouldRun` returned `false` and the step was bypassed.
  * @property executeFailed - `true` when `execute` threw (all retries exhausted). `false` when
- *                          execute succeeded (even if checks subsequently failed) or the step
- *                          was skipped. Lets callers distinguish an execute failure from a
- *                          check failure without inspecting `checks`.
- * @property succeeded    - `true` when the step ran, execute succeeded, and all checks passed.
- *                          Always `false` for skipped steps. Used by `PipelineSuccessCriteria`.
- * @property checks       - Ordered list of check outcomes. NONE-status records are present for
- *                          skipped steps, for steps whose execute threw, and for checks that
- *                          were not reached after a TERMINAL check.
- * @property timing       - Wall-clock metrics for this step's execution.
+ *                           execute succeeded (even if checks subsequently failed) or the step
+ *                           was skipped. Lets callers distinguish an execute failure from a
+ *                           check failure without inspecting `checks`.
+ * @property succeeded     - `true` when the step ran, execute succeeded, and all checks passed.
+ *                           Always `false` for skipped steps. Used by `PipelineSuccessCriteria`.
+ * @property attempts      - One record per execute call made. Empty for skipped steps. A step
+ *                           that succeeds on the first try has exactly one record; a step that
+ *                           retries has one record per attempt (failed or not).
+ * @property checks        - Ordered list of check outcomes. NONE-status records are present for
+ *                           skipped steps, for steps whose execute threw, and for checks that
+ *                           were not reached after a TERMINAL check.
+ * @property timing        - Wall-clock metrics for the entire step (all attempts combined).
  */
 export type StepRecord = {
   name: string
   skipped: boolean
   executeFailed: boolean
   succeeded: boolean
+  attempts: AttemptRecord[]
   checks: CheckRecord[]
   timing: Timing
 }
@@ -233,9 +361,12 @@ export type StepRecord = {
 export type StepResult<TOutput = unknown> =
   | {
       success: true
+      /** `true` when `shouldRun` returned `false` — execute and checks did not run. */
+      skipped: boolean
       /** Fully enriched data: accumulated input merged with this step's output. */
       data: TOutput
-      analytics?: Record<string, unknown>
+      /** One record per execute attempt. Empty when skipped. */
+      attemptRecords: AttemptRecord[]
       /** All check records for this step, in the order they ran. */
       checks: CheckRecord[]
       /** `false` if any check has status FAIL or ERROR. */
@@ -250,7 +381,8 @@ export type StepResult<TOutput = unknown> =
       success: false
       /** The error thrown by `execute` (or the final retry attempt). */
       error: Error
-      analytics?: Record<string, unknown>
+      /** One record per execute attempt. */
+      attemptRecords: AttemptRecord[]
       /** `true` when the step's policy says to halt the pipeline. */
       shouldStop: boolean
       /** NONE records for every check configured on this step — execute never ran them. */
@@ -281,7 +413,14 @@ export type StepResult<TOutput = unknown> =
  * @template TData - The fully accumulated data type after all steps
  */
 export type PipelineResult<TData = unknown> =
-  | { success: true; data: TData; steps: StepRecord[]; timing: Timing }
+  | {
+      success: true
+      data: TData
+      steps: StepRecord[]
+      timing: Timing
+      /** Number of pipeline-level restarts triggered by `retry.restartFromStep`. */
+      restarts: number
+    }
   | {
       success: false
       data: TData
@@ -292,6 +431,8 @@ export type PipelineResult<TData = unknown> =
       timing: Timing
       /** `true` when a TERMINAL check forced failure, overriding any success criteria. */
       terminated: boolean
+      /** Number of pipeline-level restarts triggered by `retry.restartFromStep`. */
+      restarts: number
     }
 
 /**
@@ -325,12 +466,30 @@ export type StepCondition<TInput = unknown> = (
  * for serial use; for concurrent use, provide a fresh collector per execution.
  */
 export type AnalyticsCollector = {
-  /** Fired immediately before a step's `execute` function is called. */
+  /** Fired immediately before a step's first `execute` call. */
   onStepStart: (stepName: string, input: unknown) => void
-  /** Fired after `execute` completes (success or failure) and after all checks run. */
+  /**
+   * Fired after each failed execute attempt, before the backoff delay.
+   * Not called when the final attempt fails (use `onStepComplete` for that).
+   *
+   * @param stepName - Display name of the step.
+   * @param attempt  - The 1-based attempt number that just failed.
+   * @param error    - The error thrown by the attempt.
+   * @param delay    - Milliseconds to wait before the next attempt.
+   */
+  onStepAttempt: (stepName: string, attempt: number, error: Error, delay: number) => void
+  /** Fired after `execute` completes (success or final failure) and after all checks run. */
   onStepComplete: (stepName: string, result: StepResult, duration: number) => void
   /** Fired when `shouldRun` returned `false` and the step was bypassed. */
   onStepSkipped: (stepName: string, reason: string) => void
+  /**
+   * Fired when a `retry.restartFromStep` restarts the pipeline from an earlier step.
+   *
+   * @param pipelineName  - Name of the pipeline.
+   * @param fromStepName  - Name of the step the pipeline is restarting from.
+   * @param restartNumber - 1-based restart count (1 = first restart).
+   */
+  onPipelineRestart: (pipelineName: string, fromStepName: string, restartNumber: number) => void
   /** Fired after all steps complete and the pipeline is about to return its result. */
   onPipelineComplete: (pipelineName: string, totalDuration: number) => void
   /** Fired when an unexpected error escapes the pipeline's own error handling. */
@@ -344,23 +503,39 @@ export type AnalyticsCollector = {
  * conditional execution, lifecycle callbacks, retry logic, timeouts, and
  * failure-continuation policy.
  *
+ * ## Retry vs policy interaction
+ *
+ * `retry` and `policy` address different levels of failure handling:
+ *
+ * - `retry` controls **how many times execute is attempted** and how long to
+ *   wait between attempts. Retries happen entirely within the step — the
+ *   pipeline does not advance until all attempts are resolved.
+ * - `policy` controls **what happens after all retry attempts are exhausted**:
+ *   should the pipeline halt (`STOP`) or continue to the next step (`CONTINUE`)?
+ *
  * @template TAccumulated - All data accumulated before this step runs
  * @template TOutput      - The new data shape this step produces
  *
  * @property name      - Display name shown in analytics and `StepRecord`. Defaults to `"Step N"`.
  * @property execute   - The core function. Receives all accumulated data and returns new data
- *                       to merge. May be async. Throwing here triggers `onFailure` and retries.
+ *                       to merge. May be async. Throwing here triggers `retry` and then `onFailure`.
  * @property shouldRun - Optional guard called before `execute`. Return `false` to skip the step.
  * @property onSuccess - Called after a successful `execute`, before checks run.
  *                       Receives the raw step output and the pre-merge accumulated data.
- * @property onFailure - Called after the final failed attempt (all retries exhausted).
- *                       Receives the thrown error and the accumulated data at the time of failure.
- * @property retries   - Number of additional attempts on failure. `0` means one attempt total.
- * @property timeout   - Maximum milliseconds for a single `execute` attempt. Exceeding it
- *                       counts as a failure and triggers the retry/onFailure path.
- * @property policy    - Controls what happens when this step fails. All fields default to
- *                       `'STOP'`. Set individual fields to `'CONTINUE'` to let the pipeline
- *                       keep running after that failure mode.
+ * @property onFailure - Called once after the final failed attempt (all retries exhausted).
+ *                       Receives the thrown error and the accumulated data at time of failure.
+ * @property onRetry   - Called after each failed attempt, before the backoff delay and the next
+ *                       attempt. Not called on the last attempt. Receives the error, the 1-based
+ *                       attempt number that just failed, the delay in ms, and the accumulated data.
+ * @property retry     - Full retry policy: attempt count, backoff, conditions, delay caps, and
+ *                       optional pipeline restart target.
+ * @property retries   - Shorthand: number of **additional** attempts (0 = no retry, 1 = one retry).
+ *                       Ignored when `retry` is also set.
+ * @property timeout   - Maximum milliseconds for a single execute attempt. Exceeding it counts
+ *                       as a failure and triggers the retry/onFailure path.
+ * @property policy    - Controls what happens when all retry attempts are exhausted and the step
+ *                       still fails. All fields default to `'STOP'`. Set individual fields to
+ *                       `'CONTINUE'` to let the pipeline keep running after that failure mode.
  */
 export type StepConfig<TAccumulated, TOutput> = {
   name?: string
@@ -368,6 +543,14 @@ export type StepConfig<TAccumulated, TOutput> = {
   shouldRun?: StepCondition<TAccumulated>
   onSuccess?: (output: TOutput, accumulated: TAccumulated) => void | Promise<void>
   onFailure?: (error: Error, input: TAccumulated) => void | Promise<void>
+  onRetry?: (
+    error: Error,
+    attempt: number,
+    delay: number,
+    input: TAccumulated,
+  ) => void | Promise<void>
+  retry?: RetryPolicy
+  /** @deprecated Use `retry: { maxAttempts: N + 1 }` instead. Ignored when `retry` is set. */
   retries?: number
   timeout?: number
   policy?: ContinuePolicy
