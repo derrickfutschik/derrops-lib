@@ -9,7 +9,7 @@ const CONFIG = join(__dir, 'subtrees.json')
 
 const registry = JSON.parse(readFileSync(CONFIG, 'utf8'))
 const validRepos = Object.keys(registry)
-const COMMANDS = ['pull', 'push', 'add', 'create', 'list']
+const COMMANDS = ['pull', 'push', 'add', 'create', 'list', 'tag']
 
 function usage() {
   console.error('\nUsage: node scripts/subtree.mjs <command> [args]\n')
@@ -21,8 +21,9 @@ function usage() {
   console.error('    pnpm subtree:push derrops-portal')
   console.error('    pnpm subtree:add  derrops-lib      # first-time setup')
   console.error(
-    '    pnpm subtree:create derrops-hooks packages/derrops-hooks git@github.com:derrickfutschik/derrops-hooks.git\n',
+    '    pnpm subtree:create derrops-hooks packages/derrops-hooks git@github.com:derrickfutschik/derrops-hooks.git',
   )
+  console.error('    pnpm subtree:tag   derrops-lib 1.0.1\n')
   process.exit(1)
 }
 
@@ -118,4 +119,30 @@ switch (command) {
     }
     run(`git subtree add --prefix=${prefix} ${remote} ${branch} --squash`)
     break
+
+  case 'tag': {
+    const version = rest[1]
+    if (!version) {
+      console.error('Error: tag requires <repo> <version>')
+      console.error('  Example: pnpm subtree:tag derrops-lib 1.0.1')
+      process.exit(1)
+    }
+    const v = version.startsWith('v') ? version.slice(1) : version
+    const monoTag = `${repo}@${v}`
+    const subTag = `v${v}`
+
+    console.log(`\n⬡  Tagging ${repo} @ ${v}`)
+
+    // Tag monorepo — triggers GitHub Actions publish workflow
+    run(`git tag ${monoTag}`)
+    run(`git push origin ${monoTag}`)
+
+    // Tag standalone subtree remote
+    console.log(`   Splitting subtree prefix ${prefix}...`)
+    const sha = execSync(`git subtree split --prefix=${prefix} HEAD`, { encoding: 'utf8' }).trim()
+    run(`git push ${remote} ${sha}:refs/tags/${subTag}`)
+
+    console.log(`\n✓  Tagged ${monoTag} on monorepo and ${subTag} on ${remote}\n`)
+    break
+  }
 }

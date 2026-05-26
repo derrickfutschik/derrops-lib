@@ -31,7 +31,9 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(git log *)",
       "Bash(chmod +x /Users/dfutschik/slaops/slaops-platform/scripts/subtree.mjs)",
-      "Bash(chmod +x *)"
+      "Bash(chmod +x *)",
+      "Bash(git tag *)",
+      "Bash(git push *)"
     ]
   }
 }
