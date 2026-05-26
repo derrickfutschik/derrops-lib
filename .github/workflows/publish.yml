@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -38,13 +37,14 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Configure npm for OIDC
-        run: npm config delete //registry.npmjs.org/:_authToken || true
-
       - name: Publish
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: npm publish --provenance --access public
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run publish
         if: ${{ github.event.inputs.dry_run == 'true' }}
-        run: npm publish --dry-run --provenance --access public
+        run: npm publish --dry-run --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
