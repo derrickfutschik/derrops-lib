@@ -200,7 +200,7 @@ describe('build pipeline', () => {
 
   describe('onSuccess callback', () => {
     it('calls onSuccess with step output and accumulated data', async () => {
-      const onSuccess = jest.fn<() => void>()
+      const onSuccess = jest.fn<(output: LintOutput, accumulated: ProjectConfig) => void>()
 
       const pipeline = createPipeline<ProjectConfig>({ name: 'Success-CB' }).step<LintOutput>({
         name: 'Lint',
@@ -223,7 +223,7 @@ describe('build pipeline', () => {
 
   describe('onFailure callback', () => {
     it('calls onFailure when a step throws', async () => {
-      const onFailure = jest.fn<() => void>()
+      const onFailure = jest.fn<(error: Error, input: ProjectConfig) => void>()
 
       const pipeline = createPipeline<ProjectConfig>({ name: 'Failure-CB' }).step<LintOutput>({
         name: 'Lint',
