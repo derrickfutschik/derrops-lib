@@ -1,0 +1,21 @@
+# compiled output
+dist/
+
+# dependencies
+node_modules/
+
+# test coverage
+coverage/
+
+# environment
+.env
+.env.local
+
+# OS
+.DS_Store
+
+# editor
+.vscode/
+.idea/
+*.swp
+*.swo
