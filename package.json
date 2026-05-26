@@ -19,17 +19,22 @@
     "version:major": "npm version major"
   },
   "keywords": [
-    "workpipeline",
-    "pipeline",
     "pipeline",
     "typescript",
     "type-safe",
     "orchestration",
-    "build",
     "steps"
   ],
-  "author": "",
+  "author": "Derrick Futschik",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/derrickfutschik/derrops-lib.git"
+  },
+  "homepage": "https://github.com/derrickfutschik/derrops-lib#readme",
+  "bugs": {
+    "url": "https://github.com/derrickfutschik/derrops-lib/issues"
+  },
   "devDependencies": {
     "@jest/globals": "*",
     "@types/jest": "*",
