@@ -27,6 +27,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm install
@@ -36,6 +37,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Configure npm for OIDC
+        run: npm config delete //registry.npmjs.org/:_authToken || true
 
       - name: Publish
         if: ${{ github.event.inputs.dry_run != 'true' }}
